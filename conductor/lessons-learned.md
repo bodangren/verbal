@@ -5,3 +5,6 @@
 - Use `cargo test` in `src-tauri/` directory for faster iteration on Rust tests.
 - Tailwind v4 uses `@tailwindcss/vite` plugin instead of PostCSS config files.
 - Tauri build on Linux produces deb/rpm/AppImage; use `--no-bundle` for faster iteration.
+- TipTap editor requires mocking `useEditor` with `isActive` and `chain` methods for tests.
+- happy-dom requires mocking HTMLMediaElement.srcObject setter for video component tests.
+- MediaRecorder API needs full mock including ondataavailable and onstop handlers.

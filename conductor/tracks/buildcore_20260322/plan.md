@@ -16,7 +16,7 @@
 - [x] Task: Implement TipTap/ProseMirror text editor component [checkpoint: d80959b]
     - [x] Write Tests: Component tests for editor rendering and state updates
     - [x] Implement Feature: Build the rich-text editor component with mock transcript data
-- [x] Task: Implement HTML5 video player component synced to editor
+- [x] Task: Implement HTML5 video player component synced to editor [checkpoint: 0ac26b8]
     - [x] Write Tests: Verify playhead sync logic
     - [x] Implement Feature: Map mock word-level timestamps to video `currentTime`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md)
