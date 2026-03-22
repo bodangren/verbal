@@ -13,12 +13,12 @@
 - [x] Task: Implement webcam recording using MediaRecorder API [checkpoint: c1cdd8e]
     - [x] Write Tests: Component tests for webcam stream acquisition and recording controls
     - [x] Implement Feature: Build webcam capture UI and use Tauri IPC to save the recording locally
-- [x] Task: Implement TipTap/ProseMirror text editor component
+- [x] Task: Implement TipTap/ProseMirror text editor component [checkpoint: d80959b]
     - [x] Write Tests: Component tests for editor rendering and state updates
     - [x] Implement Feature: Build the rich-text editor component with mock transcript data
-- [~] Task: Implement HTML5 video player component synced to editor
-    - [ ] Write Tests: Verify playhead sync logic
-    - [ ] Implement Feature: Map mock word-level timestamps to video `currentTime`
+- [x] Task: Implement HTML5 video player component synced to editor
+    - [x] Write Tests: Verify playhead sync logic
+    - [x] Implement Feature: Map mock word-level timestamps to video `currentTime`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md)
 
 ## Phase 3: FFmpeg Integration
