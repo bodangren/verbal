@@ -1,3 +1,7 @@
 # Lessons Learned
 - Initial project setup with Tauri v2 requires WebKitGTK 4.1 on Linux.
 - Local FFmpeg management in Rust requires careful child process handling for zombie prevention.
+- Tauri commands must return types compatible with InvokeError; implement `From<YourError> for InvokeError`.
+- Use `cargo test` in `src-tauri/` directory for faster iteration on Rust tests.
+- Tailwind v4 uses `@tailwindcss/vite` plugin instead of PostCSS config files.
+- Tauri build on Linux produces deb/rpm/AppImage; use `--no-bundle` for faster iteration.
