@@ -96,4 +96,24 @@ describe("VideoPlayer", () => {
     render(<VideoPlayer transcript={mockTranscript} onSeek={mockOnSeek} />);
     expect(screen.getByRole("img")).toBeDefined();
   });
+
+  it("debounces rapid external currentTime updates to prevent double-seek", async () => {
+    const mockSetCurrentTime = vi.fn();
+    const { rerender } = render(<VideoPlayer currentTime={0} />);
+
+    const video = screen.getByRole("img");
+    Object.defineProperty(video, "currentTime", {
+      set: mockSetCurrentTime,
+      get: () => 0,
+      configurable: true,
+    });
+
+    rerender(<VideoPlayer currentTime={0.1} />);
+    rerender(<VideoPlayer currentTime={0.2} />);
+    rerender(<VideoPlayer currentTime={0.3} />);
+    rerender(<VideoPlayer currentTime={5.0} />);
+
+    vi.advanceTimersByTime(100);
+    expect(mockSetCurrentTime.mock.calls.length).toBeLessThanOrEqual(2);
+  });
 });

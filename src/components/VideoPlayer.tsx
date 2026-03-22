@@ -16,6 +16,8 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+const SEEK_THRESHOLD = 0.5;
+
 export function VideoPlayer({
   src,
   stream,
@@ -25,6 +27,7 @@ export function VideoPlayer({
   onSeek,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastSeekedTimeRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [internalCurrentTime, setInternalCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -39,7 +42,13 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (videoRef.current && externalCurrentTime !== undefined) {
-      videoRef.current.currentTime = externalCurrentTime;
+      const lastSeeked = lastSeekedTimeRef.current;
+      const shouldSeek = lastSeeked === null || Math.abs(externalCurrentTime - lastSeeked) >= SEEK_THRESHOLD;
+      
+      if (shouldSeek) {
+        videoRef.current.currentTime = externalCurrentTime;
+        lastSeekedTimeRef.current = externalCurrentTime;
+      }
     }
   }, [externalCurrentTime]);
 
