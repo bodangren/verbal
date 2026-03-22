@@ -8,3 +8,5 @@
 - TipTap editor requires mocking `useEditor` with `isActive` and `chain` methods for tests.
 - happy-dom requires mocking HTMLMediaElement.srcObject setter for video component tests.
 - MediaRecorder API needs full mock including ondataavailable and onstop handlers.
+- External prop-driven video seeks should use threshold-based debouncing to prevent rapid micro-seeks.
+- ErrorBoundary tests need `console.error` mocked to avoid noise in test output.
