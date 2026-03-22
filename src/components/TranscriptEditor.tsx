@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
@@ -30,7 +30,6 @@ function transcriptToText(transcript: TranscriptSegment[]): string {
 
 export function TranscriptEditor({
   transcript,
-  currentTime = 0,
   placeholder = "Start typing your transcript...",
   showToolbar = true,
   className = "",
@@ -54,15 +53,6 @@ export function TranscriptEditor({
       editor.commands.setContent(transcriptToText(transcript));
     }
   }, [editor, transcript]);
-
-  const isWordHighlighted = useCallback(
-    (_word: TranscriptWord): boolean => {
-      return currentTime >= _word.start && currentTime <= _word.end;
-    },
-    [currentTime]
-  );
-
-  void isWordHighlighted;
 
   if (!editor) {
     return null;

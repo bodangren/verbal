@@ -1,9 +1,9 @@
 # Implementation Plan: Chore - Refactor/Cleanup 2026-03-22 Work
 
-## Phase 1: VideoPlayer Double-Seek Fix
-- [ ] Task: Fix VideoPlayer currentTime sync to prevent double-seek on rapid updates
-    - [ ] Write Tests: Test debounced external currentTime handling
-    - [ ] Implement Feature: Add debounce to external currentTime prop updates in VideoPlayer
+## Phase 1: VideoPlayer Double-Seek Fix [checkpoint: c49598b]
+- [x] Task: Fix VideoPlayer currentTime sync to prevent double-seek on rapid updates
+    - [x] Write Tests: Test debounced external currentTime handling
+    - [x] Implement Feature: Add debounce to external currentTime prop updates in VideoPlayer
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: VideoPlayer Double-Seek Fix' (Protocol in workflow.md)
 
 ## Phase 2: Error Boundary & Code Cleanup
