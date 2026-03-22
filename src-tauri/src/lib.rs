@@ -13,7 +13,11 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![commands::greet])
+        .invoke_handler(tauri::generate_handler![
+            commands::greet,
+            commands::save_video,
+            commands::get_video_directory
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

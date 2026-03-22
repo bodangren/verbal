@@ -10,9 +10,9 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Scaffolding' (Protocol in workflow.md)
 
 ## Phase 2: Frontend Editor & Player
-- [ ] Task: Implement webcam recording using MediaRecorder API
-    - [ ] Write Tests: Component tests for webcam stream acquisition and recording controls
-    - [ ] Implement Feature: Build webcam capture UI and use Tauri IPC to save the recording locally
+- [x] Task: Implement webcam recording using MediaRecorder API
+    - [x] Write Tests: Component tests for webcam stream acquisition and recording controls
+    - [x] Implement Feature: Build webcam capture UI and use Tauri IPC to save the recording locally
 - [ ] Task: Implement TipTap/ProseMirror text editor component
     - [ ] Write Tests: Component tests for editor rendering and state updates
     - [ ] Implement Feature: Build the rich-text editor component with mock transcript data
