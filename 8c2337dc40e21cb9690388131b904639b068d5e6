@@ -1,0 +1,12 @@
+Task: Update project memory files after Phase 1 completion
+
+Summary: Added lessons learned and tech debt from Phase 1 scaffolding:
+- Tauri InvokeError compatibility requirement
+- Tailwind v4 vite plugin usage
+- AppImage bundling issue on Linux
+
+Files modified:
+- conductor/lessons-learned.md
+- conductor/tech-debt.md
+
+Why: Maintains project memory for future development iterations.
