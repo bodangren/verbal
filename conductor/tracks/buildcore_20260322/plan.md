@@ -1,10 +1,10 @@
 # Implementation Plan: Build core text-to-video sync and local FFmpeg cutting
 
 ## Phase 1: Project Scaffolding
-- [ ] Task: Initialize Tauri v2 application with React and TypeScript frontend
-    - [ ] Write Tests: Verify Tauri build and frontend testing framework setup
-    - [ ] Implement Feature: Run `create-tauri-app` and configure Tailwind CSS
-- [ ] Task: Set up Rust backend project structure and error handling
+- [x] Task: Initialize Tauri v2 application with React and TypeScript frontend
+    - [x] Write Tests: Verify Tauri build and frontend testing framework setup
+    - [x] Implement Feature: Run `create-tauri-app` and configure Tailwind CSS
+- [~] Task: Set up Rust backend project structure and error handling
     - [ ] Write Tests: Setup Rust unit testing framework
     - [ ] Implement Feature: Configure custom Rust `Result` types and logger
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Scaffolding' (Protocol in workflow.md)
