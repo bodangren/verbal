@@ -1,0 +1,12 @@
+Task: Update autonomous_prompt.md for phase-based execution
+
+Summary: Modified autonomous execution workflow to:
+- Implement single phase instead of entire track per run
+- Add merge and push after each commit
+- Reference conductor protocol for git notes requirement
+- Include tauri and rust-best-practices skills
+
+Files modified:
+- conductor/autonomous_prompt.md
+
+Why: Enables incremental, verifiable progress with proper git hygiene and skill-based implementation guidance.
