@@ -1,21 +1,20 @@
-# Current Directive: AI Provider Abstraction Layer
+# Current Directive: Automated Transcription & Filler Word Detection
 
 ## Active Directive
-**Build a provider-agnostic AI interface that supports OpenAI and Google ecosystems, enabling credential management and unified command routing.**
+**Build an asynchronous transcription pipeline that processes media files through the AI provider abstraction layer, extracts word-level timestamps, and uses LLM intelligence to identify filler words.**
 
 ## Scope
-- **Provider Trait**: Define a Rust trait for AI operations (transcription, text generation, embeddings).
-- **OpenAI Implementation**: Implement the trait for OpenAI API (Whisper, GPT-4).
-- **Google Implementation**: Implement the trait for Google AI (Gemini).
-- **Credential Management**: Secure storage and retrieval of API keys via Tauri's secure storage.
-- **IPC Commands**: Frontend commands to configure providers and make AI requests.
+- **Audio Extraction**: FFmpeg-based audio extraction from media files
+- **Transcription Jobs**: Async job management with status tracking
+- **Filler Detection**: LLM-based filler word identification with timestamps
+- **IPC Commands**: Frontend commands for transcription control
 
 ## Success Criteria
-- A user can configure API keys for OpenAI and/or Google.
-- The app can make transcription requests through the abstraction layer.
-- Provider switching works without code changes in frontend.
-- All AI operations are routed through the abstraction module.
+- User can request transcription of a media file through frontend
+- Transcription returns word-level timestamps accurate to within 100ms
+- Filler words are detected and returned with timestamps
+- Transcription status is visible in UI during processing
 
 ## Timeline
-Started: 2026-03-23
-Target Completion: 2026-03-30
+Started: 2026-03-24
+Target Completion: 2026-03-27

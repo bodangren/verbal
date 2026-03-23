@@ -1,4 +1,5 @@
 mod ai;
+mod audio;
 mod commands;
 mod cut_list;
 mod error;

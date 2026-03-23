@@ -1,8 +1,12 @@
+mod extractor;
+
 use crate::cut_list::CutList;
 use crate::error::{Result, VerbalError};
 use serde::Serialize;
 use std::path::Path;
 use std::process::{Command, Output};
+
+pub use extractor::{AudioExtractor, AudioFormat, ExtractionConfig, ExtractionResult};
 
 pub struct FFmpegExecutor {
     ffmpeg_path: String,
