@@ -1,4 +1,6 @@
+use crate::cut_list::CutList;
 use crate::error::Result;
+use crate::ffmpeg::{validate_path_is_within_dir, FFmpegExecutor};
 use tauri::{AppHandle, Manager};
 
 #[tauri::command]
@@ -46,6 +48,38 @@ pub fn get_video_directory(app: AppHandle) -> Result<String> {
     std::fs::create_dir_all(&app_dir)?;
 
     Ok(app_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn apply_cuts(
+    app: AppHandle,
+    input_filename: String,
+    output_filename: String,
+    cut_list_json: String,
+) -> Result<crate::ffmpeg::FFmpegResult> {
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| crate::error::VerbalError::MediaProcessing(e.to_string()))?;
+
+    std::fs::create_dir_all(&app_dir)?;
+
+    let input_path = app_dir.join(&input_filename);
+    let output_path = app_dir.join(&output_filename);
+
+    validate_path_is_within_dir(&output_path, &app_dir)?;
+
+    let cut_list = CutList::parse_json(&cut_list_json)?;
+
+    let executor = FFmpegExecutor::default();
+    
+    if !executor.check_available()? {
+        return Err(crate::error::VerbalError::Ffmpeg(
+            "FFmpeg is not installed or not available in PATH".to_string(),
+        ));
+    }
+
+    executor.apply_cuts(&cut_list, &input_path, &output_path)
 }
 
 pub fn validate_filename(filename: &str) -> Result<String> {

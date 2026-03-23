@@ -6,10 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Chore - Refactor/Cleanup 2026-03-22 Work**
+- [x] **Track: Chore - Refactor/Cleanup 2026-03-22 Work** [completed: 2026-03-23]
   *Link: [./tracks/chore_20260323/](./tracks/chore_20260323/)*
 
-- [ ] **Track: Build core text-to-video sync and local FFmpeg cutting**
+- [~] **Track: Build core text-to-video sync and local FFmpeg cutting** [Phase 3 in progress]
   *Link: [./tracks/buildcore_20260322/](./tracks/buildcore_20260322/)*
 
 ---

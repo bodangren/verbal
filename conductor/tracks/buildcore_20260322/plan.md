@@ -22,10 +22,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md)
 
 ## Phase 3: FFmpeg Integration
-- [ ] Task: Build Rust module to parse JSON cut lists
-    - [ ] Write Tests: Unit tests for converting deleted text spans to video timecodes
-    - [ ] Implement Feature: Add IPC command for frontend to send cut lists
-- [ ] Task: Implement local FFmpeg execution in Rust
-    - [ ] Write Tests: Mock `std::process::Command` to verify FFmpeg argument generation
-    - [ ] Implement Feature: Spawn FFmpeg child process, trim segments, and concatenate output
+- [x] Task: Build Rust module to parse JSON cut lists [checkpoint: tbd]
+    - [x] Write Tests: Unit tests for converting deleted text spans to video timecodes
+    - [x] Implement Feature: Add IPC command for frontend to send cut lists
+- [x] Task: Implement local FFmpeg execution in Rust [checkpoint: tbd]
+    - [x] Write Tests: Mock `std::process::Command` to verify FFmpeg argument generation
+    - [x] Implement Feature: Spawn FFmpeg child process, trim segments, and concatenate output
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: FFmpeg Integration' (Protocol in workflow.md)
