@@ -9,7 +9,7 @@
     - [x] Implement Feature: Add `CredentialManager` in `src-tauri/src/ai/credentials.rs`
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Trait & Error Handling' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 2: OpenAI Provider
+## Phase 2: OpenAI Provider [checkpoint: c66d359]
 - [x] Task: Implement OpenAI transcription client
     - [x] Write Tests: Mock HTTP client for Whisper API responses
     - [x] Implement Feature: Add `src-tauri/src/ai/openai.rs` with transcription support
