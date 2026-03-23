@@ -18,11 +18,11 @@
     - [x] Implement Feature: Extend OpenAI module with chat completion support
 - [x] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Provider' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 3: Google Provider & IPC
-- [ ] Task: Implement Google Gemini client
-    - [ ] Write Tests: Mock Gemini API responses
-    - [ ] Implement Feature: Add `src-tauri/src/ai/google.rs`
-- [ ] Task: Build IPC commands for frontend AI access
-    - [ ] Write Tests: Integration tests for Tauri commands
-    - [ ] Implement Feature: Add `configure_provider`, `transcribe`, `generate_text` commands
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Google Provider & IPC' (Protocol in workflow.md)
+## Phase 3: Google Provider & IPC [checkpoint: pending]
+- [x] Task: Implement Google Gemini client
+    - [x] Write Tests: Mock Gemini API responses
+    - [x] Implement Feature: Add `src-tauri/src/ai/google.rs`
+- [x] Task: Build IPC commands for frontend AI access
+    - [x] Write Tests: Integration tests for Tauri commands
+    - [x] Implement Feature: Add `configure_provider`, `transcribe`, `generate_text` commands
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Google Provider & IPC' (Protocol in workflow.md) [auto-verified: tests pass]

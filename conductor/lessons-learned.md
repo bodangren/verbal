@@ -18,3 +18,5 @@
 - `reqwest::multipart::Form::text()` takes ownership - reassign to variable for chaining.
 - Exponential backoff retry pattern: `delay = initial * 2^attempt` with configurable max retries.
 - Use `#![allow(dead_code)]` at module level for code reserved for future integration phases.
+- mockito `match_query(Matcher::Regex(...))` for URL query parameter matching in async tests.
+- Gemini API uses query parameter `?key=API_KEY` instead of Authorization header.

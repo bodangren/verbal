@@ -9,6 +9,7 @@ pub use ai::{
     TextGenerationRequest, TextGenerationResponse, TranscriptionRequest, TranscriptionResponse,
     WordTimestamp,
 };
+pub use commands::ai::{AiProviderHolder, AiProviderState};
 pub use cut_list::{CutList, TimeSegment};
 pub use error::{Result, VerbalError};
 pub use ffmpeg::{FFmpegExecutor, FFmpegResult};
@@ -21,13 +22,22 @@ pub fn run() {
 
     tracing::info!("Starting Verbal application");
 
+    let ai_state = commands::ai::init_ai_state();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(ai_state)
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::save_video,
             commands::get_video_directory,
-            commands::apply_cuts
+            commands::apply_cuts,
+            commands::ai::configure_provider,
+            commands::ai::set_active_provider,
+            commands::ai::transcribe,
+            commands::ai::generate_text,
+            commands::ai::get_configured_providers,
+            commands::ai::clear_provider_credentials
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

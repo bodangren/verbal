@@ -1,3 +1,5 @@
+pub mod ai;
+
 use crate::cut_list::CutList;
 use crate::error::Result;
 use crate::ffmpeg::{validate_path_is_within_dir, FFmpegExecutor};
