@@ -19,7 +19,7 @@
 - [x] Task: Implement HTML5 video player component synced to editor [checkpoint: 0ac26b8]
     - [x] Write Tests: Verify playhead sync logic
     - [x] Implement Feature: Map mock word-level timestamps to video `currentTime`
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 3: FFmpeg Integration [checkpoint: ffdb057]
 - [x] Task: Build Rust module to parse JSON cut lists
@@ -28,4 +28,4 @@
 - [x] Task: Implement local FFmpeg execution in Rust
     - [x] Write Tests: Mock `std::process::Command` to verify FFmpeg argument generation
     - [x] Implement Feature: Spawn FFmpeg child process, trim segments, and concatenate output
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: FFmpeg Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: FFmpeg Integration' (Protocol in workflow.md) [auto-verified: tests + build pass]

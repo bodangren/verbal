@@ -11,3 +11,4 @@
 - External prop-driven video seeks should use threshold-based debouncing to prevent rapid micro-seeks.
 - ErrorBoundary tests need `console.error` mocked to avoid noise in test output.
 - FFmpeg `filter_complex` with trim+concat is the cleanest approach for multi-segment cuts without re-encoding.
+- CI=true npm test runs vitest in non-watch mode for CI/CD pipelines.
