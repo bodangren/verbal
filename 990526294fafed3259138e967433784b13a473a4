@@ -1,0 +1,1 @@
+Phase 3: Filler Word Detection - Implemented FillerDetector with LLM-based identification, FillerSegment with types (Pause/FillerWord/Hedge/Repetition), integrated into transcription pipeline. 10 new tests added.
