@@ -82,6 +82,7 @@ pub async fn apply_cuts(
     executor.apply_cuts(&cut_list, &input_path, &output_path)
 }
 
+#[allow(dead_code)]
 pub fn validate_filename(filename: &str) -> Result<String> {
     if filename.is_empty() {
         return Err(crate::error::VerbalError::MediaProcessing(

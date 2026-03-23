@@ -16,3 +16,5 @@
 - Use `async_trait` for trait methods that need to be async in Rust.
 - `mockito` crate with `Server::new_async()` enables async HTTP mocking for reqwest tests.
 - `reqwest::multipart::Form::text()` takes ownership - reassign to variable for chaining.
+- Exponential backoff retry pattern: `delay = initial * 2^attempt` with configurable max retries.
+- Use `#![allow(dead_code)]` at module level for code reserved for future integration phases.

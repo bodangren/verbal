@@ -24,6 +24,18 @@ pub enum AiError {
 
     #[error("Invalid response from provider: {0}")]
     InvalidResponse(String),
+
+    #[error("Request timed out")]
+    Timeout,
+
+    #[error("Rate limited, please retry after {0} seconds")]
+    RateLimited(u64),
+
+    #[error("Authentication failed: {0}")]
+    AuthenticationFailed(String),
+
+    #[error("Quota exceeded: {0}")]
+    QuotaExceeded(String),
 }
 
 impl From<AiError> for tauri::ipc::InvokeError {
@@ -121,6 +133,33 @@ mod tests {
     fn test_ai_error_to_invoke_error() {
         let err = AiError::ApiError("rate limit".to_string());
         let _invoke_err: tauri::ipc::InvokeError = err.into();
+    }
+
+    #[test]
+    fn test_ai_error_timeout_display() {
+        let err = AiError::Timeout;
+        assert!(err.to_string().contains("timed out"));
+    }
+
+    #[test]
+    fn test_ai_error_rate_limited_display() {
+        let err = AiError::RateLimited(60);
+        assert!(err.to_string().contains("60"));
+        assert!(err.to_string().contains("seconds"));
+    }
+
+    #[test]
+    fn test_ai_error_authentication_failed_display() {
+        let err = AiError::AuthenticationFailed("invalid key".to_string());
+        assert!(err.to_string().contains("Authentication failed"));
+        assert!(err.to_string().contains("invalid key"));
+    }
+
+    #[test]
+    fn test_ai_error_quota_exceeded_display() {
+        let err = AiError::QuotaExceeded("monthly limit".to_string());
+        assert!(err.to_string().contains("Quota exceeded"));
+        assert!(err.to_string().contains("monthly limit"));
     }
 
     #[test]
