@@ -1,0 +1,1 @@
+Phase 2: Transcription Job Management - Implemented TranscriptionJob state machine, JobTracker for job management, TranscriptionOrchestrator for audio extraction and AI integration, and IPC commands for frontend control. 28 new tests added.
