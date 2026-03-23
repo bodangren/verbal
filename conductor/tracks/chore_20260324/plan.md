@@ -9,8 +9,8 @@
     - [x] Implement Feature: Implement exponential backoff retry for 5xx errors
 - [x] Task: Conductor - User Manual Verification 'Phase 1: OpenAI Provider Resilience' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 2: Error Handling Improvements [checkpoint: pending]
-- [ ] Task: Add granular error variants for API errors
-    - [ ] Write Tests: Test error variant detection from API responses
-    - [ ] Implement Feature: Add RateLimited, AuthenticationFailed, QuotaExceeded error variants
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Error Handling Improvements' (Protocol in workflow.md)
+## Phase 2: Error Handling Improvements [checkpoint: a60332f]
+- [x] Task: Add granular error variants for API errors
+    - [x] Write Tests: Test error variant detection from API responses
+    - [x] Implement Feature: Add RateLimited, AuthenticationFailed, QuotaExceeded error variants
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Error Handling Improvements' (Protocol in workflow.md) [auto-verified: tests pass]
