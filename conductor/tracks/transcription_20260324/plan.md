@@ -1,6 +1,6 @@
 # Implementation Plan: Automated Transcription & Filler Word Detection
 
-## Phase 1: Audio Extraction Pipeline [checkpoint: pending]
+## Phase 1: Audio Extraction Pipeline [checkpoint: 6b22f37]
 - [x] Task: Create audio extraction module using FFmpeg
     - [x] Write Tests: Unit tests for FFmpeg command generation and audio format validation
     - [x] Implement Feature: Add `src-tauri/src/audio/extractor.rs` with async audio extraction
