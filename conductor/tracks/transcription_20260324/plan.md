@@ -21,7 +21,7 @@
     - [x] Implement Feature: Add `start_transcription`, `get_transcription_status`, `cancel_transcription` Tauri commands
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Transcription Job Management' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 3: Filler Word Detection [checkpoint: pending]
+## Phase 3: Filler Word Detection [checkpoint: 9905262]
 - [x] Task: Define filler word detection prompt and response schema
     - [x] Write Tests: Unit tests for prompt construction and response parsing
     - [x] Implement Feature: Add `src-tauri/src/transcription/filler.rs` with LLM-based detection

@@ -20,3 +20,7 @@
 - Use `#![allow(dead_code)]` at module level for code reserved for future integration phases.
 - mockito `match_query(Matcher::Regex(...))` for URL query parameter matching in async tests.
 - Gemini API uses query parameter `?key=API_KEY` instead of Authorization header.
+- `Arc<RwLock<T>>` with `inner().clone()` pattern for Tauri state access in commands.
+- `dyn Trait` requires `?Sized` bound when used as generic type parameter.
+- FFmpeg audio extraction with `-vn -acodec pcm_s16le -ar 16000 -ac 1` is optimal for Whisper transcription.
+- Transcription job state machine: Pending → Processing → Completed/Failed/Cancelled.
