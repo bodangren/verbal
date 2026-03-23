@@ -9,7 +9,7 @@
     - [x] Implement Feature: Add temp file handling with automatic cleanup on drop
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Audio Extraction Pipeline' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 2: Transcription Job Management [checkpoint: pending]
+## Phase 2: Transcription Job Management [checkpoint: a6bfc76]
 - [x] Task: Define transcription job state and types
     - [x] Write Tests: Unit tests for job state transitions and serialization
     - [x] Implement Feature: Add `src-tauri/src/transcription/jobs.rs` with job types and state machine
