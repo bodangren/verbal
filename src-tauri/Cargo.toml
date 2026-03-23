@@ -22,6 +22,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dunce = "1"
 tokio = { version = "1", features = ["fs"] }
+async-trait = "0.1"
+keyring = "3"
 
 [dev-dependencies]
 tempfile = "3"

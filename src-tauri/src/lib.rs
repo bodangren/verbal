@@ -1,8 +1,14 @@
+mod ai;
 mod commands;
 mod cut_list;
 mod error;
 mod ffmpeg;
 
+pub use ai::{
+    credentials::CredentialManager, AiError, AiProvider, AiResult, Provider,
+    TextGenerationRequest, TextGenerationResponse, TranscriptionRequest, TranscriptionResponse,
+    WordTimestamp,
+};
 pub use cut_list::{CutList, TimeSegment};
 pub use error::{Result, VerbalError};
 pub use ffmpeg::{FFmpegExecutor, FFmpegResult};
