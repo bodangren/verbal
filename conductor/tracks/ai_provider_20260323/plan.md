@@ -1,13 +1,13 @@
 # Implementation Plan: AI Provider Abstraction Layer
 
-## Phase 1: Core Trait & Error Handling
+## Phase 1: Core Trait & Error Handling [checkpoint: 553342e]
 - [x] Task: Define AI provider trait and error types
     - [x] Write Tests: Unit tests for error conversion and trait bounds
     - [x] Implement Feature: Create `src-tauri/src/ai/mod.rs` with `AiProvider` trait and `AiError` type
 - [x] Task: Implement credential storage using Tauri secure storage
     - [x] Write Tests: Mock keyring/storage for credential CRUD tests
     - [x] Implement Feature: Add `CredentialManager` in `src-tauri/src/ai/credentials.rs`
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Core Trait & Error Handling' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Core Trait & Error Handling' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 2: OpenAI Provider
 - [ ] Task: Implement OpenAI transcription client

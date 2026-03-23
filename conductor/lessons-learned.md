@@ -12,3 +12,5 @@
 - ErrorBoundary tests need `console.error` mocked to avoid noise in test output.
 - FFmpeg `filter_complex` with trim+concat is the cleanest approach for multi-segment cuts without re-encoding.
 - CI=true npm test runs vitest in non-watch mode for CI/CD pipelines.
+- The `keyring` crate provides cross-platform secure credential storage via OS keychain.
+- Use `async_trait` for trait methods that need to be async in Rust.
