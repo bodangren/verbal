@@ -14,3 +14,5 @@
 - CI=true npm test runs vitest in non-watch mode for CI/CD pipelines.
 - The `keyring` crate provides cross-platform secure credential storage via OS keychain.
 - Use `async_trait` for trait methods that need to be async in Rust.
+- `mockito` crate with `Server::new_async()` enables async HTTP mocking for reqwest tests.
+- `reqwest::multipart::Form::text()` takes ownership - reassign to variable for chaining.

@@ -21,9 +21,11 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dunce = "1"
-tokio = { version = "1", features = ["fs"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
 async-trait = "0.1"
 keyring = "3"
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "multipart"], default-features = false }
 
 [dev-dependencies]
 tempfile = "3"
+mockito = "1"

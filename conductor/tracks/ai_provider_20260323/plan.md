@@ -10,13 +10,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Trait & Error Handling' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 2: OpenAI Provider
-- [ ] Task: Implement OpenAI transcription client
-    - [ ] Write Tests: Mock HTTP client for Whisper API responses
-    - [ ] Implement Feature: Add `src-tauri/src/ai/openai.rs` with transcription support
-- [ ] Task: Implement OpenAI text generation client
-    - [ ] Write Tests: Mock GPT-4 API responses
-    - [ ] Implement Feature: Extend OpenAI module with chat completion support
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Provider' (Protocol in workflow.md)
+- [x] Task: Implement OpenAI transcription client
+    - [x] Write Tests: Mock HTTP client for Whisper API responses
+    - [x] Implement Feature: Add `src-tauri/src/ai/openai.rs` with transcription support
+- [x] Task: Implement OpenAI text generation client
+    - [x] Write Tests: Mock GPT-4 API responses
+    - [x] Implement Feature: Extend OpenAI module with chat completion support
+- [x] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Provider' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 3: Google Provider & IPC
 - [ ] Task: Implement Google Gemini client
