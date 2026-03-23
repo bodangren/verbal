@@ -18,7 +18,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: AI Provider Abstraction Layer** [completed: 2026-03-24]
   *Link: [./tracks/ai_provider_20260323/](./tracks/ai_provider_20260323/)*
 
-- [ ] **Track: Automated Transcription & Filler Word Detection**
+- [x] **Track: Automated Transcription & Filler Word Detection** [completed: 2026-03-24]
   *Link: [./tracks/transcription_20260324/](./tracks/transcription_20260324/)*
 
 ---
