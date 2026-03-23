@@ -21,11 +21,11 @@
     - [x] Implement Feature: Map mock word-level timestamps to video `currentTime`
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Editor & Player' (Protocol in workflow.md)
 
-## Phase 3: FFmpeg Integration
-- [x] Task: Build Rust module to parse JSON cut lists [checkpoint: tbd]
+## Phase 3: FFmpeg Integration [checkpoint: ffdb057]
+- [x] Task: Build Rust module to parse JSON cut lists
     - [x] Write Tests: Unit tests for converting deleted text spans to video timecodes
     - [x] Implement Feature: Add IPC command for frontend to send cut lists
-- [x] Task: Implement local FFmpeg execution in Rust [checkpoint: tbd]
+- [x] Task: Implement local FFmpeg execution in Rust
     - [x] Write Tests: Mock `std::process::Command` to verify FFmpeg argument generation
     - [x] Implement Feature: Spawn FFmpeg child process, trim segments, and concatenate output
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: FFmpeg Integration' (Protocol in workflow.md)
