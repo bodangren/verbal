@@ -12,7 +12,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Build core text-to-video sync and local FFmpeg cutting** [completed: 2026-03-23]
   *Link: [./tracks/buildcore_20260322/](./tracks/buildcore_20260322/)*
 
-- [~] **Track: Chore - Refactor/Cleanup AI Provider Work** [Phase 1 in progress]
+- [~] **Track: Chore - Refactor/Cleanup AI Provider Work** [Phase 1 completed: 2026-03-24]
   *Link: [./tracks/chore_20260324/](./tracks/chore_20260324/)*
 
 - [ ] **Track: AI Provider Abstraction Layer** [Phase 2 completed: 2026-03-23]
