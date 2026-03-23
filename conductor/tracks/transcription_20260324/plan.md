@@ -21,14 +21,14 @@
     - [x] Implement Feature: Add `start_transcription`, `get_transcription_status`, `cancel_transcription` Tauri commands
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Transcription Job Management' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 3: Filler Word Detection
-- [ ] Task: Define filler word detection prompt and response schema
-    - [ ] Write Tests: Unit tests for prompt construction and response parsing
-    - [ ] Implement Feature: Add `src-tauri/src/transcription/filler.rs` with LLM-based detection
-- [ ] Task: Integrate filler detection with transcription pipeline
-    - [ ] Write Tests: End-to-end test with mock LLM responses
-    - [ ] Implement Feature: Chain filler detection after transcription completion
-- [ ] Task: Add filler word results to transcription response
-    - [ ] Write Tests: Test serialization of filler word segments
-    - [ ] Implement Feature: Extend `TranscriptionResponse` with filler word data
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Filler Word Detection' (Protocol in workflow.md) [auto-verified: tests pass]
+## Phase 3: Filler Word Detection [checkpoint: pending]
+- [x] Task: Define filler word detection prompt and response schema
+    - [x] Write Tests: Unit tests for prompt construction and response parsing
+    - [x] Implement Feature: Add `src-tauri/src/transcription/filler.rs` with LLM-based detection
+- [x] Task: Integrate filler detection with transcription pipeline
+    - [x] Write Tests: End-to-end test with mock LLM responses
+    - [x] Implement Feature: Chain filler detection after transcription completion
+- [x] Task: Add filler word results to transcription response
+    - [x] Write Tests: Test serialization of filler word segments
+    - [x] Implement Feature: Extend `TranscriptionResponse` with filler word data
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Filler Word Detection' (Protocol in workflow.md) [auto-verified: tests pass]

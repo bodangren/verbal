@@ -98,6 +98,7 @@ pub struct JobResult {
     pub job_id: String,
     pub text: String,
     pub words: Vec<crate::ai::WordTimestamp>,
+    pub filler_words: Vec<crate::transcription::FillerSegment>,
     pub duration_seconds: f64,
 }
 
@@ -422,6 +423,7 @@ mod tests {
                 start: 0.0,
                 end: 0.5,
             }],
+            filler_words: vec![],
             duration_seconds: 10.5,
         };
 

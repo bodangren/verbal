@@ -1,7 +1,7 @@
 use crate::ai::{AiProvider, AiResult, TranscriptionRequest, TranscriptionResponse};
 use crate::audio::TempFileManager;
 use crate::ffmpeg::{AudioExtractor, ExtractionConfig};
-use crate::transcription::{JobResult, JobStatus, JobTracker, TranscriptionJob};
+use crate::transcription::{FillerDetector, JobResult, JobStatus, JobTracker, TranscriptionJob};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -138,6 +138,22 @@ impl TranscriptionOrchestrator {
         {
             let mut tracker = self.tracker.write().await;
             if let Some(job) = tracker.get_mut(job_id) {
+                job.set_progress(0.7);
+            }
+        }
+
+        let filler_request = FillerDetector::build_prompt(&response.text);
+        let filler_words = match provider.generate_text(filler_request).await {
+            Ok(filler_response) => FillerDetector::parse_response(&filler_response.text, &response.words),
+            Err(e) => {
+                tracing::warn!("Filler detection failed, continuing without fillers: {}", e);
+                vec![]
+            }
+        };
+
+        {
+            let mut tracker = self.tracker.write().await;
+            if let Some(job) = tracker.get_mut(job_id) {
                 job.set_progress(0.9);
             }
         }
@@ -148,6 +164,7 @@ impl TranscriptionOrchestrator {
             job_id: job_id.to_string(),
             text: response.text,
             words: response.words,
+            filler_words,
             duration_seconds: extraction_result.duration_seconds,
         })
     }
