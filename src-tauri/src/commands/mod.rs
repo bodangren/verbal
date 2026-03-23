@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod transcription;
 
 use crate::cut_list::CutList;
 use crate::error::Result;

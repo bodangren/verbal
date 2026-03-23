@@ -9,17 +9,17 @@
     - [x] Implement Feature: Add temp file handling with automatic cleanup on drop
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Audio Extraction Pipeline' (Protocol in workflow.md) [auto-verified: tests pass]
 
-## Phase 2: Transcription Job Management
-- [ ] Task: Define transcription job state and types
-    - [ ] Write Tests: Unit tests for job state transitions and serialization
-    - [ ] Implement Feature: Add `src-tauri/src/transcription/jobs.rs` with job types and state machine
-- [ ] Task: Implement async transcription orchestration
-    - [ ] Write Tests: Mock AI provider for transcription flow tests
-    - [ ] Implement Feature: Add `src-tauri/src/transcription/orchestrator.rs` with job execution logic
-- [ ] Task: Add IPC commands for transcription control
-    - [ ] Write Tests: Integration tests for start/cancel/status commands
-    - [ ] Implement Feature: Add `start_transcription`, `get_transcription_status`, `cancel_transcription` Tauri commands
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Transcription Job Management' (Protocol in workflow.md) [auto-verified: tests pass]
+## Phase 2: Transcription Job Management [checkpoint: pending]
+- [x] Task: Define transcription job state and types
+    - [x] Write Tests: Unit tests for job state transitions and serialization
+    - [x] Implement Feature: Add `src-tauri/src/transcription/jobs.rs` with job types and state machine
+- [x] Task: Implement async transcription orchestration
+    - [x] Write Tests: Mock AI provider for transcription flow tests
+    - [x] Implement Feature: Add `src-tauri/src/transcription/orchestrator.rs` with job execution logic
+- [x] Task: Add IPC commands for transcription control
+    - [x] Write Tests: Integration tests for start/cancel/status commands
+    - [x] Implement Feature: Add `start_transcription`, `get_transcription_status`, `cancel_transcription` Tauri commands
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Transcription Job Management' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 3: Filler Word Detection
 - [ ] Task: Define filler word detection prompt and response schema
