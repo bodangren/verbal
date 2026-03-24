@@ -1,0 +1,22 @@
+Task: Remove unused imports and dead code warnings
+
+Summary:
+- Removed unused pub exports from audio/mod.rs, ffmpeg/mod.rs, transcription/mod.rs
+- Removed unused import in commands/transcription.rs
+- Fixed import in transcription/orchestrator.rs to only include needed items
+- Added #![allow(dead_code)] to audio/temp.rs and ffmpeg/extractor.rs for future-use code
+- Cleaned up test module imports
+
+Files modified:
+- src-tauri/src/audio/mod.rs
+- src-tauri/src/audio/temp.rs
+- src-tauri/src/commands/transcription.rs
+- src-tauri/src/ffmpeg/extractor.rs
+- src-tauri/src/ffmpeg/mod.rs
+- src-tauri/src/transcription/mod.rs
+- src-tauri/src/transcription/orchestrator.rs
+- conductor/tech-debt.md
+- conductor/tracks.md
+- conductor/tracks/chore_20260324b/plan.md (created)
+
+Why: Clean up 10 compiler warnings that were cluttering the build output. Code marked as dead_code is reserved for future features (multi-format audio extraction, temp file auto-cleanup).
