@@ -33,6 +33,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(crabcamera::init())
         .manage(ai_state)
         .manage(orchestrator_state)
         .invoke_handler(tauri::generate_handler![

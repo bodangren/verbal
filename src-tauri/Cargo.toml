@@ -27,6 +27,7 @@ keyring = "3"
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "multipart"], default-features = false }
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
+crabcamera = { version = "0.8", features = ["recording"] }
 
 [dev-dependencies]
 tempfile = "3"

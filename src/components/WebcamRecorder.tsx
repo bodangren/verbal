@@ -1,19 +1,19 @@
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useWebcam } from "../hooks/useWebcam";
 
 export interface WebcamRecorderProps {
-  onRecordingComplete?: (blob: Blob) => void;
+  onRecordingComplete?: (path: string) => void;
 }
 
 export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [selectedCamera, setSelectedCamera] = useState<string>("");
   const {
-    stream,
+    isActive,
     isRecording,
     error,
     availableDevices,
     selectedDeviceId,
+    canvasRef,
     startCamera,
     stopCamera,
     startRecording,
@@ -21,12 +21,6 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
     clearError,
     enumerateDevices,
   } = useWebcam();
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
 
   useEffect(() => {
     enumerateDevices();
@@ -48,19 +42,16 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
 
   const handleStopCamera = () => {
     stopCamera();
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
   };
 
-  const handleStartRecording = () => {
-    startRecording();
+  const handleStartRecording = async () => {
+    await startRecording();
   };
 
-  const handleStopRecording = () => {
-    const blob = stopRecording();
-    if (blob && onRecordingComplete) {
-      onRecordingComplete(blob);
+  const handleStopRecording = async () => {
+    const result = await stopRecording();
+    if (result && onRecordingComplete) {
+      onRecordingComplete(result);
     }
   };
 
@@ -81,9 +72,9 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
           </button>
         </div>
       )}
-      {!stream ? (
+      {!isActive ? (
         <div className="flex flex-col items-center gap-3">
-          {availableDevices.filter(d => d.kind === "videoinput").length > 1 && (
+          {availableDevices.length > 1 && (
             <select
               value={selectedCamera}
               onChange={handleCameraChange}
@@ -91,13 +82,11 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
               aria-label="Select camera"
             >
               <option value="">Default Camera</option>
-              {availableDevices
-                .filter(d => d.kind === "videoinput")
-                .map(device => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-                  </option>
-                ))}
+              {availableDevices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name || `Camera ${device.id.slice(0, 8)}`}
+                </option>
+              ))}
             </select>
           )}
           <button
@@ -108,21 +97,18 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
           </button>
           {availableDevices.length > 0 && (
             <p className="text-xs text-gray-400">
-              {availableDevices.filter(d => d.kind === "videoinput").length} camera(s) available
+              {availableDevices.length} camera(s) available
             </p>
           )}
         </div>
       ) : (
         <>
           <div className="relative">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
+            <canvas
+              ref={canvasRef}
               className="w-full max-w-2xl rounded-lg shadow-lg"
               role="img"
-              aria-label="Webcam preview"
+              aria-label="Camera preview"
             />
             {isRecording && (
               <div className="absolute top-2 left-2 flex items-center gap-2 bg-red-600 text-white px-2 py-1 rounded text-sm">
