@@ -1,7 +1,7 @@
 # Implementation Plan: Chore - Fix Rust Warnings & Tech Debt
 
 ## Phase 1: Fix Rust Compiler Warnings [checkpoint: in-progress]
-- [x] Task: Remove unused imports and dead code
+- [x] Task: Remove unused imports and dead code [cfdd7c0]
     - [x] Write Tests: Verify no regressions in existing tests
     - [x] Implement Feature: Fix 10 compiler warnings (unused imports, dead code)
 - [ ] Task: Address medium-severity tech debt - async transcription
