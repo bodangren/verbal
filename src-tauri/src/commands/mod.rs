@@ -80,13 +80,13 @@ pub async fn apply_cuts(
 
     let executor = FFmpegExecutor::default();
     
-    if !executor.check_available()? {
+    if !executor.check_available_async().await? {
         return Err(crate::error::VerbalError::Ffmpeg(
             "FFmpeg is not installed or not available in PATH".to_string(),
         ));
     }
 
-    executor.apply_cuts(&cut_list, &input_path, &output_path)
+    executor.apply_cuts_async(&cut_list, &input_path, &output_path).await
 }
 
 #[allow(dead_code)]

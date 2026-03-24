@@ -3,7 +3,7 @@
 ## Architectural Mandates
 - **Local-First Media:** All heavy video/audio processing (FFmpeg, DSP) MUST happen in the Rust backend, never the frontend.
 - **Provider Agnostic:** AI features MUST use the abstraction layer in `src-tauri/src/ai/`. No direct imports of OpenAI/Google SDKs outside this module.
-- **Safety:** Sanitize all user-provided strings before passing to FFmpeg or shell commands. USe hte rust-best-practices skill where appropriate.
+- **Safety:** Sanitize all user-provided strings before passing to FFmpeg or shell commands. Use the rust-best-practices skill where appropriate.
 - **State:** Prefer Tauri's `State` for cross-command data sharing; minimize global Rust variables.
 - **Conductor Workflow:** Use the Conductor skill. Always update `conductor/tracks.md` and the current track's `plan.md` before starting work.
 - **Performance:** UI updates for transcription/sync MUST be debounced to prevent React render-bottlenecks during playback.

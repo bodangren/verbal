@@ -24,9 +24,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Chore - Fix Rust Warnings & Tech Debt** [completed: 2026-03-24]
   *Link: [./tracks/chore_20260324b/](./tracks/chore_20260324b/)*
 
-- [~] **Track: Fix Webcam Connection Issue (Pipewire → CrabCamera)** [in-progress, code complete, pending manual QA]
+- [~] **Track: Fix Webcam Connection Issue (Pipewire → CrabCamera)** [blocked: manual QA required]
   *Link: [./tracks/fix_webcam_20260324/](./tracks/fix_webcam_20260324/)*
-  *getUserMedia unviable on stock Linux WebKitGTK. Replaced with CrabCamera (V4L2). All tests pass.*
+  *getUserMedia unviable on stock Linux WebKitGTK. Replaced with CrabCamera (V4L2). All tests pass. Blocked on Phase 4 manual verification.*
+
+- [ ] **Track: Chore - Refactor/Cleanup 2026-03-25** [planned]
+  *Link: [./tracks/chore_20260325/](./tracks/chore_20260325/)*
+  *Focus: FFmpeg async command fix (medium severity), minor cleanup.*
 
 - [x] **Track: Fix Critical Bugs from Code Review** [completed: 2026-03-24]
   *Link: [./tracks/bugfix_20260324/](./tracks/bugfix_20260324/)*

@@ -1,21 +1,15 @@
 import { useState } from "react";
 import { WebcamRecorder } from "./components/WebcamRecorder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { saveVideoRecording } from "./api/video";
 import "./App.css";
 
 function App() {
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRecordingComplete = async (blob: Blob) => {
-    try {
-      setError(null);
-      const path = await saveVideoRecording(blob);
-      setSavedPath(path);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save recording");
-    }
+  const handleRecordingComplete = (path: string) => {
+    setError(null);
+    setSavedPath(path);
   };
 
   return (

@@ -105,7 +105,8 @@ impl TranscriptionOrchestrator {
 
         let extraction_result = self
             .extractor
-            .extract_audio(PathBuf::from(media_path).as_path(), &output_path, &extraction_config)?;
+            .extract_audio_async(PathBuf::from(media_path).as_path(), &output_path, &extraction_config)
+            .await?;
 
         {
             let mut tracker = self.tracker.write().await;

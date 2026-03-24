@@ -4,7 +4,8 @@ use crate::cut_list::CutList;
 use crate::error::{Result, VerbalError};
 use serde::Serialize;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Command;
+use tokio::process::Command as AsyncCommand;
 
 pub use extractor::{AudioExtractor, ExtractionConfig};
 
@@ -29,6 +30,16 @@ impl FFmpegExecutor {
         let output = Command::new(&self.ffmpeg_path)
             .arg("-version")
             .output()
+            .map_err(|e| VerbalError::Ffmpeg(format!("FFmpeg not found: {}", e)))?;
+
+        Ok(output.status.success())
+    }
+
+    pub async fn check_available_async(&self) -> Result<bool> {
+        let output = AsyncCommand::new(&self.ffmpeg_path)
+            .arg("-version")
+            .output()
+            .await
             .map_err(|e| VerbalError::Ffmpeg(format!("FFmpeg not found: {}", e)))?;
 
         Ok(output.status.success())
@@ -75,7 +86,51 @@ impl FFmpegExecutor {
         })
     }
 
-    fn execute_ffmpeg(&self, args: &[String]) -> Result<Output> {
+    pub async fn apply_cuts_async(
+        &self,
+        cut_list: &CutList,
+        input_path: &Path,
+        output_path: &Path,
+    ) -> Result<FFmpegResult> {
+        if !input_path.exists() {
+            return Err(VerbalError::Ffmpeg(format!(
+                "Input file does not exist: {}",
+                input_path.display()
+            )));
+        }
+
+        let args = cut_list.generate_ffmpeg_command(
+            &input_path.to_string_lossy(),
+            &output_path.to_string_lossy(),
+        );
+
+        tracing::info!("Executing FFmpeg with {} segments", cut_list.segments.len());
+        tracing::debug!("FFmpeg args: {:?}", args);
+
+        let output = self.execute_ffmpeg_async(&args).await?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(VerbalError::Ffmpeg(format!(
+                "FFmpeg failed with exit code {:?}: {}",
+                output.status.code(),
+                stderr
+            )));
+        }
+
+        let output_size = tokio::fs::metadata(output_path)
+            .await
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        Ok(FFmpegResult {
+            output_path: output_path.to_string_lossy().to_string(),
+            duration_seconds: cut_list.total_duration(),
+            output_size_bytes: output_size,
+        })
+    }
+
+    fn execute_ffmpeg(&self, args: &[String]) -> Result<std::process::Output> {
         if args.is_empty() {
             return Err(VerbalError::Ffmpeg("Empty FFmpeg arguments".to_string()));
         }
@@ -83,6 +138,20 @@ impl FFmpegExecutor {
         let output = Command::new(&self.ffmpeg_path)
             .args(&args[1..])
             .output()
+            .map_err(|e| VerbalError::Ffmpeg(format!("Failed to execute FFmpeg: {}", e)))?;
+
+        Ok(output)
+    }
+
+    async fn execute_ffmpeg_async(&self, args: &[String]) -> Result<std::process::Output> {
+        if args.is_empty() {
+            return Err(VerbalError::Ffmpeg("Empty FFmpeg arguments".to_string()));
+        }
+
+        let output = AsyncCommand::new(&self.ffmpeg_path)
+            .args(&args[1..])
+            .output()
+            .await
             .map_err(|e| VerbalError::Ffmpeg(format!("Failed to execute FFmpeg: {}", e)))?;
 
         Ok(output)

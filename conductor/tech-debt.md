@@ -18,15 +18,15 @@ Fixed by switching to base64 encoding and using `tokio::fs::write` instead of `s
 ### ~~BUG-4: Async transcription jobs get stuck in Pending forever~~ [FIXED]
 Fixed by rewriting the tokio::spawn block to catch all errors and call `tracker.mark_failed()`.
 
-## Webcam — FIXED (2026-03-24)
+## Webcam
 
-- **~~Webcam root cause unfixed~~** [FIXED] — Replaced getUserMedia with CrabCamera native plugin (V4L2/AVFoundation/DirectShow). All 23 CrabCamera permissions added to capabilities. Code complete, pending manual QA. See `fix_webcam_20260324` track.
+- **~~Webcam root cause unfixed~~** 2026-03-24T11:23:48.498730Z ERROR crabcamera::commands::capture: Failed to capture frame: Failed to get camera: Failed to create camera: Camera initialization error: Failed to initialize camera: Could not get device property CameraFormat: Failed to Fufill
+
 
 ## Medium Severity (Non-blocking)
 
-- **~~`save_video` uses sync `std::fs::write`~~** [FIXED 2026-03-24]
-- **~~`apply_cuts` only validates `output_path` for traversal, not `input_path`~~** [FIXED 2026-03-24]
-- **FFmpeg commands use blocking `std::process::Command`** in async context (`src-tauri/src/ffmpeg/mod.rs`, `src-tauri/src/ffmpeg/extractor.rs`). Replace with `tokio::process::Command`. [severity: medium]
+- **~~FFmpeg commands use blocking `std::process::Command` in async context~~** [FIXED 2026-03-25]
+  Replaced with async versions using `tokio::process::Command`. Callers updated in commands/mod.rs and transcription/orchestrator.rs.
 
 ## Low Severity
 

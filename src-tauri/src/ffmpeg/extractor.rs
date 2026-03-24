@@ -4,6 +4,7 @@ use crate::error::{Result, VerbalError};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tokio::process::Command as AsyncCommand;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioFormat {
@@ -160,6 +161,77 @@ impl AudioExtractor {
         })
     }
 
+    pub async fn extract_audio_async(
+        &self,
+        input_path: &Path,
+        output_path: &Path,
+        config: &ExtractionConfig,
+    ) -> Result<ExtractionResult> {
+        if !input_path.exists() {
+            return Err(VerbalError::MediaProcessing(format!(
+                "Input file does not exist: {}",
+                input_path.display()
+            )));
+        }
+
+        let duration = self.get_duration_async(input_path).await?;
+
+        let mut args = vec![
+            "-y".to_string(),
+            "-i".to_string(),
+            input_path.to_string_lossy().to_string(),
+            "-vn".to_string(),
+            "-acodec".to_string(),
+            config.format.ffmpeg_codec().to_string(),
+        ];
+
+        if let Some(sr) = config.sample_rate {
+            args.push("-ar".to_string());
+            args.push(sr.to_string());
+        }
+
+        if let Some(ch) = config.channels {
+            args.push("-ac".to_string());
+            args.push(ch.to_string());
+        }
+
+        args.push(output_path.to_string_lossy().to_string());
+
+        tracing::info!("Extracting audio from {}", input_path.display());
+        tracing::debug!("FFmpeg args: {:?}", args);
+
+        let output = AsyncCommand::new(&self.ffmpeg_path)
+            .args(&args)
+            .output()
+            .await
+            .map_err(|e| VerbalError::Ffmpeg(format!("Failed to execute FFmpeg: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(VerbalError::Ffmpeg(format!(
+                "Audio extraction failed: {}",
+                stderr
+            )));
+        }
+
+        if !tokio::fs::try_exists(output_path)
+            .await
+            .unwrap_or(false)
+        {
+            return Err(VerbalError::MediaProcessing(
+                "Audio extraction produced no output file".to_string(),
+            ));
+        }
+
+        Ok(ExtractionResult {
+            audio_path: output_path.to_path_buf(),
+            format: config.format.extension().to_string(),
+            sample_rate: config.sample_rate.unwrap_or(44100),
+            channels: config.channels.unwrap_or(2),
+            duration_seconds: duration,
+        })
+    }
+
     fn get_duration(&self, input_path: &Path) -> Result<f64> {
         let output = Command::new(&self.ffprobe_path)
             .args([
@@ -172,6 +244,34 @@ impl AudioExtractor {
                 &input_path.to_string_lossy(),
             ])
             .output()
+            .map_err(|e| VerbalError::Ffmpeg(format!("Failed to execute ffprobe: {}", e)))?;
+
+        if !output.status.success() {
+            return Err(VerbalError::Ffmpeg(
+                "Failed to get media duration".to_string(),
+            ));
+        }
+
+        let duration_str = String::from_utf8_lossy(&output.stdout);
+        duration_str
+            .trim()
+            .parse::<f64>()
+            .map_err(|e| VerbalError::MediaProcessing(format!("Invalid duration: {}", e)))
+    }
+
+    async fn get_duration_async(&self, input_path: &Path) -> Result<f64> {
+        let output = AsyncCommand::new(&self.ffprobe_path)
+            .args([
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                &input_path.to_string_lossy(),
+            ])
+            .output()
+            .await
             .map_err(|e| VerbalError::Ffmpeg(format!("Failed to execute ffprobe: {}", e)))?;
 
         if !output.status.success() {
