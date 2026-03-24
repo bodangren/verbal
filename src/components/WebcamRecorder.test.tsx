@@ -19,6 +19,7 @@ function createMockReturn(overrides: Partial<ReturnType<typeof useWebcam>> = {})
     recordedChunks: [] as Blob[],
     error: null as string | null,
     availableDevices: [] as MediaDeviceInfo[],
+    selectedDeviceId: null as string | null,
     startCamera: vi.fn(),
     stopCamera: vi.fn(),
     startRecording: vi.fn(),
@@ -132,5 +133,28 @@ describe("WebcamRecorder", () => {
     fireEvent.click(screen.getByRole("button", { name: /dismiss error/i }));
 
     expect(mockClearError).toHaveBeenCalled();
+  });
+
+  it("shows camera selection dropdown when multiple cameras are available", () => {
+    mockUseWebcam.mockReturnValue(createMockReturn({
+      availableDevices: [
+        { deviceId: "cam1", kind: "videoinput", label: "Camera 1", groupId: "g1" } as MediaDeviceInfo,
+        { deviceId: "cam2", kind: "videoinput", label: "Camera 2", groupId: "g2" } as MediaDeviceInfo,
+      ],
+    }));
+
+    render(<WebcamRecorder />);
+    expect(screen.getByRole("combobox", { name: /select camera/i })).toBeDefined();
+  });
+
+  it("does not show camera selection dropdown when only one camera is available", () => {
+    mockUseWebcam.mockReturnValue(createMockReturn({
+      availableDevices: [
+        { deviceId: "cam1", kind: "videoinput", label: "Camera 1", groupId: "g1" } as MediaDeviceInfo,
+      ],
+    }));
+
+    render(<WebcamRecorder />);
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 });

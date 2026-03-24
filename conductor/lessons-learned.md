@@ -25,3 +25,8 @@
 - FFmpeg audio extraction with `-vn -acodec pcm_s16le -ar 16000 -ac 1` is optimal for Whisper transcription.
 - Transcription job state machine: Pending → Processing → Completed/Failed/Cancelled.
 - For long-running Tauri commands, spawn tokio task and return job_id immediately; frontend polls status.
+- **CODE REVIEW (2026-03-24):** Passing tests ≠ working feature. Webcam track Phases 1-2 were auto-verified via tests, but no actual config changes were made, and the camera still doesn't work. Manual QA is essential for hardware-dependent features.
+- **CODE REVIEW:** All async Tauri commands that do I/O should use `tokio::fs` and `tokio::process::Command`, not their std equivalents. Blocking the tokio runtime causes hangs.
+- **CODE REVIEW:** `dunce::canonicalize` requires the file to exist — cannot validate output paths before creation. Use parent directory validation instead.
+- **CODE REVIEW:** Spawned background tasks must update job state on ALL exit paths (success, error, and early returns). Silent failures leave jobs stuck in Pending.
+- **CODE REVIEW:** When fixing a bug pattern (e.g. `canonicalize` on non-existent files), grep the entire codebase for the same pattern — `save_video` had the identical broken `canonicalize` + fallback that was fixed in `validate_path_is_within_dir` but was missed until review.

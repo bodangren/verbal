@@ -6,7 +6,8 @@ export interface UseWebcamReturn {
   recordedChunks: Blob[];
   error: string | null;
   availableDevices: MediaDeviceInfo[];
-  startCamera: () => Promise<void>;
+  selectedDeviceId: string | null;
+  startCamera: (deviceId?: string) => Promise<void>;
   stopCamera: () => void;
   startRecording: () => void;
   stopRecording: () => Blob | null;
@@ -20,16 +21,28 @@ export function useWebcam(): UseWebcamReturn {
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (deviceId?: string) => {
     setError(null);
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+      const constraints: MediaStreamConstraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
         audio: true,
-      });
+      };
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
+      if (deviceId) {
+        setSelectedDeviceId(deviceId);
+      } else if (mediaStream.getVideoTracks().length > 0) {
+        const track = mediaStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        if (settings.deviceId) {
+          setSelectedDeviceId(settings.deviceId);
+        }
+      }
     } catch (e) {
       let errorMessage = "Failed to access camera";
       if (e instanceof Error) {
@@ -69,13 +82,13 @@ export function useWebcam(): UseWebcamReturn {
   const startRecording = useCallback(() => {
     if (!stream) return;
 
-    const chunks: Blob[] = [];
+    chunksRef.current = [];
     const mediaRecorder = new MediaRecorder(stream);
 
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
-        chunks.push(event.data);
-        setRecordedChunks([...chunks]);
+        chunksRef.current.push(event.data);
+        setRecordedChunks([...chunksRef.current]);
       }
     };
 
@@ -91,9 +104,9 @@ export function useWebcam(): UseWebcamReturn {
     recorder.stop();
     setIsRecording(false);
 
-    const blob = new Blob(recordedChunks, { type: "video/webm" });
+    const blob = new Blob(chunksRef.current, { type: "video/webm" });
     return blob;
-  }, [isRecording, recordedChunks]);
+  }, [isRecording]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -118,6 +131,7 @@ export function useWebcam(): UseWebcamReturn {
     recordedChunks,
     error,
     availableDevices,
+    selectedDeviceId,
     startCamera,
     stopCamera,
     startRecording,

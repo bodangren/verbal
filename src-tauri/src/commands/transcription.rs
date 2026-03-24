@@ -37,22 +37,35 @@ pub async fn start_transcription(
     drop(ai_guard);
 
     let job_id_clone = job_id.clone();
+    let orchestrator_for_spawn = orchestrator.clone();
     tokio::spawn(async move {
-        let ai_guard = ai_state_clone.read().await;
-        if let Some(holder) = ai_guard.as_ref() {
-            if holder.provider == provider_type {
-                if let Ok(provider) = holder.get_provider() {
-                    let result = orchestrator.read().await.execute(&job_id_clone, provider).await;
-                    match result {
-                        Ok(res) => {
-                            tracing::info!("Transcription completed for job {}: {} words", job_id_clone, res.words.len());
-                        }
-                        Err(e) => {
-                            tracing::error!("Transcription failed for job {}: {}", job_id_clone, e);
-                        }
-                    }
-                }
+        let run = async {
+            let ai_guard = ai_state_clone.read().await;
+            let holder = ai_guard.as_ref()
+                .ok_or_else(|| "No AI provider configured".to_string())?;
+
+            if holder.provider != provider_type {
+                return Err(format!(
+                    "Provider changed from {:?} to {:?} after job was created",
+                    provider_type, holder.provider
+                ));
             }
+
+            let provider = holder.get_provider()
+                .map_err(|e| format!("Failed to get provider: {}", e))?;
+
+            orchestrator_for_spawn.read().await
+                .execute(&job_id_clone, provider).await
+                .map_err(|e| format!("Transcription failed: {}", e))?;
+
+            Ok::<(), String>(())
+        };
+
+        if let Err(e) = run.await {
+            tracing::error!("Transcription job {} failed: {}", job_id_clone, e);
+            let tracker = orchestrator_for_spawn.read().await.tracker();
+            let mut tracker_guard = tracker.write().await;
+            tracker_guard.mark_failed(&job_id_clone, e);
         }
     });
 

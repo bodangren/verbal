@@ -24,8 +24,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Chore - Fix Rust Warnings & Tech Debt** [completed: 2026-03-24]
   *Link: [./tracks/chore_20260324b/](./tracks/chore_20260324b/)*
 
-- [~] **Track: Fix Webcam Connection Issue (Pipewire)** [in-progress]
+- [~] **Track: Fix Webcam Connection Issue (Pipewire)** [in-progress, root cause unfixed]
   *Link: [./tracks/fix_webcam_20260324/](./tracks/fix_webcam_20260324/)*
+
+- [x] **Track: Fix Critical Bugs from Code Review** [completed: 2026-03-24]
+  *Link: [./tracks/bugfix_20260324/](./tracks/bugfix_20260324/)*
+  *4 bugs fixed: empty recording Blob, JSON bloat on save, apply_cuts crash, stuck transcription jobs*
 
 ---
 

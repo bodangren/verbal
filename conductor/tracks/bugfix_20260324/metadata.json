@@ -1,0 +1,9 @@
+{
+  "id": "bugfix_20260324",
+  "title": "Fix Critical Bugs from Code Review",
+  "type": "bug",
+  "status": "completed",
+  "created": "2026-03-24",
+  "completed": "2026-03-24",
+  "priority": "high"
+}

@@ -97,14 +97,27 @@ pub struct FFmpegResult {
 }
 
 pub fn validate_path_is_within_dir(path: &Path, dir: &Path) -> Result<()> {
-    let canonical_path = dunce::canonicalize(path)
-        .map_err(|e| VerbalError::MediaProcessing(format!("Invalid path: {}", e)))?;
     let canonical_dir = dunce::canonicalize(dir)
         .map_err(|e| VerbalError::MediaProcessing(format!("Invalid directory: {}", e)))?;
 
+    let canonical_path = if path.exists() {
+        dunce::canonicalize(path)
+            .map_err(|e| VerbalError::MediaProcessing(format!("Invalid path: {}", e)))?
+    } else {
+        let parent = path.parent().ok_or_else(|| {
+            VerbalError::MediaProcessing("Path has no parent directory".to_string())
+        })?;
+        let filename = path
+            .file_name()
+            .ok_or_else(|| VerbalError::MediaProcessing("Path has no filename".to_string()))?;
+        let canonical_parent = dunce::canonicalize(parent)
+            .map_err(|e| VerbalError::MediaProcessing(format!("Invalid parent path: {}", e)))?;
+        canonical_parent.join(filename)
+    };
+
     if !canonical_path.starts_with(&canonical_dir) {
         return Err(VerbalError::MediaProcessing(
-            "Path traversal detected: output path outside allowed directory".to_string(),
+            "Path traversal detected: path is outside allowed directory".to_string(),
         ));
     }
 
@@ -179,10 +192,18 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_path_nonexistent() {
+    fn test_validate_path_nonexistent_parent() {
         let result =
             validate_path_is_within_dir(Path::new("/nonexistent/path.webm"), Path::new("/tmp"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_path_nonexistent_file_valid_parent() {
+        let dir = tempdir().unwrap();
+        let new_file = dir.path().join("new_output.webm");
+        let result = validate_path_is_within_dir(&new_file, dir.path());
+        assert!(result.is_ok());
     }
 
     #[test]

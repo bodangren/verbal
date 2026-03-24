@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useWebcam } from "../hooks/useWebcam";
 
 export interface WebcamRecorderProps {
@@ -7,11 +7,13 @@ export interface WebcamRecorderProps {
 
 export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [selectedCamera, setSelectedCamera] = useState<string>("");
   const {
     stream,
     isRecording,
     error,
     availableDevices,
+    selectedDeviceId,
     startCamera,
     stopCamera,
     startRecording,
@@ -30,8 +32,18 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
     enumerateDevices();
   }, [enumerateDevices]);
 
+  useEffect(() => {
+    if (selectedDeviceId && !selectedCamera) {
+      setSelectedCamera(selectedDeviceId);
+    }
+  }, [selectedDeviceId, selectedCamera]);
+
   const handleStartCamera = async () => {
-    await startCamera();
+    await startCamera(selectedCamera || undefined);
+  };
+
+  const handleCameraChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCamera(e.target.value);
   };
 
   const handleStopCamera = () => {
@@ -70,7 +82,24 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
         </div>
       )}
       {!stream ? (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
+          {availableDevices.filter(d => d.kind === "videoinput").length > 1 && (
+            <select
+              value={selectedCamera}
+              onChange={handleCameraChange}
+              className="px-3 py-2 bg-gray-800 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+              aria-label="Select camera"
+            >
+              <option value="">Default Camera</option>
+              {availableDevices
+                .filter(d => d.kind === "videoinput")
+                .map(device => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
+                  </option>
+                ))}
+            </select>
+          )}
           <button
             onClick={handleStartCamera}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

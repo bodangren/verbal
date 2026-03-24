@@ -23,6 +23,7 @@ describe("useWebcam", () => {
 
     const mockStream = {
       getTracks: () => [{ stop: vi.fn() }],
+      getVideoTracks: () => [{ getSettings: () => ({ deviceId: "default" }) }],
     };
 
     mockGetUserMedia.mockResolvedValue(mockStream);
@@ -63,7 +64,10 @@ describe("useWebcam", () => {
     });
 
     it("should set stream when camera access is granted", async () => {
-      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValue(mockStream);
 
       const { result } = renderHook(() => useWebcam());
@@ -139,7 +143,10 @@ describe("useWebcam", () => {
       const mockError = new Error("Permission denied");
       mockGetUserMedia.mockRejectedValueOnce(mockError);
 
-      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValueOnce(mockStream);
 
       const { result } = renderHook(() => useWebcam());
@@ -160,7 +167,10 @@ describe("useWebcam", () => {
 
     it("should stop all tracks when stopCamera is called", async () => {
       const mockStop = vi.fn();
-      const mockStream = { getTracks: () => [{ stop: mockStop }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: mockStop }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValue(mockStream);
 
       const { result } = renderHook(() => useWebcam());
@@ -240,7 +250,10 @@ describe("useWebcam", () => {
     });
 
     it("should start recording when stream is available", async () => {
-      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValue(mockStream);
 
       const mockRecorderInstance = {
@@ -267,7 +280,10 @@ describe("useWebcam", () => {
     });
 
     it("should stop recording and return recorded chunks", async () => {
-      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValue(mockStream);
 
       const mockRecorderInstance = {
@@ -301,7 +317,10 @@ describe("useWebcam", () => {
     });
 
     it("should collect data during recording", async () => {
-      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
       mockGetUserMedia.mockResolvedValue(mockStream);
 
       const mockRecorderInstance = {
@@ -330,6 +349,48 @@ describe("useWebcam", () => {
       });
 
       expect(result.current.recordedChunks.length).toBe(1);
+    });
+
+    it("should return blob with recorded data after ondataavailable", async () => {
+      const mockStream = { 
+        getTracks: () => [{ stop: vi.fn() }],
+        getVideoTracks: () => [{ getSettings: () => ({ deviceId: "test-device" }) }],
+      };
+      mockGetUserMedia.mockResolvedValue(mockStream);
+
+      const mockRecorderInstance = {
+        start: vi.fn(),
+        stop: vi.fn(),
+        ondataavailable: null as ((event: { data: Blob }) => void) | null,
+        onstop: null as (() => void) | null,
+        state: "recording" as const,
+      };
+      mockMediaRecorder.mockImplementation(() => mockRecorderInstance);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      act(() => {
+        result.current.startRecording();
+      });
+
+      act(() => {
+        if (mockRecorderInstance.ondataavailable) {
+          mockRecorderInstance.ondataavailable({ data: new Blob(["chunk1"]) });
+          mockRecorderInstance.ondataavailable({ data: new Blob(["chunk2"]) });
+        }
+      });
+
+      let blob: Blob | null = null;
+      act(() => {
+        blob = result.current.stopRecording();
+      });
+
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob!.size).toBeGreaterThan(0);
     });
   });
 });

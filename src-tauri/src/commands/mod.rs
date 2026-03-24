@@ -16,27 +16,30 @@ pub fn greet(name: &str) -> Result<String> {
 pub async fn save_video(
     app: AppHandle,
     filename: String,
-    data: Vec<u8>,
+    data: String,
 ) -> Result<String> {
+    use base64::Engine;
+    
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&data)
+        .map_err(|e| crate::error::VerbalError::MediaProcessing(
+            format!("Invalid base64 data: {}", e)
+        ))?;
+    
     let app_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| crate::error::VerbalError::MediaProcessing(e.to_string()))?;
 
-    std::fs::create_dir_all(&app_dir)?;
+    tokio::fs::create_dir_all(&app_dir).await?;
 
     let file_path = app_dir.join(&filename);
+    validate_path_is_within_dir(&file_path, &app_dir)?;
+
+    tokio::fs::write(&file_path, bytes).await?;
+
     let canonical = dunce::canonicalize(&file_path)
         .unwrap_or_else(|_| file_path.clone());
-
-    if !canonical.starts_with(&app_dir) {
-        return Err(crate::error::VerbalError::MediaProcessing(
-            "Path traversal detected".to_string(),
-        ));
-    }
-
-    std::fs::write(&canonical, data)?;
-
     tracing::info!("Video saved to: {:?}", canonical);
     Ok(canonical.to_string_lossy().to_string())
 }
@@ -70,6 +73,7 @@ pub async fn apply_cuts(
     let input_path = app_dir.join(&input_filename);
     let output_path = app_dir.join(&output_filename);
 
+    validate_path_is_within_dir(&input_path, &app_dir)?;
     validate_path_is_within_dir(&output_path, &app_dir)?;
 
     let cut_list = CutList::parse_json(&cut_list_json)?;
@@ -141,5 +145,18 @@ mod tests {
     fn test_validate_filename_with_timestamp() {
         let result = validate_filename("recording_2024-01-15_10-30-00.webm");
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_base64_roundtrip() {
+        use base64::Engine;
+        
+        let original: Vec<u8> = vec![72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33];
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&original);
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&encoded)
+            .expect("Failed to decode base64");
+        
+        assert_eq!(original, decoded);
     }
 }

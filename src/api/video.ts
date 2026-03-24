@@ -9,7 +9,12 @@ export async function saveVideoRecording(
   filename?: string
 ): Promise<string> {
   const buffer = await blob.arrayBuffer();
-  const data = Array.from(new Uint8Array(buffer));
+  const bytes = new Uint8Array(buffer);
+  const chars: string[] = new Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    chars[i] = String.fromCharCode(bytes[i]);
+  }
+  const data = btoa(chars.join(''));
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const defaultFilename = `recording_${timestamp}.webm`;
