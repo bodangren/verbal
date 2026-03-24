@@ -1,0 +1,1 @@
+Task: Investigate pipewire/webcam access in Tauri on Linux - Added error state tests to useWebcam hook, implemented error handling with typed messages for NotAllowedError, NotFoundError, NotReadableError
