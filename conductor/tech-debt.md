@@ -18,9 +18,9 @@ Fixed by switching to base64 encoding and using `tokio::fs::write` instead of `s
 ### ~~BUG-4: Async transcription jobs get stuck in Pending forever~~ [FIXED]
 Fixed by rewriting the tokio::spawn block to catch all errors and call `tracker.mark_failed()`.
 
-## Webcam — Root Cause Unfixed
+## Webcam — FIXED (2026-03-24)
 
-- **Webcam root cause unfixed** — `fix_webcam_20260324` Phase 2 was marked complete but NO config changes were made. `src-tauri/capabilities/default.json` still only has `core:default` + `opener:default`. WebKitGTK on Linux likely needs `enable-media-stream` or PipeWire portal config. See updated plan.md in track. [severity: high]
+- **~~Webcam root cause unfixed~~** [FIXED] — Replaced getUserMedia with CrabCamera native plugin (V4L2/AVFoundation/DirectShow). All 23 CrabCamera permissions added to capabilities. Code complete, pending manual QA. See `fix_webcam_20260324` track.
 
 ## Medium Severity (Non-blocking)
 
