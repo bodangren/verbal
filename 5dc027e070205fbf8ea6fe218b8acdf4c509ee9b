@@ -1,0 +1,17 @@
+Task: Replace getUserMedia with CrabCamera
+
+Summary: Complete rewrite of webcam system to use CrabCamera native plugin (V4L2/AVFoundation/DirectShow) instead of WebKit getUserMedia, which is broken on stock Linux WebKitGTK builds.
+
+Changes:
+- src-tauri/Cargo.toml: Added crabcamera v0.8 with recording feature
+- src-tauri/src/lib.rs: Registered crabcamera::init() plugin
+- src-tauri/capabilities/default.json: Added all 23 CrabCamera permissions
+- src-tauri/build.rs: Added all CrabCamera commands for Tauri codegen
+- src/hooks/useWebcam.ts: Complete rewrite using Tauri invoke for all camera ops
+- src/hooks/useWebcam.test.ts: Updated 14 tests for new CrabCamera API
+- src/components/WebcamRecorder.tsx: Canvas-based preview, new device selector
+- src/components/WebcamRecorder.test.tsx: Updated 12 tests for new component API
+
+Why: getUserMedia() on Linux/WebKitGTK is fundamentally broken because Ubuntu/Fedora packages are compiled without -DENABLE_MEDIA_STREAM=ON. CrabCamera bypasses the entire WebKit media stack by using native V4L2 (Linux), AVFoundation (macOS), and DirectShow (Windows).
+
+Test Results: 50 frontend tests pass, 149 Rust tests pass
