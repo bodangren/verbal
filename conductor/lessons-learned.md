@@ -24,3 +24,4 @@
 - `dyn Trait` requires `?Sized` bound when used as generic type parameter.
 - FFmpeg audio extraction with `-vn -acodec pcm_s16le -ar 16000 -ac 1` is optimal for Whisper transcription.
 - Transcription job state machine: Pending → Processing → Completed/Failed/Cancelled.
+- For long-running Tauri commands, spawn tokio task and return job_id immediately; frontend polls status.
