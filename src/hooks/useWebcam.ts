@@ -5,11 +5,13 @@ export interface UseWebcamReturn {
   isRecording: boolean;
   recordedChunks: Blob[];
   error: string | null;
+  availableDevices: MediaDeviceInfo[];
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   startRecording: () => void;
   stopRecording: () => Blob | null;
   clearError: () => void;
+  enumerateDevices: () => Promise<MediaDeviceInfo[]>;
 }
 
 export function useWebcam(): UseWebcamReturn {
@@ -17,6 +19,7 @@ export function useWebcam(): UseWebcamReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const startCamera = useCallback(async () => {
@@ -30,14 +33,25 @@ export function useWebcam(): UseWebcamReturn {
     } catch (e) {
       let errorMessage = "Failed to access camera";
       if (e instanceof Error) {
+        console.error("[useWebcam] Camera access error:", {
+          name: e.name,
+          message: e.message,
+          stack: e.stack,
+        });
         if (e.name === "NotAllowedError") {
           errorMessage = `Permission denied: ${e.message}`;
         } else if (e.name === "NotFoundError") {
           errorMessage = `Camera not found: ${e.message}`;
         } else if (e.name === "NotReadableError") {
           errorMessage = `Camera unavailable: ${e.message}`;
+        } else if (e.name === "OverconstrainedError") {
+          errorMessage = `Camera constraints not met: ${e.message}`;
+        } else if (e.name === "SecurityError") {
+          errorMessage = `Security error: ${e.message}`;
+        } else if (e.name === "AbortError") {
+          errorMessage = `Camera access aborted: ${e.message}`;
         } else {
-          errorMessage = e.message;
+          errorMessage = `${e.name}: ${e.message}`;
         }
       }
       setError(errorMessage);
@@ -85,15 +99,30 @@ export function useWebcam(): UseWebcamReturn {
     setError(null);
   }, []);
 
+  const enumerateDevices = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const filtered = devices.filter(d => d.kind === "videoinput" || d.kind === "audioinput");
+      setAvailableDevices(filtered);
+      console.log("[useWebcam] Available devices:", filtered);
+      return filtered;
+    } catch (e) {
+      console.error("[useWebcam] Failed to enumerate devices:", e);
+      return [];
+    }
+  }, []);
+
   return {
     stream,
     isRecording,
     recordedChunks,
     error,
+    availableDevices,
     startCamera,
     stopCamera,
     startRecording,
     stopRecording,
     clearError,
+    enumerateDevices,
   };
 }

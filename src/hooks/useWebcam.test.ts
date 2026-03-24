@@ -12,6 +12,10 @@ describe("useWebcam", () => {
     Object.defineProperty(globalThis.navigator, "mediaDevices", {
       value: {
         getUserMedia: mockGetUserMedia,
+        enumerateDevices: vi.fn().mockResolvedValue([
+          { deviceId: "video1", kind: "videoinput", label: "Camera 1", groupId: "group1" },
+          { deviceId: "audio1", kind: "audioinput", label: "Microphone 1", groupId: "group2" },
+        ]),
       },
       writable: true,
       configurable: true,
@@ -83,7 +87,7 @@ describe("useWebcam", () => {
       });
 
       expect(result.current.stream).toBeNull();
-      expect(result.current.error).toBe("Permission denied");
+      expect(result.current.error).toBe("Error: Permission denied");
     });
 
     it("should set error for NotReadableError (device in use)", async () => {
@@ -190,6 +194,37 @@ describe("useWebcam", () => {
       });
 
       expect(result.current.error).toBeNull();
+    });
+
+    it("should enumerate available devices", async () => {
+      const { result } = renderHook(() => useWebcam());
+
+      const devices = await act(async () => {
+        return result.current.enumerateDevices();
+      });
+
+      expect(devices.length).toBe(2);
+      expect(devices[0].kind).toBe("videoinput");
+      expect(result.current.availableDevices.length).toBe(2);
+    });
+
+    it("should return empty array if enumerateDevices fails", async () => {
+      Object.defineProperty(globalThis.navigator, "mediaDevices", {
+        value: {
+          getUserMedia: mockGetUserMedia,
+          enumerateDevices: vi.fn().mockRejectedValue(new Error("Failed")),
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      const { result } = renderHook(() => useWebcam());
+
+      const devices = await act(async () => {
+        return result.current.enumerateDevices();
+      });
+
+      expect(devices).toEqual([]);
     });
   });
 

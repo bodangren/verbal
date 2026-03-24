@@ -10,12 +10,12 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Diagnose & Reproduce Issue' (Protocol in workflow.md) [auto-verified: tests pass]
 
 ## Phase 2: Fix Permissions & Configuration
-- [ ] Task: Review and update Tauri capabilities for device access
-    - [ ] Write Tests: Verify no regression in existing tests
-    - [ ] Implement Feature: Add necessary permissions for media device access
-- [ ] Task: Test webcam access with proper permissions
-    - [ ] Write Tests: Manual verification test checklist
-    - [ ] Implement Feature: Document any WebKit/pipewire configuration needed
+- [x] Task: Review and update Tauri capabilities for device access
+    - [x] Write Tests: Verify no regression in existing tests
+    - [x] Implement Feature: Add necessary permissions for media device access
+- [x] Task: Test webcam access with proper permissions
+    - [x] Write Tests: Manual verification test checklist
+    - [x] Implement Feature: Document any WebKit/pipewire configuration needed
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Fix Permissions & Configuration' (Protocol in workflow.md)
 
 ## Phase 3: User Experience Polish

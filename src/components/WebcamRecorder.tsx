@@ -11,11 +11,13 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
     stream,
     isRecording,
     error,
+    availableDevices,
     startCamera,
     stopCamera,
     startRecording,
     stopRecording,
     clearError,
+    enumerateDevices,
   } = useWebcam();
 
   useEffect(() => {
@@ -23,6 +25,10 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
       videoRef.current.srcObject = stream;
     }
   }, [stream]);
+
+  useEffect(() => {
+    enumerateDevices();
+  }, [enumerateDevices]);
 
   const handleStartCamera = async () => {
     await startCamera();
@@ -64,12 +70,19 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
         </div>
       )}
       {!stream ? (
-        <button
-          onClick={handleStartCamera}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Start Camera
-        </button>
+        <div className="flex flex-col items-center gap-2">
+          <button
+            onClick={handleStartCamera}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Start Camera
+          </button>
+          {availableDevices.length > 0 && (
+            <p className="text-xs text-gray-400">
+              {availableDevices.filter(d => d.kind === "videoinput").length} camera(s) available
+            </p>
+          )}
+        </div>
       ) : (
         <>
           <div className="relative">
