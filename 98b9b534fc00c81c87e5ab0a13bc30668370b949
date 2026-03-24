@@ -1,0 +1,14 @@
+Task: Address medium-severity tech debt - async transcription
+
+Summary:
+- Converted start_transcription to spawn a tokio::spawn background task
+- Command now returns job_id immediately without waiting for transcription to complete
+- Frontend can poll get_transcription_status to track progress
+- Added test for async job creation behavior
+
+Files modified:
+- src-tauri/src/commands/transcription.rs (main change)
+- conductor/tech-debt.md (removed resolved item)
+- conductor/tracks/chore_20260324b/plan.md (updated status)
+
+Why: The previous synchronous implementation blocked the frontend during transcription. Long media files would cause UI freezes. The async implementation allows the frontend to remain responsive while transcription runs in the background.
