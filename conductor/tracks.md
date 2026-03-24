@@ -21,6 +21,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Automated Transcription & Filler Word Detection** [completed: 2026-03-24]
   *Link: [./tracks/transcription_20260324/](./tracks/transcription_20260324/)*
 
+- [ ] **Track: Chore - Fix Rust Warnings & Tech Debt** [started: 2026-03-24]
+  *Link: [./tracks/chore_20260324b/](./tracks/chore_20260324b/)*
+
 ---
 
 ## Future Roadmap

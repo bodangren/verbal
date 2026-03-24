@@ -6,7 +6,7 @@ use serde::Serialize;
 use std::path::Path;
 use std::process::{Command, Output};
 
-pub use extractor::{AudioExtractor, AudioFormat, ExtractionConfig, ExtractionResult};
+pub use extractor::{AudioExtractor, ExtractionConfig};
 
 pub struct FFmpegExecutor {
     ffmpeg_path: String,

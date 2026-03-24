@@ -5,3 +5,6 @@
 - `validate_filename` function in Rust is unused but tested (will be needed for future save operations).
 - Transcription is synchronous in `start_transcription` command - should spawn background task for long files. [severity: medium]
 
+# Current Bugs to target
+
+## Webcam doesn't connect! I think this is related to pipewire remote error

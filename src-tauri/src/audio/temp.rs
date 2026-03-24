@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::error::{Result, VerbalError};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -76,7 +78,7 @@ mod tests {
     fn test_temp_file_manager_creates_dir() {
         let dir = tempdir().unwrap();
         let temp_path = dir.path().join("subdir").join("temp");
-        let manager = TempFileManager::new(temp_path.clone()).unwrap();
+        let _manager = TempFileManager::new(temp_path.clone()).unwrap();
         assert!(temp_path.exists());
     }
 

@@ -1,4 +1,3 @@
-use crate::ai::AiProvider;
 use crate::commands::ai::AiProviderState;
 use crate::transcription::{TranscriptionJob, TranscriptionOrchestrator};
 use std::path::PathBuf;

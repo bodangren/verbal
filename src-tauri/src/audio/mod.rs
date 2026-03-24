@@ -1,3 +1,3 @@
 mod temp;
 
-pub use temp::{TempFile, TempFileManager};
+pub use temp::TempFileManager;

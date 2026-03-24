@@ -1,4 +1,4 @@
-use crate::ai::{AiProvider, AiResult, TranscriptionRequest, TranscriptionResponse};
+use crate::ai::{AiProvider, TranscriptionRequest};
 use crate::audio::TempFileManager;
 use crate::ffmpeg::{AudioExtractor, ExtractionConfig};
 use crate::transcription::{FillerDetector, JobResult, JobStatus, JobTracker, TranscriptionJob};
@@ -173,6 +173,7 @@ impl TranscriptionOrchestrator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::{AiResult, TranscriptionResponse};
     use async_trait::async_trait;
     use tempfile::tempdir;
 

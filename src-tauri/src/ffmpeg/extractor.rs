@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::error::{Result, VerbalError};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -189,9 +191,6 @@ impl AudioExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::tempdir;
 
     #[test]
     fn test_audio_format_extension() {
