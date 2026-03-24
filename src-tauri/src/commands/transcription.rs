@@ -24,6 +24,7 @@ pub async fn start_transcription(
     media_path: String,
 ) -> crate::error::Result<String> {
     let orchestrator = orchestrator_state.inner().clone();
+    let ai_state_clone = ai_state.inner().clone();
 
     let job_id = orchestrator.read().await.create_job(media_path.clone()).await?;
 
@@ -32,21 +33,29 @@ pub async fn start_transcription(
         .as_ref()
         .ok_or_else(|| crate::error::VerbalError::MediaProcessing("No AI provider configured".to_string()))?;
     
-    let provider = holder.get_provider()
-        .map_err(|e| crate::error::VerbalError::MediaProcessing(e.to_string()))?;
-
-    let result = orchestrator.read().await.execute(&job_id, provider).await;
-    
-    match result {
-        Ok(res) => {
-            tracing::info!("Transcription completed for job {}: {} words", job_id, res.words.len());
-        }
-        Err(e) => {
-            tracing::error!("Transcription failed for job {}: {}", job_id, e);
-        }
-    }
-
+    let provider_type = holder.provider.clone();
     drop(ai_guard);
+
+    let job_id_clone = job_id.clone();
+    tokio::spawn(async move {
+        let ai_guard = ai_state_clone.read().await;
+        if let Some(holder) = ai_guard.as_ref() {
+            if holder.provider == provider_type {
+                if let Ok(provider) = holder.get_provider() {
+                    let result = orchestrator.read().await.execute(&job_id_clone, provider).await;
+                    match result {
+                        Ok(res) => {
+                            tracing::info!("Transcription completed for job {}: {} words", job_id_clone, res.words.len());
+                        }
+                        Err(e) => {
+                            tracing::error!("Transcription failed for job {}: {}", job_id_clone, e);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     Ok(job_id)
 }
 
@@ -81,5 +90,27 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let state = init_orchestrator(temp_dir.path().to_path_buf());
         assert!(state.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_start_transcription_returns_immediately() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let orchestrator = init_orchestrator(temp_dir.path().to_path_buf()).unwrap();
+
+        let job_id = {
+            let orchestrator_guard = orchestrator.read().await;
+            orchestrator_guard
+                .create_job("/nonexistent/video.mp4".to_string())
+                .await
+                .unwrap()
+        };
+
+        assert!(!job_id.is_empty());
+
+        let job = {
+            let orchestrator_guard = orchestrator.read().await;
+            orchestrator_guard.get_job(&job_id).await.unwrap()
+        };
+        assert_eq!(job.status, crate::transcription::JobStatus::Pending);
     }
 }
