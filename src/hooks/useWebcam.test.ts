@@ -45,6 +45,7 @@ describe("useWebcam", () => {
 
       expect(result.current.stream).toBeNull();
       expect(result.current.isRecording).toBe(false);
+      expect(result.current.error).toBeNull();
     });
 
     it("should request camera access when startCamera is called", async () => {
@@ -68,23 +69,89 @@ describe("useWebcam", () => {
       });
 
       expect(result.current.stream).toBe(mockStream);
+      expect(result.current.error).toBeNull();
     });
 
-    it("should throw error when camera access is denied", async () => {
+    it("should set error when camera access is denied", async () => {
       const mockError = new Error("Permission denied");
       mockGetUserMedia.mockRejectedValue(mockError);
 
       const { result } = renderHook(() => useWebcam());
 
       await act(async () => {
-        try {
-          await result.current.startCamera();
-        } catch (e) {
-          expect(e).toBe(mockError);
-        }
+        await result.current.startCamera();
       });
 
       expect(result.current.stream).toBeNull();
+      expect(result.current.error).toBe("Permission denied");
+    });
+
+    it("should set error for NotReadableError (device in use)", async () => {
+      const mockError = new Error("Could not start video source");
+      mockError.name = "NotReadableError";
+      mockGetUserMedia.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.stream).toBeNull();
+      expect(result.current.error).toContain("Could not start video source");
+    });
+
+    it("should set error for NotFoundError (no camera)", async () => {
+      const mockError = new Error("Requested device not found");
+      mockError.name = "NotFoundError";
+      mockGetUserMedia.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.stream).toBeNull();
+      expect(result.current.error).toContain("not found");
+    });
+
+    it("should set error for NotAllowedError (permission denied)", async () => {
+      const mockError = new Error("Permission denied by system");
+      mockError.name = "NotAllowedError";
+      mockGetUserMedia.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.stream).toBeNull();
+      expect(result.current.error).toContain("Permission denied");
+    });
+
+    it("should clear error on successful camera start after failure", async () => {
+      const mockError = new Error("Permission denied");
+      mockGetUserMedia.mockRejectedValueOnce(mockError);
+
+      const mockStream = { getTracks: () => [{ stop: vi.fn() }] };
+      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.error).toContain("Permission denied");
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.stream).toBe(mockStream);
+      expect(result.current.error).toBeNull();
     });
 
     it("should stop all tracks when stopCamera is called", async () => {
@@ -104,6 +171,25 @@ describe("useWebcam", () => {
 
       expect(mockStop).toHaveBeenCalled();
       expect(result.current.stream).toBeNull();
+    });
+
+    it("should clear error when clearError is called", async () => {
+      const mockError = new Error("Permission denied");
+      mockGetUserMedia.mockRejectedValue(mockError);
+
+      const { result } = renderHook(() => useWebcam());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      expect(result.current.error).not.toBeNull();
+
+      act(() => {
+        result.current.clearError();
+      });
+
+      expect(result.current.error).toBeNull();
     });
   });
 

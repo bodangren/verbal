@@ -10,10 +10,12 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
   const {
     stream,
     isRecording,
+    error,
     startCamera,
     stopCamera,
     startRecording,
     stopRecording,
+    clearError,
   } = useWebcam();
 
   useEffect(() => {
@@ -46,6 +48,21 @@ export function WebcamRecorder({ onRecordingComplete }: WebcamRecorderProps) {
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
+      {error && (
+        <div className="w-full max-w-2xl bg-red-900/50 border border-red-500 rounded-lg p-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-red-400">Camera Error</h3>
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+          <button
+            onClick={clearError}
+            className="text-red-400 hover:text-red-300 text-xl leading-none"
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {!stream ? (
         <button
           onClick={handleStartCamera}

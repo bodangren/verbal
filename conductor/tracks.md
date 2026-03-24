@@ -24,6 +24,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Chore - Fix Rust Warnings & Tech Debt** [completed: 2026-03-24]
   *Link: [./tracks/chore_20260324b/](./tracks/chore_20260324b/)*
 
+- [~] **Track: Fix Webcam Connection Issue (Pipewire)** [in-progress]
+  *Link: [./tracks/fix_webcam_20260324/](./tracks/fix_webcam_20260324/)*
+
 ---
 
 ## Future Roadmap

@@ -4,24 +4,45 @@ export interface UseWebcamReturn {
   stream: MediaStream | null;
   isRecording: boolean;
   recordedChunks: Blob[];
+  error: string | null;
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   startRecording: () => void;
   stopRecording: () => Blob | null;
+  clearError: () => void;
 }
 
 export function useWebcam(): UseWebcamReturn {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const startCamera = useCallback(async () => {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    setStream(mediaStream);
+    setError(null);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setStream(mediaStream);
+    } catch (e) {
+      let errorMessage = "Failed to access camera";
+      if (e instanceof Error) {
+        if (e.name === "NotAllowedError") {
+          errorMessage = `Permission denied: ${e.message}`;
+        } else if (e.name === "NotFoundError") {
+          errorMessage = `Camera not found: ${e.message}`;
+        } else if (e.name === "NotReadableError") {
+          errorMessage = `Camera unavailable: ${e.message}`;
+        } else {
+          errorMessage = e.message;
+        }
+      }
+      setError(errorMessage);
+      setStream(null);
+    }
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -60,13 +81,19 @@ export function useWebcam(): UseWebcamReturn {
     return blob;
   }, [isRecording, recordedChunks]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     stream,
     isRecording,
     recordedChunks,
+    error,
     startCamera,
     stopCamera,
     startRecording,
     stopRecording,
+    clearError,
   };
 }

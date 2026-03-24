@@ -7,10 +7,12 @@ vi.mock("../hooks/useWebcam", () => ({
     stream: null,
     isRecording: false,
     recordedChunks: [],
+    error: null,
     startCamera: vi.fn(),
     stopCamera: vi.fn(),
     startRecording: vi.fn(),
     stopRecording: vi.fn(() => null),
+    clearError: vi.fn(),
   })),
 }));
 
@@ -48,10 +50,12 @@ describe("WebcamRecorder", () => {
       stream: null,
       isRecording: false,
       recordedChunks: [],
+      error: null,
       startCamera: mockStartCamera,
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -66,10 +70,12 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: false,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -82,10 +88,12 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: true,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -98,10 +106,12 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: false,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -114,10 +124,12 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: true,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -131,10 +143,12 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: false,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: mockStartRecording,
       stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
@@ -150,15 +164,55 @@ describe("WebcamRecorder", () => {
       stream: mockStream,
       isRecording: true,
       recordedChunks: [],
+      error: null,
       startCamera: vi.fn(),
       stopCamera: vi.fn(),
       startRecording: vi.fn(),
       stopRecording: mockStopRecording,
+      clearError: vi.fn(),
     });
 
     render(<WebcamRecorder />);
     fireEvent.click(screen.getByRole("button", { name: /stop recording/i }));
 
     expect(mockStopRecording).toHaveBeenCalled();
+  });
+
+  it("displays error message when camera access fails", () => {
+    mockUseWebcam.mockReturnValue({
+      stream: null,
+      isRecording: false,
+      recordedChunks: [],
+      error: "Permission denied: Camera access was denied",
+      startCamera: vi.fn(),
+      stopCamera: vi.fn(),
+      startRecording: vi.fn(),
+      stopRecording: vi.fn(() => null),
+      clearError: vi.fn(),
+    });
+
+    render(<WebcamRecorder />);
+    expect(screen.getByText("Camera Error")).toBeDefined();
+    expect(screen.getByText("Permission denied: Camera access was denied")).toBeDefined();
+  });
+
+  it("calls clearError when dismiss error button is clicked", () => {
+    const mockClearError = vi.fn();
+    mockUseWebcam.mockReturnValue({
+      stream: null,
+      isRecording: false,
+      recordedChunks: [],
+      error: "Some error",
+      startCamera: vi.fn(),
+      stopCamera: vi.fn(),
+      startRecording: vi.fn(),
+      stopRecording: vi.fn(() => null),
+      clearError: mockClearError,
+    });
+
+    render(<WebcamRecorder />);
+    fireEvent.click(screen.getByRole("button", { name: /dismiss error/i }));
+
+    expect(mockClearError).toHaveBeenCalled();
   });
 });

@@ -1,20 +1,20 @@
-# Current Directive: Automated Transcription & Filler Word Detection
+# Current Directive: Fix Webcam Connection Issue (Pipewire)
 
 ## Active Directive
-**Build an asynchronous transcription pipeline that processes media files through the AI provider abstraction layer, extracts word-level timestamps, and uses LLM intelligence to identify filler words.**
+**Diagnose and fix the webcam connection failure on Linux, which appears to be related to pipewire remote errors. Ensure the webcam can be accessed and used for recording.**
 
 ## Scope
-- **Audio Extraction**: FFmpeg-based audio extraction from media files
-- **Transcription Jobs**: Async job management with status tracking
-- **Filler Detection**: LLM-based filler word identification with timestamps
-- **IPC Commands**: Frontend commands for transcription control
+- **Diagnosis**: Investigate pipewire-related errors when accessing webcam
+- **Permissions**: Ensure Tauri/WebKit has proper device access permissions
+- **Fallback**: Implement graceful error handling with user-friendly messages
+- **Testing**: Verify webcam works on Linux with pipewire
 
 ## Success Criteria
-- User can request transcription of a media file through frontend
-- Transcription returns word-level timestamps accurate to within 100ms
-- Filler words are detected and returned with timestamps
-- Transcription status is visible in UI during processing
+- Webcam connects successfully on Linux
+- Recording starts without pipewire errors
+- Clear error messages if camera is unavailable
+- Tests pass for webcam hook and component
 
 ## Timeline
 Started: 2026-03-24
-Target Completion: 2026-03-27
+Target Completion: 2026-03-25
