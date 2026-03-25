@@ -25,6 +25,6 @@ Initialize the new Go-based project structure, set up the GTK4/Libadwaita UI env
 - [x] Define a basic recording pipeline for webcam and mic.
 - [x] Implement a "Record" button that captures a few seconds of media to a temporary file.
 
-## Phase 5: Verification & Cleanup
-- [ ] Ensure all Go tests (if any) pass.
-- [ ] Verify that the application runs and the window displays correctly on Ubuntu/GNOME.
+## Phase 5: Verification & Cleanup [x] Completed
+- [x] Ensure all Go tests (if any) pass.
+- [x] Verify that the application runs and the window displays correctly on Ubuntu/GNOME.
