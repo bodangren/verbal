@@ -4,6 +4,7 @@
 
 ### Medium Severity
 - **GStreamer video sink uses separate window** - `autovideosink` opens external window instead of embedding in GTK4. Need `gtk4paintablesink` from `gstreamer1.0-plugins-bad`. [severity: medium]
+- **Recording pipeline uses test sources** - Currently using `videotestsrc` and `audiotestsrc` for recording. Need to switch to `v4l2src` (webcam) and `pulsesrc` (mic) for real hardware capture. [severity: medium]
 
 ### Low Severity
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]

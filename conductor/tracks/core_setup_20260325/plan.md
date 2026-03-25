@@ -21,9 +21,9 @@ Initialize the new Go-based project structure, set up the GTK4/Libadwaita UI env
   Future: Install gstreamer1.0-plugins-bad for gtk4paintablesink support.*
 - [x] Verify basic playback controls (Start/Stop).
 
-## Phase 4: Recording Scaffolding
-- [ ] Define a basic recording pipeline for webcam and mic.
-- [ ] Implement a "Record" button that captures a few seconds of media to a temporary file.
+## Phase 4: Recording Scaffolding [x] Completed
+- [x] Define a basic recording pipeline for webcam and mic.
+- [x] Implement a "Record" button that captures a few seconds of media to a temporary file.
 
 ## Phase 5: Verification & Cleanup
 - [ ] Ensure all Go tests (if any) pass.

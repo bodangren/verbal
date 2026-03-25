@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"verbal/internal/media"
 	"verbal/internal/ui"
@@ -38,6 +40,8 @@ func activate(app *gtk.Application) {
 		fmt.Fprintf(os.Stderr, "Failed to create pipeline: %v\n", err)
 	}
 
+	var recordingPipeline *media.RecordingPipeline
+
 	titleLabel := gtk.NewLabel("Text-Based Video Editor")
 	titleLabel.AddCSSClass("title-1")
 	titleLabel.AddCSSClass("title-label")
@@ -57,6 +61,13 @@ func activate(app *gtk.Application) {
 	stopButton := gtk.NewButtonWithLabel("Stop Preview")
 	stopButton.AddCSSClass("action-button")
 	stopButton.SetSensitive(false)
+
+	recordButton := gtk.NewButtonWithLabel("Record")
+	recordButton.AddCSSClass("destructive-action")
+	recordButton.AddCSSClass("action-button")
+
+	recordingLabel := gtk.NewLabel("")
+	recordingLabel.AddCSSClass("dim-label")
 
 	updateControls := func() {
 		if pipeline == nil {
@@ -87,6 +98,26 @@ func activate(app *gtk.Application) {
 		}
 	}
 
+	updateRecordingControls := func() {
+		if recordingPipeline == nil {
+			recordButton.SetLabel("Record")
+			recordButton.RemoveCSSClass("destructive-action")
+			recordButton.AddCSSClass("suggested-action")
+			return
+		}
+
+		state := recordingPipeline.GetState()
+		if state == media.StatePlaying {
+			recordButton.SetLabel("Stop Recording")
+			recordButton.RemoveCSSClass("suggested-action")
+			recordButton.AddCSSClass("destructive-action")
+		} else {
+			recordButton.SetLabel("Record")
+			recordButton.RemoveCSSClass("destructive-action")
+			recordButton.AddCSSClass("suggested-action")
+		}
+	}
+
 	startButton.ConnectClicked(func() {
 		if pipeline != nil {
 			pipeline.Start()
@@ -108,11 +139,37 @@ func activate(app *gtk.Application) {
 		}
 	})
 
+	recordButton.ConnectClicked(func() {
+		if recordingPipeline != nil && recordingPipeline.GetState() == media.StatePlaying {
+			recordingPipeline.Stop()
+			recordingLabel.SetText(fmt.Sprintf("Saved: %s", recordingPipeline.OutputPath()))
+			recordingPipeline = nil
+			updateRecordingControls()
+			return
+		}
+
+		tmpDir := filepath.Join(os.TempDir(), "verbal-recordings")
+		timestamp := time.Now().Format("20060102-150405")
+		outputPath := filepath.Join(tmpDir, fmt.Sprintf("recording-%s.webm", timestamp))
+
+		var err error
+		recordingPipeline, err = media.NewRecordingPipeline(outputPath)
+		if err != nil {
+			statusLabel.SetText(fmt.Sprintf("Recording error: %v", err))
+			return
+		}
+
+		recordingPipeline.Start()
+		recordingLabel.SetText("Recording...")
+		updateRecordingControls()
+	})
+
 	buttonBox := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	buttonBox.SetHAlign(gtk.AlignCenter)
 	buttonBox.Append(startButton)
 	buttonBox.Append(pauseButton)
 	buttonBox.Append(stopButton)
+	buttonBox.Append(recordButton)
 
 	contentBox := gtk.NewBox(gtk.OrientationVertical, 12)
 	contentBox.SetMarginTop(24)
@@ -122,9 +179,11 @@ func activate(app *gtk.Application) {
 	contentBox.Append(titleLabel)
 	contentBox.Append(buttonBox)
 	contentBox.Append(statusLabel)
+	contentBox.Append(recordingLabel)
 
 	window.SetChild(contentBox)
 	window.Show()
 
 	updateControls()
+	updateRecordingControls()
 }
