@@ -35,7 +35,7 @@ func activate(app *gtk.Application) {
 	header.SetTitleWidget(gtk.NewLabel("Verbal"))
 	window.SetTitlebar(header)
 
-	pipeline, err := media.NewPreviewPipeline()
+	pipeline, err := media.NewPreviewPipelineWithFallback()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create pipeline: %v\n", err)
 	}
@@ -79,22 +79,31 @@ func activate(app *gtk.Application) {
 		}
 
 		state := pipeline.GetState()
+		sourceType := "test source"
+		if pipeline.UsesHardware() {
+			sourceType = "hardware"
+		}
+
 		switch state {
 		case media.StatePlaying:
 			startButton.SetSensitive(false)
 			pauseButton.SetSensitive(true)
 			stopButton.SetSensitive(true)
-			statusLabel.SetText("Preview running...")
+			statusLabel.SetText(fmt.Sprintf("Preview running (%s)...", sourceType))
 		case media.StatePaused:
 			startButton.SetSensitive(true)
 			pauseButton.SetSensitive(false)
 			stopButton.SetSensitive(true)
-			statusLabel.SetText("Preview paused")
+			statusLabel.SetText(fmt.Sprintf("Preview paused (%s)", sourceType))
 		case media.StateStopped:
 			startButton.SetSensitive(true)
 			pauseButton.SetSensitive(false)
 			stopButton.SetSensitive(false)
-			statusLabel.SetText("Ready")
+			if media.HasVideoDevice() {
+				statusLabel.SetText("Ready (hardware available)")
+			} else {
+				statusLabel.SetText("Ready (test source)")
+			}
 		}
 	}
 
@@ -153,14 +162,18 @@ func activate(app *gtk.Application) {
 		outputPath := filepath.Join(tmpDir, fmt.Sprintf("recording-%s.webm", timestamp))
 
 		var err error
-		recordingPipeline, err = media.NewRecordingPipeline(outputPath)
+		recordingPipeline, err = media.NewRecordingPipelineWithFallback(outputPath)
 		if err != nil {
 			statusLabel.SetText(fmt.Sprintf("Recording error: %v", err))
 			return
 		}
 
 		recordingPipeline.Start()
-		recordingLabel.SetText("Recording...")
+		if media.HasVideoDevice() {
+			recordingLabel.SetText("Recording (hardware)...")
+		} else {
+			recordingLabel.SetText("Recording (test source)...")
+		}
 		updateRecordingControls()
 	})
 

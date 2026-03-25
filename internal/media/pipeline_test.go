@@ -71,3 +71,52 @@ func TestPipelineStopChangesState(t *testing.T) {
 		t.Errorf("After Stop() state = %v, want %v", state, StateStopped)
 	}
 }
+
+func TestNewPreviewPipelineWithConfig(t *testing.T) {
+	config := PreviewConfig{UseHardware: false}
+	pipeline, err := NewPreviewPipelineWithConfig(config)
+	if err != nil {
+		t.Fatalf("NewPreviewPipelineWithConfig() error = %v", err)
+	}
+	if pipeline == nil {
+		t.Fatal("NewPreviewPipelineWithConfig() returned nil pipeline")
+	}
+	if pipeline.UsesHardware() {
+		t.Error("Expected UsesHardware() to be false for test source")
+	}
+	pipeline.Stop()
+}
+
+func TestNewHardwarePreviewPipelineNoDevice(t *testing.T) {
+	if HasVideoDevice() {
+		t.Skip("skipping - video devices exist on this system")
+	}
+
+	_, err := NewHardwarePreviewPipeline()
+	if err == nil {
+		t.Error("NewHardwarePreviewPipeline expected error when no devices")
+	}
+}
+
+func TestNewPreviewPipelineWithFallback(t *testing.T) {
+	pipeline, err := NewPreviewPipelineWithFallback()
+	if err != nil {
+		t.Fatalf("NewPreviewPipelineWithFallback() error = %v", err)
+	}
+	if pipeline == nil {
+		t.Fatal("NewPreviewPipelineWithFallback() returned nil pipeline")
+	}
+	pipeline.Stop()
+}
+
+func TestPipelineUsesHardware(t *testing.T) {
+	config := PreviewConfig{UseHardware: false}
+	pipeline, err := NewPreviewPipelineWithConfig(config)
+	if err != nil {
+		t.Fatalf("NewPreviewPipelineWithConfig() error = %v", err)
+	}
+	if pipeline.UsesHardware() {
+		t.Error("Expected UsesHardware() to be false")
+	}
+	pipeline.Stop()
+}

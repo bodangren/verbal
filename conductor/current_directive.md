@@ -1,24 +1,25 @@
-# Current Directive: Core Setup - Go + GTK4 + GStreamer
+# Current Directive: Hardware Recording Integration
 
 ## Active Directive
-**Complete the core setup track for the Go + GTK4 + GStreamer implementation. Establish the foundation for a native Linux video editor.**
+**Refactor the recording pipeline to use real hardware (webcam/mic) with graceful fallback to test sources.**
 
 ## Scope
-- **Project Structure**: Go module with cmd/, internal/, pkg/ layout
-- **UI Framework**: GTK4 with GNOME-style CSS (Libadwaita deferred)
-- **Media Engine**: GStreamer for video capture, playback, and processing
-- **Architecture**: Clean separation between UI, media, and AI layers
+- **Device Detection**: Enumerate available video/audio capture devices
+- **Hardware Pipeline**: Use v4l2src (webcam) and pulsesrc (microphone)
+- **Graceful Fallback**: Test sources when hardware unavailable
+- **Preview Support**: Option to preview real webcam feed
 
 ## Success Criteria
-- GTK4 window displays with GNOME styling
-- GStreamer pipeline runs with state management
+- Device detection correctly identifies available hardware
+- Recording pipeline uses real webcam/mic when available
+- Application gracefully falls back to test sources
 - All Go tests pass
-- Application builds and runs on Ubuntu/GNOME
+- Application runs on Ubuntu/GNOME with/without hardware
 
 ## Timeline
-Started: 2026-03-25
+Started: 2026-03-26
 Target Completion: 2026-03-26
 
 ## Next Steps
-- Phase 4: Recording scaffolding (webcam + mic capture)
-- Phase 5: Verification & cleanup
+- Phase 1: Device Detection
+- Phase 2: Hardware Pipeline Refactor

@@ -16,7 +16,17 @@ type RecordingPipeline struct {
 	mu         sync.RWMutex
 }
 
+type RecordingConfig struct {
+	UseHardware bool
+	VideoDevice string
+	AudioDevice string
+}
+
 func NewRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
+	return NewRecordingPipelineWithConfig(outputPath, RecordingConfig{UseHardware: false})
+}
+
+func NewRecordingPipelineWithConfig(outputPath string, config RecordingConfig) (*RecordingPipeline, error) {
 	if outputPath == "" {
 		return nil, fmt.Errorf("output path cannot be empty")
 	}
@@ -26,13 +36,12 @@ func NewRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
 		return nil, fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	pipelineStr := fmt.Sprintf(
-		"videotestsrc ! video/x-raw,width=640,height=30,framerate=30/1 ! "+
-			"videoconvert ! vp8enc ! webmmux name=mux ! "+
-			"filesink location=%s "+
-			"audiotestsrc ! audioconvert ! audioresample ! opusenc ! mux.",
-		outputPath,
-	)
+	var pipelineStr string
+	if config.UseHardware {
+		pipelineStr = buildHardwareRecordingPipeline(outputPath, config)
+	} else {
+		pipelineStr = buildTestRecordingPipeline(outputPath)
+	}
 
 	element, err := gst.ParseLaunch(pipelineStr)
 	if err != nil {
@@ -49,6 +58,63 @@ func NewRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
 		state:      StateStopped,
 		outputPath: outputPath,
 	}, nil
+}
+
+func NewHardwareRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
+	videoDevice, err := GetDefaultVideoDevice()
+	if err != nil {
+		return nil, fmt.Errorf("no video device available: %w", err)
+	}
+
+	audioDevice := "default"
+	if dev, err := GetDefaultAudioDevice(); err == nil {
+		audioDevice = dev.Path
+	}
+
+	return NewRecordingPipelineWithConfig(outputPath, RecordingConfig{
+		UseHardware: true,
+		VideoDevice: videoDevice.Path,
+		AudioDevice: audioDevice,
+	})
+}
+
+func NewRecordingPipelineWithFallback(outputPath string) (*RecordingPipeline, error) {
+	if HasVideoDevice() {
+		return NewHardwareRecordingPipeline(outputPath)
+	}
+	return NewRecordingPipeline(outputPath)
+}
+
+func buildTestRecordingPipeline(outputPath string) string {
+	return fmt.Sprintf(
+		"videotestsrc ! video/x-raw,width=640,height=480,framerate=30/1 ! "+
+			"videoconvert ! vp8enc ! webmmux name=mux ! "+
+			"filesink location=%s "+
+			"audiotestsrc ! audioconvert ! audioresample ! opusenc ! mux.",
+		outputPath,
+	)
+}
+
+func buildHardwareRecordingPipeline(outputPath string, config RecordingConfig) string {
+	videoSrc := config.VideoDevice
+	if videoSrc == "" {
+		videoSrc = "/dev/video0"
+	}
+
+	audioSrc := config.AudioDevice
+	if audioSrc == "" {
+		audioSrc = "default"
+	}
+
+	return fmt.Sprintf(
+		"v4l2src device=%s ! video/x-raw,width=640,height=480,framerate=30/1 ! "+
+			"videoconvert ! vp8enc ! webmmux name=mux ! "+
+			"filesink location=%s "+
+			"pulsesrc device=%s ! audioconvert ! audioresample ! opusenc ! mux.",
+		videoSrc,
+		outputPath,
+		audioSrc,
+	)
 }
 
 func (r *RecordingPipeline) Start() {

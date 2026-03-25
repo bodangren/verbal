@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Hardware Recording Integration** [started: 2026-03-26, completed: 2026-03-26]
+  *Focus: Refactor recording pipeline to use real webcam/mic with graceful fallback.*
+  *Link: [./tracks/chore_20260326/](./tracks/chore_20260326/)*
+
 - [x] **Track: Core Setup - Go + GTK4 + GStreamer** [started: 2026-03-25, completed: 2026-03-26]
   *Focus: Project scaffolding, basic GTK window, and GStreamer pipeline initialization.*
   *Link: [./tracks/core_setup_20260325/](./tracks/core_setup_20260325/)*

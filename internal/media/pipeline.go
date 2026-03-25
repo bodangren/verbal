@@ -27,13 +27,35 @@ func (s PipelineState) String() string {
 }
 
 type Pipeline struct {
-	pipeline *gst.Pipeline
-	state    PipelineState
-	mu       sync.RWMutex
+	pipeline    *gst.Pipeline
+	state       PipelineState
+	useHardware bool
+	videoDevice string
+	mu          sync.RWMutex
+}
+
+type PreviewConfig struct {
+	UseHardware bool
+	VideoDevice string
 }
 
 func NewPreviewPipeline() (*Pipeline, error) {
-	element, err := gst.ParseLaunch("videotestsrc ! autovideosink")
+	return NewPreviewPipelineWithConfig(PreviewConfig{UseHardware: false})
+}
+
+func NewPreviewPipelineWithConfig(config PreviewConfig) (*Pipeline, error) {
+	var pipelineStr string
+	if config.UseHardware {
+		videoDevice := config.VideoDevice
+		if videoDevice == "" {
+			videoDevice = "/dev/video0"
+		}
+		pipelineStr = fmt.Sprintf("v4l2src device=%s ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! autovideosink", videoDevice)
+	} else {
+		pipelineStr = "videotestsrc ! autovideosink"
+	}
+
+	element, err := gst.ParseLaunch(pipelineStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pipeline: %w", err)
 	}
@@ -44,9 +66,30 @@ func NewPreviewPipeline() (*Pipeline, error) {
 	}
 
 	return &Pipeline{
-		pipeline: pipeline,
-		state:    StateStopped,
+		pipeline:    pipeline,
+		state:       StateStopped,
+		useHardware: config.UseHardware,
+		videoDevice: config.VideoDevice,
 	}, nil
+}
+
+func NewHardwarePreviewPipeline() (*Pipeline, error) {
+	videoDevice, err := GetDefaultVideoDevice()
+	if err != nil {
+		return nil, fmt.Errorf("no video device available: %w", err)
+	}
+
+	return NewPreviewPipelineWithConfig(PreviewConfig{
+		UseHardware: true,
+		VideoDevice: videoDevice.Path,
+	})
+}
+
+func NewPreviewPipelineWithFallback() (*Pipeline, error) {
+	if HasVideoDevice() {
+		return NewHardwarePreviewPipeline()
+	}
+	return NewPreviewPipeline()
 }
 
 func (p *Pipeline) Start() {
@@ -74,6 +117,12 @@ func (p *Pipeline) GetState() PipelineState {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.state
+}
+
+func (p *Pipeline) UsesHardware() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.useHardware
 }
 
 func init() {
