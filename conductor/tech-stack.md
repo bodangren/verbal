@@ -1,33 +1,37 @@
 # Technology Stack: Verbal
 
 ## Core Architecture
-- **Framework:** Tauri v2
-- **Paradigm:** Hybrid (Web Frontend + Native Systems Backend)
+- **Language:** Go
+- **UI Framework:** GTK4 + Libadwaita (via `gotk4` bindings)
+- **Media Engine:** GStreamer (via `gotk4-gstreamer` or custom bindings)
+- **Platform:** Native Linux (GNOME/Ubuntu focus)
 
-## Frontend (UI & Timeline)
-- **Language:** TypeScript
-- **Framework:** React
-- **Text Engine:** TipTap / ProseMirror (for binding text spans to video timestamps)
-- **Canvas/Video:** HTML5 `<video>` synced with WebGL `<canvas>` for dynamic caption overlays
-- **Styling:** Tailwind CSS or Vanilla CSS (Dark Mode optimized)
+## UI Layer (GTK)
+- **Editor:** GTK TextView or custom structured buffer for transcript editing.
+- **Timeline:** Custom GTK DrawingArea or composite widget for visual timeline representation.
+- **Preview:** GStreamer video sink integrated into GTK window (e.g., `gtksink`).
+- **Design:** Libadwaita for modern, GNOME-native aesthetics (Dark mode focus).
 
-## Backend (Systems & Processing)
-- **Language:** Rust
-- **Media Engine:** Local FFmpeg & FFprobe (spawned asynchronously via Rust)
-- **Audio DSP:** FFmpeg filters (e.g., `afftdn` for noise reduction, `acompressor` for leveling)
-- **Local DB:** SQLite (via `rusqlite` for media library and project metadata)
-- **Local AI:** ONNX Runtime (via Rust bindings for local background removal/segmentation)
+## Backend & Media Processing
+- **Recording:** 
+    - Webcam: `v4l2src` (Video4Linux2)
+    - Audio: `pulsesrc` / `pipewiresrc` (PulseAudio / PipeWire)
+- **Playback:** GStreamer `playbin` or custom pipeline for frame-accurate seeking and text-synced cursor updates.
+- **Transcoding & Export:** GStreamer `encodebin` using:
+    - Video: H.264 (`x264enc`) or VP9 (`vp9enc`)
+    - Audio: WAV or AAC
+    - Optimization: Stream-copy (`copy` muxing) where possible for fast, lossless cuts.
+- **Storage:** 
+    - Database: SQLite (via `modernc.org/sqlite` or `mattn/go-sqlite3`) for project and media metadata.
+    - File System: Local project structure for storing transcripts (JSON) and original/edited media files.
 
-## Cloud AI Intelligence (Abstracted Provider Layer)
-*The backend implements a provider abstraction, allowing the user to provide API keys for either ecosystem.*
+## AI Integration Layer
+- **Providers:** 
+    - OpenAI (Whisper API)
+    - Google (Speech-to-Text)
+- **Architecture:** Go-based async job system for handling cloud API requests and processing responses into word-level timestamped objects.
 
-**Option A: Google Ecosystem**
-- **Transcription/Clipping:** Gemini 3.0 Multimodal
-- **B-Roll Generation:** Veo 3.1
-- **Voice Cloning:** Gemini 3 Flash Native Audio
-
-**Option B: OpenAI Ecosystem**
-- **Transcription:** Whisper-v4
-- **Editing Logic/Clipping:** GPT-5.4-standard / nano
-- **B-Roll Generation:** Sora 2
-- **Voice Cloning:** OpenAI Voice API
+## Non-Functional Requirements
+- **Display Server:** Wayland (primary) + X11 (compatibility).
+- **Concurrency:** Go routines for non-blocking media processing and UI events.
+- **Latency:** Seek response < 100ms.

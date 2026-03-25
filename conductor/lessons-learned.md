@@ -1,37 +1,18 @@
 # Lessons Learned
-- Initial project setup with Tauri v2 requires WebKitGTK 4.1 on Linux.
-- Local FFmpeg management in Rust requires careful child process handling for zombie prevention.
-- Tauri commands must return types compatible with InvokeError; implement `From<YourError> for InvokeError`.
-- Use `cargo test` in `src-tauri/` directory for faster iteration on Rust tests.
-- Tailwind v4 uses `@tailwindcss/vite` plugin instead of PostCSS config files.
-- Tauri build on Linux produces deb/rpm/AppImage; use `--no-bundle` for faster iteration.
-- TipTap editor requires mocking `useEditor` with `isActive` and `chain` methods for tests.
-- happy-dom requires mocking HTMLMediaElement.srcObject setter for video component tests.
-- MediaRecorder API needs full mock including ondataavailable and onstop handlers.
-- External prop-driven video seeks should use threshold-based debouncing to prevent rapid micro-seeks.
-- ErrorBoundary tests need `console.error` mocked to avoid noise in test output.
-- FFmpeg `filter_complex` with trim+concat is the cleanest approach for multi-segment cuts without re-encoding.
-- CI=true npm test runs vitest in non-watch mode for CI/CD pipelines.
-- The `keyring` crate provides cross-platform secure credential storage via OS keychain.
-- Use `async_trait` for trait methods that need to be async in Rust.
-- `mockito` crate with `Server::new_async()` enables async HTTP mocking for reqwest tests.
-- `reqwest::multipart::Form::text()` takes ownership - reassign to variable for chaining.
-- Exponential backoff retry pattern: `delay = initial * 2^attempt` with configurable max retries.
-- Use `#![allow(dead_code)]` at module level for code reserved for future integration phases.
-- mockito `match_query(Matcher::Regex(...))` for URL query parameter matching in async tests.
-- Gemini API uses query parameter `?key=API_KEY` instead of Authorization header.
-- `Arc<RwLock<T>>` with `inner().clone()` pattern for Tauri state access in commands.
-- `dyn Trait` requires `?Sized` bound when used as generic type parameter.
-- FFmpeg audio extraction with `-vn -acodec pcm_s16le -ar 16000 -ac 1` is optimal for Whisper transcription.
+
+## Go + GTK4 (Current)
+- **GOTK4 CSS:** Use `gdk.DisplayGetDefault()` not `gtk.DefaultDisplay()`. Widgets have `AddCSSClass()` method directly.
+- **GStreamer GTK4:** `gtk4paintablesink` (from gst-plugins-bad) is required for embedded video in GTK4; `gtksink`/`gtkglsink` are GTK3 only.
+- **Pipeline State:** Use `sync.RWMutex` for thread-safe state tracking in GStreamer pipelines accessed from UI callbacks.
+- **Go Testing:** GStreamer tests need `XDG_RUNTIME_DIR` set; GTK tests require display connection.
+
+## General
+- **CODE REVIEW:** Passing tests ≠ working feature. Manual QA is essential for hardware/OS-dependent features.
+- **DEBUGGING:** When an API setting exists in bindings but has no effect, check if the underlying C library was compiled with the feature enabled.
+
+## Superseded (Tauri/Rust)
+- Tauri v2 requires WebKitGTK 4.1 on Linux.
+- FFmpeg `filter_complex` with trim+concat is cleanest for multi-segment cuts.
+- `tokio::process::Command` for async FFmpeg; `std::process::Command` blocks runtime.
 - Transcription job state machine: Pending → Processing → Completed/Failed/Cancelled.
-- For long-running Tauri commands, spawn tokio task and return job_id immediately; frontend polls status.
-- **CODE REVIEW (2026-03-24):** Passing tests ≠ working feature. Webcam track Phases 1-2 were auto-verified via tests, but no actual config changes were made, and the camera still doesn't work. Manual QA is essential for hardware-dependent features.
-- **CODE REVIEW:** All async Tauri commands that do I/O should use `tokio::fs` and `tokio::process::Command`, not their std equivalents. Blocking the tokio runtime causes hangs.
-- **CODE REVIEW:** `dunce::canonicalize` requires the file to exist — cannot validate output paths before creation. Use parent directory validation instead.
-- **CODE REVIEW:** Spawned background tasks must update job state on ALL exit paths (success, error, and early returns). Silent failures leave jobs stuck in Pending.
-- **CODE REVIEW:** When fixing a bug pattern (e.g. `canonicalize` on non-existent files), grep the entire codebase for the same pattern — `save_video` had the identical broken `canonicalize` + fallback that was fixed in `validate_path_is_within_dir` but was missed until review.
-- **WEBCAM (2026-03-24):** `getUserMedia()` on Linux/WebKitGTK is fundamentally broken in stock distro packages. The wry setting `set_enable_media_stream(true)` is a no-op because Ubuntu/Fedora WebKitGTK is compiled WITHOUT `-DENABLE_MEDIA_STREAM=ON`. Even with a patched wry, you also need a custom permission handler (default auto-denies), 6 WebKit settings, specific GStreamer plugins, and X11 (Wayland broken). Native camera plugins (CrabCamera/V4L2) bypass this entire stack.
-- **DEBUGGING LESSON:** When a WebView API setting exists in bindings but has no effect, check if the underlying C library was compiled with the feature enabled. Distro packages often omit experimental/optional WebKit features.
-- **DEPENDENCY PATCHING:** Editing files in `~/.cargo/registry/src/` works for quick local testing but is fragile (cleared by `cargo clean` or cache rebuild). For durable patches, use `[patch.crates-io]` in Cargo.toml pointing to a local or git fork.
-- **CRABCAMERA (2026-03-24):** CrabCamera v0.8 is a Tauri v2 plugin for native camera access (V4L2/AVFoundation/DirectShow). `audio` feature requires `libasound2-dev` on Linux. Preview via polling `capture_single_photo` to canvas; may need event-based streaming if latency is poor.
-- **ASYNC FFmpeg (2026-03-25):** When adding async versions of sync methods, keep both. `tokio::process::Command` returns `std::process::Output` (not a separate type). Use `tokio::fs::metadata` and `tokio::fs::try_exists` for async file operations.
+- `Arc<RwLock<T>>` for shared state in Tauri commands.

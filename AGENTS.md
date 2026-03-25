@@ -1,11 +1,13 @@
 # AGENTS.md
 
 ## Architectural Mandates
-- **Local-First Media:** All heavy video/audio processing (FFmpeg, DSP) MUST happen in the Rust backend, never the frontend.
-- **Provider Agnostic:** AI features MUST use the abstraction layer in `src-tauri/src/ai/`. No direct imports of OpenAI/Google SDKs outside this module.
-- **Safety:** Sanitize all user-provided strings before passing to FFmpeg or shell commands. Use the rust-best-practices skill where appropriate.
-- **State:** Prefer Tauri's `State` for cross-command data sharing; minimize global Rust variables.
+- **Language:** Go is the primary language for the entire application.
+- **UI Framework:** GTK4 + Libadwaita. Adhere to GNOME Human Interface Guidelines (HIG).
+- **Media Engine:** GStreamer. All media capture, playback, and editing MUST use GStreamer pipelines. Direct FFmpeg calls should be avoided unless GStreamer lacks a specific capability.
+- **Local-First Media:** All media processing happens locally. Cloud APIs (OpenAI/Google) are ONLY for transcription and LLM-based analysis.
+- **Provider Agnostic:** AI features MUST use an abstraction layer. No direct imports of OpenAI/Google SDKs outside the designated AI provider module.
+- **Safety:** Sanitize all user-provided strings before passing to GStreamer pipelines or shell commands.
 - **Conductor Workflow:** Use the Conductor skill. Always update `conductor/tracks.md` and the current track's `plan.md` before starting work.
-- **Performance:** UI updates for transcription/sync MUST be debounced to prevent React render-bottlenecks during playback.
-- **Linux Focus:** Test all FFmpeg flags for compatibility with standard Linux distributions (Ubuntu/Fedora).
-- **Componentizing:** App.tsx should not be monolithic. Keep its total size down by componentizing.
+- **Performance:** UI updates for transcription/sync MUST be efficient to prevent blocking the GTK main loop. Use Go routines for async tasks.
+- **Linux Focus:** Optimize for Ubuntu/GNOME environment. Ensure compatibility with both Wayland and X11.
+- **Project Structure:** Maintain a clean Go project structure (e.g., `cmd/`, `internal/`, `pkg/`).
