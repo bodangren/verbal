@@ -1,20 +1,24 @@
-# Current Directive: Fix Webcam Connection Issue (Pipewire)
+# Current Directive: Core Setup - Go + GTK4 + GStreamer
 
 ## Active Directive
-**Diagnose and fix the webcam connection failure on Linux, which appears to be related to pipewire remote errors. Ensure the webcam can be accessed and used for recording.**
+**Complete the core setup track for the Go + GTK4 + GStreamer implementation. Establish the foundation for a native Linux video editor.**
 
 ## Scope
-- **Diagnosis**: Investigate pipewire-related errors when accessing webcam
-- **Permissions**: Ensure Tauri/WebKit has proper device access permissions
-- **Fallback**: Implement graceful error handling with user-friendly messages
-- **Testing**: Verify webcam works on Linux with pipewire
+- **Project Structure**: Go module with cmd/, internal/, pkg/ layout
+- **UI Framework**: GTK4 with GNOME-style CSS (Libadwaita deferred)
+- **Media Engine**: GStreamer for video capture, playback, and processing
+- **Architecture**: Clean separation between UI, media, and AI layers
 
 ## Success Criteria
-- Webcam connects successfully on Linux
-- Recording starts without pipewire errors
-- Clear error messages if camera is unavailable
-- Tests pass for webcam hook and component
+- GTK4 window displays with GNOME styling
+- GStreamer pipeline runs with state management
+- All Go tests pass
+- Application builds and runs on Ubuntu/GNOME
 
 ## Timeline
-Started: 2026-03-24
-Target Completion: 2026-03-25
+Started: 2026-03-25
+Target Completion: 2026-03-26
+
+## Next Steps
+- Phase 4: Recording scaffolding (webcam + mic capture)
+- Phase 5: Verification & cleanup
