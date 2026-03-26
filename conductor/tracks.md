@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - Transcription Integration** [started: 2026-03-26]
+  *Focus: Integrate AI transcription into main app with UI for results.*
+  *Link: [./tracks/feature_transcription_integration_20260326/](./tracks/feature_transcription_integration_20260326/)*
+
 - [x] **Track: Feature - AI Provider Abstraction Layer** [started: 2026-03-26, completed: 2026-03-26]
   *Focus: Provider-agnostic interface for AI transcription (OpenAI/Google).*
   *Link: [./tracks/feature_ai_provider_20260326/](./tracks/feature_ai_provider_20260326/)*
