@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Feature - Embedded Video Preview in GTK4** [started: 2026-03-26, completed: 2026-03-26]
+  *Focus: Replace external video window with embedded preview using gtk4paintablesink.*
+  *Link: [./tracks/feature_embedded_video_20260326/](./tracks/feature_embedded_video_20260326/)*
+
 - [x] **Track: Chore - Hardware Recording Integration** [started: 2026-03-26, completed: 2026-03-26]
   *Focus: Refactor recording pipeline to use real webcam/mic with graceful fallback.*
   *Link: [./tracks/chore_20260326/](./tracks/chore_20260326/)*

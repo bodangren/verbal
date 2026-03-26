@@ -13,6 +13,8 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
+var useEmbeddedPreview = media.HasGtk4PaintableSink()
+
 func main() {
 	app := gtk.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
 	app.ConnectActivate(func() {
@@ -35,9 +37,29 @@ func activate(app *gtk.Application) {
 	header.SetTitleWidget(gtk.NewLabel("Verbal"))
 	window.SetTitlebar(header)
 
-	pipeline, err := media.NewPreviewPipelineWithFallback()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create pipeline: %v\n", err)
+	var pipeline *media.Pipeline
+	var embeddedPipeline *media.EmbeddedPipeline
+	var videoPreview *ui.VideoPreview
+
+	if useEmbeddedPreview {
+		videoPreview = ui.NewVideoPreview()
+		var err error
+		embeddedPipeline, err = media.NewEmbeddedPreviewPipelineWithFallback(
+			media.PreviewConfig{UseHardware: media.HasVideoDevice()},
+		)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create embedded pipeline: %v, falling back to external\n", err)
+			useEmbeddedPreview = false
+			pipeline, _ = media.NewPreviewPipelineWithFallback()
+		} else {
+			videoPreview.SetPipeline(embeddedPipeline)
+		}
+	} else {
+		var err error
+		pipeline, err = media.NewPreviewPipelineWithFallback()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create pipeline: %v\n", err)
+		}
 	}
 
 	var recordingPipeline *media.RecordingPipeline
@@ -70,7 +92,16 @@ func activate(app *gtk.Application) {
 	recordingLabel.AddCSSClass("dim-label")
 
 	updateControls := func() {
-		if pipeline == nil {
+		var state media.PipelineState
+		var usesHardware bool
+
+		if useEmbeddedPreview && embeddedPipeline != nil {
+			state = embeddedPipeline.GetState()
+			usesHardware = embeddedPipeline.UsesHardware()
+		} else if pipeline != nil {
+			state = pipeline.GetState()
+			usesHardware = pipeline.UsesHardware()
+		} else {
 			startButton.SetSensitive(false)
 			pauseButton.SetSensitive(false)
 			stopButton.SetSensitive(false)
@@ -78,9 +109,8 @@ func activate(app *gtk.Application) {
 			return
 		}
 
-		state := pipeline.GetState()
 		sourceType := "test source"
-		if pipeline.UsesHardware() {
+		if usesHardware {
 			sourceType = "hardware"
 		}
 
@@ -128,24 +158,30 @@ func activate(app *gtk.Application) {
 	}
 
 	startButton.ConnectClicked(func() {
-		if pipeline != nil {
+		if useEmbeddedPreview && embeddedPipeline != nil {
+			videoPreview.Start()
+		} else if pipeline != nil {
 			pipeline.Start()
-			updateControls()
 		}
+		updateControls()
 	})
 
 	pauseButton.ConnectClicked(func() {
-		if pipeline != nil {
+		if useEmbeddedPreview && embeddedPipeline != nil {
+			embeddedPipeline.Pause()
+		} else if pipeline != nil {
 			pipeline.Pause()
-			updateControls()
 		}
+		updateControls()
 	})
 
 	stopButton.ConnectClicked(func() {
-		if pipeline != nil {
+		if useEmbeddedPreview && embeddedPipeline != nil {
+			videoPreview.Stop()
+		} else if pipeline != nil {
 			pipeline.Stop()
-			updateControls()
 		}
+		updateControls()
 	})
 
 	recordButton.ConnectClicked(func() {
@@ -190,6 +226,11 @@ func activate(app *gtk.Application) {
 	contentBox.SetMarginStart(24)
 	contentBox.SetMarginEnd(24)
 	contentBox.Append(titleLabel)
+
+	if useEmbeddedPreview && videoPreview != nil {
+		contentBox.Append(videoPreview.Widget())
+	}
+
 	contentBox.Append(buttonBox)
 	contentBox.Append(statusLabel)
 	contentBox.Append(recordingLabel)

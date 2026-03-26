@@ -120,3 +120,32 @@ func TestPipelineUsesHardware(t *testing.T) {
 	}
 	pipeline.Stop()
 }
+
+func TestHasGtk4PaintableSink(t *testing.T) {
+	hasPlugin := HasGtk4PaintableSink()
+	t.Logf("HasGtk4PaintableSink() = %v", hasPlugin)
+}
+
+func TestNewEmbeddedPreviewPipelineWithoutPlugin(t *testing.T) {
+	if HasGtk4PaintableSink() {
+		t.Skip("skipping - gtk4paintablesink is available")
+	}
+
+	_, err := NewEmbeddedPreviewPipeline(PreviewConfig{UseHardware: false})
+	if err == nil {
+		t.Error("NewEmbeddedPreviewPipeline expected error when plugin not available")
+	}
+}
+
+func TestNewEmbeddedPreviewPipelineWithFallback(t *testing.T) {
+	_, err := NewEmbeddedPreviewPipelineWithFallback(PreviewConfig{UseHardware: false})
+	if HasGtk4PaintableSink() {
+		if err != nil {
+			t.Fatalf("NewEmbeddedPreviewPipelineWithFallback() error = %v", err)
+		}
+	} else {
+		if err == nil {
+			t.Error("Expected error when gtk4paintablesink not available")
+		}
+	}
+}

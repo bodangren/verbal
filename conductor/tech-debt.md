@@ -3,7 +3,7 @@
 ## Go + GTK4 Implementation (Current)
 
 ### Medium Severity
-- **GStreamer video sink uses separate window** - `autovideosink` opens external window instead of embedding in GTK4. Need `gtk4paintablesink` from `gstreamer1.0-plugins-bad`. [severity: medium]
+- **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
 
 ### Low Severity
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
@@ -11,6 +11,7 @@
 
 ## Resolved
 
+- ~~GStreamer video sink uses separate window~~ - Implemented embedded preview using gtk4paintablesink with fallback to autovideosink. [resolved: 2026-03-26]
 - ~~Recording pipeline uses test sources~~ - Now uses real hardware (v4l2src + pulsesrc) with graceful fallback to test sources. [resolved: 2026-03-26]
 
 ## Superseded (Tauri/Rust Implementation)
