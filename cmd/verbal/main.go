@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"verbal/internal/ai"
 	"verbal/internal/media"
+	"verbal/internal/transcription"
 	"verbal/internal/ui"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -88,8 +92,23 @@ func activate(app *gtk.Application) {
 	recordButton.AddCSSClass("destructive-action")
 	recordButton.AddCSSClass("action-button")
 
+	transcribeButton := gtk.NewButtonWithLabel("Transcribe")
+	transcribeButton.AddCSSClass("action-button")
+	transcribeButton.SetSensitive(false)
+
 	recordingLabel := gtk.NewLabel("")
 	recordingLabel.AddCSSClass("dim-label")
+
+	transcriptionView := ui.NewTranscriptionView()
+
+	var lastRecordingPath string
+	var transcribeSvc *transcription.Service
+
+	if provider, err := ai.NewProviderFromEnv(); err == nil {
+		transcribeSvc = transcription.NewService(provider)
+	} else {
+		transcribeButton.SetTooltipText("No AI provider configured")
+	}
 
 	updateControls := func() {
 		var state media.PipelineState
@@ -187,9 +206,13 @@ func activate(app *gtk.Application) {
 	recordButton.ConnectClicked(func() {
 		if recordingPipeline != nil && recordingPipeline.GetState() == media.StatePlaying {
 			recordingPipeline.Stop()
-			recordingLabel.SetText(fmt.Sprintf("Saved: %s", recordingPipeline.OutputPath()))
+			lastRecordingPath = recordingPipeline.OutputPath()
+			recordingLabel.SetText(fmt.Sprintf("Saved: %s", lastRecordingPath))
 			recordingPipeline = nil
 			updateRecordingControls()
+			if transcribeSvc != nil && lastRecordingPath != "" {
+				transcribeButton.SetSensitive(true)
+			}
 			return
 		}
 
@@ -213,12 +236,45 @@ func activate(app *gtk.Application) {
 		updateRecordingControls()
 	})
 
+	transcribeButton.ConnectClicked(func() {
+		if transcribeSvc == nil || lastRecordingPath == "" {
+			return
+		}
+
+		transcribeButton.SetSensitive(false)
+		transcriptionView.Show()
+		transcriptionView.SetStatus("Transcribing...")
+
+		go func() {
+			transcribeSvc.SetProgressCallback(func(status string) {
+				glib.IdleAdd(func() bool {
+					transcriptionView.SetStatus(status)
+					return false
+				})
+			})
+
+			result, err := transcribeSvc.TranscribeFile(context.Background(), lastRecordingPath)
+
+			glib.IdleAdd(func() bool {
+				if err != nil {
+					transcriptionView.SetError(err)
+					transcribeButton.SetSensitive(true)
+				} else {
+					transcriptionView.SetResult(result)
+					transcribeButton.SetSensitive(true)
+				}
+				return false
+			})
+		}()
+	})
+
 	buttonBox := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	buttonBox.SetHAlign(gtk.AlignCenter)
 	buttonBox.Append(startButton)
 	buttonBox.Append(pauseButton)
 	buttonBox.Append(stopButton)
 	buttonBox.Append(recordButton)
+	buttonBox.Append(transcribeButton)
 
 	contentBox := gtk.NewBox(gtk.OrientationVertical, 12)
 	contentBox.SetMarginTop(24)
@@ -234,6 +290,7 @@ func activate(app *gtk.Application) {
 	contentBox.Append(buttonBox)
 	contentBox.Append(statusLabel)
 	contentBox.Append(recordingLabel)
+	contentBox.Append(transcriptionView.Widget())
 
 	window.SetChild(contentBox)
 	window.Show()

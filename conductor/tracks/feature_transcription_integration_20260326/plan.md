@@ -22,11 +22,11 @@ UI integration in cmd/verbal/main.go:
 - [x] Add error handling and retries
 - [x] Unit tests with mock provider
 
-## Phase 2: UI Integration [ ] Not Started
-- [ ] Add transcribe button to main window
-- [ ] Create transcription results display area
-- [ ] Show progress indicator during transcription
-- [ ] Handle errors gracefully in UI
+## Phase 2: UI Integration [x] Completed
+- [x] Add transcribe button to main window
+- [x] Create transcription results display area
+- [x] Show progress indicator during transcription
+- [x] Handle errors gracefully in UI
 
 ## Phase 3: End-to-End Flow [ ] Not Started
 - [ ] Wire recording → save → transcribe workflow
