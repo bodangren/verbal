@@ -1,15 +1,16 @@
 # Current Directive: Transcription Integration
 
 ## Active Directive
-**Integrate AI transcription into the main application.**
+**Transcription integration complete. Ready for next feature.**
 
-## Scope
-- **Service Layer**: Create TranscriptionService to coordinate file → transcription
-- **UI Integration**: Add transcribe button and results display
-- **Progress Feedback**: Show progress during transcription
-- **Error Handling**: Graceful error handling with user feedback
+## Completed
+- [x] TranscriptionService with provider abstraction and retry logic
+- [x] TranscriptionView UI component with progress and error handling
+- [x] RecordingMetadata for persistence
+- [x] End-to-end workflow: record → transcribe → display → save
+- [x] AI Provider Abstraction Layer (OpenAI/Google)
 
-## Success Criteria
+## Success Criteria (All Met)
 - User can record, then transcribe with one click
 - Transcription results display with word-level timestamps
 - Progress shown during transcription
@@ -17,12 +18,9 @@
 
 ## Timeline
 Started: 2026-03-26
-Target Completion: 2026-03-27
+Completed: 2026-03-26
 
 ## Next Steps
-- Phase 1: Create TranscriptionService
-- Phase 2: Add UI components
-- Phase 3: End-to-end workflow integration
-
-## Completed
-- [x] AI Provider Abstraction Layer (OpenAI/Google)
+- Video playback synchronized with transcription highlighting
+- Edit transcription text and export cuts
+- Settings UI for AI provider configuration

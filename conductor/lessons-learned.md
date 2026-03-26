@@ -10,6 +10,8 @@
 - **GTK Widget Tests:** Skip GTK widget tests when no display is available (`DISPLAY` or `WAYLAND_DISPLAY` env vars).
 - **AI Provider Pattern:** Use REST APIs instead of native SDKs to avoid heavy dependencies. Factory pattern with environment-based config keeps provider selection flexible.
 - **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms".
+- **GTK Threading:** Use `glib.IdleAdd()` to update UI from goroutines. Never update GTK widgets directly from non-main threads.
+- **Metadata Persistence:** Store transcription results alongside recordings using JSON metadata files for easy recovery and history.
 
 ## General
 - **CODE REVIEW:** Passing tests ≠ working feature. Manual QA is essential for hardware/OS-dependent features.
