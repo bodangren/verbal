@@ -8,6 +8,7 @@
 ### Low Severity
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
+- AI providers use REST API instead of native SDKs (intentional - avoids heavy dependencies). [severity: low]
 
 ## Resolved
 

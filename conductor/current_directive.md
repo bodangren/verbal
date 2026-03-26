@@ -1,25 +1,27 @@
-# Current Directive: Embedded Video Preview in GTK4
+# Current Directive: AI Provider Abstraction Layer
 
 ## Active Directive
-**Implement embedded video preview using gtk4paintablesink instead of external window.**
+**Implement provider-agnostic AI abstraction layer for transcription services.**
 
 ## Scope
-- **Plugin Installation**: Verify/install gstreamer1.0-plugins-bad for gtk4paintablesink
-- **Pipeline Update**: Replace autovideosink with gtk4paintablesink
-- **GTK Integration**: Use GdkPaintable with GtkImage or GtkPicture widget
-- **Thread Safety**: Ensure proper main thread updates for video frames
+- **Interface Design**: Define TranscriptionProvider interface with word-level timestamp support
+- **OpenAI Integration**: Implement Whisper API client
+- **Google Integration**: Implement Speech-to-Text API client
+- **Configuration**: Environment-based API key/credential management
+- **Error Handling**: Typed errors for rate limits, auth failures, etc.
 
 ## Success Criteria
-- Video preview displays embedded in GTK4 window (not external)
-- Application runs correctly with/without hardware
-- All Go tests pass
-- No GTK main loop blocking
+- No direct SDK imports outside internal/ai module
+- Consistent TranscriptionResult across providers
+- All tests pass with mock HTTP servers
+- API keys loaded from environment only
 
 ## Timeline
 Started: 2026-03-26
-Target Completion: 2026-03-26
+Target Completion: 2026-03-27
 
 ## Next Steps
-- Phase 1: Verify gtk4paintablesink availability and bindings
-- Phase 2: Update PreviewPipeline to use gtk4paintablesink
-- Phase 3: Integrate with GTK4 Picture widget
+- Phase 1: Define interfaces and data structures
+- Phase 2: Implement OpenAI Whisper provider
+- Phase 3: Implement Google Speech-to-Text provider
+- Phase 4: Factory pattern and configuration

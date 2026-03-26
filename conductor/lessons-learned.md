@@ -8,6 +8,8 @@
 - **Hardware Fallback:** Always provide graceful fallback to test sources for environments without hardware. Use `HasVideoDevice()` and `HasAudioDevice()` to detect availability.
 - **Gotk4 Property Access:** Use `glib.InternObject(element).ObjectProperty("name")` to access GObject properties from GStreamer elements.
 - **GTK Widget Tests:** Skip GTK widget tests when no display is available (`DISPLAY` or `WAYLAND_DISPLAY` env vars).
+- **AI Provider Pattern:** Use REST APIs instead of native SDKs to avoid heavy dependencies. Factory pattern with environment-based config keeps provider selection flexible.
+- **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms".
 
 ## General
 - **CODE REVIEW:** Passing tests ≠ working feature. Manual QA is essential for hardware/OS-dependent features.
