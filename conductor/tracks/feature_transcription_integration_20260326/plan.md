@@ -28,11 +28,11 @@ UI integration in cmd/verbal/main.go:
 - [x] Show progress indicator during transcription
 - [x] Handle errors gracefully in UI
 
-## Phase 3: End-to-End Flow [ ] Not Started
-- [ ] Wire recording → save → transcribe workflow
-- [ ] Store transcription results with recording metadata
-- [ ] Display word-level timestamps
-- [ ] Integration tests
+## Phase 3: End-to-End Flow [x] Completed
+- [x] Wire recording → save → transcribe workflow
+- [x] Store transcription results with recording metadata
+- [x] Display word-level timestamps
+- [x] Integration tests
 
 ## Success Criteria
 - User can record, then transcribe with one click

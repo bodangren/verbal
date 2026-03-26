@@ -259,9 +259,15 @@ func activate(app *gtk.Application) {
 				if err != nil {
 					transcriptionView.SetError(err)
 					transcribeButton.SetSensitive(true)
+					meta := transcription.NewRecordingMetadata(lastRecordingPath)
+					meta.SetTranscribeError(err)
+					_ = meta.Save()
 				} else {
 					transcriptionView.SetResult(result)
 					transcribeButton.SetSensitive(true)
+					meta := transcription.NewRecordingMetadata(lastRecordingPath)
+					meta.SetTranscription(result)
+					_ = meta.Save()
 				}
 				return false
 			})

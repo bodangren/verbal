@@ -62,19 +62,26 @@ func (tv *TranscriptionView) Widget() *gtk.Box {
 
 func (tv *TranscriptionView) SetResult(result *ai.TranscriptionResult) {
 	tv.container.SetVisible(true)
-	tv.status.SetText(fmt.Sprintf("Language: %s | Duration: %.1fs | Provider: %s",
-		result.Language, result.Duration, result.Provider))
+	tv.status.SetText(fmt.Sprintf("Language: %s | Duration: %.1fs | Provider: %s | Words: %d",
+		result.Language, result.Duration, result.Provider, len(result.Words)))
 
-	tv.buffer.SetText(result.Text)
+	var sb strings.Builder
+	sb.WriteString(result.Text)
+	sb.WriteString("\n\n")
 
 	if len(result.Words) > 0 {
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Words (%d):\n", len(result.Words)))
+		sb.WriteString("--- Word Timestamps ---\n")
 		for _, w := range result.Words {
-			sb.WriteString(fmt.Sprintf("  [%.2f-%.2f] %s\n", w.Start, w.End, w.Word))
+			confidence := ""
+			if w.Confidence > 0 {
+				confidence = fmt.Sprintf(" (%.0f%%)", w.Confidence*100)
+			}
+			sb.WriteString(fmt.Sprintf("[%.2fs - %.2fs] %s%s\n", w.Start, w.End, w.Word, confidence))
 		}
-		tv.buffer.SetText(sb.String())
 	}
+
+	tv.buffer.SetText(sb.String())
+	tv.textView.RemoveCSSClass("error")
 }
 
 func (tv *TranscriptionView) SetStatus(status string) {
