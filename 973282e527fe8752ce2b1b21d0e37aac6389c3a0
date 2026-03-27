@@ -1,0 +1,1 @@
+Task: Add retry with exponential backoff. Already implemented in Transcribe() method. Added dedicated tests: RetryOn429ThenSuccess, RetryExhausted, NoRetryOnAuthError.
