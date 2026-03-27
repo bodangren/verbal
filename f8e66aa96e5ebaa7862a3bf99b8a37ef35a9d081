@@ -1,0 +1,1 @@
+Phase 3 checkpoint: Google Speech-to-Text HTTP client implemented with base64 audio upload, word-level timestamps, retry with backoff, parseGoogleDuration. 6 test cases + duration parsing tests all passing.
