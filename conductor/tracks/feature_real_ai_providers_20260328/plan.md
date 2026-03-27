@@ -10,7 +10,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: OpenAI Whisper Provider
-- [x] Task: Implement OpenAI Whisper HTTP client [commit: pending]
+- [x] Task: Implement OpenAI Whisper HTTP client [commit: 16f5833]
     - [x] Write tests with `httptest` mock server: success, auth error, rate limit, server error
     - [x] Implement multipart upload to `POST https://api.openai.com/v1/audio/transcriptions`
     - [x] Parse response into `TranscriptionResult` with word-level timestamps
