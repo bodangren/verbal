@@ -14,7 +14,7 @@
     - [x] Write tests with `httptest` mock server: success, auth error, rate limit, server error
     - [x] Implement multipart upload to `POST https://api.openai.com/v1/audio/transcriptions`
     - [x] Parse response into `TranscriptionResult` with word-level timestamps
-- [x] Task: Add retry with exponential backoff for transient errors [commit: pending]
+- [x] Task: Add retry with exponential backoff for transient errors [commit: 973282e]
     - [x] Write tests for retry behavior (429 → retry → success)
     - [x] Implement retry logic with max 3 attempts and jitter
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Whisper Provider' (Protocol in workflow.md)
