@@ -19,7 +19,7 @@
     - [x] Implement retry logic with max 3 attempts and jitter
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Whisper Provider' (Protocol in workflow.md)
 
-## Phase 3: Google Speech-to-Text Provider
+## Phase 3: Google Speech-to-Text Provider [checkpoint: f8e66aa]
 - [x] Task: Implement Google Speech-to-Text HTTP client [commit: 947ba1f]
     - [x] Write tests with `httptest` mock server: success, auth error, server error
     - [x] Implement REST call to Google Speech-to-Text API with API key auth
