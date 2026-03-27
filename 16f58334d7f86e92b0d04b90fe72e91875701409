@@ -1,0 +1,1 @@
+Task: OpenAI Whisper HTTP client. Multipart upload, verbose_json with word timestamps, retry with backoff, typed errors. 6 test cases with httptest mock.
