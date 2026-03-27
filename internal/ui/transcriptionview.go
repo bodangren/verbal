@@ -2,108 +2,70 @@ package ui
 
 import (
 	"fmt"
-	"strings"
-
 	"verbal/internal/ai"
-
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
 type TranscriptionView struct {
-	container *gtk.Box
-	textView  *gtk.TextView
-	buffer    *gtk.TextBuffer
-	status    *gtk.Label
+	box    *gtk.Box
+	label  *gtk.Label
+	text   *gtk.TextView
+	buffer *gtk.TextBuffer
 }
 
 func NewTranscriptionView() *TranscriptionView {
-	tv := &TranscriptionView{}
+	box := gtk.NewBox(gtk.OrientationVertical, 8)
+	box.AddCSSClass("transcription-view")
+	box.SetVisible(false)
 
-	tv.container = gtk.NewBox(gtk.OrientationVertical, 8)
-	tv.container.SetMarginTop(12)
-	tv.container.SetMarginBottom(12)
+	label := gtk.NewLabel("Transcription Result")
+	label.AddCSSClass("title-label")
 
-	titleLabel := gtk.NewLabel("Transcription")
-	titleLabel.AddCSSClass("title-4")
-	titleLabel.SetHAlign(gtk.AlignStart)
-	tv.container.Append(titleLabel)
+	buffer := gtk.NewTextBuffer(nil)
+	text := gtk.NewTextViewWithBuffer(buffer)
+	text.SetEditable(false)
+	text.SetWrapMode(gtk.WrapWord)
+	text.SetSizeRequest(-1, 200)
 
-	tv.status = gtk.NewLabel("No transcription yet")
-	tv.status.AddCSSClass("dim-label")
-	tv.status.SetHAlign(gtk.AlignStart)
-	tv.container.Append(tv.status)
+	scrolled := gtk.NewScrolledWindow()
+	scrolled.SetChild(text)
+	scrolled.SetVExpand(true)
 
-	scrolledWindow := gtk.NewScrolledWindow()
-	scrolledWindow.SetMinContentHeight(150)
-	scrolledWindow.SetHExpand(true)
-	scrolledWindow.SetVExpand(true)
+	box.Append(label)
+	box.Append(scrolled)
 
-	tv.buffer = gtk.NewTextBuffer(nil)
-	tv.textView = gtk.NewTextViewWithBuffer(tv.buffer)
-	tv.textView.SetEditable(false)
-	tv.textView.SetWrapMode(gtk.WrapWordChar)
-	tv.textView.AddCSSClass("transcription-text")
-	tv.textView.SetMarginStart(8)
-	tv.textView.SetMarginEnd(8)
-	tv.textView.SetMarginTop(8)
-	tv.textView.SetMarginBottom(8)
-
-	scrolledWindow.SetChild(tv.textView)
-	tv.container.Append(scrolledWindow)
-
-	tv.container.SetVisible(false)
-
-	return tv
-}
-
-func (tv *TranscriptionView) Widget() *gtk.Box {
-	return tv.container
-}
-
-func (tv *TranscriptionView) SetResult(result *ai.TranscriptionResult) {
-	tv.container.SetVisible(true)
-	tv.status.SetText(fmt.Sprintf("Language: %s | Duration: %.1fs | Provider: %s | Words: %d",
-		result.Language, result.Duration, result.Provider, len(result.Words)))
-
-	var sb strings.Builder
-	sb.WriteString(result.Text)
-	sb.WriteString("\n\n")
-
-	if len(result.Words) > 0 {
-		sb.WriteString("--- Word Timestamps ---\n")
-		for _, w := range result.Words {
-			confidence := ""
-			if w.Confidence > 0 {
-				confidence = fmt.Sprintf(" (%.0f%%)", w.Confidence*100)
-			}
-			sb.WriteString(fmt.Sprintf("[%.2fs - %.2fs] %s%s\n", w.Start, w.End, w.Word, confidence))
-		}
+	return &TranscriptionView{
+		box:    box,
+		label:  label,
+		text:   text,
+		buffer: buffer,
 	}
-
-	tv.buffer.SetText(sb.String())
-	tv.textView.RemoveCSSClass("error")
 }
 
-func (tv *TranscriptionView) SetStatus(status string) {
-	tv.container.SetVisible(true)
-	tv.status.SetText(status)
-	tv.buffer.SetText("")
+func (v *TranscriptionView) Widget() *gtk.Box {
+	return v.box
 }
 
-func (tv *TranscriptionView) SetError(err error) {
-	tv.container.SetVisible(true)
-	tv.status.SetText("Error")
-	tv.buffer.SetText(err.Error())
-	tv.textView.AddCSSClass("error")
+func (v *TranscriptionView) SetResult(result *ai.TranscriptionResult) {
+	v.box.SetVisible(true)
+	v.label.SetText("Transcription Complete")
+	v.buffer.SetText(result.Text)
 }
 
-func (tv *TranscriptionView) Clear() {
-	tv.container.SetVisible(false)
-	tv.status.SetText("No transcription yet")
-	tv.buffer.SetText("")
-	tv.textView.RemoveCSSClass("error")
+func (v *TranscriptionView) SetStatus(status string) {
+	v.box.SetVisible(true)
+	v.label.SetText(status)
 }
 
-func (tv *TranscriptionView) Show() {
-	tv.container.SetVisible(true)
+func (v *TranscriptionView) SetError(err error) {
+	v.box.SetVisible(true)
+	v.label.SetText(fmt.Sprintf("Error: %v", err))
+}
+
+func (v *TranscriptionView) Show() {
+	v.box.SetVisible(true)
+}
+
+func (v *TranscriptionView) Hide() {
+	v.box.SetVisible(false)
 }

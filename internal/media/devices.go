@@ -3,6 +3,7 @@ package media
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -30,11 +31,11 @@ type Device struct {
 	Path      string
 	Type      DeviceType
 	IsDefault bool
+	Volume    float64
 }
 
 func ListVideoDevices() ([]Device, error) {
 	var devices []Device
-
 	entries, err := filepath.Glob("/dev/video*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list video devices: %w", err)
@@ -45,7 +46,6 @@ func ListVideoDevices() ([]Device, error) {
 		if err != nil {
 			continue
 		}
-
 		if info.Mode()&os.ModeCharDevice == 0 {
 			continue
 		}
@@ -58,28 +58,72 @@ func ListVideoDevices() ([]Device, error) {
 			IsDefault: i == 0,
 		})
 	}
-
 	return devices, nil
 }
 
 func ListAudioDevices() ([]Device, error) {
-	var devices []Device
-
-	sources, err := listPulseAudioSources()
+	// Use wpctl status to find sources (microphones)
+	cmd := exec.Command("wpctl", "status")
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		// Fallback if wpctl fails
+		return []Device{{Name: "Default Audio Input", Path: "default", Type: DeviceAudio, IsDefault: true}}, nil
 	}
 
-	for i, source := range sources {
-		devices = append(devices, Device{
-			Name:      source,
-			Path:      source,
-			Type:      DeviceAudio,
-			IsDefault: i == 0,
-		})
+	return parseWpctlSources(string(out)), nil
+}
+
+func parseWpctlSources(output string) []Device {
+	var devices []Device
+	lines := strings.Split(output, "\n")
+	inSources := false
+
+	treeChars := "│├└─ ─"
+
+	for _, line := range lines {
+		if strings.Contains(line, "Sources:") {
+			inSources = true
+			continue
+		}
+		if inSources && strings.TrimSpace(line) == "" {
+			break
+		}
+		if inSources && strings.Contains(line, ".") {
+			line = strings.TrimLeft(line, treeChars)
+			line = strings.TrimSpace(line)
+			isDefault := strings.HasPrefix(line, "*")
+			line = strings.TrimPrefix(line, "*")
+			line = strings.TrimSpace(line)
+
+			// Format: "52. Built-in Audio Analog Stereo [vol: 0.03]"
+			parts := strings.SplitN(line, ".", 2)
+			if len(parts) < 2 {
+				continue
+			}
+			id := strings.TrimSpace(parts[0])
+			nameVol := strings.TrimSpace(parts[1])
+
+			name := nameVol
+			vol := 1.0
+			if idx := strings.LastIndex(nameVol, "[vol:"); idx != -1 {
+				name = strings.TrimSpace(nameVol[:idx])
+				fmt.Sscanf(nameVol[idx:], "[vol: %f]", &vol)
+			}
+
+			devices = append(devices, Device{
+				Name:      name,
+				Path:      id,
+				Type:      DeviceAudio,
+				IsDefault: isDefault,
+				Volume:    vol,
+			})
+		}
 	}
 
-	return devices, nil
+	if len(devices) == 0 {
+		return []Device{{Name: "Default Audio Input", Path: "default", Type: DeviceAudio, IsDefault: true}}
+	}
+	return devices
 }
 
 func GetDefaultVideoDevice() (*Device, error) {
@@ -87,17 +131,9 @@ func GetDefaultVideoDevice() (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	for _, d := range devices {
-		if d.IsDefault {
-			return &d, nil
-		}
-	}
-
 	if len(devices) > 0 {
 		return &devices[0], nil
 	}
-
 	return nil, fmt.Errorf("no video devices found")
 }
 
@@ -106,17 +142,14 @@ func GetDefaultAudioDevice() (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	for _, d := range devices {
 		if d.IsDefault {
 			return &d, nil
 		}
 	}
-
 	if len(devices) > 0 {
 		return &devices[0], nil
 	}
-
 	return nil, fmt.Errorf("no audio devices found")
 }
 
@@ -125,22 +158,11 @@ func HasVideoDevice() bool {
 	return err == nil && len(devices) > 0
 }
 
-func HasAudioDevice() bool {
-	devices, err := ListAudioDevices()
-	return err == nil && len(devices) > 0
-}
-
 func getDeviceName(path string) string {
 	base := filepath.Base(path)
-
 	sysfsPath := filepath.Join("/sys/class/video4linux", base, "name")
 	if data, err := os.ReadFile(sysfsPath); err == nil {
 		return strings.TrimSpace(string(data))
 	}
-
 	return base
-}
-
-func listPulseAudioSources() ([]string, error) {
-	return []string{"default"}, nil
 }

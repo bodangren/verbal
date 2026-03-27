@@ -2,160 +2,74 @@ package ai
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"time"
 )
 
-var (
-	ErrNoProvider        = errors.New("no AI provider configured")
-	ErrAuthFailed        = errors.New("authentication failed")
-	ErrRateLimited       = errors.New("rate limited")
-	ErrInvalidResponse   = errors.New("invalid response from provider")
-	ErrFileTooLarge      = errors.New("file too large for transcription")
-	ErrUnsupportedFormat = errors.New("unsupported audio format")
-)
-
-type RateLimitError struct {
-	RetryAfter time.Duration
-}
-
-func (e *RateLimitError) Error() string {
-	return fmt.Sprintf("rate limited, retry after %v", e.RetryAfter)
-}
-
-func (e *RateLimitError) Unwrap() error {
-	return ErrRateLimited
-}
-
-type AuthError struct {
-	Provider string
-	Message  string
-}
-
-func (e *AuthError) Error() string {
-	return fmt.Sprintf("%s auth failed: %s", e.Provider, e.Message)
-}
-
-func (e *AuthError) Unwrap() error {
-	return ErrAuthFailed
-}
-
-type WordTimestamp struct {
-	Word       string  `json:"word"`
-	Start      float64 `json:"start"`
-	End        float64 `json:"end"`
-	Confidence float64 `json:"confidence,omitempty"`
+// Provider defines the interface for AI services (OpenAI, Google, etc.)
+type Provider interface {
+	Name() string
+	Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error)
+	// Future: GenerateBRoll, CloneVoice, etc.
 }
 
 type TranscriptionResult struct {
-	Text     string          `json:"text"`
-	Words    []WordTimestamp `json:"words"`
-	Duration float64         `json:"duration"`
-	Language string          `json:"language,omitempty"`
-	Provider string          `json:"provider"`
+	Text     string         `json:"text"`
+	Words    []Word         `json:"words"`
+	Language string         `json:"language"`
+	Duration float64        `json:"duration"`
 }
 
-func (r *TranscriptionResult) GetWordAtTime(t float64) *WordTimestamp {
-	for _, w := range r.Words {
-		if t >= w.Start && t <= w.End {
-			return &w
-		}
-	}
-	return nil
+type Word struct {
+	Text  string  `json:"text"`
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
 }
 
-func (r *TranscriptionResult) GetSegment(start, end float64) []WordTimestamp {
-	var segment []WordTimestamp
-	for _, w := range r.Words {
-		if w.Start >= start && w.End <= end {
-			segment = append(segment, w)
-		}
-	}
-	return segment
-}
-
-type TranscriptionOptions struct {
-	Language         string
-	EnableTimestamps bool
-}
-
-type TranscriptionProvider interface {
-	Name() string
-	Transcribe(ctx context.Context, audioData []byte, opts TranscriptionOptions) (*TranscriptionResult, error)
-	TranscribeFile(ctx context.Context, filePath string, opts TranscriptionOptions) (*TranscriptionResult, error)
-	IsAvailable() bool
-}
-
-type ProviderConfig struct {
-	Name     string
-	APIKey   string
-	Endpoint string
-	Model    string
-	Timeout  time.Duration
-}
-
-func (c *ProviderConfig) Validate() error {
-	if c.APIKey == "" {
-		return &AuthError{
-			Provider: c.Name,
-			Message:  "API key is required",
-		}
-	}
-	return nil
-}
-
-type ProviderType string
-
-const (
-	ProviderOpenAI ProviderType = "openai"
-	ProviderGoogle ProviderType = "google"
-)
-
-func NewProvider(providerType ProviderType, config ProviderConfig) (TranscriptionProvider, error) {
-	config.Name = string(providerType)
-
-	switch providerType {
-	case ProviderOpenAI:
-		return NewOpenAIProvider(config)
-	case ProviderGoogle:
-		return NewGoogleProvider(config)
-	default:
-		return nil, fmt.Errorf("unknown provider type: %s", providerType)
-	}
-}
-
+// Config holds the credentials for AI providers
 type Config struct {
-	Provider ProviderType
-	OpenAI   ProviderConfig
-	Google   ProviderConfig
+	OpenAIKey string
+	GoogleKey string
 }
 
-func NewProviderFromEnv() (TranscriptionProvider, error) {
-	providerType := ProviderType(os.Getenv("AI_PROVIDER"))
-	if providerType == "" {
-		providerType = ProviderOpenAI
+func NewProviderFromEnv() (Provider, error) {
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		return NewOpenAIProvider(key), nil
 	}
-
-	var config ProviderConfig
-	switch providerType {
-	case ProviderOpenAI:
-		config = ProviderConfig{
-			Name:     "openai",
-			APIKey:   os.Getenv("OPENAI_API_KEY"),
-			Endpoint: os.Getenv("OPENAI_ENDPOINT"),
-			Model:    os.Getenv("OPENAI_MODEL"),
-		}
-	case ProviderGoogle:
-		config = ProviderConfig{
-			Name:     "google",
-			APIKey:   os.Getenv("GOOGLE_API_KEY"),
-			Endpoint: os.Getenv("GOOGLE_SPEECH_ENDPOINT"),
-		}
-	default:
-		return nil, fmt.Errorf("unknown provider type: %s", providerType)
+	if key := os.Getenv("GOOGLE_API_KEY"); key != "" {
+		return NewGoogleProvider(key), nil
 	}
+	return nil, fmt.Errorf("no AI provider credentials found in environment (set OPENAI_API_KEY or GOOGLE_API_KEY)")
+}
 
-	return NewProvider(providerType, config)
+// OpenAI Implementation
+type OpenAIProvider struct {
+	apiKey string
+}
+
+func NewOpenAIProvider(apiKey string) *OpenAIProvider {
+	return &OpenAIProvider{apiKey: apiKey}
+}
+
+func (p *OpenAIProvider) Name() string { return "OpenAI" }
+
+func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
+	// Implementation will use Whisper API
+	return nil, fmt.Errorf("OpenAI transcription not yet implemented in Go")
+}
+
+// Google Implementation
+type GoogleProvider struct {
+	apiKey string
+}
+
+func NewGoogleProvider(apiKey string) *GoogleProvider {
+	return &GoogleProvider{apiKey: apiKey}
+}
+
+func (p *GoogleProvider) Name() string { return "Google" }
+
+func (p *GoogleProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
+	// Implementation will use Vertex AI / Gemini
+	return nil, fmt.Errorf("Google transcription not yet implemented in Go")
 }

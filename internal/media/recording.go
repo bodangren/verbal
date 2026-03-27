@@ -19,7 +19,6 @@ type RecordingPipeline struct {
 type RecordingConfig struct {
 	UseHardware bool
 	VideoDevice string
-	AudioDevice string
 }
 
 func NewRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
@@ -66,15 +65,9 @@ func NewHardwareRecordingPipeline(outputPath string) (*RecordingPipeline, error)
 		return nil, fmt.Errorf("no video device available: %w", err)
 	}
 
-	audioDevice := "default"
-	if dev, err := GetDefaultAudioDevice(); err == nil {
-		audioDevice = dev.Path
-	}
-
 	return NewRecordingPipelineWithConfig(outputPath, RecordingConfig{
 		UseHardware: true,
 		VideoDevice: videoDevice.Path,
-		AudioDevice: audioDevice,
 	})
 }
 
@@ -96,24 +89,15 @@ func buildTestRecordingPipeline(outputPath string) string {
 }
 
 func buildHardwareRecordingPipeline(outputPath string, config RecordingConfig) string {
-	videoSrc := config.VideoDevice
-	if videoSrc == "" {
-		videoSrc = "/dev/video0"
-	}
-
-	audioSrc := config.AudioDevice
-	if audioSrc == "" {
-		audioSrc = "default"
-	}
-
+	// Using autoaudiosrc to find the default mic reliably
+	// Using x264enc + mp4mux for better compatibility
 	return fmt.Sprintf(
 		"v4l2src device=%s ! video/x-raw,width=640,height=480,framerate=30/1 ! "+
-			"videoconvert ! vp8enc ! webmmux name=mux ! "+
+			"videoconvert ! x264enc tune=zerolatency ! mp4mux name=mux ! "+
 			"filesink location=%s "+
-			"pulsesrc device=%s ! audioconvert ! audioresample ! opusenc ! mux.",
-		videoSrc,
+			"autoaudiosrc ! audioconvert ! audioresample ! voaacenc ! mux.",
+		config.VideoDevice,
 		outputPath,
-		audioSrc,
 	)
 }
 
@@ -129,13 +113,6 @@ func (r *RecordingPipeline) Stop() {
 	defer r.mu.Unlock()
 	r.pipeline.SetState(gst.StateNull)
 	r.state = StateStopped
-}
-
-func (r *RecordingPipeline) Pause() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.pipeline.SetState(gst.StatePaused)
-	r.state = StatePaused
 }
 
 func (r *RecordingPipeline) GetState() PipelineState {

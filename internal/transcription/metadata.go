@@ -2,81 +2,72 @@ package transcription
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"verbal/internal/ai"
 )
 
-type RecordingMetadata struct {
-	FilePath        string                  `json:"file_path"`
-	CreatedAt       time.Time               `json:"created_at"`
-	Duration        float64                 `json:"duration"`
-	Transcription   *ai.TranscriptionResult `json:"transcription,omitempty"`
-	TranscribedAt   time.Time               `json:"transcribed_at,omitempty"`
-	TranscribeError string                  `json:"transcribe_error,omitempty"`
+type Metadata struct {
+	SourcePath     string                `json:"source_path"`
+	TranscriptPath string                `json:"transcript_path"`
+	Result         *ai.TranscriptionResult `json:"result,omitempty"`
+	CreatedAt      time.Time             `json:"created_at"`
+	UpdatedAt      time.Time             `json:"updated_at"`
+	Error          string                `json:"error,omitempty"`
 }
 
-func NewRecordingMetadata(filePath string) *RecordingMetadata {
-	return &RecordingMetadata{
-		FilePath:  filePath,
-		CreatedAt: time.Now(),
+func NewRecordingMetadata(sourcePath string) *Metadata {
+	return &Metadata{
+		SourcePath: sourcePath,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 }
 
-func (m *RecordingMetadata) SetTranscription(result *ai.TranscriptionResult) {
-	m.Transcription = result
-	m.TranscribedAt = time.Now()
-	m.Duration = result.Duration
+func (m *Metadata) SetTranscription(result *ai.TranscriptionResult) {
+	m.Result = result
+	m.UpdatedAt = time.Now()
 }
 
-func (m *RecordingMetadata) SetTranscribeError(err error) {
-	m.TranscribeError = err.Error()
+func (m *Metadata) SetTranscribeError(err error) {
+	if err != nil {
+		m.Error = err.Error()
+	} else {
+		m.Error = ""
+	}
+	m.UpdatedAt = time.Now()
 }
 
-func (m *RecordingMetadata) Save() error {
-	metaPath := m.FilePath + ".meta.json"
+func (m *Metadata) Save() error {
+	metadataPath := m.SourcePath + ".meta.json"
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal metadata: %w", err)
 	}
-	return os.WriteFile(metaPath, data, 0644)
+
+	return os.WriteFile(metadataPath, data, 0644)
 }
 
-func LoadRecordingMetadata(filePath string) (*RecordingMetadata, error) {
-	metaPath := filePath + ".meta.json"
-	data, err := os.ReadFile(metaPath)
+func LoadMetadata(sourcePath string) (*Metadata, error) {
+	metadataPath := sourcePath + ".meta.json"
+	data, err := os.ReadFile(metadataPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read metadata file: %w", err)
 	}
-	var meta RecordingMetadata
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return nil, err
+
+	var m Metadata
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
 	}
-	return &meta, nil
+
+	return &m, nil
 }
 
-func (m *RecordingMetadata) HasTranscription() bool {
-	return m.Transcription != nil
-}
-
-func GetRecordingsWithTranscriptions(dir string) ([]*RecordingMetadata, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
+func (m *Metadata) GetTranscriptionPath() string {
+	if m.TranscriptPath != "" {
+		return m.TranscriptPath
 	}
-
-	var recordings []*RecordingMetadata
-	for _, entry := range entries {
-		if filepath.Ext(entry.Name()) == ".webm" {
-			filePath := filepath.Join(dir, entry.Name())
-			meta, err := LoadRecordingMetadata(filePath)
-			if err != nil {
-				meta = NewRecordingMetadata(filePath)
-			}
-			recordings = append(recordings, meta)
-		}
-	}
-	return recordings, nil
+	return m.SourcePath + ".transcript.json"
 }

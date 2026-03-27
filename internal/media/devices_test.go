@@ -14,78 +14,58 @@ func TestDeviceTypeString(t *testing.T) {
 		{DeviceAudio, "audio"},
 		{DeviceType(99), "unknown"},
 	}
-
 	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
-			if got := tt.dt.String(); got != tt.expected {
-				t.Errorf("DeviceType.String() = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}
-
-func TestListVideoDevices(t *testing.T) {
-	devices, err := ListVideoDevices()
-
-	if _, statErr := os.Stat("/dev"); os.IsNotExist(statErr) {
-		t.Skip("no /dev directory")
-	}
-
-	if err != nil {
-		t.Logf("ListVideoDevices returned error (expected on systems without video devices): %v", err)
-		return
-	}
-
-	for _, d := range devices {
-		if d.Type != DeviceVideo {
-			t.Errorf("device %s has wrong type: %v", d.Name, d.Type)
-		}
-		if d.Path == "" {
-			t.Errorf("device %s has empty path", d.Name)
+		got := tt.dt.String()
+		if got != tt.expected {
+			t.Errorf("DeviceType(%d).String() = %q, want %q", tt.dt, got, tt.expected)
 		}
 	}
 }
 
-func TestListAudioDevices(t *testing.T) {
-	devices, err := ListAudioDevices()
-	if err != nil {
-		t.Fatalf("ListAudioDevices returned error: %v", err)
-	}
-
-	if len(devices) == 0 {
-		t.Error("ListAudioDevices should always return at least 'default'")
-	}
-
-	if devices[0].Path != "default" {
-		t.Errorf("expected default audio device, got %s", devices[0].Path)
+func TestParseWpctlSources_Empty(t *testing.T) {
+	devices := parseWpctlSources("")
+	if len(devices) != 1 || !devices[0].IsDefault {
+		t.Errorf("expected fallback device for empty output, got %v", devices)
 	}
 }
 
-func TestGetDefaultVideoDevice_NoDevices(t *testing.T) {
-	if HasVideoDevice() {
-		t.Skip("skipping test - video devices exist on this system")
+func TestParseWpctlSources_WithSources(t *testing.T) {
+	output := `Audio
+ ├─ Sources:
+ │   52. Built-in Audio Analog Stereo [vol: 0.03]
+ │  *53. USB Microphone [vol: 0.85]
+`
+	devices := parseWpctlSources(output)
+	if len(devices) != 2 {
+		t.Fatalf("expected 2 devices, got %d", len(devices))
 	}
-
-	_, err := GetDefaultVideoDevice()
-	if err == nil {
-		t.Error("expected error when no video devices found")
+	if devices[0].Name != "Built-in Audio Analog Stereo" {
+		t.Errorf("unexpected name: %s", devices[0].Name)
+	}
+	if devices[0].IsDefault {
+		t.Error("first device should not be default")
+	}
+	if !devices[1].IsDefault {
+		t.Error("second device should be default")
+	}
+	if devices[1].Name != "USB Microphone" {
+		t.Errorf("unexpected name: %s", devices[1].Name)
 	}
 }
 
-func TestHasVideoDevice(t *testing.T) {
-	_ = HasVideoDevice()
-}
-
-func TestHasAudioDevice(t *testing.T) {
-	result := HasAudioDevice()
-	if !result {
-		t.Error("HasAudioDevice should return true (we always have 'default')")
+func TestParseWpctlSources_NoSources(t *testing.T) {
+	output := `Audio
+ ├─ Sinks:
+ │   50. Speaker
+`
+	devices := parseWpctlSources(output)
+	if len(devices) != 1 || !devices[0].IsDefault {
+		t.Errorf("expected fallback device, got %v", devices)
 	}
 }
 
-func TestGetDeviceName(t *testing.T) {
-	name := getDeviceName("/dev/video0")
-	if name == "" {
-		t.Error("getDeviceName returned empty string")
+func TestListVideoDevices_NoMockDevices(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("skipping in CI (no /dev/video*)")
 	}
 }

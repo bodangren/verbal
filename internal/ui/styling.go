@@ -6,47 +6,41 @@ import (
 )
 
 const ApplicationCSS = `
-window {
-  background-color: @theme_bg_color;
-  color: @theme_fg_color;
-}
-
 .title-label {
-  font-size: 18px;
-  font-weight: bold;
-  margin: 12px;
-}
-
-.action-button {
-  padding: 8px 16px;
-  margin: 4px;
-  border-radius: 6px;
-}
-
-.action-button.suggested-action {
-  background-color: @accent_bg_color;
-  color: @accent_fg_color;
+	font-weight: bold;
+	margin-bottom: 12px;
 }
 
 .status-label {
-  font-style: italic;
-  color: @insensitive_fg_color;
-  margin: 8px;
+	font-style: italic;
+	margin-top: 8px;
+}
+
+.action-button {
+	margin: 4px;
+	padding: 8px;
+}
+
+.dim-label {
+	opacity: 0.7;
+}
+
+.transcription-view {
+	background: rgba(0, 0, 0, 0.05);
+	border-radius: 8px;
+	padding: 12px;
+	margin-top: 16px;
 }
 `
 
-func LoadApplicationCSS() *gtk.CSSProvider {
+func LoadApplicationCSS() {
+	display := gdk.DisplayGetDefault()
+	if display == nil {
+		return
+	}
+
 	provider := gtk.NewCSSProvider()
 	provider.LoadFromData(ApplicationCSS)
 
-	display := gdk.DisplayGetDefault()
-	if display != nil {
-		gtk.StyleContextAddProviderForDisplay(
-			display,
-			provider,
-			gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-		)
-	}
-
-	return provider
+	gtk.StyleContextAddProviderForDisplay(display, provider, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 }

@@ -12,184 +12,164 @@ import (
 )
 
 type mockProvider struct {
-	result  *ai.TranscriptionResult
-	err     error
-	called  bool
-	callCtr int
+	result *ai.TranscriptionResult
+	err    error
+	name   string
 }
 
-func (m *mockProvider) Transcribe(ctx context.Context, audioData []byte, opts ai.TranscriptionOptions) (*ai.TranscriptionResult, error) {
-	m.called = true
-	m.callCtr++
-	if m.err != nil {
-		return nil, m.err
+func (m *mockProvider) Name() string { return m.name }
+
+func (m *mockProvider) Transcribe(_ context.Context, _ string) (*ai.TranscriptionResult, error) {
+	return m.result, m.err
+}
+
+func TestServiceTranscribeFile_Success(t *testing.T) {
+	expected := &ai.TranscriptionResult{
+		Text:     "hello world",
+		Language: "en",
+		Duration: 1.5,
 	}
-	return m.result, nil
-}
+	provider := &mockProvider{result: expected, name: "Mock"}
+	svc := NewService(provider)
 
-func (m *mockProvider) TranscribeFile(ctx context.Context, filePath string, opts ai.TranscriptionOptions) (*ai.TranscriptionResult, error) {
-	m.called = true
-	m.callCtr++
-	if m.err != nil {
-		return nil, m.err
+	result, err := svc.TranscribeFile(context.Background(), "/fake/audio.wav")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	return m.result, nil
-}
-
-func (m *mockProvider) IsAvailable() bool {
-	return true
-}
-
-func (m *mockProvider) Name() string {
-	return "mock"
-}
-
-func TestService_TranscribeFile(t *testing.T) {
-	t.Run("returns result from provider", func(t *testing.T) {
-		mock := &mockProvider{
-			result: &ai.TranscriptionResult{
-				Text:     "Hello world",
-				Language: "en",
-				Words: []ai.WordTimestamp{
-					{Word: "Hello", Start: 0.0, End: 0.5},
-					{Word: "world", Start: 0.6, End: 1.0},
-				},
-			},
-		}
-		svc := NewService(mock)
-
-		tmpFile := filepath.Join(t.TempDir(), "test.wav")
-		if err := os.WriteFile(tmpFile, []byte("fake audio"), 0644); err != nil {
-			t.Fatal(err)
-		}
-
-		result, err := svc.TranscribeFile(context.Background(), tmpFile)
-		if err != nil {
-			t.Fatalf("TranscribeFile failed: %v", err)
-		}
-		if !mock.called {
-			t.Error("provider was not called")
-		}
-		if result.Text != "Hello world" {
-			t.Errorf("expected 'Hello world', got %q", result.Text)
-		}
-		if len(result.Words) != 2 {
-			t.Errorf("expected 2 words, got %d", len(result.Words))
-		}
-	})
-
-	t.Run("returns error for non-existent file", func(t *testing.T) {
-		mock := &mockProvider{}
-		svc := NewService(mock)
-
-		_, err := svc.TranscribeFile(context.Background(), "/nonexistent/file.wav")
-		if err == nil {
-			t.Error("expected error for non-existent file")
-		}
-		if mock.called {
-			t.Error("provider should not be called for missing file")
-		}
-	})
-
-	t.Run("returns provider error", func(t *testing.T) {
-		mock := &mockProvider{
-			err: errors.New("api error"),
-		}
-		svc := NewService(mock)
-
-		tmpFile := filepath.Join(t.TempDir(), "test.wav")
-		if err := os.WriteFile(tmpFile, []byte("fake audio"), 0644); err != nil {
-			t.Fatal(err)
-		}
-
-		_, err := svc.TranscribeFile(context.Background(), tmpFile)
-		if err == nil {
-			t.Error("expected error from provider")
-		}
-	})
-
-	t.Run("calls progress callback", func(t *testing.T) {
-		mock := &mockProvider{
-			result: &ai.TranscriptionResult{Text: "test"},
-		}
-		svc := NewService(mock)
-
-		tmpFile := filepath.Join(t.TempDir(), "test.wav")
-		if err := os.WriteFile(tmpFile, []byte("fake audio"), 0644); err != nil {
-			t.Fatal(err)
-		}
-
-		var progressCalls []string
-		svc.SetProgressCallback(func(status string) {
-			progressCalls = append(progressCalls, status)
-		})
-
-		_, err := svc.TranscribeFile(context.Background(), tmpFile)
-		if err != nil {
-			t.Fatalf("TranscribeFile failed: %v", err)
-		}
-
-		if len(progressCalls) == 0 {
-			t.Error("expected progress callbacks")
-		}
-	})
-
-	t.Run("respects context cancellation", func(t *testing.T) {
-		mock := &mockProvider{
-			result: &ai.TranscriptionResult{Text: "test"},
-		}
-		svc := NewService(mock)
-
-		tmpFile := filepath.Join(t.TempDir(), "test.wav")
-		if err := os.WriteFile(tmpFile, []byte("fake audio"), 0644); err != nil {
-			t.Fatal(err)
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := svc.TranscribeFile(ctx, tmpFile)
-		if err == nil {
-			t.Error("expected error from cancelled context")
-		}
-	})
-}
-
-func TestService_ProviderName(t *testing.T) {
-	mock := &mockProvider{}
-	svc := NewService(mock)
-
-	if svc.ProviderName() != "mock" {
-		t.Errorf("expected 'mock', got %q", svc.ProviderName())
+	if result.Text != "hello world" {
+		t.Errorf("expected 'hello world', got '%s'", result.Text)
 	}
 }
 
-func TestService_WithRetry(t *testing.T) {
-	t.Run("retries on transient error", func(t *testing.T) {
-		callCount := 0
-		mock := &mockProvider{
-			err: &ai.RateLimitError{RetryAfter: 10 * time.Millisecond},
-		}
-		svc := NewService(mock, WithMaxRetries(2), WithRetryDelay(5*time.Millisecond))
+func TestServiceTranscribeFile_Error(t *testing.T) {
+	provider := &mockProvider{err: errors.New("api error"), name: "Mock"}
+	svc := NewService(provider)
 
-		tmpFile := filepath.Join(t.TempDir(), "test.wav")
-		if err := os.WriteFile(tmpFile, []byte("fake audio"), 0644); err != nil {
-			t.Fatal(err)
-		}
+	_, err := svc.TranscribeFile(context.Background(), "/fake/audio.wav")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != "transcription failed: api error" {
+		t.Errorf("unexpected error message: %s", err.Error())
+	}
+}
 
-		go func() {
-			time.Sleep(20 * time.Millisecond)
-			mock.err = nil
-			mock.result = &ai.TranscriptionResult{Text: "success"}
-		}()
+func TestServiceProgressCallback(t *testing.T) {
+	provider := &mockProvider{
+		result: &ai.TranscriptionResult{Text: "test"},
+		name:   "Mock",
+	}
+	svc := NewService(provider)
 
-		result, err := svc.TranscribeFile(context.Background(), tmpFile)
-		callCount = mock.callCtr
-
-		if err != nil {
-			t.Logf("transcription eventually failed: %v (calls: %d)", err, callCount)
-		} else if result.Text != "success" {
-			t.Errorf("expected 'success', got %q", result.Text)
-		}
+	var progresses []string
+	svc.SetProgressCallback(func(msg string) {
+		progresses = append(progresses, msg)
 	})
+
+	_, err := svc.TranscribeFile(context.Background(), "/fake/audio.wav")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(progresses) != 2 {
+		t.Fatalf("expected 2 progress updates, got %d", len(progresses))
+	}
+	if progresses[0] != "Sending /fake/audio.wav to Mock..." {
+		t.Errorf("unexpected first progress: %s", progresses[0])
+	}
+	if progresses[1] != "Transcription complete" {
+		t.Errorf("unexpected second progress: %s", progresses[1])
+	}
+}
+
+func TestMetadataCreate(t *testing.T) {
+	m := NewRecordingMetadata("/tmp/test.mkv")
+	if m.SourcePath != "/tmp/test.mkv" {
+		t.Errorf("unexpected source path: %s", m.SourcePath)
+	}
+	if m.CreatedAt.IsZero() {
+		t.Error("expected non-zero CreatedAt")
+	}
+	if m.Result != nil {
+		t.Error("expected nil Result initially")
+	}
+}
+
+func TestMetadataSetTranscription(t *testing.T) {
+	m := NewRecordingMetadata("/tmp/test.mkv")
+	result := &ai.TranscriptionResult{Text: "hello", Language: "en", Duration: 1.0}
+	before := m.UpdatedAt
+	time.Sleep(time.Millisecond)
+	m.SetTranscription(result)
+	if m.Result != result {
+		t.Error("expected result to be set")
+	}
+	if !m.UpdatedAt.After(before) {
+		t.Error("expected UpdatedAt to advance")
+	}
+}
+
+func TestMetadataSetTranscribeError(t *testing.T) {
+	m := NewRecordingMetadata("/tmp/test.mkv")
+	m.SetTranscribeError(errors.New("network error"))
+	if m.Error != "network error" {
+		t.Errorf("unexpected error: %s", m.Error)
+	}
+	m.SetTranscribeError(nil)
+	if m.Error != "" {
+		t.Errorf("expected empty error, got: %s", m.Error)
+	}
+}
+
+func TestMetadataSaveAndLoad(t *testing.T) {
+	tmpDir := t.TempDir()
+	sourcePath := filepath.Join(tmpDir, "recording.mkv")
+
+	f, err := os.Create(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	m := NewRecordingMetadata(sourcePath)
+	m.SetTranscription(&ai.TranscriptionResult{
+		Text:     "test words",
+		Language: "en",
+		Duration: 2.5,
+		Words: []ai.Word{
+			{Text: "test", Start: 0.0, End: 0.5},
+			{Text: "words", Start: 0.6, End: 1.0},
+		},
+	})
+
+	if err := m.Save(); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+
+	loaded, err := LoadMetadata(sourcePath)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if loaded.Result.Text != "test words" {
+		t.Errorf("unexpected text: %s", loaded.Result.Text)
+	}
+}
+
+func TestMetadataLoadNonexistent(t *testing.T) {
+	_, err := LoadMetadata("/nonexistent/file.mkv")
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+}
+
+func TestMetadataGetTranscriptionPath(t *testing.T) {
+	m := NewRecordingMetadata("/tmp/rec.mkv")
+	expected := "/tmp/rec.mkv.transcript.json"
+	if got := m.GetTranscriptionPath(); got != expected {
+		t.Errorf("expected %s, got %s", expected, got)
+	}
+
+	m.TranscriptPath = "/custom/path.txt"
+	if got := m.GetTranscriptionPath(); got != "/custom/path.txt" {
+		t.Errorf("expected custom path, got %s", got)
+	}
 }

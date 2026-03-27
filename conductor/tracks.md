@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Refactor/Cleanup 2026-03-28** [started: 2026-03-28, completed: 2026-03-28]
+  *Focus: Wire transcription into main UI; add unit tests; resolve regression.*
+  *Link: [./tracks/chore_20260328/](./tracks/chore_20260328/)*
+
 - [x] **Track: Feature - Transcription Integration** [started: 2026-03-26, completed: 2026-03-26]
   *Focus: Integrate AI transcription into main app with UI for results.*
   *Link: [./tracks/feature_transcription_integration_20260326/](./tracks/feature_transcription_integration_20260326/)*
