@@ -20,13 +20,13 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: OpenAI Whisper Provider' (Protocol in workflow.md)
 
 ## Phase 3: Google Speech-to-Text Provider
-- [ ] Task: Implement Google Speech-to-Text HTTP client
-    - [ ] Write tests with `httptest` mock server: success, auth error, server error
-    - [ ] Implement REST call to Google Speech-to-Text API with API key auth
-    - [ ] Parse response into `TranscriptionResult` with word-level timestamps
-- [ ] Task: Add retry with exponential backoff for transient errors
-    - [ ] Write tests for retry behavior
-    - [ ] Implement retry logic (reuse or mirror OpenAI approach)
+- [x] Task: Implement Google Speech-to-Text HTTP client [commit: pending]
+    - [x] Write tests with `httptest` mock server: success, auth error, server error
+    - [x] Implement REST call to Google Speech-to-Text API with API key auth
+    - [x] Parse response into `TranscriptionResult` with word-level timestamps
+- [x] Task: Add retry with exponential backoff for transient errors [commit: pending]
+    - [x] Write tests for retry behavior
+    - [x] Implement retry logic (reuse or mirror OpenAI approach)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Google Speech-to-Text Provider' (Protocol in workflow.md)
 
 ## Phase 4: Smoke Test & Integration

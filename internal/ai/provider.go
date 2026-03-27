@@ -41,18 +41,3 @@ func NewProviderFromEnv() (Provider, error) {
 	}
 	return nil, fmt.Errorf("no AI provider credentials found in environment (set OPENAI_API_KEY or GOOGLE_API_KEY)")
 }
-
-// Google Implementation
-type GoogleProvider struct {
-	apiKey string
-}
-
-func NewGoogleProvider(apiKey string) *GoogleProvider {
-	return &GoogleProvider{apiKey: apiKey}
-}
-
-func (p *GoogleProvider) Name() string { return "Google" }
-
-func (p *GoogleProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
-	return nil, fmt.Errorf("Google transcription not yet implemented in Go")
-}
