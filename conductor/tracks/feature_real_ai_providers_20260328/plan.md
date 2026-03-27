@@ -30,11 +30,11 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Google Speech-to-Text Provider' (Protocol in workflow.md)
 
 ## Phase 4: Smoke Test & Integration
-- [ ] Task: Create sample audio test fixture
-    - [ ] Generate a short (~3s) WAV file for testing
-- [ ] Task: Write smoke tests that hit real APIs (skipped without env keys)
-    - [ ] `TestSmokeOpenAITranscription` — real Whisper call, skip if no `OPENAI_API_KEY`
-    - [ ] `TestSmokeGoogleTranscription` — real Google call, skip if no `GOOGLE_API_KEY`
-- [ ] Task: Verify end-to-end flow through transcription.Service
-    - [ ] Write integration test wiring `Service` → real provider → result validation
+- [x] Task: Create sample audio test fixture [commit: pending]
+    - [x] Generate a short (~1s) WAV file for testing
+- [x] Task: Write smoke tests that hit real APIs (skipped without env keys) [commit: pending]
+    - [x] `TestSmokeOpenAITranscription` — real Whisper call, skip if no `OPENAI_API_KEY`
+    - [x] `TestSmokeGoogleTranscription` — real Google call, skip if no `GOOGLE_API_KEY`
+- [x] Task: Verify end-to-end flow through transcription.Service [commit: pending]
+    - [x] Write integration test wiring `Service` → real provider → result validation
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Smoke Test & Integration' (Protocol in workflow.md)
