@@ -10,10 +10,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: OpenAI Whisper Provider
-- [ ] Task: Implement OpenAI Whisper HTTP client
-    - [ ] Write tests with `httptest` mock server: success, auth error, rate limit, server error
-    - [ ] Implement multipart upload to `POST https://api.openai.com/v1/audio/transcriptions`
-    - [ ] Parse response into `TranscriptionResult` with word-level timestamps
+- [x] Task: Implement OpenAI Whisper HTTP client [commit: pending]
+    - [x] Write tests with `httptest` mock server: success, auth error, rate limit, server error
+    - [x] Implement multipart upload to `POST https://api.openai.com/v1/audio/transcriptions`
+    - [x] Parse response into `TranscriptionResult` with word-level timestamps
 - [ ] Task: Add retry with exponential backoff for transient errors
     - [ ] Write tests for retry behavior (429 → retry → success)
     - [ ] Implement retry logic with max 3 attempts and jitter

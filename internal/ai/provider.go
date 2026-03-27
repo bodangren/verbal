@@ -14,10 +14,10 @@ type Provider interface {
 }
 
 type TranscriptionResult struct {
-	Text     string         `json:"text"`
-	Words    []Word         `json:"words"`
-	Language string         `json:"language"`
-	Duration float64        `json:"duration"`
+	Text     string  `json:"text"`
+	Words    []Word  `json:"words"`
+	Language string  `json:"language"`
+	Duration float64 `json:"duration"`
 }
 
 type Word struct {
@@ -42,22 +42,6 @@ func NewProviderFromEnv() (Provider, error) {
 	return nil, fmt.Errorf("no AI provider credentials found in environment (set OPENAI_API_KEY or GOOGLE_API_KEY)")
 }
 
-// OpenAI Implementation
-type OpenAIProvider struct {
-	apiKey string
-}
-
-func NewOpenAIProvider(apiKey string) *OpenAIProvider {
-	return &OpenAIProvider{apiKey: apiKey}
-}
-
-func (p *OpenAIProvider) Name() string { return "OpenAI" }
-
-func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
-	// Implementation will use Whisper API
-	return nil, fmt.Errorf("OpenAI transcription not yet implemented in Go")
-}
-
 // Google Implementation
 type GoogleProvider struct {
 	apiKey string
@@ -70,6 +54,5 @@ func NewGoogleProvider(apiKey string) *GoogleProvider {
 func (p *GoogleProvider) Name() string { return "Google" }
 
 func (p *GoogleProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
-	// Implementation will use Vertex AI / Gemini
 	return nil, fmt.Errorf("Google transcription not yet implemented in Go")
 }

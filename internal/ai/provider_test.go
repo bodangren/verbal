@@ -26,11 +26,11 @@ func TestNewGoogleProvider(t *testing.T) {
 	}
 }
 
-func TestOpenAIProviderStubReturnsError(t *testing.T) {
+func TestOpenAIProviderTranscribeFileNotFound(t *testing.T) {
 	p := NewOpenAIProvider("test-key")
 	_, err := p.Transcribe(context.Background(), "/nonexistent/audio.wav")
 	if err == nil {
-		t.Error("expected error from stubbed Transcribe")
+		t.Error("expected error for nonexistent file")
 	}
 }
 
