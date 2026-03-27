@@ -1,0 +1,1 @@
+Task: Implement Google Speech-to-Text HTTP client + retry. Base64 audio upload, word-level timestamps, retry with backoff. 6 test cases with httptest mock. Duration parsing for Google format.
