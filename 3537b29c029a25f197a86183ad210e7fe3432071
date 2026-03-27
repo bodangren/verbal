@@ -1,0 +1,1 @@
+Task: Add .env loading. Custom parser (no godotenv dep needed). Loads from ~/.config/verbal/.env, exec dir, and CWD. Tests pass.
