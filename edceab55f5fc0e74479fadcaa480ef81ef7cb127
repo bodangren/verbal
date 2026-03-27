@@ -1,0 +1,1 @@
+Task: Define typed AI errors. Added AuthError, RateLimitError, ServerError types with ClassifyHTTPError and IsRetryable helpers. Tests pass.
