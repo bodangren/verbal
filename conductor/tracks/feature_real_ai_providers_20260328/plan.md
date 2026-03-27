@@ -29,7 +29,7 @@
     - [x] Implement retry logic (reuse or mirror OpenAI approach)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Google Speech-to-Text Provider' (Protocol in workflow.md)
 
-## Phase 4: Smoke Test & Integration
+## Phase 4: Smoke Test & Integration [checkpoint: 32a1ce2]
 - [x] Task: Create sample audio test fixture [commit: 4271f70]
     - [x] Generate a short (~1s) WAV file for testing
 - [x] Task: Write smoke tests that hit real APIs (skipped without env keys) [commit: 4271f70]
