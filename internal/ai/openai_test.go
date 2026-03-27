@@ -199,3 +199,99 @@ func TestOpenAITranscribe_ContextCancelled(t *testing.T) {
 		t.Fatal("expected error for cancelled context")
 	}
 }
+
+func TestOpenAITranscribe_RetryOn429ThenSuccess(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount <= 2 {
+			w.WriteHeader(429)
+			json.NewEncoder(w).Encode(map[string]string{"error": "rate limited"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(openAIResponse{
+			Text:     "retried successfully",
+			Language: "en",
+			Duration: 1.0,
+		})
+	}))
+	defer server.Close()
+
+	provider := NewOpenAIProviderWithClient("key", server.Client())
+	provider.baseURL = server.URL
+	provider.maxRetries = 3
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	result, err := provider.Transcribe(context.Background(), audioFile)
+	if err != nil {
+		t.Fatalf("unexpected error after retry: %v", err)
+	}
+	if result.Text != "retried successfully" {
+		t.Errorf("text = %q, want %q", result.Text, "retried successfully")
+	}
+	if callCount != 3 {
+		t.Errorf("expected 3 calls (2 retries + 1 success), got %d", callCount)
+	}
+}
+
+func TestOpenAITranscribe_RetryExhausted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(map[string]string{"error": "always fails"})
+	}))
+	defer server.Close()
+
+	provider := NewOpenAIProviderWithClient("key", server.Client())
+	provider.baseURL = server.URL
+	provider.maxRetries = 2
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	_, err := provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected error after retries exhausted")
+	}
+
+	var serverErr *ServerError
+	if !errors.As(err, &serverErr) {
+		t.Errorf("expected ServerError, got %T: %v", err, err)
+	}
+}
+
+func TestOpenAITranscribe_NoRetryOnAuthError(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+	}))
+	defer server.Close()
+
+	provider := NewOpenAIProviderWithClient("key", server.Client())
+	provider.baseURL = server.URL
+	provider.maxRetries = 3
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	_, err := provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected error for 401")
+	}
+	if callCount != 1 {
+		t.Errorf("auth error should not retry, got %d calls", callCount)
+	}
+
+	var authErr *AuthError
+	if !errors.As(err, &authErr) {
+		t.Errorf("expected AuthError, got %T: %v", err, err)
+	}
+}
