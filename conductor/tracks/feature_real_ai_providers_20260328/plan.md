@@ -1,7 +1,7 @@
 # Plan: Feature - Real AI Provider Implementations
 
 ## Phase 1: Foundation — Error Types & .env Loading
-- [x] Task: Define typed AI errors (AuthError, RateLimitError, ServerError)
+- [x] Task: Define typed AI errors (AuthError, RateLimitError, ServerError) [commit: edceab5]
     - [x] Write tests for error type checking and unwrapping
     - [x] Implement error types in `internal/ai/errors.go`
 - [ ] Task: Add .env loading at startup
