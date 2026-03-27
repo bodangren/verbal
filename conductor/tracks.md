@@ -6,7 +6,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [~] **Track: Feature - Real AI Provider Implementations** [started: 2026-03-28]
+- [x] **Track: Feature - Real AI Provider Implementations** [started: 2026-03-28, completed: 2026-03-28]
   *Focus: Replace stub providers with real OpenAI Whisper and Google Speech-to-Text HTTP clients.*
   *Link: [./tracks/feature_real_ai_providers_20260328/](./tracks/feature_real_ai_providers_20260328/)*
 

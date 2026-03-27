@@ -1,24 +1,26 @@
-# Current Directive: Transcription Integration
+# Current Directive: AI Providers Implemented
 
 ## Active Directive
-**Transcription integration complete. Ready for next feature.**
+**Real AI providers implemented. Ready for next feature.**
 
 ## Completed
-- [x] TranscriptionService with provider abstraction and retry logic
-- [x] TranscriptionView UI component with progress and error handling
-- [x] RecordingMetadata for persistence
-- [x] End-to-end workflow: record → transcribe → display → save
-- [x] AI Provider Abstraction Layer (OpenAI/Google)
+- [x] Typed AI errors (AuthError, RateLimitError, ServerError)
+- [x] .env loading for API keys at startup
+- [x] OpenAI Whisper HTTP client with retry
+- [x] Google Speech-to-Text HTTP client with retry
+- [x] Smoke tests (skip without API keys)
+- [x] Integration tests for both providers
 
 ## Success Criteria (All Met)
-- User can record, then transcribe with one click
-- Transcription results display with word-level timestamps
-- Progress shown during transcription
-- Errors handled gracefully with user feedback
+- OpenAI Whisper returns real TranscriptionResult with word timestamps
+- Google Speech returns real TranscriptionResult with word timestamps
+- .env loaded automatically from ~/.config/verbal/.env, exec dir, and CWD
+- Unit tests pass with mock HTTP servers (44 total)
+- Smoke tests can transcribe a WAV file end-to-end when keys available
 
 ## Timeline
-Started: 2026-03-26
-Completed: 2026-03-26
+Started: 2026-03-28
+Completed: 2026-03-28
 
 ## Next Steps
 - Video playback synchronized with transcription highlighting

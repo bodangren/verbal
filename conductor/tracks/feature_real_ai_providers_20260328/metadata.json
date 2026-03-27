@@ -1,7 +1,7 @@
 {
   "track_id": "feature_real_ai_providers_20260328",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "created_at": "2026-03-28T12:00:00Z",
   "updated_at": "2026-03-28T12:00:00Z",
   "description": "Replace stub AI providers with real OpenAI Whisper and Google Speech-to-Text HTTP clients, add .env loading, and create smoke tests."

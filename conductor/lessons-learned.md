@@ -15,6 +15,11 @@
 - **Rewrite Review:** A rewrite can still regress completed functionality; verify the end-to-end wiring in `cmd/verbal/main.go` against the directive, not just `go test ./...`.
 - **wpctl Parsing:** `strings.TrimSpace` only strips ASCII whitespace. Unicode tree-drawing characters (│├└) need explicit removal with `strings.TrimLeft` when parsing `wpctl status` output.
 - **TDD for Bug Fixes:** Writing the test first exposed the wpctl parser bug immediately; the parseWpctlSources test saved debugging time.
+- **Custom .env Parser:** A simple bufio.Scanner-based parser avoids the godotenv dependency. Always check os.IsNotExist and don't override existing env vars.
+- **httptest for HTTP Clients:** net/http/httptest is the gold standard for testing HTTP clients in Go. Use NewProviderWithClient pattern to inject test servers.
+- **OpenAI Whisper API:** Use `response_format: verbose_json` + `timestamp_granularities[]: word` for word-level timestamps. Response uses `word` (not `text`) field for individual words.
+- **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms". TrimSuffix("s") then ParseFloat.
+- **Retry Pattern:** Embed retry logic directly in Transcribe() method. Use IsRetryable() to decide whether to retry. Auth errors (401/403) should never retry.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
