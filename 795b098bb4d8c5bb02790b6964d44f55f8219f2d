@@ -1,0 +1,1 @@
+Phase 1 checkpoint: Error types (AuthError, RateLimitError, ServerError) implemented with ClassifyHTTPError and IsRetryable helpers. .env loading implemented. All tests pass.
