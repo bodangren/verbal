@@ -4,9 +4,9 @@
 - [x] Task: Define typed AI errors (AuthError, RateLimitError, ServerError) [commit: edceab5]
     - [x] Write tests for error type checking and unwrapping
     - [x] Implement error types in `internal/ai/errors.go`
-- [ ] Task: Add .env loading at startup
-    - [ ] Write test that verifies env vars are loaded from .env file
-    - [ ] Add `github.com/joho/godotenv` dependency and load in `cmd/verbal/main.go`
+- [x] Task: Add .env loading at startup [commit: pending]
+    - [x] Write test that verifies env vars are loaded from .env file
+    - [x] Add `github.com/joho/godotenv` dependency and load in `cmd/verbal/main.go`
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: OpenAI Whisper Provider

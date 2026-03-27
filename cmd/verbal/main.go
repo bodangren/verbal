@@ -17,6 +17,18 @@ import (
 )
 
 func main() {
+	homeDir, _ := os.UserHomeDir()
+	if homeDir != "" {
+		envPath := filepath.Join(homeDir, ".config", "verbal", ".env")
+		_ = ai.LoadEnvFromFile(envPath)
+	}
+
+	execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	if execDir != "" {
+		_ = ai.LoadEnvFromFile(filepath.Join(execDir, ".env"))
+	}
+	_ = ai.LoadEnvFromFile(".env")
+
 	app := gtk.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
 	app.ConnectActivate(func() {
 		activate(app)
