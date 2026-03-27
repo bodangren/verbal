@@ -9,7 +9,7 @@
     - [x] Add `github.com/joho/godotenv` dependency and load in `cmd/verbal/main.go`
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
-## Phase 2: OpenAI Whisper Provider
+## Phase 2: OpenAI Whisper Provider [checkpoint: 02dcf6e]
 - [x] Task: Implement OpenAI Whisper HTTP client [commit: 16f5833]
     - [x] Write tests with `httptest` mock server: success, auth error, rate limit, server error
     - [x] Implement multipart upload to `POST https://api.openai.com/v1/audio/transcriptions`
