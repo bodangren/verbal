@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Refactor/Cleanup 2026-03-31** [started: 2026-03-31, completed: 2026-03-31]
+  *Focus: Final cleanup and preparation for video sync feature.*
+  *Link: [./tracks/chore_20260331/](./tracks/chore_20260331/)*
+
 - [x] **Track: Chore - Refactor/Cleanup 2026-03-30** [started: 2026-03-30, completed: 2026-03-30]
   *Focus: Cleanup and address tech debt from March 28 AI provider implementation.*
   *Link: [./tracks/chore_20260330/](./tracks/chore_20260330/)*

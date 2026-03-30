@@ -19,27 +19,27 @@ type Pipeline struct {
 
 func NewUnifiedPipeline(outputPath string, useHardware bool) (*Pipeline, error) {
 	var pipelineStr string
-	
+
 	if useHardware {
 		videoDevice, _ := GetDefaultVideoDevice()
 		devicePath := "/dev/video0"
 		if videoDevice != nil {
 			devicePath = videoDevice.Path
 		}
-		
+
 		pipelineStr = fmt.Sprintf(
 			"v4l2src device=%s ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! videoflip method=horizontal-flip ! tee name=t "+
-			"t. ! queue ! autovideosink "+
-			"t. ! queue ! valve name=rec_valve drop=true ! x264enc tune=zerolatency ! matroskamux name=mux ! filesink name=fsink location=%s "+
-			"autoaudiosrc ! audioconvert ! audioresample ! opusenc ! mux.",
+				"t. ! queue ! autovideosink "+
+				"t. ! queue ! valve name=rec_valve drop=true ! x264enc tune=zerolatency ! matroskamux name=mux ! filesink name=fsink location=%s "+
+				"autoaudiosrc ! audioconvert ! audioresample ! opusenc ! mux.",
 			devicePath, outputPath,
 		)
 	} else {
 		pipelineStr = fmt.Sprintf(
 			"videotestsrc ! video/x-raw,width=640,height=480,framerate=30/1 ! videoconvert ! tee name=t "+
-			"t. ! queue ! autovideosink "+
-			"t. ! queue ! valve name=rec_valve drop=true ! x264enc tune=zerolatency ! matroskamux name=mux ! filesink name=fsink location=%s "+
-			"audiotestsrc ! audioconvert ! audioresample ! opusenc ! mux.",
+				"t. ! queue ! autovideosink "+
+				"t. ! queue ! valve name=rec_valve drop=true ! x264enc tune=zerolatency ! matroskamux name=mux ! filesink name=fsink location=%s "+
+				"audiotestsrc ! audioconvert ! audioresample ! opusenc ! mux.",
 			outputPath,
 		)
 	}
@@ -60,7 +60,7 @@ func NewUnifiedPipeline(outputPath string, useHardware bool) (*Pipeline, error) 
 		useHardware: useHardware,
 		outputPath:  outputPath,
 	}
-	
+
 	p.setupBusWatcher()
 
 	return p, nil
@@ -101,17 +101,17 @@ func (p *Pipeline) Stop() {
 func (p *Pipeline) StartRecording() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	valver := p.pipeline.ByName("rec_valve")
 	if valver == nil {
 		return fmt.Errorf("could not find recording valve")
 	}
-	
+
 	valve, ok := valver.(*gst.Element)
 	if !ok {
 		return fmt.Errorf("rec_valve is not an element")
 	}
-	
+
 	fmt.Println("Opening valve for recording...")
 	glib.InternObject(valve).SetObjectProperty("drop", false)
 	p.isRecording = true
@@ -121,7 +121,7 @@ func (p *Pipeline) StartRecording() error {
 func (p *Pipeline) StopRecording() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	valver := p.pipeline.ByName("rec_valve")
 	if valver == nil {
 		return fmt.Errorf("could not find recording valve")
@@ -131,7 +131,7 @@ func (p *Pipeline) StopRecording() error {
 	if !ok {
 		return fmt.Errorf("rec_valve is not an element")
 	}
-	
+
 	fmt.Println("Closing valve, stopping recording...")
 	glib.InternObject(valve).SetObjectProperty("drop", true)
 	p.isRecording = false

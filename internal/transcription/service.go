@@ -10,21 +10,29 @@ import (
 	"verbal/internal/ai"
 )
 
+// Service provides high-level transcription functionality using an AI provider.
+// It handles audio extraction from video files and provides progress callbacks.
 type Service struct {
 	provider   ai.Provider
 	onProgress func(string)
 }
 
+// NewService creates a new transcription service with the given AI provider.
 func NewService(provider ai.Provider) *Service {
 	return &Service{
 		provider: provider,
 	}
 }
 
+// SetProgressCallback sets a callback function that will be called with progress updates
+// during the transcription process.
 func (s *Service) SetProgressCallback(cb func(string)) {
 	s.onProgress = cb
 }
 
+// TranscribeFile transcribes the audio from a video or audio file.
+// For video files, it automatically extracts audio to WAV format before transcription.
+// The ctx parameter can be used to cancel the operation.
 func (s *Service) TranscribeFile(ctx context.Context, videoPath string) (*ai.TranscriptionResult, error) {
 	// Check if file needs audio extraction (video files)
 	audioPath := videoPath

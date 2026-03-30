@@ -9,6 +9,8 @@ import (
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
 )
 
+// RecordingPipeline manages a GStreamer pipeline for recording video/audio.
+// It supports both hardware (webcam/mic) and test source recording.
 type RecordingPipeline struct {
 	pipeline   *gst.Pipeline
 	state      PipelineState
@@ -16,15 +18,20 @@ type RecordingPipeline struct {
 	mu         sync.RWMutex
 }
 
+// RecordingConfig contains configuration options for recording.
 type RecordingConfig struct {
-	UseHardware bool
-	VideoDevice string
+	UseHardware bool   // If true, use hardware devices; otherwise use test sources
+	VideoDevice string // Path to video device (e.g., /dev/video0) when UseHardware is true
 }
 
+// NewRecordingPipeline creates a new recording pipeline using test sources.
+// For hardware recording, use NewHardwareRecordingPipeline or NewRecordingPipelineWithFallback.
 func NewRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
 	return NewRecordingPipelineWithConfig(outputPath, RecordingConfig{UseHardware: false})
 }
 
+// NewRecordingPipelineWithConfig creates a recording pipeline with the specified configuration.
+// It supports both hardware devices and test sources based on the config.
 func NewRecordingPipelineWithConfig(outputPath string, config RecordingConfig) (*RecordingPipeline, error) {
 	if outputPath == "" {
 		return nil, fmt.Errorf("output path cannot be empty")
@@ -59,6 +66,9 @@ func NewRecordingPipelineWithConfig(outputPath string, config RecordingConfig) (
 	}, nil
 }
 
+// NewHardwareRecordingPipeline creates a recording pipeline using the default hardware devices.
+// It automatically detects and uses the default video and audio devices.
+// Returns an error if no video device is available.
 func NewHardwareRecordingPipeline(outputPath string) (*RecordingPipeline, error) {
 	videoDevice, err := GetDefaultVideoDevice()
 	if err != nil {
@@ -71,6 +81,9 @@ func NewHardwareRecordingPipeline(outputPath string) (*RecordingPipeline, error)
 	})
 }
 
+// NewRecordingPipelineWithFallback attempts to create a hardware recording pipeline,
+// but falls back to test sources if no video device is available.
+// This is useful for development or when hardware availability is uncertain.
 func NewRecordingPipelineWithFallback(outputPath string) (*RecordingPipeline, error) {
 	if HasVideoDevice() {
 		return NewHardwareRecordingPipeline(outputPath)
@@ -101,6 +114,8 @@ func buildHardwareRecordingPipeline(outputPath string, config RecordingConfig) s
 	)
 }
 
+// Start begins recording by setting the GStreamer pipeline to PLAYING state.
+// This method is thread-safe.
 func (r *RecordingPipeline) Start() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -108,6 +123,8 @@ func (r *RecordingPipeline) Start() {
 	r.state = StatePlaying
 }
 
+// Stop ends recording by setting the GStreamer pipeline to NULL state.
+// This method is thread-safe.
 func (r *RecordingPipeline) Stop() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -115,12 +132,16 @@ func (r *RecordingPipeline) Stop() {
 	r.state = StateStopped
 }
 
+// GetState returns the current state of the recording pipeline.
+// This method is thread-safe.
 func (r *RecordingPipeline) GetState() PipelineState {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.state
 }
 
+// OutputPath returns the file path where the recording will be saved.
+// This method is thread-safe.
 func (r *RecordingPipeline) OutputPath() string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

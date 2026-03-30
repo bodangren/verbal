@@ -5,6 +5,8 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
+// ApplicationCSS contains the CSS stylesheet for the application.
+// It defines styles for labels, buttons, and the transcription view.
 const ApplicationCSS = `
 .title-label {
 	font-weight: bold;
@@ -33,6 +35,9 @@ const ApplicationCSS = `
 }
 `
 
+// LoadApplicationCSS loads the application CSS stylesheet into GTK.
+// This should be called once during application initialization.
+// If no display is available (e.g., in headless tests), this function does nothing.
 func LoadApplicationCSS() {
 	display := gdk.DisplayGetDefault()
 	if display == nil {
