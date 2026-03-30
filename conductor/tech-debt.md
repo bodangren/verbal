@@ -11,8 +11,8 @@
 ### Low Severity
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
-- Google Speech API uses LINEAR16/16kHz — may need format conversion for non-WAV recordings. [severity: low]
-- Backoff jitter not implemented; uses simple exponential backoff. [severity: low]
+- ~~Google Speech API uses LINEAR16/16kHz — may need format conversion for non-WAV recordings.~~ [resolved: 2026-03-30 - Added FFmpeg audio extraction in transcription service]
+- ~~Backoff jitter not implemented; uses simple exponential backoff.~~ [resolved: 2026-03-30 - Added ±25% jitter to prevent thundering herd]
 
 ## Resolved
 

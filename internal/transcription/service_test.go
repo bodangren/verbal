@@ -73,11 +73,37 @@ func TestServiceProgressCallback(t *testing.T) {
 	if len(progresses) != 2 {
 		t.Fatalf("expected 2 progress updates, got %d", len(progresses))
 	}
-	if progresses[0] != "Sending /fake/audio.wav to Mock..." {
+	if progresses[0] != "Sending audio.wav to Mock..." {
 		t.Errorf("unexpected first progress: %s", progresses[0])
 	}
 	if progresses[1] != "Transcription complete" {
 		t.Errorf("unexpected second progress: %s", progresses[1])
+	}
+}
+
+func TestIsVideoFile(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected bool
+	}{
+		{"video.mp4", true},
+		{"video.webm", true},
+		{"video.mkv", true},
+		{"video.avi", true},
+		{"video.mov", true},
+		{"audio.wav", false},
+		{"audio.mp3", false},
+		{"audio.ogg", false},
+		{"VIDEO.MP4", true}, // test case insensitivity
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			result := isVideoFile(tt.path)
+			if result != tt.expected {
+				t.Errorf("isVideoFile(%q) = %v, want %v", tt.path, result, tt.expected)
+			}
+		})
 	}
 }
 

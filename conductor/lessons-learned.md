@@ -20,6 +20,8 @@
 - **OpenAI Whisper API:** Use `response_format: verbose_json` + `timestamp_granularities[]: word` for word-level timestamps. Response uses `word` (not `text`) field for individual words.
 - **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms". TrimSuffix("s") then ParseFloat.
 - **Retry Pattern:** Embed retry logic directly in Transcribe() method. Use IsRetryable() to decide whether to retry. Auth errors (401/403) should never retry.
+- **Backoff Jitter:** Add ±25% jitter to exponential backoff to prevent thundering herd problems. Use `rand.Int63n()` for randomness.
+- **Audio Extraction:** Video recordings need FFmpeg conversion to WAV (16kHz, mono, PCM16) before transcription. Use `-vn -acodec pcm_s16le -ar 16000 -ac 1` flags.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.

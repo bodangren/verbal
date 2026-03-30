@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -150,5 +151,7 @@ func convertOpenAIWords(words []openAIWord) []Word {
 func backoffDuration(attempt int) time.Duration {
 	base := 500 * time.Millisecond
 	d := base * time.Duration(1<<uint(attempt))
-	return d
+	// Add ±25% jitter to prevent thundering herd
+	jitter := time.Duration(rand.Int63n(int64(d)/2)) - d/4
+	return d + jitter
 }
