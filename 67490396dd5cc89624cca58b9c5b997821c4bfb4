@@ -1,0 +1,5 @@
+Track: chore_20260401
+Type: chore
+Status: completed
+Coverage: Sync package 98.8% (target methods: 100%)
+Files: internal/sync/controller_test.go
