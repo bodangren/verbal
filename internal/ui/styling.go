@@ -33,6 +33,25 @@ const ApplicationCSS = `
 	padding: 12px;
 	margin-top: 16px;
 }
+
+.word-label {
+	padding: 2px 4px;
+	border-radius: 3px;
+	transition: background-color 0.15s ease;
+}
+
+.word-label:hover {
+	background-color: rgba(100, 100, 100, 0.15);
+}
+
+.word-highlighted {
+	background-color: rgba(255, 215, 0, 0.5);
+	font-weight: bold;
+}
+
+.word-highlighted:hover {
+	background-color: rgba(255, 215, 0, 0.7);
+}
 `
 
 // LoadApplicationCSS loads the application CSS stylesheet into GTK.
