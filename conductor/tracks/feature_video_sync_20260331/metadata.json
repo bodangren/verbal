@@ -1,0 +1,9 @@
+{
+  "id": "feature_video_sync_20260331",
+  "type": "feature",
+  "title": "Video Playback with Transcription Synchronization",
+  "description": "Implement synchronized video playback with word-level transcription highlighting. Users can click on transcribed words to jump to that timestamp in the video.",
+  "started": "2026-03-31",
+  "target_completion": "2026-03-31",
+  "status": "in_progress"
+}

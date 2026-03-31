@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [~] **Track: Feature - Video Playback with Transcription Sync** [started: 2026-03-31, in progress]
+  *Focus: Implement synchronized video playback with word-level transcription highlighting.*
+  *Link: [./tracks/feature_video_sync_20260331/](./tracks/feature_video_sync_20260331/)*
+
 - [x] **Track: Chore - Refactor/Cleanup 2026-03-31** [started: 2026-03-31, completed: 2026-03-31]
   *Focus: Final cleanup and preparation for video sync feature.*
   *Link: [./tracks/chore_20260331/](./tracks/chore_20260331/)*
