@@ -40,3 +40,7 @@ coverage/
 .env
 .env.local
 .env.*.local
+
+# Go build artifacts
+/verbal
+*.exe

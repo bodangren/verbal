@@ -57,6 +57,7 @@ func TestGetCurrentWordIndex(t *testing.T) {
 		{position: 1.8, wantIdx: 3},   // Middle of fourth word
 		{position: -0.5, wantIdx: -1}, // Before first word
 		{position: 5.0, wantIdx: 3},   // After last word
+		{position: 0.55, wantIdx: 0},  // Gap between first and second (should return first)
 	}
 
 	for _, tt := range tests {
@@ -257,5 +258,74 @@ func TestGetWordAt(t *testing.T) {
 	_, err = ctrl.GetWordAt(5)
 	if err == nil {
 		t.Error("expected error for out of bounds index")
+	}
+}
+
+func TestGetCurrentPosition(t *testing.T) {
+	words := []ai.Word{
+		{Text: "hello", Start: 0.0, End: 0.5},
+		{Text: "world", Start: 0.6, End: 1.0},
+	}
+	ctrl := NewController(&ai.TranscriptionResult{Words: words})
+
+	// Initial position should be 0
+	if ctrl.GetCurrentPosition() != 0 {
+		t.Errorf("expected initial position 0, got %f", ctrl.GetCurrentPosition())
+	}
+
+	// Update position and verify
+	ctrl.UpdatePosition(0.3)
+	if ctrl.GetCurrentPosition() != 0.3 {
+		t.Errorf("expected position 0.3, got %f", ctrl.GetCurrentPosition())
+	}
+
+	// Update to another position
+	ctrl.UpdatePosition(1.5)
+	if ctrl.GetCurrentPosition() != 1.5 {
+		t.Errorf("expected position 1.5, got %f", ctrl.GetCurrentPosition())
+	}
+}
+
+func TestGetCurrentWordIndexCached(t *testing.T) {
+	words := []ai.Word{
+		{Text: "first", Start: 0.0, End: 0.5},
+		{Text: "second", Start: 0.6, End: 1.0},
+		{Text: "third", Start: 1.1, End: 1.5},
+	}
+	ctrl := NewController(&ai.TranscriptionResult{Words: words})
+
+	// Initial cached index should be -1
+	if ctrl.GetCurrentWordIndexCached() != -1 {
+		t.Errorf("expected initial cached index -1, got %d", ctrl.GetCurrentWordIndexCached())
+	}
+
+	// Update position to first word
+	ctrl.UpdatePosition(0.2)
+	if ctrl.GetCurrentWordIndexCached() != 0 {
+		t.Errorf("expected cached index 0, got %d", ctrl.GetCurrentWordIndexCached())
+	}
+
+	// Update position within same word - cached index shouldn't change
+	ctrl.UpdatePosition(0.4)
+	if ctrl.GetCurrentWordIndexCached() != 0 {
+		t.Errorf("expected cached index still 0, got %d", ctrl.GetCurrentWordIndexCached())
+	}
+
+	// Update position to second word
+	ctrl.UpdatePosition(0.8)
+	if ctrl.GetCurrentWordIndexCached() != 1 {
+		t.Errorf("expected cached index 1, got %d", ctrl.GetCurrentWordIndexCached())
+	}
+
+	// Update position to third word
+	ctrl.UpdatePosition(1.3)
+	if ctrl.GetCurrentWordIndexCached() != 2 {
+		t.Errorf("expected cached index 2, got %d", ctrl.GetCurrentWordIndexCached())
+	}
+
+	// Update position after last word - should remain on last word
+	ctrl.UpdatePosition(2.0)
+	if ctrl.GetCurrentWordIndexCached() != 2 {
+		t.Errorf("expected cached index 2 (last word), got %d", ctrl.GetCurrentWordIndexCached())
 	}
 }

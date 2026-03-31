@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Refactor/Cleanup 2026-04-01** [started: 2026-04-01, completed: 2026-04-01]
+  *Focus: Add missing tests for sync controller to achieve 100% coverage.*
+  *Link: [./tracks/chore_20260401/](./tracks/chore_20260401/)*
+
 - [~] **Track: Feature - Video Playback with Transcription Sync** [started: 2026-03-31, in progress]
   *Focus: Implement synchronized video playback with word-level transcription highlighting.*
   *Status: Phases 1-2 complete (sync controller + word widgets). Phases 3-4 pending (GStreamer playback integration).*
