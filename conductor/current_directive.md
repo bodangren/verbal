@@ -22,7 +22,14 @@
 Started: 2026-03-28
 Completed: 2026-03-28
 
+## In Progress
+- **Video playback synchronized with transcription highlighting**
+  - Phase 1: Core sync controller ✅ (91.4% test coverage)
+  - Phase 2: Word widgets ✅ (clickable, highlightable labels)
+  - Phase 3: GStreamer playback integration (pending)
+  - Phase 4: Main window split-pane layout (pending)
+
 ## Next Steps
-- Video playback synchronized with transcription highlighting
+- Complete video sync feature (Phases 3-4)
 - Edit transcription text and export cuts
 - Settings UI for AI provider configuration

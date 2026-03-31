@@ -22,6 +22,10 @@
 - **Retry Pattern:** Embed retry logic directly in Transcribe() method. Use IsRetryable() to decide whether to retry. Auth errors (401/403) should never retry.
 - **Backoff Jitter:** Add ±25% jitter to exponential backoff to prevent thundering herd problems. Use `rand.Int63n()` for randomness.
 - **Audio Extraction:** Video recordings need FFmpeg conversion to WAV (16kHz, mono, PCM16) before transcription. Use `-vn -acodec pcm_s16le -ar 16000 -ac 1` flags.
+- **Binary Search for Timestamps:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use binary search, not linear scan.
+- **GTK4 Cursor:** Use `gdk.NewCursorFromName("pointer", nil)` not `gtk.NewCursor()`. Cursors are set via `widget.SetCursor()`.
+- **FlowBox Scrolling:** FlowBox doesn't have `ScrollToChild()` - wrap in ScrolledWindow and manage scrolling through the parent.
+- **Widget Click Signals:** Use `gtk.GestureClick` controller with `ConnectReleased()` for click handling in GTK4. `ConnectClick` doesn't exist.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
