@@ -29,6 +29,12 @@
 - **GTK4 Cursor:** Use `gdk.NewCursorFromName("pointer", nil)` not `gtk.NewCursor()`. Cursors are set via `widget.SetCursor()`.
 - **FlowBox Scrolling:** FlowBox doesn't have `ScrollToChild()` - wrap in ScrolledWindow and manage scrolling through the parent.
 - **Widget Click Signals:** Use `gtk.GestureClick` controller with `ConnectReleased()` for click handling in GTK4. `ConnectClick` doesn't exist.
+- **GStreamer Query API:** `QueryPosition` and `QueryDuration` return `(int64, bool)` where the int64 is the value and bool indicates success. Time values are in nanoseconds (1 second = 1,000,000,000 ns).
+- **Playback vs Recording Pipelines:** Keep playback and recording pipelines separate. Playback needs position query/seek; recording needs valve control for start/stop.
+- **Sync Integration Pattern:** Create a high-level Integration type that wires PositionMonitor → SyncController → WordHighlighter. This centralizes the sync logic and makes it testable.
+- **Position Polling:** 10fps (100ms) is sufficient for word-level sync. Higher rates waste CPU with no perceptible benefit for reading speed.
+- **Interface Segregation:** Define small interfaces (PipelineQuerier, PlaybackController, WordHighlighter) to make testing easier with mocks.
+- **glib.IdleAdd for UI Updates:** All UI updates from goroutines must use `glib.IdleAdd()`. The sync controller callbacks run on the monitor's goroutine, so highlight updates need IdleAdd.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
