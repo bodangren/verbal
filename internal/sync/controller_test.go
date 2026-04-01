@@ -2,6 +2,7 @@ package sync
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	"verbal/internal/ai"
@@ -327,5 +328,143 @@ func TestGetCurrentWordIndexCached(t *testing.T) {
 	ctrl.UpdatePosition(2.0)
 	if ctrl.GetCurrentWordIndexCached() != 2 {
 		t.Errorf("expected cached index 2 (last word), got %d", ctrl.GetCurrentWordIndexCached())
+	}
+}
+
+// TestSingleWordTranscription tests edge cases with a single word.
+func TestSingleWordTranscription(t *testing.T) {
+	words := []ai.Word{
+		{Text: "only", Start: 1.0, End: 2.0},
+	}
+	ctrl := NewController(&ai.TranscriptionResult{Words: words})
+
+	// Before the word
+	if idx := ctrl.GetCurrentWordIndex(0.5); idx != -1 {
+		t.Errorf("expected -1 before word, got %d", idx)
+	}
+
+	// At word start
+	if idx := ctrl.GetCurrentWordIndex(1.0); idx != 0 {
+		t.Errorf("expected 0 at word start, got %d", idx)
+	}
+
+	// In the middle of word
+	if idx := ctrl.GetCurrentWordIndex(1.5); idx != 0 {
+		t.Errorf("expected 0 in middle of word, got %d", idx)
+	}
+
+	// At word end
+	if idx := ctrl.GetCurrentWordIndex(2.0); idx != 0 {
+		t.Errorf("expected 0 at word end, got %d", idx)
+	}
+
+	// After the word
+	if idx := ctrl.GetCurrentWordIndex(3.0); idx != 0 {
+		t.Errorf("expected 0 after word (last word), got %d", idx)
+	}
+}
+
+// TestConcurrentCallbacks tests thread-safety of callback registration.
+func TestConcurrentCallbacks(t *testing.T) {
+	ctrl := NewController(&ai.TranscriptionResult{
+		Words: []ai.Word{
+			{Text: "hello", Start: 0.0, End: 0.5},
+			{Text: "world", Start: 0.6, End: 1.0},
+		},
+	})
+
+	var counter int
+	var mu sync.Mutex
+
+	// Register multiple callbacks concurrently
+	done := make(chan bool, 10)
+	for i := 0; i < 10; i++ {
+		go func() {
+			unreg := ctrl.RegisterPositionCallback(func(pos float64) {
+				mu.Lock()
+				counter++
+				mu.Unlock()
+			})
+			// Update position to trigger callback
+			ctrl.UpdatePosition(0.3)
+			// Unregister
+			unreg()
+			done <- true
+		}()
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// Verify callbacks were called (at least some should have fired)
+	mu.Lock()
+	if counter == 0 {
+		t.Error("expected some callbacks to fire")
+	}
+	mu.Unlock()
+}
+
+// TestRapidPositionUpdates tests handling of rapid position changes.
+func TestRapidPositionUpdates(t *testing.T) {
+	words := []ai.Word{
+		{Text: "one", Start: 0.0, End: 0.5},
+		{Text: "two", Start: 0.6, End: 1.0},
+		{Text: "three", Start: 1.1, End: 1.5},
+	}
+	ctrl := NewController(&ai.TranscriptionResult{Words: words})
+
+	var wordChanges []int
+	ctrl.RegisterWordChangeCallback(func(wordIdx int) {
+		wordChanges = append(wordChanges, wordIdx)
+	})
+
+	// Rapid position updates
+	positions := []float64{0.1, 0.2, 0.7, 0.8, 1.2, 1.3, 0.1, 0.9, 1.4}
+	for _, pos := range positions {
+		ctrl.UpdatePosition(pos)
+	}
+
+	// Should have callbacks for: -1->0, 0->1, 1->2, 2->0, 0->1, 1->2
+	// That's 6 word changes total
+	if len(wordChanges) == 0 {
+		t.Error("expected word change callbacks")
+	}
+
+	// Final position should give correct word
+	finalIdx := ctrl.GetCurrentWordIndexCached()
+	if finalIdx != 2 {
+		t.Errorf("expected final word index 2, got %d", finalIdx)
+	}
+}
+
+// TestCallbackDuringUnregistration tests safe unregistration during callback execution.
+func TestCallbackDuringUnregistration(t *testing.T) {
+	ctrl := NewController(&ai.TranscriptionResult{
+		Words: []ai.Word{
+			{Text: "test", Start: 0.0, End: 0.5},
+		},
+	})
+
+	var callCount int
+
+	// Register a callback that tries to unregister itself
+	var unreg func()
+	unreg = ctrl.RegisterPositionCallback(func(pos float64) {
+		callCount++
+		if callCount == 1 {
+			unreg() // Unregister during first callback
+		}
+	})
+
+	// First update should work and trigger unregistration
+	ctrl.UpdatePosition(0.2)
+
+	// Second update should not call the callback (it's unregistered)
+	ctrl.UpdatePosition(0.4)
+
+	if callCount != 1 {
+		t.Errorf("expected 1 callback call, got %d", callCount)
 	}
 }

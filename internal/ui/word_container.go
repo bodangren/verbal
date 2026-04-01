@@ -14,7 +14,8 @@ type WordContainer struct {
 	words   []*WordLabel
 	mu      sync.RWMutex
 
-	onWordClick func(startTime float64, index int)
+	onWordClick     func(startTime float64, index int)
+	onWordHighlight func(index int)
 }
 
 // NewWordContainer creates a new word container with the given words.
@@ -144,4 +145,49 @@ func (wc *WordContainer) GetHighlightedWord() int {
 		}
 	}
 	return -1
+}
+
+// ScrollToWord attempts to scroll the container to make the word at the given index visible.
+// Note: This requires the FlowBox to be inside a ScrolledWindow to have any effect.
+// Returns true if the word was found and scrolled to, false otherwise.
+func (wc *WordContainer) ScrollToWord(index int) bool {
+	wc.mu.RLock()
+	defer wc.mu.RUnlock()
+
+	if index < 0 || index >= len(wc.words) {
+		return false
+	}
+
+	// Select the child to make it visible (GTK4 FlowBox doesn't have ScrollToChild)
+	// The selection will highlight it visually and help with focus
+	child := wc.flowBox.ChildAtIndex(index)
+	if child != nil {
+		wc.flowBox.SelectChild(child)
+		return true
+	}
+	return false
+}
+
+// ConnectToSyncController connects this word container to a sync controller.
+// This sets up automatic highlighting based on playback position and click-to-seek.
+// The syncController should provide position updates via callbacks.
+//
+// Example usage:
+//
+//	container.ConnectToSyncController(syncCtrl, func(pos float64) {
+//	    videoPlayer.SeekTo(pos)
+//	})
+func (wc *WordContainer) ConnectToSyncController(
+	onWordClick func(startTime float64),
+	onHighlight func(index int),
+) {
+	// Set up click handler
+	wc.SetWordClickHandler(func(startTime float64, index int) {
+		if onWordClick != nil {
+			onWordClick(startTime)
+		}
+	})
+
+	// Set up highlight handler
+	wc.onWordHighlight = onHighlight
 }

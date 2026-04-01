@@ -1,4 +1,18 @@
 // Package sync provides synchronization between video playback and transcription highlighting.
+//
+// The Controller manages the relationship between video playback position and
+// transcription words. It uses binary search (O(log n)) for efficient word lookup
+// and provides callback-based notifications for position and word changes.
+//
+// For Phase 3 integration (GStreamer video player):
+//
+//  1. Create a Controller with the transcription result
+//  2. Poll video position at ~10fps from GStreamer
+//  3. Call UpdatePosition() with the current playback time
+//  4. Register callbacks to highlight words in the UI
+//  5. Handle word clicks to seek the video player
+//
+// Thread safety: All methods are safe for concurrent use.
 package sync
 
 import (
@@ -201,3 +215,36 @@ func (c *Controller) GetCurrentWordIndexCached() int {
 	defer c.mu.RUnlock()
 	return c.currentWordIdx
 }
+
+// UsageExample demonstrates how to use the Controller with a video player.
+// This example shows the integration pattern for Phase 3 (GStreamer playback).
+//
+// Example:
+//
+//	// 1. Create controller from transcription
+//	ctrl := sync.NewController(transcriptionResult)
+//
+//	// 2. Register word change callback to highlight in UI
+//	ctrl.RegisterWordChangeCallback(func(wordIdx int) {
+//	    wordContainer.SetHighlightedWord(wordIdx)
+//	})
+//
+//	// 3. Set up position polling from GStreamer (10fps)
+//	// In your position monitor goroutine:
+//	go func() {
+//	    ticker := time.NewTicker(100 * time.Millisecond)
+//	    defer ticker.Stop()
+//	    for range ticker.C {
+//	        position := pipeline.GetPosition() // From GStreamer
+//	        glib.IdleAdd(func() {
+//	            ctrl.UpdatePosition(position)
+//	        })
+//	    }
+//	}()
+//
+//	// 4. Handle word clicks to seek video
+//	wordContainer.SetWordClickHandler(func(startTime float64, index int) {
+//	    pipeline.Seek(startTime) // To GStreamer
+//	    ctrl.UpdatePosition(startTime) // Update sync immediately
+//	})
+func UsageExample() {}

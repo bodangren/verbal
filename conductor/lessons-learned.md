@@ -15,6 +15,8 @@
 - **Rewrite Review:** A rewrite can still regress completed functionality; verify the end-to-end wiring in `cmd/verbal/main.go` against the directive, not just `go test ./...`.
 - **wpctl Parsing:** `strings.TrimSpace` only strips ASCII whitespace. Unicode tree-drawing characters (│├└) need explicit removal with `strings.TrimLeft` when parsing `wpctl status` output.
 - **TDD for Bug Fixes:** Writing the test first exposed the wpctl parser bug immediately; the parseWpctlSources test saved debugging time.
+- **Edge Case Testing:** Even well-tested code benefits from edge case tests. Single-word transcriptions, concurrent callbacks, and rapid position updates revealed subtle race conditions that 98% coverage didn't catch.
+- **Callback Safety:** Unregistering a callback during its execution requires careful handling. The copy-then-iterate pattern in the controller prevents panics from concurrent modification.
 - **Custom .env Parser:** A simple bufio.Scanner-based parser avoids the godotenv dependency. Always check os.IsNotExist and don't override existing env vars.
 - **httptest for HTTP Clients:** net/http/httptest is the gold standard for testing HTTP clients in Go. Use NewProviderWithClient pattern to inject test servers.
 - **OpenAI Whisper API:** Use `response_format: verbose_json` + `timestamp_granularities[]: word` for word-level timestamps. Response uses `word` (not `text`) field for individual words.

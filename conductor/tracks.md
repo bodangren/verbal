@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Refactor/Cleanup 2026-04-02** [started: 2026-04-02, completed: 2026-04-02]
+  *Focus: Cleanup from video sync Phases 1-2; add edge case tests; prepare for Phase 3.*
+  *Link: [./tracks/chore_20260402/](./tracks/chore_20260402/)*
+
 - [x] **Track: Chore - Refactor/Cleanup 2026-04-01** [started: 2026-04-01, completed: 2026-04-01]
   *Focus: Add missing tests for sync controller to achieve 100% coverage.*
   *Link: [./tracks/chore_20260401/](./tracks/chore_20260401/)*

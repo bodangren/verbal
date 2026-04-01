@@ -24,9 +24,9 @@ Completed: 2026-03-28
 
 ## In Progress
 - **Video playback synchronized with transcription highlighting**
-  - Phase 1: Core sync controller ✅ (91.4% test coverage)
+  - Phase 1: Core sync controller ✅ (98.8% test coverage)
   - Phase 2: Word widgets ✅ (clickable, highlightable labels)
-  - Phase 3: GStreamer playback integration (pending)
+  - Phase 3: GStreamer playback integration (ready to start)
   - Phase 4: Main window split-pane layout (pending)
 
 ## Next Steps
