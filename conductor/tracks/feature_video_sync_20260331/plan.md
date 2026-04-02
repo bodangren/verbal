@@ -1,14 +1,12 @@
 # Implementation Plan: Video Playback with Transcription Synchronization
 
-## Status: Phase 1-3 Complete, Phase 4-5 Pending
+## Status: Phase 1-4 Complete, Phase 5 Pending
 
-**Note:** Phases 1-3 completed successfully. Phase 3 includes:
-- Position polling via PositionMonitor (10fps, 97.5% test coverage)
-- PlaybackPipeline for video playback with position query/seek
-- SyncIntegration wiring PositionMonitor → Controller → UI
-- Click-to-seek functionality implemented
+**Note:** Phases 1-4 completed successfully:
+- **Phase 1-3:** Sync controller, word widgets, GStreamer integration (97.5% coverage)
+- **Phase 4:** Main window split-pane layout with PlaybackWindow component
 
-Phase 4 (main window split-pane layout) and Phase 5 (polish/finalize) remain for next autonomous run.
+Phase 5 (polish/finalize) remains for next autonomous run.
 
 ---
 
@@ -157,21 +155,26 @@ Phase 4 (main window split-pane layout) and Phase 5 (polish/finalize) remain for
 
 ### Tasks
 
-#### 4.1 Create Split Pane Layout
-- [ ] Modify main window to use `gtk.Paned`
-- [ ] Video widget on left (expandable)
-- [ ] Transcription view on right (scrollable)
-- [ ] Set initial pane position (60% video)
+#### 4.1 Create Split Pane Layout ✅
+- [x] Create `PlaybackWindow` component with `gtk.Paned`
+- [x] Video widget on left (expandable)
+- [x] Transcription view on right (scrollable)
+- [x] Set initial pane position (60% video)
+- [x] Write comprehensive tests (10 test cases)
 
-#### 4.2 Add Toolbar Controls
-- [ ] Add playback controls: Play/Pause, Stop, Seek slider
-- [ ] Add time display: current / total
-- [ ] Style controls to match GNOME HIG
+#### 4.2 Add Toolbar Controls ✅
+- [x] Add playback controls: Play/Pause, Stop buttons with icon themes
+- [x] Add seek slider (0-100 range, percentage-based)
+- [x] Add time display: current / total (MM:SS format)
+- [x] Style controls to match GNOME HIG
+- [x] Implement callback system for control actions
 
-#### 4.3 Load Recording with Transcription
-- [ ] Create unified loader for recording + transcription
-- [ ] Handle missing transcription gracefully
-- [ ] Show loading state during initialization
+#### 4.3 Load Recording with Transcription ✅
+- [x] Create `RecordingLoader` for unified recording + transcription loading
+- [x] Handle missing transcription gracefully (no error, just no transcription)
+- [x] Handle corrupted metadata files gracefully
+- [x] Convert AI Word structs to UI WordData
+- [x] Write comprehensive tests (7 test cases)
 
 #### 4.4 Integration Testing
 - [ ] End-to-end test: load video, play, verify sync

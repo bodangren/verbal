@@ -12,9 +12,11 @@
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
 - Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
+- PlaybackWindow needs integration with actual GStreamer video widget for embedded playback. [severity: low]
 - ~~Google Speech API uses LINEAR16/16kHz — may need format conversion for non-WAV recordings.~~ [resolved: 2026-03-30 - Added FFmpeg audio extraction in transcription service]
 - ~~Backoff jitter not implemented; uses simple exponential backoff.~~ [resolved: 2026-03-30 - Added ±25% jitter to prevent thundering herd]
 - ~~Video sync core implementation~~ [resolved: 2026-04-02 - Phase 3 complete: PositionMonitor, PlaybackPipeline, SyncIntegration all implemented with tests]
+- ~~Main window split-pane layout~~ [resolved: 2026-04-03 - PlaybackWindow component with gtk.Paned, toolbar controls, and RecordingLoader]
 
 ## Resolved
 

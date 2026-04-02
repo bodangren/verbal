@@ -35,6 +35,12 @@
 - **Position Polling:** 10fps (100ms) is sufficient for word-level sync. Higher rates waste CPU with no perceptible benefit for reading speed.
 - **Interface Segregation:** Define small interfaces (PipelineQuerier, PlaybackController, WordHighlighter) to make testing easier with mocks.
 - **glib.IdleAdd for UI Updates:** All UI updates from goroutines must use `glib.IdleAdd()`. The sync controller callbacks run on the monitor's goroutine, so highlight updates need IdleAdd.
+- **GTK4 Paned Widget:** Use `gtk.Paned` for split-pane layouts. Set position with `SetPosition()` and retrieve with `Position()`. Use `SetStartChild()` and `SetEndChild()` for the two panes.
+- **GTK4 Scale (Slider):** Use `gtk.NewScaleWithRange()` for sliders. Call `SetHExpand(true)` to make it expand horizontally. Connect to `ConnectValueChanged()` for seek functionality.
+- **GTK4 Icon Buttons:** Use `gtk.NewButtonFromIconName()` with icon names like `"media-playback-start-symbolic"` for media controls. Add tooltip with `SetTooltipText()`.
+- **Recording Loader Pattern:** Create a dedicated loader type that handles both the video file and its sidecar metadata JSON. Return a result struct with all fields rather than multiple returns for complex loading operations.
+- **Graceful Metadata Handling:** Missing or corrupted metadata files should not fail the video loading process. Load video successfully and treat missing transcription as "not yet transcribed" state.
+- **WordData Conversion:** Maintain separate types for AI layer (`ai.Word`) and UI layer (`WordData`) even if similar. The UI type can have additional presentation-specific fields without polluting the AI layer.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
