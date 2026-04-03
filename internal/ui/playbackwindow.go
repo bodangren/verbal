@@ -75,59 +75,6 @@ func NewPlaybackWindow() *PlaybackWindow {
 	return pw
 }
 
-// createPlaybackToolbar creates the playback control toolbar.
-func createPlaybackToolbar() *gtk.Box {
-	toolbar := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	toolbar.AddCSSClass("playback-toolbar")
-	toolbar.SetMarginStart(12)
-	toolbar.SetMarginEnd(12)
-	toolbar.SetMarginTop(8)
-	toolbar.SetMarginBottom(8)
-
-	// Play button
-	playButton := gtk.NewButtonFromIconName("media-playback-start-symbolic")
-	playButton.AddCSSClass("playback-button")
-	playButton.SetTooltipText("Play")
-
-	// Pause button
-	pauseButton := gtk.NewButtonFromIconName("media-playback-pause-symbolic")
-	pauseButton.AddCSSClass("playback-button")
-	pauseButton.SetTooltipText("Pause")
-
-	// Stop button
-	stopButton := gtk.NewButtonFromIconName("media-playback-stop-symbolic")
-	stopButton.AddCSSClass("playback-button")
-	stopButton.SetTooltipText("Stop")
-
-	// Seek slider
-	seekSlider := gtk.NewScaleWithRange(gtk.OrientationHorizontal, 0, 100, 1)
-	seekSlider.SetDrawValue(false)
-	seekSlider.SetHExpand(true)
-	seekSlider.AddCSSClass("seek-slider")
-
-	// Time label
-	timeLabel := gtk.NewLabel("0:00 / 0:00")
-	timeLabel.AddCSSClass("time-label")
-	timeLabel.SetWidthChars(12)
-
-	// Add controls to toolbar
-	toolbar.Append(playButton)
-	toolbar.Append(pauseButton)
-	toolbar.Append(stopButton)
-	toolbar.Append(seekSlider)
-	toolbar.Append(timeLabel)
-
-	return toolbar
-}
-
-// extractControls extracts control references from the toolbar for later use.
-// This function stores references to the controls for callback management.
-func (pw *PlaybackWindow) extractControls(toolbar *gtk.Box) {
-	// Store references to the controls by accessing them from the toolbar
-	// The toolbar contains: playButton, pauseButton, stopButton, seekSlider, timeLabel
-	// We store these references when the toolbar is created
-}
-
 // createPlaybackToolbarWithRefs creates the toolbar and returns references to controls.
 func createPlaybackToolbarWithRefs(pw *PlaybackWindow) *gtk.Box {
 	toolbar := gtk.NewBox(gtk.OrientationHorizontal, 8)

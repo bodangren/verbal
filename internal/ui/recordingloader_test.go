@@ -249,3 +249,55 @@ func TestRecordingLoader_LoadRecordingResult_WordsToWordData(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordingLoader_LoadDirectoryPath(t *testing.T) {
+	loader := NewRecordingLoader()
+
+	// Create a temporary directory and pass it as the video path
+	tempDir := t.TempDir()
+
+	result := loader.LoadRecording(tempDir)
+
+	if result.Error == nil {
+		t.Error("Expected error for directory path, got nil")
+	}
+	if result.Exists {
+		t.Error("Expected Exists=false for directory path")
+	}
+}
+
+func TestRecordingLoader_LoadRecordingWithTranscribeError(t *testing.T) {
+	tempDir := t.TempDir()
+	videoPath := filepath.Join(tempDir, "test_video.mkv")
+	metaPath := filepath.Join(tempDir, "test_video.json")
+
+	err := os.WriteFile(videoPath, []byte("dummy video content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test video file: %v", err)
+	}
+
+	metaContent := `{
+		"video_file": "test_video.mkv",
+		"duration_ms": 5000,
+		"transcribe_error": {
+			"message": "API key invalid"
+		}
+	}`
+	err = os.WriteFile(metaPath, []byte(metaContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test metadata file: %v", err)
+	}
+
+	loader := NewRecordingLoader()
+	result := loader.LoadRecording(videoPath)
+
+	if result.Error != nil {
+		t.Errorf("Unexpected error: %v", result.Error)
+	}
+	if !result.Exists {
+		t.Error("Expected Exists=true for existing file")
+	}
+	if result.HasTranscription {
+		t.Error("Expected HasTranscription=false when transcription had an error")
+	}
+}
