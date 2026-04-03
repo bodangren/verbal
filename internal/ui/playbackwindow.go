@@ -35,6 +35,9 @@ type PlaybackWindow struct {
 	seekSlider  *gtk.Scale
 	timeLabel   *gtk.Label
 
+	// Error display
+	errorLabel *gtk.Label
+
 	// Callbacks
 	onPlay  func()
 	onPause func()
@@ -59,9 +62,15 @@ func NewPlaybackWindow() *PlaybackWindow {
 	// This will be adjusted when the window is realized
 	paned.SetPosition(480) // 60% of 800px default width
 
+	// Error label (hidden by default)
+	errorLabel := gtk.NewLabel("")
+	errorLabel.AddCSSClass("error-label")
+	errorLabel.SetVisible(false)
+
 	pw := &PlaybackWindow{
-		root:  root,
-		paned: paned,
+		root:       root,
+		paned:      paned,
+		errorLabel: errorLabel,
 	}
 
 	// Create toolbar with playback controls (stores refs in pw)
@@ -70,6 +79,7 @@ func NewPlaybackWindow() *PlaybackWindow {
 
 	// Assemble layout
 	root.Append(paned)
+	root.Append(errorLabel)
 	root.Append(toolbar)
 
 	return pw
@@ -235,4 +245,16 @@ func formatDuration(seconds float64) string {
 	mins := int(seconds) / 60
 	secs := int(seconds) % 60
 	return fmt.Sprintf("%d:%02d", mins, secs)
+}
+
+// ShowError displays an error message to the user.
+// The error label becomes visible with the given message.
+func (pw *PlaybackWindow) ShowError(message string) {
+	pw.errorLabel.SetText(message)
+	pw.errorLabel.SetVisible(true)
+}
+
+// ClearError hides the error message.
+func (pw *PlaybackWindow) ClearError() {
+	pw.errorLabel.SetVisible(false)
 }

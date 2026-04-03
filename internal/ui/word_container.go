@@ -16,6 +16,10 @@ type WordContainer struct {
 
 	onWordClick     func(startTime float64, index int)
 	onWordHighlight func(index int)
+
+	// lastHighlightedIndex tracks the currently highlighted word to avoid
+	// iterating all words on every position update (O(1) instead of O(n)).
+	lastHighlightedIndex int
 }
 
 // NewWordContainer creates a new word container with the given words.
@@ -29,9 +33,10 @@ func NewWordContainer(words []WordData) *WordContainer {
 	flowBox.AddCSSClass("word-container")
 
 	wc := &WordContainer{
-		flowBox:     flowBox,
-		words:       make([]*WordLabel, 0, len(words)),
-		onWordClick: nil,
+		flowBox:              flowBox,
+		words:                make([]*WordLabel, 0, len(words)),
+		onWordClick:          nil,
+		lastHighlightedIndex: -1,
 	}
 
 	// Create and add word labels
@@ -72,18 +77,22 @@ func (wc *WordContainer) handleWordClick(startTime float64, index int) {
 
 // SetHighlightedWord sets the highlighted state for a specific word by index.
 // Only one word can be highlighted at a time; previous highlights are cleared.
+// This method is O(1) because it tracks the last highlighted index.
 func (wc *WordContainer) SetHighlightedWord(index int) {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	// Clear all highlights first
-	for _, word := range wc.words {
-		word.SetHighlighted(false)
+	// Clear previous highlight only (O(1) instead of iterating all words)
+	if wc.lastHighlightedIndex >= 0 && wc.lastHighlightedIndex < len(wc.words) {
+		wc.words[wc.lastHighlightedIndex].SetHighlighted(false)
 	}
 
 	// Set new highlight if valid
 	if index >= 0 && index < len(wc.words) {
 		wc.words[index].SetHighlighted(true)
+		wc.lastHighlightedIndex = index
+	} else {
+		wc.lastHighlightedIndex = -1
 	}
 }
 
@@ -115,6 +124,7 @@ func (wc *WordContainer) Clear() {
 		wc.flowBox.Remove(word.Widget())
 	}
 	wc.words = wc.words[:0]
+	wc.lastHighlightedIndex = -1
 }
 
 // SetWords replaces all words in the container with a new set.

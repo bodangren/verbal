@@ -170,6 +170,7 @@ func (i *Integration) IsRunning() bool {
 
 // HandleWordClick handles a click on a word at the given start time.
 // This seeks the video player to the word's position and updates the sync state.
+// If the seek fails, the highlight is not updated to avoid desync.
 //
 // This method should be called from the word container's click handler.
 // It is safe to call from any thread (GTK callbacks run on main thread).
@@ -184,7 +185,10 @@ func (i *Integration) HandleWordClick(startTime float64, wordIndex int) {
 	}
 
 	// Seek the video player
-	player.SeekTo(startTime)
+	if !player.SeekTo(startTime) {
+		// Seek failed - do not update highlight to avoid desync
+		return
+	}
 
 	// Immediately update the sync controller
 	// This ensures the highlight updates without waiting for next poll

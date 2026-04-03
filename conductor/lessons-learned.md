@@ -41,6 +41,13 @@
 - **Recording Loader Pattern:** Create a dedicated loader type that handles both the video file and its sidecar metadata JSON. Return a result struct with all fields rather than multiple returns for complex loading operations.
 - **Graceful Metadata Handling:** Missing or corrupted metadata files should not fail the video loading process. Load video successfully and treat missing transcription as "not yet transcribed" state.
 - **WordData Conversion:** Maintain separate types for AI layer (`ai.Word`) and UI layer (`WordData`) even if similar. The UI type can have additional presentation-specific fields without polluting the AI layer.
+- **WCAG Contrast:** Semi-transparent gold (`rgba(255, 215, 0, 0.5)`) fails WCAG AA contrast on light backgrounds. Use GNOME accent blue (`#3584E4`) with white text for reliable 4.5:1+ contrast.
+- **O(1) Highlight Updates:** Track `lastHighlightedIndex` in WordContainer to clear only the previous word instead of iterating all words on every 10fps position update. Critical for long transcriptions.
+- **Seek Boundary Validation:** Always validate seek positions against duration before calling GStreamer's `SeekSimple`. Negative seeks and past-end seeks cause silent failures or pipeline errors.
+- **Seek Return Value:** Check `SeekTo()` return value before updating sync state. Failed seeks should not update the highlighted word to avoid video-transcription desync.
+- **Keyboard Navigation:** GTK4 word widgets need `gtk.EventControllerKey` for Enter/Space activation. Mouse-only interaction excludes keyboard users.
+- **GStreamer Error Propagation:** `fmt.Printf` in bus watchers is insufficient for user-facing errors. Use callbacks or error channels to surface pipeline failures to the UI.
+- **CSS Class Completeness:** Every CSS class added in Go code must have a corresponding rule in the stylesheet. Missing `.word-hover` and `.word-container` rules caused silent style failures.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.

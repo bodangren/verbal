@@ -45,12 +45,40 @@ const ApplicationCSS = `
 }
 
 .word-highlighted {
-	background-color: rgba(255, 215, 0, 0.5);
+	background-color: #3584E4;
+	color: #FFFFFF;
 	font-weight: bold;
 }
 
 .word-highlighted:hover {
-	background-color: rgba(255, 215, 0, 0.7);
+	background-color: #1C71D8;
+	color: #FFFFFF;
+}
+
+.word-highlighted:focus {
+	outline: 2px solid #1A5FB4;
+	outline-offset: 2px;
+}
+
+.word-hover {
+	background-color: rgba(100, 100, 100, 0.2);
+}
+
+.word-container {
+	padding: 4px;
+}
+
+.playback-toolbar {
+	background-color: rgba(0, 0, 0, 0.03);
+}
+
+.error-label {
+	color: #C01C28;
+	font-weight: bold;
+	margin: 8px 12px;
+	padding: 8px 12px;
+	background-color: rgba(192, 28, 40, 0.1);
+	border-radius: 6px;
 }
 `
 

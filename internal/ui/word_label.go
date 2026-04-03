@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
@@ -59,6 +60,20 @@ func NewWordLabel(data WordData) *WordLabel {
 		w.setHover(false)
 	})
 	label.AddController(hoverController)
+
+	// Setup keyboard activation (Enter/Space)
+	keyController := gtk.NewEventControllerKey()
+	keyController.ConnectKeyPressed(func(keyval uint, keycode uint, state gdk.ModifierType) bool {
+		if keyval == uint(gdk.KEY_Return) || keyval == uint(gdk.KEY_KP_Enter) || keyval == uint(gdk.KEY_space) {
+			w.emitClick()
+			return true
+		}
+		return false
+	})
+	label.AddController(keyController)
+
+	// Set accessible tooltip for screen readers
+	label.SetTooltipText(fmt.Sprintf("Word: %s at %.2fs", data.Text, data.StartTime))
 
 	return w
 }

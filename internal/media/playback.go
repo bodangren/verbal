@@ -177,13 +177,28 @@ func (p *PlaybackPipeline) QueryDuration() float64 {
 
 // SeekTo seeks to the specified position in seconds.
 // Returns true if the seek was successful.
+// Returns false for invalid positions (negative or beyond duration).
 func (p *PlaybackPipeline) SeekTo(position float64) bool {
+	if position < 0 {
+		return false
+	}
+
 	p.mu.RLock()
 	pipeline := p.pipeline
 	p.mu.RUnlock()
 
 	if pipeline == nil {
 		return false
+	}
+
+	// Check against duration to prevent seeking beyond end
+	duration, success := pipeline.QueryDuration(gst.FormatTime)
+	if success {
+		const nanosecondsPerSecond = 1_000_000_000
+		maxNs := float64(duration)
+		if position > maxNs/float64(nanosecondsPerSecond) {
+			return false
+		}
 	}
 
 	// Convert seconds to nanoseconds
