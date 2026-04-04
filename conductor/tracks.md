@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - Edit Transcription and Export Cuts** [started: 2026-04-05]
+  *Focus: Editable transcription UI, segment selection, and GStreamer-based video cut export.*
+  *Link: [./tracks/feature_edit_transcription_20260405/](./tracks/feature_edit_transcription_20260405/)*
+
 - [x] **Track: Chore - Refactor/Cleanup 2026-04-04** [started: 2026-04-04, completed: 2026-04-04]
   *Focus: Post-Phase 4 cleanup, dead code removal, and test coverage improvements.*
   *Link: [./tracks/chore_20260404/](./tracks/chore_20260404/)*

@@ -24,6 +24,7 @@ type WordLabel struct {
 	data        WordData
 	highlighted bool
 	hovered     bool
+	selected    bool
 	mu          sync.RWMutex
 
 	// clickCallbacks stores functions to call when the word is clicked
@@ -151,4 +152,24 @@ func (w *WordLabel) emitClick() {
 	for _, cb := range callbacks {
 		cb(w.data.StartTime, w.data.Index)
 	}
+}
+
+// SetSelected sets the selected state of the word for segment export.
+func (w *WordLabel) SetSelected(selected bool) {
+	w.mu.Lock()
+	w.selected = selected
+	w.mu.Unlock()
+
+	if selected {
+		w.label.AddCSSClass("word-selected")
+	} else {
+		w.label.RemoveCSSClass("word-selected")
+	}
+}
+
+// IsSelected returns true if the word is currently selected.
+func (w *WordLabel) IsSelected() bool {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.selected
 }

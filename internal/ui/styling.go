@@ -80,6 +80,16 @@ const ApplicationCSS = `
 	background-color: rgba(192, 28, 40, 0.1);
 	border-radius: 6px;
 }
+
+.word-selected {
+	background-color: rgba(53, 132, 228, 0.3);
+	outline: 1px solid #3584E4;
+	outline-offset: 1px;
+}
+
+.word-selected:hover {
+	background-color: rgba(53, 132, 228, 0.4);
+}
 `
 
 // LoadApplicationCSS loads the application CSS stylesheet into GTK.

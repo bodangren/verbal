@@ -20,6 +20,12 @@ type WordContainer struct {
 	// lastHighlightedIndex tracks the currently highlighted word to avoid
 	// iterating all words on every position update (O(1) instead of O(n)).
 	lastHighlightedIndex int
+
+	// Selection state for segment export
+	selectionStart     int
+	selectionEnd       int
+	isSelecting        bool
+	onSelectionChanged func(start, end int)
 }
 
 // NewWordContainer creates a new word container with the given words.
@@ -37,6 +43,9 @@ func NewWordContainer(words []WordData) *WordContainer {
 		words:                make([]*WordLabel, 0, len(words)),
 		onWordClick:          nil,
 		lastHighlightedIndex: -1,
+		selectionStart:       -1,
+		selectionEnd:         -1,
+		isSelecting:          false,
 	}
 
 	// Create and add word labels
@@ -200,4 +209,122 @@ func (wc *WordContainer) ConnectToSyncController(
 
 	// Set up highlight handler
 	wc.onWordHighlight = onHighlight
+}
+
+// SetSelectionMode enables or disables word selection mode.
+// When enabled, clicking words selects ranges instead of seeking.
+func (wc *WordContainer) SetSelectionMode(enabled bool) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	wc.isSelecting = enabled
+	if !enabled {
+		wc.clearSelection()
+	}
+}
+
+// IsSelectionMode returns whether selection mode is enabled.
+func (wc *WordContainer) IsSelectionMode() bool {
+	wc.mu.RLock()
+	defer wc.mu.RUnlock()
+	return wc.isSelecting
+}
+
+// StartSelection begins a selection at the given word index.
+func (wc *WordContainer) StartSelection(index int) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
+	if index < 0 || index >= len(wc.words) {
+		return
+	}
+
+	wc.selectionStart = index
+	wc.selectionEnd = index
+	wc.updateSelectionVisuals()
+
+	if wc.onSelectionChanged != nil {
+		wc.onSelectionChanged(index, index)
+	}
+}
+
+// ExtendSelection extends the current selection to include the given word index.
+func (wc *WordContainer) ExtendSelection(index int) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
+	if index < 0 || index >= len(wc.words) {
+		return
+	}
+
+	wc.selectionEnd = index
+	wc.updateSelectionVisuals()
+
+	start := wc.selectionStart
+	end := wc.selectionEnd
+	if start > end {
+		start, end = end, start
+	}
+
+	if wc.onSelectionChanged != nil {
+		wc.onSelectionChanged(start, end)
+	}
+}
+
+// ClearSelection removes the current selection.
+func (wc *WordContainer) ClearSelection() {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	wc.clearSelection()
+}
+
+func (wc *WordContainer) clearSelection() {
+	for _, word := range wc.words {
+		word.SetSelected(false)
+	}
+	wc.selectionStart = -1
+	wc.selectionEnd = -1
+
+	if wc.onSelectionChanged != nil {
+		wc.onSelectionChanged(-1, -1)
+	}
+}
+
+// GetSelection returns the current selection range (start, end).
+// Returns (-1, -1) if no selection.
+func (wc *WordContainer) GetSelection() (int, int) {
+	wc.mu.RLock()
+	defer wc.mu.RUnlock()
+
+	start := wc.selectionStart
+	end := wc.selectionEnd
+	if start > end {
+		start, end = end, start
+	}
+	return start, end
+}
+
+// HasSelection returns true if there is an active selection.
+func (wc *WordContainer) HasSelection() bool {
+	wc.mu.RLock()
+	defer wc.mu.RUnlock()
+	return wc.selectionStart >= 0 && wc.selectionEnd >= 0
+}
+
+// SetSelectionChangedHandler sets the callback for selection changes.
+func (wc *WordContainer) SetSelectionChangedHandler(handler func(start, end int)) {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	wc.onSelectionChanged = handler
+}
+
+func (wc *WordContainer) updateSelectionVisuals() {
+	start := wc.selectionStart
+	end := wc.selectionEnd
+	if start > end {
+		start, end = end, start
+	}
+
+	for i, word := range wc.words {
+		word.SetSelected(i >= start && i <= end)
+	}
 }
