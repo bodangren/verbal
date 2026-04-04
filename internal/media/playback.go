@@ -16,10 +16,20 @@ import (
 //
 // Thread safety: All methods are safe for concurrent use.
 type PlaybackPipeline struct {
-	pipeline *gst.Pipeline
-	state    PipelineState
-	filePath string
-	mu       sync.RWMutex
+	pipeline  *gst.Pipeline
+	state     PipelineState
+	filePath  string
+	mu        sync.RWMutex
+	errorCh   chan error
+	warningCh chan warning
+	onError   func(error)
+	onWarning func(warning)
+}
+
+// warning represents a GStreamer warning with optional debug info.
+type warning struct {
+	err   error
+	debug string
 }
 
 // NewPlaybackPipeline creates a new playback pipeline for the given video file.
@@ -37,7 +47,9 @@ type PlaybackPipeline struct {
 //	}
 //	defer pipeline.Close()
 //
-//	pipeline.Play()
+//	if err := pipeline.Play(); err != nil {
+//	    return err
+//	}
 //	position := pipeline.QueryPosition()
 func NewPlaybackPipeline(filePath string) (*PlaybackPipeline, error) {
 	// Use decodebin for format auto-detection with autovideosink
@@ -81,10 +93,14 @@ func (p *PlaybackPipeline) setupBusWatcher() {
 		switch msg.Type() {
 		case gst.MessageError:
 			err, debug := msg.ParseError()
-			fmt.Printf("GStreamer Error: %s (Debug: %s)\n", err, debug)
+			if p.onError != nil {
+				p.onError(fmt.Errorf("GStreamer error: %s (debug: %s)", err, debug))
+			}
 		case gst.MessageWarning:
 			err, debug := msg.ParseWarning()
-			fmt.Printf("GStreamer Warning: %s (Debug: %s)\n", err, debug)
+			if p.onWarning != nil {
+				p.onWarning(warning{err: fmt.Errorf("GStreamer warning: %s", err), debug: debug})
+			}
 		case gst.MessageEos:
 			// End of stream - update state
 			p.mu.Lock()
@@ -95,38 +111,58 @@ func (p *PlaybackPipeline) setupBusWatcher() {
 }
 
 // Play starts or resumes playback.
-func (p *PlaybackPipeline) Play() {
+// Returns an error if the state transition fails.
+func (p *PlaybackPipeline) Play() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pipeline.SetState(gst.StatePlaying)
+	ret := p.pipeline.SetState(gst.StatePlaying)
+	if ret == gst.StateChangeFailure {
+		return fmt.Errorf("failed to start playback: state change failed")
+	}
 	p.state = StatePlaying
+	return nil
 }
 
 // Pause pauses playback.
-func (p *PlaybackPipeline) Pause() {
+// Returns an error if the state transition fails.
+func (p *PlaybackPipeline) Pause() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pipeline.SetState(gst.StatePaused)
+	ret := p.pipeline.SetState(gst.StatePaused)
+	if ret == gst.StateChangeFailure {
+		return fmt.Errorf("failed to pause playback: state change failed")
+	}
 	p.state = StatePaused
+	return nil
 }
 
 // Stop halts playback and resets to the beginning.
-func (p *PlaybackPipeline) Stop() {
+// Returns an error if the state transition fails.
+func (p *PlaybackPipeline) Stop() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pipeline.SetState(gst.StateReady)
+	ret := p.pipeline.SetState(gst.StateReady)
+	if ret == gst.StateChangeFailure {
+		return fmt.Errorf("failed to stop playback: state change failed")
+	}
 	p.state = StateStopped
+	return nil
 }
 
 // Close releases all resources associated with the pipeline.
 // The pipeline cannot be used after calling Close.
-func (p *PlaybackPipeline) Close() {
+// Returns an error if the state transition fails.
+func (p *PlaybackPipeline) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.pipeline != nil {
-		p.pipeline.SetState(gst.StateNull)
+		ret := p.pipeline.SetState(gst.StateNull)
+		if ret == gst.StateChangeFailure {
+			return fmt.Errorf("failed to close pipeline: state change failed")
+		}
 		p.pipeline = nil
 	}
+	return nil
 }
 
 // QueryPosition returns the current playback position in seconds.

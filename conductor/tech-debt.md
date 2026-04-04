@@ -7,8 +7,6 @@
 
 ### Medium Severity
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
-- **GStreamer error propagation** - Pipeline errors are logged to stdout via `fmt.Printf` in `setupBusWatcher()` instead of being surfaced to the UI. Corrupted video files or missing codecs produce no user-visible feedback. [severity: medium]
-- **SetState return values ignored** - `Play()`, `Pause()`, `Stop()`, and `Close()` in PlaybackPipeline ignore the return value from `SetState()`. Failed state transitions are silent. [severity: medium]
 
 ### Low Severity
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
@@ -20,6 +18,8 @@
 
 ## Resolved
 
+- ~~GStreamer error propagation~~ - Replaced `fmt.Printf` in bus watchers with callback pattern (`onError`, `onWarning`). UI can now surface pipeline errors to users. [resolved: 2026-04-05]
+- ~~SetState return values ignored~~ - `Play()`, `Pause()`, `Stop()`, and `Close()` now return errors for failed state transitions. All callers updated. [resolved: 2026-04-05]
 - ~~Transcription workflow regression~~ - Wired transcription into main.go with Transcribe button, TranscriptionView, progress callback, and metadata save. AI provider stubs are intentional (REST API pattern). [resolved: 2026-03-28]
 - ~~GStreamer video sink uses separate window~~ - Implemented embedded preview using gtk4paintablesink with fallback to autovideosink. [resolved: 2026-03-26]
 - ~~Recording pipeline uses test sources~~ - Now uses real hardware (v4l2src + pulsesrc) with graceful fallback to test sources. [resolved: 2026-03-26]

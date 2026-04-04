@@ -47,6 +47,7 @@
 - **Seek Return Value:** Check `SeekTo()` return value before updating sync state. Failed seeks should not update the highlighted word to avoid video-transcription desync.
 - **Keyboard Navigation:** GTK4 word widgets need `gtk.EventControllerKey` for Enter/Space activation. Mouse-only interaction excludes keyboard users.
 - **GStreamer Error Propagation:** `fmt.Printf` in bus watchers is insufficient for user-facing errors. Use callbacks or error channels to surface pipeline failures to the UI.
+- **SetState Return Values:** GStreamer's `SetState()` returns `gst.StateChangeReturn`, not an error. Check for `gst.StateChangeFailure` to detect failed transitions.
 - **CSS Class Completeness:** Every CSS class added in Go code must have a corresponding rule in the stylesheet. Missing `.word-hover` and `.word-container` rules caused silent style failures.
 
 ## General

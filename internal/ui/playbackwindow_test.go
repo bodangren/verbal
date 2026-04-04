@@ -215,21 +215,54 @@ func TestPlaybackWindow_UpdateSeekSlider(t *testing.T) {
 	}
 }
 
-func TestPlaybackWindow_Widget(t *testing.T) {
+func TestPlaybackWindow_ErrorDisplay(t *testing.T) {
 	if !hasDisplay() {
 		t.Skip("No display available")
 	}
 
 	window := NewPlaybackWindow()
 
-	// Get the root widget
-	widget := window.Widget()
-	if widget == nil {
-		t.Fatal("Widget() returned nil")
+	// Verify error is hidden initially
+	if window.errorLabel.Visible() {
+		t.Error("Error label should be hidden initially")
 	}
 
-	// Verify widget is not nil
-	if widget == nil {
-		t.Error("Widget is nil")
+	// Show error
+	window.ShowError("Test error message")
+
+	// Verify error is visible with correct message
+	if !window.errorLabel.Visible() {
+		t.Error("Error label should be visible after ShowError")
+	}
+	if window.errorLabel.Text() != "Test error message" {
+		t.Errorf("Expected error message 'Test error message', got '%s'", window.errorLabel.Text())
+	}
+
+	// Clear error
+	window.ClearError()
+
+	// Verify error is hidden
+	if window.errorLabel.Visible() {
+		t.Error("Error label should be hidden after ClearError")
+	}
+}
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		seconds  float64
+		expected string
+	}{
+		{0, "0:00"},
+		{59, "0:59"},
+		{60, "1:00"},
+		{65.5, "1:05"},
+		{120, "2:00"},
+		{3661, "61:01"},
+	}
+
+	for _, tt := range tests {
+		if got := formatDuration(tt.seconds); got != tt.expected {
+			t.Errorf("formatDuration(%v) = %v, want %v", tt.seconds, got, tt.expected)
+		}
 	}
 }
