@@ -6,7 +6,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Feature - Edit Transcription and Export Cuts** [started: 2026-04-05]
+- [x] **Track: Feature - Edit Transcription and Export Cuts** [started: 2026-04-05, completed: 2026-04-05]
   *Focus: Editable transcription UI, segment selection, and GStreamer-based video cut export.*
   *Link: [./tracks/feature_edit_transcription_20260405/](./tracks/feature_edit_transcription_20260405/)*
 

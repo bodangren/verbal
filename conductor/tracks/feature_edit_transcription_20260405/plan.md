@@ -26,18 +26,18 @@ Enable users to edit transcription text and export video cuts based on transcrip
 - [ ] Support multiple segment selection
 
 ### Task 3: Export cuts via GStreamer
-- [ ] Implement trim/concat using GStreamer pipelines
-- [ ] Export selected segments as new video files
-- [ ] Progress reporting during export
+- [x] Implement trim/concat using GStreamer pipelines
+- [x] Export selected segments as new video files
+- [x] Progress reporting during export
 
 ### Task 4: Wire into main UI
-- [ ] Add export button to playback window
-- [ ] Add segment selection UI controls
+- [x] Add export button to playback window
+- [x] Add segment selection UI controls
 - [ ] Integrate with existing metadata save/load
 
 ## Acceptance Criteria
-- [ ] Users can edit transcription text in the UI
-- [ ] Users can select word ranges for export
-- [ ] Export produces correct video segments
-- [ ] All tests pass
-- [ ] Build succeeds
+- [x] Users can edit transcription text in the UI
+- [x] Users can select word ranges for export
+- [x] Export produces correct video segments
+- [x] All tests pass
+- [x] Build succeeds
