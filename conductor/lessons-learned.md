@@ -27,6 +27,9 @@
 - **Binary Search for Timestamps:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use binary search, not linear scan.
 - **Test Coverage for Simple Getters:** Even simple getter methods like `GetCurrentPosition()` and `GetCurrentWordIndexCached()` need unit tests to ensure thread-safety and correct caching behavior. Don't assume "too simple to test."
 - **GTK4 Cursor:** Use `gdk.NewCursorFromName("pointer", nil)` not `gtk.NewCursor()`. Cursors are set via `widget.SetCursor()`.
+- **GStreamer Export:** Use decodebin + x264enc/voaacenc for trim+export pipelines. Seeking before playback sets start position; monitor position in bus messages to stop at end time.
+- **GTK Stack:** Use unique child names in GtkStack. Adding duplicate names causes warnings. Remove old children before adding new ones with the same name.
+- **GTK Test Init:** GTK4 tests require `TestMain` with `gtk.Init()` to initialize the display before creating widgets. Without it, tests segfault on `gtk.NewBox` and other widget constructors.
 - **FlowBox Scrolling:** FlowBox doesn't have `ScrollToChild()` - wrap in ScrolledWindow and manage scrolling through the parent.
 - **Widget Click Signals:** Use `gtk.GestureClick` controller with `ConnectReleased()` for click handling in GTK4. `ConnectClick` doesn't exist.
 - **GStreamer Query API:** `QueryPosition` and `QueryDuration` return `(int64, bool)` where the int64 is the value and bool indicates success. Time values are in nanoseconds (1 second = 1,000,000,000 ns).
