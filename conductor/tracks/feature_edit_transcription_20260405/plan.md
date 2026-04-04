@@ -16,13 +16,13 @@ Enable users to edit transcription text and export video cuts based on transcrip
 ## Tasks
 
 ### Task 1: Editable transcription view
-- [ ] Make transcription text editable in the UI
+- [x] Make transcription text editable in the UI
 - [ ] Update word timestamps when text is modified
 - [ ] Preserve word-level highlighting during edits
 
 ### Task 2: Segment selection
-- [ ] Allow users to select ranges of words/phrases
-- [ ] Visual feedback for selected segments
+- [x] Allow users to select ranges of words/phrases
+- [x] Visual feedback for selected segments
 - [ ] Support multiple segment selection
 
 ### Task 3: Export cuts via GStreamer

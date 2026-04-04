@@ -26,7 +26,8 @@ type PlaybackWindow struct {
 	videoWidget *gtk.Widget
 
 	// Transcription pane (right side)
-	transcriptionWidget *gtk.Widget
+	transcriptionWidget   *gtk.Widget
+	editableTranscription *EditableTranscriptionView
 
 	// Playback controls
 	playButton  *gtk.Button
@@ -39,10 +40,11 @@ type PlaybackWindow struct {
 	errorLabel *gtk.Label
 
 	// Callbacks
-	onPlay  func()
-	onPause func()
-	onStop  func()
-	onSeek  func(position float64)
+	onPlay           func()
+	onPause          func()
+	onStop           func()
+	onSeek           func(position float64)
+	onExportSegments func(segments []Segment)
 }
 
 // NewPlaybackWindow creates a new playback window with split-pane layout.
@@ -257,4 +259,28 @@ func (pw *PlaybackWindow) ShowError(message string) {
 // ClearError hides the error message.
 func (pw *PlaybackWindow) ClearError() {
 	pw.errorLabel.SetVisible(false)
+}
+
+// SetEditableTranscription sets the editable transcription view for the right pane
+// and wires up the export callback.
+func (pw *PlaybackWindow) SetEditableTranscription(view *EditableTranscriptionView) {
+	pw.editableTranscription = view
+	pw.SetTranscriptionWidget(&view.Widget().Widget)
+
+	view.SetExportRequestedHandler(func(segments []Segment) {
+		if pw.onExportSegments != nil {
+			pw.onExportSegments(segments)
+		}
+	})
+}
+
+// GetEditableTranscription returns the editable transcription view.
+func (pw *PlaybackWindow) GetEditableTranscription() *EditableTranscriptionView {
+	return pw.editableTranscription
+}
+
+// SetExportSegmentsCallback sets the callback for when the user requests to export
+// selected transcription segments.
+func (pw *PlaybackWindow) SetExportSegmentsCallback(callback func(segments []Segment)) {
+	pw.onExportSegments = callback
 }
