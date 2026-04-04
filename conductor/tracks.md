@@ -65,6 +65,25 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## Future Roadmap
+
+- [ ] **Track: Advanced Media Processing & Editing**
+  Implement GStreamer-based local editing capabilities (trimming, concatenating) and multi-track support.
+
+- [ ] **Track: Enhanced UI/UX & Waveform Visualization**
+  Integrate real-time audio waveform visualization and a timeline view for transcripts synchronized with video playback.
+
+- [ ] **Track: Database & Recording Management**
+  Implement a persistent storage layer (SQLite) to manage recording history, metadata, and searchable transcripts.
+
+- [ ] **Track: Offline AI & Local Transcription**
+  Add support for local transcription engines like Whisper (via CGo or local binary) to fulfill offline-first capabilities.
+
+- [ ] **Track: Real-time Transcription Stream**
+  Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.
+
+---
+
 ## Superseded (Tauri/Rust Implementation)
 
 The following tracks were part of the initial Tauri/Rust prototype and have been superseded by the pivot to Go and GTK4.
