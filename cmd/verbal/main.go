@@ -68,7 +68,7 @@ func activate(app *gtk.Application) {
 	window.SetChild(state.playbackWindow.Widget())
 
 	setupFileMenu(app, window, state)
-	setupPlaybackControls(state)
+	setupPlaybackControls(window, state)
 	setupTranscription(state)
 
 	window.Show()
@@ -187,7 +187,68 @@ func setupPlaybackPipeline(state *appState, videoPath string) error {
 	return nil
 }
 
-func setupPlaybackControls(state *appState) {
+func showExportFileDialog(window *gtk.ApplicationWindow, state *appState, segments []ui.Segment) {
+	dialog := gtk.NewFileChooserNative("Export Video", &window.Window, gtk.FileChooserActionSave, "Export", "Cancel")
+	dialog.SetCurrentName("export_" + filepath.Base(state.currentPath))
+
+	filter := gtk.NewFileFilter()
+	filter.SetName("Video Files")
+	filter.AddPattern("*.mp4")
+	filter.AddPattern("*.mkv")
+	filter.AddPattern("*.webm")
+	dialog.AddFilter(filter)
+
+	dialog.ConnectResponse(func(responseID int) {
+		if responseID == int(gtk.ResponseAccept) {
+			outputPath := dialog.File().Path()
+			runExport(state, segments, outputPath)
+		}
+	})
+
+	dialog.Show()
+}
+
+func runExport(state *appState, segments []ui.Segment, outputPath string) {
+	mediaSegments := convertToMediaSegments(segments, outputPath)
+
+	exporter := media.NewSegmentExporter(state.currentPath)
+
+	exporter.SetProgressHandler(func(percent float64) {
+		glib.IdleAdd(func() {
+			state.playbackWindow.ClearError()
+			state.playbackWindow.ShowError(fmt.Sprintf("Exporting: %.0f%%", percent*100))
+		})
+	})
+
+	exporter.SetCompleteHandler(func(outputPath string) {
+		glib.IdleAdd(func() {
+			state.playbackWindow.ClearError()
+			state.playbackWindow.ShowError(fmt.Sprintf("Export saved to: %s", outputPath))
+		})
+	})
+
+	exporter.SetErrorHandler(func(err error) {
+		glib.IdleAdd(func() {
+			state.playbackWindow.ShowError(fmt.Sprintf("Export failed: %v", err))
+		})
+	})
+
+	exporter.ExportSegments(mediaSegments, outputPath)
+}
+
+func convertToMediaSegments(segments []ui.Segment, outputPath string) []media.Segment {
+	result := make([]media.Segment, len(segments))
+	for i, seg := range segments {
+		result[i] = media.Segment{
+			StartTime:  seg.StartTime,
+			EndTime:    seg.EndTime,
+			OutputPath: outputPath,
+		}
+	}
+	return result
+}
+
+func setupPlaybackControls(window *gtk.ApplicationWindow, state *appState) {
 	state.playbackWindow.SetPlayCallback(func() {
 		if state.playback == nil {
 			return
@@ -243,10 +304,7 @@ func setupPlaybackControls(state *appState) {
 		if state.currentPath == "" {
 			return
 		}
-		exportPath := filepath.Join(filepath.Dir(state.currentPath), "export_"+filepath.Base(state.currentPath))
-		glib.IdleAdd(func() {
-			state.playbackWindow.ShowError(fmt.Sprintf("Export not yet implemented: would export to %s", exportPath))
-		})
+		showExportFileDialog(window, state, segments)
 	})
 }
 
