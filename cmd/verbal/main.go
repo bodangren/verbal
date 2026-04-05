@@ -8,13 +8,27 @@ import (
 
 	"verbal/internal/ai"
 	"verbal/internal/media"
+	"verbal/internal/sync"
 	"verbal/internal/transcription"
 	"verbal/internal/ui"
 
+	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
+	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
+
+type appState struct {
+	playbackWindow  *ui.PlaybackWindow
+	playback        *media.PlaybackPipeline
+	monitor         *media.PositionMonitor
+	syncIntegration *sync.Integration
+	wordContainer   *ui.WordContainer
+	editableView    *ui.EditableTranscriptionView
+	loader          *ui.RecordingLoader
+	currentPath     string
+}
 
 func main() {
 	homeDir, _ := os.UserHomeDir()
@@ -43,153 +57,382 @@ func activate(app *gtk.Application) {
 	ui.LoadApplicationCSS()
 
 	window := gtk.NewApplicationWindow(app)
-	window.SetTitle("Verbal - Unified Media Engine")
-	window.SetDefaultSize(800, 600)
+	window.SetTitle("Verbal - Video Transcription Editor")
+	window.SetDefaultSize(1200, 700)
 
-	outputPath := filepath.Join(os.TempDir(), "verbal-unified.mkv")
-	pipeline, err := media.NewUnifiedPipeline(outputPath, media.HasVideoDevice())
-	if err != nil {
-		fmt.Printf("Failed to create unified pipeline: %v\n", err)
+	state := &appState{
+		loader: ui.NewRecordingLoader(),
 	}
 
-	label := gtk.NewLabel("Welcome to Verbal (GTK4 + Go)")
-	label.AddCSSClass("title-label")
-	label.SetMarginTop(20)
-	label.SetMarginBottom(10)
+	state.playbackWindow = ui.NewPlaybackWindow()
+	window.SetChild(state.playbackWindow.Widget())
 
-	statusLabel := gtk.NewLabel("Ready")
-	statusLabel.AddCSSClass("status-label")
-	statusLabel.SetMarginBottom(20)
+	setupFileMenu(app, window, state)
+	setupPlaybackControls(state)
+	setupTranscription(state)
 
-	transcriptionView := ui.NewTranscriptionView()
-
-	startButton := gtk.NewButtonWithLabel("Start Preview")
-	startButton.AddCSSClass("action-button")
-	startButton.ConnectClicked(func() {
-		if pipeline != nil {
-			fmt.Println("Starting pipeline...")
-			pipeline.Start()
-			updateStatus(statusLabel, pipeline)
-		}
-	})
-
-	stopButton := gtk.NewButtonWithLabel("Stop Preview")
-	stopButton.AddCSSClass("action-button")
-	stopButton.ConnectClicked(func() {
-		if pipeline != nil {
-			fmt.Println("Stopping pipeline...")
-			pipeline.Stop()
-			updateStatus(statusLabel, pipeline)
-		}
-	})
-
-	recordButton := gtk.NewButtonWithLabel("Toggle Recording")
-	recordButton.AddCSSClass("action-button")
-	recordButton.ConnectClicked(func() {
-		if pipeline == nil {
-			return
-		}
-
-		if pipeline.IsRecording() {
-			fmt.Println("Stopping recording...")
-			pipeline.StopRecording()
-		} else {
-			fmt.Println("Starting recording...")
-			pipeline.StartRecording()
-		}
-		updateStatus(statusLabel, pipeline)
-	})
-
-	transcribeButton := gtk.NewButtonWithLabel("Transcribe")
-	transcribeButton.AddCSSClass("action-button")
-	transcribeButton.ConnectClicked(func() {
-		if pipeline == nil {
-			return
-		}
-		recPath := pipeline.OutputPath()
-
-		provider, err := ai.NewProviderFromEnv()
-		if err != nil {
-			transcriptionView.SetError(err)
-			return
-		}
-
-		svc := transcription.NewService(provider)
-		svc.SetProgressCallback(func(msg string) {
-			glib.IdleAdd(func() bool {
-				transcriptionView.SetStatus(msg)
-				return false
-			})
-		})
-
-		transcriptionView.Show()
-		transcriptionView.SetStatus("Preparing transcription...")
-
-		go func() {
-			meta := transcription.NewRecordingMetadata(recPath)
-			result, err := svc.TranscribeFile(context.Background(), recPath)
-			if err != nil {
-				meta.SetTranscribeError(err)
-				_ = meta.Save()
-				glib.IdleAdd(func() bool {
-					transcriptionView.SetError(err)
-					return false
-				})
-				return
-			}
-			meta.SetTranscription(result)
-			_ = meta.Save()
-			glib.IdleAdd(func() bool {
-				transcriptionView.SetResult(result)
-				return false
-			})
-		}()
-	})
-
-	buttonBox := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	buttonBox.SetHAlign(gtk.AlignCenter)
-	buttonBox.Append(startButton)
-	buttonBox.Append(stopButton)
-	buttonBox.Append(recordButton)
-	buttonBox.Append(transcribeButton)
-
-	box := gtk.NewBox(gtk.OrientationVertical, 10)
-	box.SetMarginStart(20)
-	box.SetMarginEnd(20)
-	box.Append(label)
-	box.Append(statusLabel)
-	box.Append(buttonBox)
-	box.Append(transcriptionView.Widget())
-
-	window.SetChild(box)
 	window.Show()
-
-	updateStatus(statusLabel, pipeline)
+	showOpenFileDialog(window, state)
 }
 
-func updateStatus(label *gtk.Label, p *media.Pipeline) {
-	status := "Status: "
-	if p != nil {
-		if p.IsRecording() {
-			status += "RECORDING + "
-		}
+func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
+	openAction := gio.NewSimpleAction("open", nil)
+	openAction.ConnectActivate(func(_ *glib.Variant) {
+		showOpenFileDialog(window, state)
+	})
+	app.AddAction(openAction)
 
-		switch p.GetState() {
-		case media.StatePlaying:
-			status += "Preview Running"
-		case media.StatePaused:
-			status += "Preview Paused"
-		case media.StateStopped:
-			status += "Ready"
-		}
+	app.SetAccelsForAction("app.open", []string{"<Ctrl>o"})
 
-		if p.UsesHardware() {
-			status += " (Hardware Active)"
-		} else {
-			status += " (Test Source)"
+	transcribeAction := gio.NewSimpleAction("transcribe", nil)
+	transcribeAction.ConnectActivate(func(_ *glib.Variant) {
+		runTranscription(state)
+	})
+	app.AddAction(transcribeAction)
+	app.SetAccelsForAction("app.transcribe", []string{"<Ctrl>t"})
+}
+
+func showOpenFileDialog(window *gtk.ApplicationWindow, state *appState) {
+	dialog := gtk.NewFileChooserNative("Open Video File", &window.Window, gtk.FileChooserActionOpen, "Open", "Cancel")
+
+	filter := gtk.NewFileFilter()
+	filter.SetName("Video Files")
+	filter.AddPattern("*.mp4")
+	filter.AddPattern("*.mkv")
+	filter.AddPattern("*.webm")
+	filter.AddPattern("*.avi")
+	filter.AddPattern("*.mov")
+	dialog.AddFilter(filter)
+
+	allFilter := gtk.NewFileFilter()
+	allFilter.SetName("All Files")
+	allFilter.AddPattern("*")
+	dialog.AddFilter(allFilter)
+
+	dialog.ConnectResponse(func(responseID int) {
+		if responseID == int(gtk.ResponseAccept) {
+			path := dialog.File().Path()
+			loadRecording(state, path)
+		}
+	})
+
+	dialog.Show()
+}
+
+func loadRecording(state *appState, videoPath string) {
+	state.currentPath = videoPath
+
+	result := state.loader.LoadRecording(videoPath)
+	if !result.Exists {
+		state.playbackWindow.ShowError(fmt.Sprintf("File not found: %s", videoPath))
+		return
+	}
+
+	state.playbackWindow.ClearError()
+
+	if result.HasTranscription && result.Transcription != nil {
+		state.editableView = ui.NewEditableTranscriptionView()
+		state.editableView.SetResult(result.Transcription)
+		state.playbackWindow.SetEditableTranscription(state.editableView)
+
+		wordData := result.WordData
+		state.wordContainer = ui.NewWordContainer(wordData)
+		state.wordContainer.SetWordClickHandler(func(startTime float64, index int) {
+			if state.syncIntegration != nil {
+				state.syncIntegration.HandleWordClick(startTime, index)
+			}
+		})
+
+		if state.editableView != nil {
+			state.editableView.SetResult(result.Transcription)
 		}
 	} else {
-		status += "Error"
+		state.editableView = ui.NewEditableTranscriptionView()
+		state.editableView.SetStatus("No transcription yet - press Ctrl+T to transcribe")
+		state.playbackWindow.SetEditableTranscription(state.editableView)
 	}
-	label.SetText(status)
+
+	if err := setupPlaybackPipeline(state, videoPath); err != nil {
+		state.playbackWindow.ShowError(fmt.Sprintf("Failed to load video: %v", err))
+		return
+	}
+
+	if result.HasTranscription && result.Transcription != nil {
+		setupSyncIntegration(state, result.Transcription)
+	}
+}
+
+func setupPlaybackPipeline(state *appState, videoPath string) error {
+	if state.playback != nil {
+		_ = state.playback.Close()
+	}
+
+	pipeline, err := media.NewPlaybackPipeline(videoPath)
+	if err != nil {
+		return fmt.Errorf("failed to create playback pipeline: %w", err)
+	}
+	state.playback = pipeline
+
+	sink := gst.ElementFactoryMake("gtk4paintablesink", "video-sink")
+	if sink != nil {
+		paintableObj := sink.ObjectProperty("paintable")
+		if paintable, ok := paintableObj.(*gdk.Paintable); ok {
+			picture := gtk.NewPictureForPaintable(paintable)
+			state.playbackWindow.SetVideoWidget(&picture.Widget)
+		}
+	}
+
+	state.monitor = media.NewPositionMonitor(pipeline, 100)
+
+	return nil
+}
+
+func setupPlaybackControls(state *appState) {
+	state.playbackWindow.SetPlayCallback(func() {
+		if state.playback == nil {
+			return
+		}
+		if err := state.playback.Play(); err != nil {
+			glib.IdleAdd(func() {
+				state.playbackWindow.ShowError(fmt.Sprintf("Failed to play: %v", err))
+			})
+			return
+		}
+		if state.monitor != nil {
+			state.monitor.Start()
+		}
+	})
+
+	state.playbackWindow.SetPauseCallback(func() {
+		if state.playback == nil {
+			return
+		}
+		if err := state.playback.Pause(); err != nil {
+			glib.IdleAdd(func() {
+				state.playbackWindow.ShowError(fmt.Sprintf("Failed to pause: %v", err))
+			})
+		}
+	})
+
+	state.playbackWindow.SetStopCallback(func() {
+		if state.playback == nil {
+			return
+		}
+		if err := state.playback.Stop(); err != nil {
+			glib.IdleAdd(func() {
+				state.playbackWindow.ShowError(fmt.Sprintf("Failed to stop: %v", err))
+			})
+		}
+		if state.monitor != nil {
+			state.monitor.Stop()
+		}
+	})
+
+	state.playbackWindow.SetSeekCallback(func(position float64) {
+		if state.playback == nil {
+			return
+		}
+		duration := state.playback.QueryDuration()
+		if duration > 0 {
+			seconds := (position / 100.0) * duration
+			state.playback.SeekTo(seconds)
+		}
+	})
+
+	state.playbackWindow.SetExportSegmentsCallback(func(segments []ui.Segment) {
+		if state.currentPath == "" {
+			return
+		}
+		exportPath := filepath.Join(filepath.Dir(state.currentPath), "export_"+filepath.Base(state.currentPath))
+		glib.IdleAdd(func() {
+			state.playbackWindow.ShowError(fmt.Sprintf("Export not yet implemented: would export to %s", exportPath))
+		})
+	})
+}
+
+func setupTranscription(state *appState) {
+}
+
+func setupSyncIntegration(state *appState, result *ai.TranscriptionResult) {
+	controller := sync.NewController(result)
+
+	highlighter := &uiSyncAdapter{
+		setHighlighted: func(idx int) {
+			glib.IdleAdd(func() {
+				if state.wordContainer != nil {
+					state.wordContainer.SetHighlightedWord(idx)
+				}
+			})
+		},
+		getHighlighted: func() int {
+			if state.wordContainer == nil {
+				return -1
+			}
+			return state.wordContainer.GetHighlightedWord()
+		},
+	}
+
+	player := &playbackSyncAdapter{
+		play: func() {
+			if state.playback != nil {
+				_ = state.playback.Play()
+			}
+		},
+		pause: func() {
+			if state.playback != nil {
+				_ = state.playback.Pause()
+			}
+		},
+		seekTo: func(pos float64) bool {
+			if state.playback == nil {
+				return false
+			}
+			return state.playback.SeekTo(pos)
+		},
+		queryPosition: func() float64 {
+			if state.playback == nil {
+				return -1
+			}
+			return state.playback.QueryPosition()
+		},
+	}
+
+	state.syncIntegration = sync.NewIntegration(controller, state.monitor, highlighter, player)
+
+	controller.RegisterPositionCallback(func(position float64) {
+		glib.IdleAdd(func() {
+			if state.playback != nil {
+				duration := state.playback.QueryDuration()
+				state.playbackWindow.UpdateSeekSlider(position, duration)
+				state.playbackWindow.UpdateTimeDisplay(position, duration)
+			}
+		})
+	})
+}
+
+func runTranscription(state *appState) {
+	if state.currentPath == "" {
+		glib.IdleAdd(func() {
+			state.playbackWindow.ShowError("No video file loaded")
+		})
+		return
+	}
+
+	if state.editableView == nil {
+		state.editableView = ui.NewEditableTranscriptionView()
+		state.playbackWindow.SetEditableTranscription(state.editableView)
+	}
+
+	provider, err := ai.NewProviderFromEnv()
+	if err != nil {
+		glib.IdleAdd(func() {
+			state.editableView.SetError(err)
+		})
+		return
+	}
+
+	svc := transcription.NewService(provider)
+	svc.SetProgressCallback(func(msg string) {
+		glib.IdleAdd(func() {
+			state.editableView.SetStatus(msg)
+		})
+	})
+
+	glib.IdleAdd(func() {
+		state.editableView.SetStatus("Preparing transcription...")
+		state.editableView.Show()
+	})
+
+	go func() {
+		result, err := svc.TranscribeFile(context.Background(), state.currentPath)
+		if err != nil {
+			meta := transcription.NewRecordingMetadata(state.currentPath)
+			meta.SetTranscribeError(err)
+			_ = meta.Save()
+			glib.IdleAdd(func() {
+				state.editableView.SetError(err)
+			})
+			return
+		}
+
+		meta := transcription.NewRecordingMetadata(state.currentPath)
+		meta.SetTranscription(result)
+		_ = meta.Save()
+
+		glib.IdleAdd(func() {
+			state.editableView.SetResult(result)
+
+			wordData := make([]ui.WordData, len(result.Words))
+			for i, w := range result.Words {
+				wordData[i] = ui.WordData{
+					Text:      w.Text,
+					StartTime: w.Start,
+					EndTime:   w.End,
+					Index:     i,
+				}
+			}
+			state.wordContainer = ui.NewWordContainer(wordData)
+			state.wordContainer.SetWordClickHandler(func(startTime float64, index int) {
+				if state.syncIntegration != nil {
+					state.syncIntegration.HandleWordClick(startTime, index)
+				}
+			})
+
+			setupSyncIntegration(state, result)
+			if state.monitor != nil {
+				state.syncIntegration.Start()
+			}
+		})
+	}()
+}
+
+type uiSyncAdapter struct {
+	setHighlighted func(int)
+	getHighlighted func() int
+}
+
+func (a *uiSyncAdapter) SetHighlightedWord(idx int) {
+	if a.setHighlighted != nil {
+		a.setHighlighted(idx)
+	}
+}
+
+func (a *uiSyncAdapter) GetHighlightedWord() int {
+	if a.getHighlighted != nil {
+		return a.getHighlighted()
+	}
+	return -1
+}
+
+type playbackSyncAdapter struct {
+	play          func()
+	pause         func()
+	seekTo        func(float64) bool
+	queryPosition func() float64
+}
+
+func (a *playbackSyncAdapter) Play() {
+	if a.play != nil {
+		a.play()
+	}
+}
+
+func (a *playbackSyncAdapter) Pause() {
+	if a.pause != nil {
+		a.pause()
+	}
+}
+
+func (a *playbackSyncAdapter) SeekTo(pos float64) bool {
+	if a.seekTo != nil {
+		return a.seekTo(pos)
+	}
+	return false
+}
+
+func (a *playbackSyncAdapter) QueryPosition() float64 {
+	if a.queryPosition != nil {
+		return a.queryPosition()
+	}
+	return -1
 }

@@ -23,13 +23,16 @@ Started: 2026-03-28
 Completed: 2026-03-28
 
 ## In Progress
-- **Video playback synchronized with transcription highlighting**
+- **PlaybackWindow fully integrated into main application** ✅
   - Phase 1: Core sync controller ✅ (98.8% test coverage)
   - Phase 2: Word widgets ✅ (clickable, highlightable labels)
-  - Phase 3: GStreamer playback integration (ready to start)
-  - Phase 4: Main window split-pane layout (pending)
+  - Phase 3: GStreamer playback integration ✅ (gtk4paintablesink embedded)
+  - Phase 4: Main window split-pane layout ✅ (PlaybackWindow with file open dialog)
 
 ## Next Steps
-- Complete video sync feature (Phases 3-4)
-- Edit transcription text and export cuts
+- Add segment export functionality (wire ExportSegments to media.SegmentExporter)
 - Settings UI for AI provider configuration
+- Recording management / library view
+- Database & recording history (SQLite)
+- Recording management / library view
+- Database & recording history (SQLite)

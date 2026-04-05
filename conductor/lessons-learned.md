@@ -52,6 +52,16 @@
 - **GStreamer Error Propagation:** `fmt.Printf` in bus watchers is insufficient for user-facing errors. Use callbacks or error channels to surface pipeline failures to the UI.
 - **SetState Return Values:** GStreamer's `SetState()` returns `gst.StateChangeReturn`, not an error. Check for `gst.StateChangeFailure` to detect failed transitions.
 - **CSS Class Completeness:** Every CSS class added in Go code must have a corresponding rule in the stylesheet. Missing `.word-hover` and `.word-container` rules caused silent style failures.
+- **gotk4-gstreamer gtk4paintablesink:** The gotk4-gstreamer bindings don't expose `NewGtk4PaintableSink`. Create the element with `gst.ElementFactoryMake("gtk4paintablesink", "")` and get the paintable via `element.ObjectProperty("paintable")`, then wrap in `gtk.NewPictureForPaintable()`.
+- **gotk4-gstreamer Pipeline access:** `media.PlaybackPipeline` has an unexported `pipeline` field. Don't try to access it directly; use the public `QueryPosition()`, `QueryDuration()`, and `SeekTo()` methods instead.
+- **gio.SimpleAction ConnectActivate:** Requires `func(parameter *glib.Variant)`, not `func()`. Use `func(_ *glib.Variant)` when no parameter is needed.
+- **gtk.ResponseAccept:** The constant is `gtk.ResponseAccept`, not `gtk.ResponseTypeAccept`. `ResponseType` is the type, `ResponseAccept` is the value.
+- **FileChooserNative parent:** `gtk.NewFileChooserNative` expects `*gtk.Window`, not `*gtk.ApplicationWindow`. Pass `&appWindow.Window` since `ApplicationWindow` embeds `Window`.
+- **gotk4-gstreamer gtk4paintablesink:** The gotk4-gstreamer bindings don't expose `NewGtk4PaintableSink`. Create the element with `gst.ElementFactoryMake("gtk4paintablesink", "")` and get the paintable via `element.ObjectProperty("paintable")`, then wrap in `gtk.NewPictureForPaintable()`.
+- **gotk4-gstreamer Pipeline access:** `media.PlaybackPipeline` has an unexported `pipeline` field. Don't try to access it directly; use the public `QueryPosition()`, `QueryDuration()`, and `SeekTo()` methods instead.
+- **gio.SimpleAction ConnectActivate:** Requires `func(parameter *glib.Variant)`, not `func()`. Use `func(_ *glib.Variant)` when no parameter is needed.
+- **gtk.ResponseAccept:** The constant is `gtk.ResponseAccept`, not `gtk.ResponseTypeAccept`. `ResponseType` is the type, `ResponseAccept` is the value.
+- **FileChooserNative parent:** `gtk.NewFileChooserNative` expects `*gtk.Window`, not `*gtk.ApplicationWindow`. Pass `&appWindow.Window` since `ApplicationWindow` embeds `Window`.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
