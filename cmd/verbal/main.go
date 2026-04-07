@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,10 @@ import (
 )
 
 type appState struct {
+	window          *gtk.ApplicationWindow
+	stack           *gtk.Stack
 	playbackWindow  *ui.PlaybackWindow
+	libraryView     *ui.LibraryView
 	playback        *media.PlaybackPipeline
 	monitor         *media.PositionMonitor
 	syncIntegration *sync.Integration
@@ -85,33 +89,128 @@ func activate(app *gtk.Application, database *db.Database) {
 		recordingSvc = db.NewRecordingService(database)
 	}
 
+	// Create the stack for view switching
+	stack := gtk.NewStack()
+	stack.SetTransitionType(gtk.StackTransitionTypeSlideLeftRight)
+	stack.SetTransitionDuration(200)
+
 	state := &appState{
+		window:       window,
+		stack:        stack,
 		loader:       ui.NewRecordingLoader(),
 		db:           database,
 		recordingSvc: recordingSvc,
 	}
 
+	// Create library view
+	state.libraryView = ui.NewLibraryView()
+	stack.AddNamed(state.libraryView.Widget(), "library")
+
+	// Create playback window
 	state.playbackWindow = ui.NewPlaybackWindow()
-	window.SetChild(state.playbackWindow.Widget())
+	stack.AddNamed(state.playbackWindow.Widget(), "playback")
+
+	window.SetChild(stack)
 
 	setupFileMenu(app, window, state)
 	setupPlaybackControls(window, state)
 	setupTranscription(state)
+	setupLibraryView(state)
 
 	window.Show()
 
 	// Show library if we have a database, otherwise show file dialog
 	if recordingSvc != nil {
-		showLibraryView(window, state)
+		showLibraryView(state)
 	} else {
 		showOpenFileDialog(window, state)
 	}
 }
 
-func showLibraryView(window *gtk.ApplicationWindow, state *appState) {
-	// TODO: Implement library view in Phase 2
-	// For now, just show the file dialog
-	showOpenFileDialog(window, state)
+func showLibraryView(state *appState) {
+	if state.recordingSvc == nil {
+		// No database, show file dialog instead
+		showOpenFileDialog(state.window, state)
+		return
+	}
+
+	// Load recordings from database
+	recordings, err := state.recordingSvc.GetLibrary()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load library: %v\n", err)
+		recordings = []*db.Recording{}
+	}
+
+	state.libraryView.SetRecordings(recordings)
+	state.stack.SetVisibleChildName("library")
+}
+
+func showPlaybackView(state *appState) {
+	state.stack.SetVisibleChildName("playback")
+}
+
+func setupLibraryView(state *appState) {
+	if state.libraryView == nil {
+		return
+	}
+
+	// Handle recording selection
+	state.libraryView.OnRecordingSelected(func(rec *db.Recording) {
+		loadRecordingFromLibrary(state, rec)
+	})
+
+	// Handle recording deletion
+	state.libraryView.OnRecordingDelete(func(rec *db.Recording) {
+		// Delete from database
+		if state.recordingSvc != nil {
+			if err := state.recordingSvc.Delete(rec.ID); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to delete recording: %v\n", err)
+				return
+			}
+		}
+
+		// Refresh library view
+		showLibraryView(state)
+	})
+
+	// Handle open file button
+	state.libraryView.OnOpenFile(func() {
+		showOpenFileDialog(state.window, state)
+	})
+
+	// Handle search
+	state.libraryView.OnSearch(func(query string) {
+		if state.recordingSvc == nil {
+			return
+		}
+
+		var recordings []*db.Recording
+		var err error
+
+		if query == "" {
+			recordings, err = state.recordingSvc.GetLibrary()
+		} else {
+			recordings, err = state.recordingSvc.Search(query)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Search failed: %v\n", err)
+			recordings = []*db.Recording{}
+		}
+
+		state.libraryView.SetRecordings(recordings)
+	})
+}
+
+func loadRecordingFromLibrary(state *appState, rec *db.Recording) {
+	// Update current path
+	state.currentPath = rec.FilePath
+
+	// Load the recording
+	loadRecording(state, rec.FilePath)
+
+	// Switch to playback view
+	showPlaybackView(state)
 }
 
 func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
@@ -122,6 +221,14 @@ func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *a
 	app.AddAction(openAction)
 
 	app.SetAccelsForAction("app.open", []string{"<Ctrl>o"})
+
+	// Back to Library action (only works if database is available)
+	libraryAction := gio.NewSimpleAction("library", nil)
+	libraryAction.ConnectActivate(func(_ *glib.Variant) {
+		showLibraryView(state)
+	})
+	app.AddAction(libraryAction)
+	app.SetAccelsForAction("app.library", []string{"<Ctrl>l"})
 
 	transcribeAction := gio.NewSimpleAction("transcribe", nil)
 	transcribeAction.ConnectActivate(func(_ *glib.Variant) {
@@ -168,6 +275,14 @@ func loadRecording(state *appState, videoPath string) {
 	}
 
 	state.playbackWindow.ClearError()
+
+	// Add/update recording in database
+	if state.recordingSvc != nil {
+		_, err := state.recordingSvc.AddRecording(videoPath, result.Duration)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to add recording to library: %v\n", err)
+		}
+	}
 
 	if result.HasTranscription && result.Transcription != nil {
 		state.editableView = ui.NewEditableTranscriptionView()
@@ -446,6 +561,20 @@ func runTranscription(state *appState) {
 			meta := transcription.NewRecordingMetadata(state.currentPath)
 			meta.SetTranscribeError(err)
 			_ = meta.Save()
+
+			// Update database with error status
+			if state.recordingSvc != nil {
+				// Find recording by path and update status
+				recordings, _ := state.recordingSvc.Search(state.currentPath)
+				for _, rec := range recordings {
+					if rec.FilePath == state.currentPath {
+						rec.TranscriptionStatus = "error"
+						_ = state.recordingSvc.UpdateTranscription(rec.ID, `{"error": "`+err.Error()+`"}`)
+						break
+					}
+				}
+			}
+
 			glib.IdleAdd(func() {
 				state.editableView.SetError(err)
 			})
@@ -455,6 +584,21 @@ func runTranscription(state *appState) {
 		meta := transcription.NewRecordingMetadata(state.currentPath)
 		meta.SetTranscription(result)
 		_ = meta.Save()
+
+		// Update database with transcription
+		if state.recordingSvc != nil {
+			// Convert result to JSON for storage
+			jsonData, _ := json.Marshal(result)
+
+			// Find recording by path and update
+			recordings, _ := state.recordingSvc.Search(state.currentPath)
+			for _, rec := range recordings {
+				if rec.FilePath == state.currentPath {
+					_ = state.recordingSvc.UpdateTranscription(rec.ID, string(jsonData))
+					break
+				}
+			}
+		}
 
 		glib.IdleAdd(func() {
 			state.editableView.SetResult(result)

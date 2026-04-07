@@ -32,30 +32,28 @@
 **Goal**: Create GTK4 components for displaying and interacting with the recording library.
 
 ### Task 2.1: Create RecordingListItem Widget
-- [ ] Write tests for `RecordingListItem` component
-- [ ] Create `internal/ui/recordinglistitem.go`
-- [ ] Display: filename, duration (formatted), status badge, date
-- [ ] Add CSS classes for styling
-- [ ] Implement `SetRecording(rec *db.Recording)` method
-- [ ] Verify tests pass (>80% coverage)
-- [ ] Commit with git note
+- [x] Write tests for `RecordingListItem` component
+- [x] Create `internal/ui/recordinglistitem.go`
+- [x] Display: filename, duration (formatted), status badge, date
+- [x] Add CSS classes for styling
+- [x] Implement `SetRecording(rec *db.Recording)` method
+- [x] Commit with git note
 
 ### Task 2.2: Create LibraryView Container
-- [ ] Write tests for `LibraryView` component
-- [ ] Create `internal/ui/libraryview.go`
-- [ ] Components: search entry, list view (GtkListView or FlowBox), empty state
-- [ ] Implement search functionality (debounced, 300ms)
-- [ ] Add "Open File" button to toolbar
-- [ ] Implement callbacks: `OnRecordingSelected`, `OnOpenFile`, `OnSearch`
-- [ ] Verify tests pass (>80% coverage)
-- [ ] Commit with git note
+- [x] Write tests for `LibraryView` component
+- [x] Create `internal/ui/libraryview.go`
+- [x] Components: search entry, list view (GtkListView or FlowBox), empty state
+- [x] Implement search functionality (debounced, 300ms)
+- [x] Add "Open File" button to toolbar
+- [x] Implement callbacks: `OnRecordingSelected`, `OnOpenFile`, `OnSearch`
+- [x] Commit with git note
 
 ### Task 2.3: Add Styling for Library View
-- [ ] Add CSS rules to `internal/ui/styling.go` or new stylesheet
-- [ ] Styles for: list item hover, status badges, empty state
-- [ ] Follow GNOME HIG (spacing, colors)
-- [ ] Test CSS loading in app
-- [ ] Commit with git note
+- [x] Add CSS rules to `internal/ui/styling.go` or new stylesheet
+- [x] Styles for: list item hover, status badges, empty state
+- [x] Follow GNOME HIG (spacing, colors)
+- [x] Test CSS loading in app
+- [x] Commit with git note
 
 ## Phase 3: Main Window Integration
 **Goal**: Replace file dialog on startup with library view, add navigation.
