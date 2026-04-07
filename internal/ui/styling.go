@@ -90,6 +90,139 @@ const ApplicationCSS = `
 .word-selected:hover {
 	background-color: rgba(53, 132, 228, 0.4);
 }
+
+/* Library View Styles */
+
+.library-view {
+	background-color: @window_bg_color;
+}
+
+.library-title {
+	font-size: 18pt;
+	font-weight: bold;
+}
+
+.library-search {
+	min-width: 300px;
+}
+
+.library-scrolled {
+	border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.library-list {
+	background-color: transparent;
+}
+
+.library-list row {
+	padding: 0;
+	background-color: transparent;
+}
+
+/* Recording List Item Styles */
+
+.recording-list-item {
+	background-color: @card_bg_color;
+	border-radius: 8px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	transition: all 0.15s ease;
+}
+
+.recording-list-item:hover,
+.recording-item-hover {
+	background-color: @card_bg_color;
+	border-color: rgba(0, 0, 0, 0.15);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.recording-item-selected {
+	background-color: rgba(53, 132, 228, 0.1);
+	border-color: #3584E4;
+	box-shadow: 0 0 0 1px #3584E4;
+}
+
+.recording-icon {
+	background-color: rgba(0, 0, 0, 0.05);
+	border-radius: 6px;
+}
+
+.recording-icon-label {
+	font-size: 24px;
+}
+
+.recording-filename {
+	font-weight: 600;
+	font-size: 11pt;
+}
+
+.recording-duration {
+	font-size: 9pt;
+	opacity: 0.7;
+}
+
+.recording-status {
+	font-size: 8pt;
+	padding: 2px 8px;
+	border-radius: 12px;
+	font-weight: 500;
+}
+
+.recording-status-completed {
+	background-color: rgba(46, 160, 67, 0.15);
+	color: #1A7F37;
+}
+
+.recording-status-pending {
+	background-color: rgba(120, 120, 120, 0.15);
+	color: #656D76;
+}
+
+.recording-status-error {
+	background-color: rgba(192, 28, 40, 0.15);
+	color: #C01C28;
+}
+
+.recording-date {
+	font-size: 9pt;
+	opacity: 0.6;
+}
+
+.recording-delete-btn {
+	opacity: 0.6;
+	transition: opacity 0.15s ease;
+}
+
+.recording-delete-btn:hover {
+	opacity: 1;
+	color: #C01C28;
+}
+
+/* Empty State Styles */
+
+.library-empty {
+	opacity: 0.8;
+}
+
+.library-empty-icon {
+	font-size: 48px;
+	margin-bottom: 12px;
+}
+
+.library-empty-title {
+	font-size: 14pt;
+	font-weight: bold;
+	margin-bottom: 4px;
+}
+
+.library-empty-subtitle {
+	font-size: 10pt;
+	opacity: 0.7;
+	margin-bottom: 16px;
+}
+
+.library-empty-btn {
+	padding: 8px 24px;
+}
 `
 
 // LoadApplicationCSS loads the application CSS stylesheet into GTK.
