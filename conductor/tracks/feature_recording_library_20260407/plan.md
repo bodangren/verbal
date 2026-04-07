@@ -6,27 +6,27 @@
 **TDD Cycle**: Red-Green-Refactor for each task.
 
 ### Task 1.1: Add Library Query Methods to Repository
-- [ ] Write tests for `ListRecent(limit int)` method
-- [ ] Write tests for `SearchByPath(query string)` method
-- [ ] Write tests for `UpdateOrInsert(rec *Recording)` method (upsert)
-- [ ] Implement the methods in `repository.go`
-- [ ] Verify tests pass
-- [ ] Commit with git note
+- [x] Write tests for `ListRecent(limit int)` method
+- [x] Write tests for `SearchByPath(query string)` method
+- [x] Write tests for `UpdateOrInsert(rec *Recording)` method (upsert)
+- [x] Implement the methods in `repository.go`
+- [x] Verify tests pass
+- [x] Commit with git note
 
 ### Task 1.2: Create Recording Service Layer
-- [ ] Write tests for `RecordingService` struct that wraps db operations
-- [ ] Implement `RecordingService` in `internal/db/service.go`
-- [ ] Methods: `GetLibrary()`, `Search(query)`, `AddRecording(path, duration)`, `UpdateTranscription(id, json)`
-- [ ] Verify tests pass (>80% coverage)
-- [ ] Commit with git note
+- [x] Write tests for `RecordingService` struct that wraps db operations
+- [x] Implement `RecordingService` in `internal/db/service.go`
+- [x] Methods: `GetLibrary()`, `Search(query)`, `AddRecording(path, duration)`, `UpdateTranscription(id, json)`
+- [x] Verify tests pass (>80% coverage)
+- [x] Commit with git note
 
 ### Task 1.3: Integrate Database into App Startup
-- [ ] Modify `main.go` to initialize database on startup
-- [ ] Use `~/.config/verbal/recordings.db` as default path
-- [ ] Handle database initialization errors gracefully
-- [ ] Add database close on app shutdown
-- [ ] Test manually (no display needed for db init)
-- [ ] Commit with git note
+- [x] Modify `main.go` to initialize database on startup
+- [x] Use `~/.config/verbal/recordings.db` as default path
+- [x] Handle database initialization errors gracefully
+- [x] Add database close on app shutdown
+- [x] Test manually (no display needed for db init)
+- [x] Commit with git note
 
 ## Phase 2: Library View UI Components
 **Goal**: Create GTK4 components for displaying and interacting with the recording library.
