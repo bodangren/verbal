@@ -1,6 +1,10 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
+- **GTK ComboBoxText vs DropDown:** ComboBoxText has simpler API for basic text selection. Use `SetActive()`/`GetActive()` instead of `SetSelected()`/`Selected()`. Connect to `ConnectChanged()` for selection changes.
+- **PasswordEntry for API Keys:** Use `gtk.NewPasswordEntry()` with `SetShowPeekIcon(true)` for secure API key input that allows user verification.
+- **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines (e.g., connection test results). This prevents GTK threading issues.
+- **Settings Dialog Pattern:** Use `gtk.Dialog` with transient parent for modal settings. Wire Save/Cancel callbacks for clean separation of concerns.
 - **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` with `ON CONFLICT` for upsert behavior.
 - **JSON Config in SQLite:** Store nested configuration (OpenAI, Google) as JSON columns. This avoids schema migrations when adding provider-specific fields.
 - **Clone Pattern for Settings:** Implement `Clone()` on Settings to prevent accidental mutation. This is especially important when passing settings between UI and service layers.
