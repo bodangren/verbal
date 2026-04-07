@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"verbal/internal/ai"
+	"verbal/internal/db"
 	"verbal/internal/media"
 	"verbal/internal/sync"
 	"verbal/internal/transcription"
@@ -28,6 +29,8 @@ type appState struct {
 	editableView    *ui.EditableTranscriptionView
 	loader          *ui.RecordingLoader
 	currentPath     string
+	db              *db.Database
+	recordingSvc    *db.RecordingService
 }
 
 func main() {
@@ -43,9 +46,26 @@ func main() {
 	}
 	_ = ai.LoadEnvFromFile(".env")
 
+	// Initialize database
+	var database *db.Database
+	if homeDir != "" {
+		dbPath := filepath.Join(homeDir, ".config", "verbal", "recordings.db")
+		var err error
+		database, err = db.NewDatabase(dbPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to initialize database: %v\n", err)
+			database = nil
+		}
+	}
+
+	// Ensure database is closed on exit
+	if database != nil {
+		defer database.Close()
+	}
+
 	app := gtk.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
 	app.ConnectActivate(func() {
-		activate(app)
+		activate(app, database)
 	})
 
 	if code := app.Run(os.Args); code > 0 {
@@ -53,15 +73,22 @@ func main() {
 	}
 }
 
-func activate(app *gtk.Application) {
+func activate(app *gtk.Application, database *db.Database) {
 	ui.LoadApplicationCSS()
 
 	window := gtk.NewApplicationWindow(app)
 	window.SetTitle("Verbal - Video Transcription Editor")
 	window.SetDefaultSize(1200, 700)
 
+	var recordingSvc *db.RecordingService
+	if database != nil {
+		recordingSvc = db.NewRecordingService(database)
+	}
+
 	state := &appState{
-		loader: ui.NewRecordingLoader(),
+		loader:       ui.NewRecordingLoader(),
+		db:           database,
+		recordingSvc: recordingSvc,
 	}
 
 	state.playbackWindow = ui.NewPlaybackWindow()
@@ -72,6 +99,18 @@ func activate(app *gtk.Application) {
 	setupTranscription(state)
 
 	window.Show()
+
+	// Show library if we have a database, otherwise show file dialog
+	if recordingSvc != nil {
+		showLibraryView(window, state)
+	} else {
+		showOpenFileDialog(window, state)
+	}
+}
+
+func showLibraryView(window *gtk.ApplicationWindow, state *appState) {
+	// TODO: Implement library view in Phase 2
+	// For now, just show the file dialog
 	showOpenFileDialog(window, state)
 }
 
