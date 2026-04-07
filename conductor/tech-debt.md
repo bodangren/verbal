@@ -37,6 +37,7 @@
 - ~~SeekTo return value ignored in HandleWordClick~~ [resolved: 2026-04-04 - Failed seeks now skip highlight update to avoid desync]
 - ~~Missing CSS classes and keyboard navigation~~ [resolved: 2026-04-04 - Added .word-hover, .word-container, focus styles, Enter/Space activation]
 - ~~Export callback stub~~ [resolved: 2026-04-05 - Wired save dialog, SegmentExporter, progress/error callbacks]
+- ~~Settings UI implementation~~ [resolved: 2026-04-08 - All 4 phases complete: database layer, GTK4 UI components, main.go integration, integration tests with 92.2% coverage]
 
 ## Superseded (Tauri/Rust Implementation)
 

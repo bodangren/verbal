@@ -77,6 +77,8 @@
 - **gio.SimpleAction ConnectActivate:** Requires `func(parameter *glib.Variant)`, not `func()`. Use `func(_ *glib.Variant)` when no parameter is needed.
 - **gtk.ResponseAccept:** The constant is `gtk.ResponseAccept`, not `gtk.ResponseTypeAccept`. `ResponseType` is the type, `ResponseAccept` is the value.
 - **FileChooserNative parent:** `gtk.NewFileChooserNative` expects `*gtk.Window`, not `*gtk.ApplicationWindow`. Pass `&appWindow.Window` since `ApplicationWindow` embeds `Window`.
+- **Integration Test Patterns:** Integration tests should test complete workflows (end-to-end), state transitions (provider switching), and edge cases (validation scenarios). Table-driven tests with descriptive names make test failures self-documenting.
+- **Config Independence Testing:** When testing provider switching, verify that changing the active provider doesn't corrupt inactive provider configs. Clone patterns help ensure isolation.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
