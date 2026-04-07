@@ -241,11 +241,6 @@ const ApplicationCSS = `
 	font-weight: 500;
 }
 
-.error-label {
-	color: #C01C28;
-	font-weight: 500;
-}
-
 .settings-panel {
 	background-color: @card_bg_color;
 	border-radius: 8px;

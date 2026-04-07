@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -285,7 +286,7 @@ func TestService_TestProviderConnection(t *testing.T) {
 				}
 				if tt.errContain != "" && !errors.Is(err, errors.New(tt.errContain)) {
 					// Just check if error message contains expected text
-					if err.Error() != tt.errContain && !containsSubstring(err.Error(), tt.errContain) {
+					if err.Error() != tt.errContain && !strings.Contains(err.Error(), tt.errContain) {
 						t.Errorf("error message does not contain %q: %v", tt.errContain, err)
 					}
 				}
@@ -551,29 +552,5 @@ func TestSettingsChanged(t *testing.T) {
 				t.Errorf("SettingsChanged() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			containsMid(s, substr)))
-}
-
-func containsMid(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func TestContainsSubstring(t *testing.T) {
-	if !containsSubstring("hello world", "world") {
-		t.Error("containsSubstring should find substring")
-	}
-	if containsSubstring("hello world", "goodbye") {
-		t.Error("containsSubstring should not find non-existent substring")
 	}
 }

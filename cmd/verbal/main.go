@@ -89,12 +89,11 @@ func activate(app *gtk.Application, database *db.Database) {
 
 	var recordingSvc *db.RecordingService
 	var settingsSvc *settings.Service
+	var aiFactory *ai.Factory
 	if database != nil {
 		recordingSvc = db.NewRecordingService(database)
-
-		// Initialize settings service
-		settingsRepo := &db.SettingsRepository{}
-		aiFactory := ai.NewFactory()
+		aiFactory = ai.NewFactory()
+		settingsRepo := database.SettingsRepo()
 		settingsSvc = settings.NewService(settingsRepo, aiFactory)
 	}
 
@@ -110,7 +109,7 @@ func activate(app *gtk.Application, database *db.Database) {
 		db:           database,
 		recordingSvc: recordingSvc,
 		settingsSvc:  settingsSvc,
-		aiFactory:    ai.NewFactory(),
+		aiFactory:    aiFactory,
 	}
 
 	// Create library view
@@ -590,9 +589,11 @@ func runTranscription(state *appState) {
 	var err error
 
 	if state.settingsSvc != nil {
-		provider, err = state.aiFactory.CreateProviderFromSettings(nil)
+		s, err := state.settingsSvc.LoadSettingsOrDefault()
+		if err == nil {
+			provider, err = state.aiFactory.CreateProviderFromSettings(s)
+		}
 		if err != nil {
-			// Fall back to environment variables
 			provider, err = ai.NewProviderFromEnv()
 		}
 	} else {
@@ -632,7 +633,8 @@ func runTranscription(state *appState) {
 				for _, rec := range recordings {
 					if rec.FilePath == state.currentPath {
 						rec.TranscriptionStatus = "error"
-						_ = state.recordingSvc.UpdateTranscription(rec.ID, `{"error": "`+err.Error()+`"}`)
+						errorData, _ := json.Marshal(map[string]string{"error": err.Error()})
+						_ = state.recordingSvc.UpdateTranscription(rec.ID, string(errorData))
 						break
 					}
 				}

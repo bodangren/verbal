@@ -6,6 +6,9 @@
 *(none currently)*
 
 ### Medium Severity
+- **Settings created without DB connection in main.go** - `SettingsRepository` was previously created via `&db.SettingsRepository{}` without a db connection (nil *sql.DB). Fixed during review to use `database.SettingsRepo()`. Pattern should be audited for similar issues. [severity: medium]
+- **Transcription search by file path is imprecise** - `runTranscription` uses `state.recordingSvc.Search(state.currentPath)` to find recordings, which does a LIKE search. This could match multiple or wrong recordings. Should use a dedicated `GetByPath` method instead. [severity: medium]
+- **`go vet` and `go build` timeout on full project** - The UI package takes >2 minutes to vet/build due to CGo/GTK dependencies. Consider splitting build targets or caching. [severity: medium]
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
 
 ### Low Severity
