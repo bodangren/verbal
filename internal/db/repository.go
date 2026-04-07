@@ -78,6 +78,14 @@ func (d *Database) migrate() error {
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS settings (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		active_provider TEXT NOT NULL DEFAULT 'openai',
+		openai_config TEXT NOT NULL DEFAULT '{}',
+		google_config TEXT NOT NULL DEFAULT '{}',
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
 	`
 
 	_, err := d.db.Exec(schema)

@@ -1,6 +1,10 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
+- **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` with `ON CONFLICT` for upsert behavior.
+- **JSON Config in SQLite:** Store nested configuration (OpenAI, Google) as JSON columns. This avoids schema migrations when adding provider-specific fields.
+- **Clone Pattern for Settings:** Implement `Clone()` on Settings to prevent accidental mutation. This is especially important when passing settings between UI and service layers.
+- **IsEmpty vs Nil Check:** Distinguish between nil configs and empty configs with `IsEmpty()` method. This allows users to clear a provider's settings without deleting the entire settings record.
 - **Library View Stack Pattern:** Use `gtk.Stack` with `SetTransitionType(gtk.StackTransitionTypeSlideLeftRight)` for smooth view switching between library and playback.
 - **Search Debounce:** Use `time.AfterFunc(300*time.Millisecond)` pattern with timer cancellation on each keystroke for responsive search without excessive queries.
 - **Database Service Layer:** A service layer (`RecordingService`) between repository and UI simplifies business logic like merging search results from multiple columns.
