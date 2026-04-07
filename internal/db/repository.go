@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -216,4 +217,89 @@ func (r *RecordingRepository) SearchByTranscription(query string) ([]*Recording,
 	}
 
 	return recordings, nil
+}
+
+// ListRecent returns the most recent recordings up to the specified limit.
+func (r *RecordingRepository) ListRecent(limit int) ([]*Recording, error) {
+	rows, err := r.db.Query(`
+		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		FROM recordings
+		ORDER BY created_at DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list recent recordings: %w", err)
+	}
+	defer rows.Close()
+
+	var recordings []*Recording
+	for rows.Next() {
+		rec := &Recording{}
+		var durationNS int64
+		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan recording: %w", err)
+		}
+		rec.Duration = time.Duration(durationNS)
+		recordings = append(recordings, rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recordings: %w", err)
+	}
+
+	return recordings, nil
+}
+
+// SearchByPath searches recordings by file path (case-insensitive LIKE search).
+func (r *RecordingRepository) SearchByPath(query string) ([]*Recording, error) {
+	likeQuery := "%" + query + "%"
+
+	rows, err := r.db.Query(`
+		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		FROM recordings
+		WHERE file_path LIKE ?
+		ORDER BY created_at DESC
+	`, likeQuery)
+	if err != nil {
+		return nil, fmt.Errorf("search recordings by path: %w", err)
+	}
+	defer rows.Close()
+
+	var recordings []*Recording
+	for rows.Next() {
+		rec := &Recording{}
+		var durationNS int64
+		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan recording: %w", err)
+		}
+		rec.Duration = time.Duration(durationNS)
+		recordings = append(recordings, rec)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recordings: %w", err)
+	}
+
+	return recordings, nil
+}
+
+// UpdateOrInsert updates an existing recording or inserts a new one based on file_path.
+// If a recording with the same file_path exists, it updates it. Otherwise, it inserts a new record.
+func (r *RecordingRepository) UpdateOrInsert(rec *Recording) error {
+	// Check if a recording with this file_path already exists
+	var existingID int64
+	err := r.db.QueryRow(`SELECT id FROM recordings WHERE file_path = ?`, rec.FilePath).Scan(&existingID)
+
+	if err == nil {
+		// Recording exists, update it
+		rec.ID = existingID
+		return r.Update(rec)
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("check existing recording: %w", err)
+	}
+
+	// Recording doesn't exist, insert it
+	return r.Insert(rec)
 }

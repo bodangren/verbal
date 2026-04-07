@@ -1,0 +1,8 @@
+{
+  "id": "feature_recording_library_20260407",
+  "name": "Recording Library View",
+  "type": "feature",
+  "status": "in_progress",
+  "started": "2026-04-07",
+  "description": "Add a library/recording management view that displays all recordings from the database with search and browse capabilities. Changes the main window UX from immediate file dialog to library-first experience."
+}

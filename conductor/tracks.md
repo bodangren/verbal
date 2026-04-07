@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [~] **Track: Feature - Recording Library View** [started: 2026-04-07]
+  *Focus: Add library/recording management view with database integration and search.*
+  *Link: [./tracks/feature_recording_library_20260407/](./tracks/feature_recording_library_20260407/)*
+
 - [x] **Track: Feature - PlaybackWindow Integration into Main App** [started: 2026-04-05, completed: 2026-04-05]
   *Focus: Wire PlaybackWindow, sync integration, and editable transcription into main.go.*
   *Link: [./tracks/feature_playback_integration_20260405/](./tracks/feature_playback_integration_20260405/)*
