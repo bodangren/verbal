@@ -6,7 +6,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [~] **Track: Feature - Recording Library View** [started: 2026-04-07]
+- [x] **Track: Feature - Recording Library View** [started: 2026-04-07, completed: 2026-04-07]
   *Focus: Add library/recording management view with database integration and search.*
   *Link: [./tracks/feature_recording_library_20260407/](./tracks/feature_recording_library_20260407/)*
 

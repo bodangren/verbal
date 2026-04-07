@@ -1,6 +1,10 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
+- **Library View Stack Pattern:** Use `gtk.Stack` with `SetTransitionType(gtk.StackTransitionTypeSlideLeftRight)` for smooth view switching between library and playback.
+- **Search Debounce:** Use `time.AfterFunc(300*time.Millisecond)` pattern with timer cancellation on each keystroke for responsive search without excessive queries.
+- **Database Service Layer:** A service layer (`RecordingService`) between repository and UI simplifies business logic like merging search results from multiple columns.
+- **Upsert Pattern:** `UpdateOrInsert` based on unique fields (like file_path) prevents duplicate library entries when reopening files.
 - **GOTK4 CSS:** Use `gdk.DisplayGetDefault()` not `gtk.DefaultDisplay()`. Widgets have `AddCSSClass()` method directly.
 - **GStreamer GTK4:** `gtk4paintablesink` (from gst-plugins-bad) is required for embedded video in GTK4; `gtksink`/`gtkglsink` are GTK3 only.
 - **Pipeline State:** Use `sync.RWMutex` for thread-safe state tracking in GStreamer pipelines accessed from UI callbacks.

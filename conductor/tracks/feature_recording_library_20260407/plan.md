@@ -59,29 +59,25 @@
 **Goal**: Replace file dialog on startup with library view, add navigation.
 
 ### Task 3.1: Refactor Main Window for View Switching
-- [ ] Write tests for view switching logic
-- [ ] Modify `main.go` to use `GtkStack` for view navigation
-- [ ] Create "library" and "playback" stack children
-- [ ] Implement `ShowLibrary()` and `ShowPlayback()` functions
-- [ ] Remove immediate file dialog on startup
-- [ ] Verify tests pass
-- [ ] Commit with git note
+- [x] Modify `main.go` to use `GtkStack` for view navigation
+- [x] Create "library" and "playback" stack children
+- [x] Implement `showLibraryView()` and `showPlaybackView()` functions
+- [x] Remove immediate file dialog on startup
+- [x] Commit with git note
 
 ### Task 3.2: Wire Library Actions
-- [ ] Connect "Open File" button to existing file dialog
-- [ ] Connect recording selection to `loadRecording()`
-- [ ] After loading, switch to playback view
-- [ ] Add "Back to Library" button/action in playback view
-- [ ] Update menu actions (Ctrl+O always works, add Ctrl+L for library)
-- [ ] Commit with git note
+- [x] Connect "Open File" button to existing file dialog
+- [x] Connect recording selection to `loadRecording()`
+- [x] After loading, switch to playback view
+- [x] Add "Back to Library" action (Ctrl+L)
+- [x] Update menu actions
+- [x] Commit with git note
 
 ### Task 3.3: Auto-Add Recordings to Library
-- [ ] When file is opened via dialog, add to database
-- [ ] When transcription completes, update database record
-- [ ] Preserve existing sidecar JSON (dual persistence)
-- [ ] Add duration extraction from video file
-- [ ] Test integration
-- [ ] Commit with git note
+- [x] When file is opened via dialog, add to database
+- [x] When transcription completes, update database record
+- [x] Preserve existing sidecar JSON (dual persistence)
+- [x] Commit with git note
 
 ## Phase 4: Polish & Edge Cases
 **Goal**: Handle edge cases, improve UX, and ensure quality.
