@@ -1,6 +1,9 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
+- **SimpleAction for Menu Items:** Use `gio.NewSimpleAction("action-name", nil)` and `app.AddAction()` to create global menu actions. Set accelerators with `app.SetAccelsForAction("app.action-name", []string{"<Ctrl>key"})`.
+- **Factory Pattern for Providers:** Create a factory that implements `settings.ProviderFactory` interface for dependency injection. This allows the settings service to test connections without knowing provider internals.
+- **Settings Service Initialization:** Initialize settings service alongside other services in the activate function. Pass both repository and factory to the service constructor.
 - **GTK ComboBoxText vs DropDown:** ComboBoxText has simpler API for basic text selection. Use `SetActive()`/`GetActive()` instead of `SetSelected()`/`Selected()`. Connect to `ConnectChanged()` for selection changes.
 - **PasswordEntry for API Keys:** Use `gtk.NewPasswordEntry()` with `SetShowPeekIcon(true)` for secure API key input that allows user verification.
 - **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines (e.g., connection test results). This prevents GTK threading issues.
