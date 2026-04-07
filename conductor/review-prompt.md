@@ -1,3 +1,5 @@
+/review
+
 CODE REVIEW — PAST 24 HOURS
 
 You are reviewing all work done in the past 24 hours. Be thorough but focused.
@@ -25,6 +27,8 @@ You are reviewing all work done in the past 24 hours. Be thorough but focused.
 7. Commit any fixes with message: "chore(review): fix N lint/style issues"
 
 8. Report: list the files reviewed, issues found, issues fixed, and any architectural concerns for tech-debt.md.
+
+9. Adjust the current-priority.md if you see a trend.
 
 CRITICAL UNATTENDED RULES:
 - Any prompt asking "Proceed?" or "Continue?" → answer yes.
