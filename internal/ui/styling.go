@@ -223,6 +223,34 @@ const ApplicationCSS = `
 .library-empty-btn {
 	padding: 8px 24px;
 }
+
+/* Settings Window Styles */
+
+.settings-title {
+	font-size: 16pt;
+	font-weight: bold;
+}
+
+.setting-label {
+	font-weight: 600;
+	font-size: 10pt;
+}
+
+.success-label {
+	color: #1A7F37;
+	font-weight: 500;
+}
+
+.error-label {
+	color: #C01C28;
+	font-weight: 500;
+}
+
+.settings-panel {
+	background-color: @card_bg_color;
+	border-radius: 8px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+}
 `
 
 // LoadApplicationCSS loads the application CSS stylesheet into GTK.
