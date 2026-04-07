@@ -1,7 +1,7 @@
-# Current Directive: Recording Library View Implemented
+# Current Directive: Settings UI Implementation In Progress
 
 ## Active Directive
-**Recording Library View is now the main entry point. Database-backed library with search is live.**
+**Settings UI for AI Provider Configuration is being implemented (Phases 1-3 complete).**
 
 ## Completed
 - [x] PlaybackWindow fully integrated into main application
@@ -13,27 +13,37 @@
   - Phase 1: Database integration with ListRecent, SearchByPath, UpdateOrInsert
   - Phase 2: LibraryView and RecordingListItem GTK4 components
   - Phase 3: Main window integration with GtkStack view switching
+- [x] **Settings UI for AI Provider Configuration** (In Progress - Phases 1-3 Complete)
+  - Phase 1: Database layer and core types (settings: 91.4%, db: 81.6% coverage)
+  - Phase 2: GTK4 UI components (OpenAI/Google config panels, SettingsWindow)
+  - Phase 3: Integration and Provider Factory (menu action, main.go wiring)
 
-## Success Criteria (All Met)
-- Library view shows on app startup when database is available
-- Recordings are automatically added to library when opened
-- Search filters recordings by path and transcription content
-- Double-click/Enter on recording opens it in playback view
-- Ctrl+L shortcut returns to library view from playback
-- Database persists recordings and transcription status
-- UI follows GNOME HIG with proper spacing and colors
-- Database test coverage: 81.8%
+## Success Criteria (Phases 1-3 Met)
+- Settings UI opens from main window via Ctrl+, shortcut
+- Provider configuration persists in SQLite database
+- Form validation for API keys
+- Connection testing with async validation
+- Transcription uses configured provider (with env fallback)
+- Factory pattern for provider creation
+- All tests pass
 
 ## Changes Made
-- `internal/db`: Added RecordingService with GetLibrary, Search, AddRecording, UpdateTranscription
-- `internal/db`: Extended repository with ListRecent, SearchByPath, UpdateOrInsert
-- `internal/ui`: New LibraryView container with search and recording list
-- `internal/ui`: New RecordingListItem widget with metadata display
-- `internal/ui`: Added CSS styles for library components
-- `cmd/verbal/main.go`: Integrated GtkStack for library/playback switching
+### Phase 1
+- `internal/settings`: Provider types, config structs, validation, service
+- `internal/db`: SettingsRepository with singleton pattern
+
+### Phase 2
+- `internal/ui/providerconfigpanel.go`: OpenAI and Google config forms
+- `internal/ui/settingswindow.go`: Settings dialog with stack-based panels
+- `internal/ui/styling.go`: Added settings CSS classes
+
+### Phase 3
+- `internal/ai/factory.go`: Provider factory from settings
+- `cmd/verbal/main.go`: Settings service init, menu action, showSettingsWindow
+- All factory and settings tests pass
 
 ## Next Steps
-- Settings UI for AI provider configuration
+- Phase 4: Testing and Polish
 - Waveform visualization in playback view
 - Video thumbnail generation for library items
 - Import/export of recording library
