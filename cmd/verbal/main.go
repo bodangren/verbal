@@ -10,6 +10,7 @@ import (
 	"verbal/internal/ai"
 	"verbal/internal/db"
 	"verbal/internal/media"
+	"verbal/internal/settings"
 	"verbal/internal/sync"
 	"verbal/internal/transcription"
 	"verbal/internal/ui"
@@ -35,6 +36,8 @@ type appState struct {
 	currentPath     string
 	db              *db.Database
 	recordingSvc    *db.RecordingService
+	settingsSvc     *settings.Service
+	aiFactory       *ai.Factory
 }
 
 func main() {
@@ -85,8 +88,14 @@ func activate(app *gtk.Application, database *db.Database) {
 	window.SetDefaultSize(1200, 700)
 
 	var recordingSvc *db.RecordingService
+	var settingsSvc *settings.Service
 	if database != nil {
 		recordingSvc = db.NewRecordingService(database)
+
+		// Initialize settings service
+		settingsRepo := &db.SettingsRepository{}
+		aiFactory := ai.NewFactory()
+		settingsSvc = settings.NewService(settingsRepo, aiFactory)
 	}
 
 	// Create the stack for view switching
@@ -100,6 +109,8 @@ func activate(app *gtk.Application, database *db.Database) {
 		loader:       ui.NewRecordingLoader(),
 		db:           database,
 		recordingSvc: recordingSvc,
+		settingsSvc:  settingsSvc,
+		aiFactory:    ai.NewFactory(),
 	}
 
 	// Create library view
@@ -236,6 +247,45 @@ func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *a
 	})
 	app.AddAction(transcribeAction)
 	app.SetAccelsForAction("app.transcribe", []string{"<Ctrl>t"})
+
+	// Settings/Preferences action
+	settingsAction := gio.NewSimpleAction("preferences", nil)
+	settingsAction.ConnectActivate(func(_ *glib.Variant) {
+		showSettingsWindow(window, state)
+	})
+	app.AddAction(settingsAction)
+	app.SetAccelsForAction("app.preferences", []string{"<Ctrl>comma"})
+}
+
+func showSettingsWindow(parent *gtk.ApplicationWindow, state *appState) {
+	if state.settingsSvc == nil {
+		return
+	}
+
+	// Load current settings
+	currentSettings, err := state.settingsSvc.LoadSettingsOrDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load settings: %v\n", err)
+		currentSettings = settings.CreateDefaultSettings()
+	}
+
+	// Create and show settings window
+	settingsWindow := ui.NewSettingsWindow(&parent.Window)
+	settingsWindow.SetSettings(currentSettings)
+
+	// Wire up test callback
+	settingsWindow.SetOnTest(func(config settings.ProviderConfig) error {
+		return state.settingsSvc.TestProviderConnection(config)
+	})
+
+	// Wire up save callback
+	settingsWindow.SetOnSave(func(s *settings.Settings) {
+		if err := state.settingsSvc.SaveSettings(s); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save settings: %v\n", err)
+		}
+	})
+
+	settingsWindow.Show()
 }
 
 func showOpenFileDialog(window *gtk.ApplicationWindow, state *appState) {
@@ -535,7 +585,20 @@ func runTranscription(state *appState) {
 		state.playbackWindow.SetEditableTranscription(state.editableView)
 	}
 
-	provider, err := ai.NewProviderFromEnv()
+	// Try to get provider from settings first, then fall back to environment
+	var provider ai.Provider
+	var err error
+
+	if state.settingsSvc != nil {
+		provider, err = state.aiFactory.CreateProviderFromSettings(nil)
+		if err != nil {
+			// Fall back to environment variables
+			provider, err = ai.NewProviderFromEnv()
+		}
+	} else {
+		provider, err = ai.NewProviderFromEnv()
+	}
+
 	if err != nil {
 		glib.IdleAdd(func() {
 			state.editableView.SetError(err)
