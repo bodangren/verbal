@@ -4,12 +4,12 @@
 **Goal:** Extract and process audio data from video files into waveform samples
 
 ### Tasks
-- [ ] Task: Create WaveformGenerator type with GStreamer pipeline
-  - [ ] Write tests for WaveformGenerator initialization
-  - [ ] Implement WaveformGenerator with audio extraction pipeline
-  - [ ] Test with various audio formats
+- [x] Task: Create WaveformGenerator type with GStreamer pipeline [66cb6ab]
+  - [x] Write tests for WaveformGenerator initialization
+  - [x] Implement WaveformGenerator with audio extraction pipeline
+  - [x] Test with various audio formats
 
-- [ ] Task: Implement audio downsampling and amplitude extraction
+- [~] Task: Implement audio downsampling and amplitude extraction
   - [ ] Write tests for amplitude calculation from audio samples
   - [ ] Implement downsample algorithm (reduce to ~1000 samples per minute)
   - [ ] Test downsampling accuracy
