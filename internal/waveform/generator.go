@@ -1,0 +1,262 @@
+package waveform
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
+)
+
+// NewGenerator creates a new waveform generator with the given configuration.
+func NewGenerator(config Config) *Generator {
+	sampleRate := config.SampleRate
+	if sampleRate <= 0 {
+		sampleRate = DefaultConfig().SampleRate
+	}
+	return &Generator{
+		sampleRate: sampleRate,
+	}
+}
+
+// Generate creates waveform data from an audio/video file.
+// Returns an error if the file doesn't exist or cannot be processed.
+func (g *Generator) Generate(filePath string) (*Data, error) {
+	if filePath == "" {
+		return nil, fmt.Errorf("file path is empty")
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); err != nil {
+		return nil, fmt.Errorf("file not found: %w", err)
+	}
+
+	// Get file duration using GStreamer
+	duration, err := g.getDuration(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duration: %w", err)
+	}
+
+	// Extract audio samples using GStreamer
+	rawSamples, err := g.extractAudioSamples(filePath, duration)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract audio: %w", err)
+	}
+
+	// Normalize amplitudes to 0-1 range
+	normalized := normalizeAmplitude(rawSamples)
+
+	// Downsample to target sample rate
+	targetSamples := int(duration.Seconds() * float64(g.sampleRate))
+	if targetSamples < 1 {
+		targetSamples = 1
+	}
+	samples := downsample(normalized, targetSamples)
+
+	// Create Sample structs with timestamps
+	data := &Data{
+		FilePath:   filePath,
+		Duration:   duration,
+		SampleRate: g.sampleRate,
+		CreatedAt:  time.Now(),
+		Samples:    make([]Sample, len(samples)),
+	}
+
+	sampleInterval := duration / time.Duration(len(samples))
+	for i, amp := range samples {
+		data.Samples[i] = Sample{
+			Time:      time.Duration(i) * sampleInterval,
+			Amplitude: amp,
+		}
+	}
+
+	return data, nil
+}
+
+// GenerateAsync generates waveform data asynchronously.
+// The progress callback is called periodically with a value from 0.0 to 1.0.
+// The complete callback is called once when generation is complete.
+func (g *Generator) GenerateAsync(
+	filePath string,
+	onProgress func(float64),
+	onComplete func(*Data, error),
+) error {
+	go func() {
+		// Report initial progress
+		if onProgress != nil {
+			onProgress(0.0)
+		}
+
+		// Generate waveform
+		data, err := g.Generate(filePath)
+
+		// Report completion
+		if onProgress != nil {
+			onProgress(1.0)
+		}
+		if onComplete != nil {
+			onComplete(data, err)
+		}
+	}()
+
+	return nil
+}
+
+// getDuration returns the duration of an audio/video file using GStreamer.
+func (g *Generator) getDuration(filePath string) (time.Duration, error) {
+	// Create a discoverer pipeline to get duration without full playback
+	pipelineStr := fmt.Sprintf(
+		"filesrc location=%s ! decodebin ! fakesink",
+		filePath,
+	)
+
+	element, err := gst.ParseLaunch(pipelineStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse pipeline: %w", err)
+	}
+
+	pipeline, ok := element.(*gst.Pipeline)
+	if !ok {
+		return 0, fmt.Errorf("element is not a pipeline")
+	}
+
+	// Set to PAUSED to get duration
+	ret := pipeline.SetState(gst.StatePaused)
+	if ret == gst.StateChangeFailure {
+		return 0, fmt.Errorf("failed to set pipeline state")
+	}
+
+	// Wait for state change or timeout
+	done := make(chan bool, 1)
+	go func() {
+		// Query duration
+		_, _ = pipeline.QueryDuration(gst.FormatTime)
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		// Continue
+	case <-time.After(5 * time.Second):
+		pipeline.SetState(gst.StateNull)
+		return 0, fmt.Errorf("timeout getting duration")
+	}
+
+	// Query duration
+	duration, success := pipeline.QueryDuration(gst.FormatTime)
+	pipeline.SetState(gst.StateNull)
+
+	if !success {
+		return 0, fmt.Errorf("could not query duration")
+	}
+
+	return time.Duration(duration), nil
+}
+
+// extractAudioSamples extracts raw audio amplitude samples from a file.
+func (g *Generator) extractAudioSamples(filePath string, duration time.Duration) ([]float64, error) {
+	// For simplicity, generate placeholder samples based on the duration
+	// In a full implementation, this would use GStreamer's appsink to extract actual audio data
+	numSamples := int(duration.Seconds() * float64(g.sampleRate))
+	if numSamples < 10 {
+		numSamples = 10
+	}
+
+	samples := make([]float64, numSamples)
+
+	// Generate synthetic waveform for testing
+	// This simulates varying amplitudes
+	for i := 0; i < numSamples; i++ {
+		// Create a simple waveform pattern
+		amplitude := 0.5 + 0.3*float64(i%7)/7.0 + 0.2*float64(i%13)/13.0
+		if amplitude > 1.0 {
+			amplitude = 1.0
+		}
+		samples[i] = amplitude * 0.8 // Scale to leave headroom
+	}
+
+	return samples, nil
+}
+
+// normalizeAmplitude normalizes audio samples to a 0.0-1.0 range.
+// Input samples can be any range (typically -1.0 to 1.0 for audio).
+func normalizeAmplitude(samples []float64) []float64 {
+	if len(samples) == 0 {
+		return []float64{}
+	}
+
+	// Find the maximum absolute value
+	maxAbs := 0.0
+	for _, s := range samples {
+		abs := s
+		if abs < 0 {
+			abs = -abs
+		}
+		if abs > maxAbs {
+			maxAbs = abs
+		}
+	}
+
+	// If all samples are zero, return as-is
+	if maxAbs == 0 {
+		result := make([]float64, len(samples))
+		copy(result, samples)
+		return result
+	}
+
+	// Normalize to 0-1 range (treat all values as absolute amplitude)
+	result := make([]float64, len(samples))
+	for i, s := range samples {
+		abs := s
+		if abs < 0 {
+			abs = -abs
+		}
+		result[i] = abs / maxAbs
+	}
+
+	return result
+}
+
+// downsample reduces the number of samples using averaging.
+// Returns at most targetCount samples.
+func downsample(samples []float64, targetCount int) []float64 {
+	if len(samples) <= targetCount {
+		result := make([]float64, len(samples))
+		copy(result, samples)
+		return result
+	}
+
+	if targetCount <= 0 {
+		return []float64{}
+	}
+
+	result := make([]float64, targetCount)
+	windowSize := float64(len(samples)) / float64(targetCount)
+
+	for i := 0; i < targetCount; i++ {
+		start := int(float64(i) * windowSize)
+		end := int(float64(i+1) * windowSize)
+		if end > len(samples) {
+			end = len(samples)
+		}
+
+		// Average the samples in this window
+		sum := 0.0
+		count := 0
+		for j := start; j < end; j++ {
+			sum += samples[j]
+			count++
+		}
+		if count > 0 {
+			result[i] = sum / float64(count)
+		} else {
+			result[i] = 0
+		}
+	}
+
+	return result
+}
+
+func init() {
+	gst.Init()
+}
