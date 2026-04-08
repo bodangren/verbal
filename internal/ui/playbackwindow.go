@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
@@ -12,7 +13,7 @@ import (
 //
 // The layout consists of:
 //   - Left pane (60%): Video widget
-//   - Right pane (40%): Transcription view (scrollable)
+//   - Right pane (40%): Waveform (top) + Transcription view (bottom)
 //   - Bottom toolbar: Play/Pause/Stop buttons, seek slider, time display
 //
 // Thread safety: All UI updates must be made from the GTK main thread.
@@ -25,7 +26,13 @@ type PlaybackWindow struct {
 	// Video pane (left side)
 	videoWidget *gtk.Widget
 
-	// Transcription pane (right side)
+	// Right pane container
+	rightPane *gtk.Box
+
+	// Waveform widget (top of right pane)
+	waveformWidget *WaveformWidget
+
+	// Transcription pane (bottom of right pane)
 	transcriptionWidget   *gtk.Widget
 	editableTranscription *EditableTranscriptionView
 
@@ -35,6 +42,9 @@ type PlaybackWindow struct {
 	stopButton  *gtk.Button
 	seekSlider  *gtk.Scale
 	timeLabel   *gtk.Label
+
+	// Loading state
+	loadingLabel *gtk.Label
 
 	// Error display
 	errorLabel *gtk.Label
@@ -64,15 +74,31 @@ func NewPlaybackWindow() *PlaybackWindow {
 	// This will be adjusted when the window is realized
 	paned.SetPosition(480) // 60% of 800px default width
 
+	// Create right pane container (vertical box for waveform + transcription)
+	rightPane := gtk.NewBox(gtk.OrientationVertical, 0)
+	rightPane.SetVExpand(true)
+
+	// Loading label (hidden by default, shown during waveform generation)
+	loadingLabel := gtk.NewLabel("Generating waveform...")
+	loadingLabel.AddCSSClass("loading-label")
+	loadingLabel.SetVisible(false)
+	loadingLabel.SetMarginTop(8)
+	loadingLabel.SetMarginBottom(8)
+
+	// Add loading label to right pane
+	rightPane.Append(loadingLabel)
+
 	// Error label (hidden by default)
 	errorLabel := gtk.NewLabel("")
 	errorLabel.AddCSSClass("error-label")
 	errorLabel.SetVisible(false)
 
 	pw := &PlaybackWindow{
-		root:       root,
-		paned:      paned,
-		errorLabel: errorLabel,
+		root:         root,
+		paned:        paned,
+		rightPane:    rightPane,
+		loadingLabel: loadingLabel,
+		errorLabel:   errorLabel,
 	}
 
 	// Create toolbar with playback controls (stores refs in pw)
@@ -83,6 +109,9 @@ func NewPlaybackWindow() *PlaybackWindow {
 	root.Append(paned)
 	root.Append(errorLabel)
 	root.Append(toolbar)
+
+	// Set the right pane as the end child of the paned widget
+	paned.SetEndChild(rightPane)
 
 	return pw
 }
@@ -182,9 +211,16 @@ func (pw *PlaybackWindow) GetVideoWidget() *gtk.Widget {
 }
 
 // SetTranscriptionWidget sets the transcription widget for the right pane.
+// The transcription widget is added below the waveform widget.
 func (pw *PlaybackWindow) SetTranscriptionWidget(widget *gtk.Widget) {
+	// Remove existing transcription widget if present
+	if pw.transcriptionWidget != nil {
+		pw.rightPane.Remove(pw.transcriptionWidget)
+	}
+
 	pw.transcriptionWidget = widget
-	pw.paned.SetEndChild(widget)
+	widget.SetVExpand(true)
+	pw.rightPane.Append(widget)
 }
 
 // GetTranscriptionWidget returns the current transcription widget.
@@ -226,9 +262,16 @@ func (pw *PlaybackWindow) SetSeekCallback(callback func(position float64)) {
 // UpdateTimeDisplay updates the time label with current and total time.
 // Times are formatted as MM:SS.
 func (pw *PlaybackWindow) UpdateTimeDisplay(current, total float64) {
-	currentStr := formatDuration(current)
-	totalStr := formatDuration(total)
+	currentStr := formatDurationSeconds(current)
+	totalStr := formatDurationSeconds(total)
 	pw.timeLabel.SetText(fmt.Sprintf("%s / %s", currentStr, totalStr))
+}
+
+// formatDurationSeconds formats seconds as MM:SS.
+func formatDurationSeconds(seconds float64) string {
+	mins := int(seconds) / 60
+	secs := int(seconds) % 60
+	return fmt.Sprintf("%d:%02d", mins, secs)
 }
 
 // UpdateSeekSlider updates the seek slider position.
@@ -240,13 +283,6 @@ func (pw *PlaybackWindow) UpdateSeekSlider(current, total float64) {
 	} else {
 		pw.seekSlider.SetValue(0)
 	}
-}
-
-// formatDuration formats seconds as MM:SS.
-func formatDuration(seconds float64) string {
-	mins := int(seconds) / 60
-	secs := int(seconds) % 60
-	return fmt.Sprintf("%d:%02d", mins, secs)
 }
 
 // ShowError displays an error message to the user.
@@ -283,4 +319,53 @@ func (pw *PlaybackWindow) GetEditableTranscription() *EditableTranscriptionView 
 // selected transcription segments.
 func (pw *PlaybackWindow) SetExportSegmentsCallback(callback func(segments []Segment)) {
 	pw.onExportSegments = callback
+}
+
+// SetWaveformWidget sets the waveform widget for the right pane.
+// The waveform widget is added at the top of the right pane, above the transcription.
+func (pw *PlaybackWindow) SetWaveformWidget(widget *WaveformWidget) {
+	// Remove existing waveform widget if present
+	if pw.waveformWidget != nil {
+		pw.rightPane.Remove(pw.waveformWidget)
+	}
+
+	pw.waveformWidget = widget
+	// Insert at the beginning of the right pane (before transcription)
+	pw.rightPane.InsertChildAfter(widget, nil)
+}
+
+// GetWaveformWidget returns the current waveform widget.
+func (pw *PlaybackWindow) GetWaveformWidget() *WaveformWidget {
+	return pw.waveformWidget
+}
+
+// ShowLoading displays the loading label with the given message.
+func (pw *PlaybackWindow) ShowLoading(message string) {
+	pw.loadingLabel.SetText(message)
+	pw.loadingLabel.SetVisible(true)
+}
+
+// HideLoading hides the loading label.
+func (pw *PlaybackWindow) HideLoading() {
+	pw.loadingLabel.SetVisible(false)
+}
+
+// SetWaveformSeekCallback sets the callback for when the user seeks via the waveform.
+// The callback receives the seek position as a duration.
+func (pw *PlaybackWindow) SetWaveformSeekCallback(callback func(position float64)) {
+	if pw.waveformWidget != nil {
+		pw.waveformWidget.SetPositionCallback(func(pos time.Duration) {
+			if callback != nil && pw.waveformWidget.data != nil && pw.waveformWidget.data.Duration > 0 {
+				percentage := float64(pos) / float64(pw.waveformWidget.data.Duration) * 100.0
+				callback(percentage)
+			}
+		})
+	}
+}
+
+// UpdateWaveformPosition updates the waveform position indicator.
+func (pw *PlaybackWindow) UpdateWaveformPosition(position time.Duration) {
+	if pw.waveformWidget != nil {
+		pw.waveformWidget.SetPosition(position)
+	}
 }

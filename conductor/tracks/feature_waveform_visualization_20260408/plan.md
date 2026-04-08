@@ -55,10 +55,10 @@
 **Goal:** Wire waveform widget into the existing playback window
 
 ### Tasks
-- [ ] Task: Add WaveformWidget to PlaybackWindow layout
-  - [ ] Write tests for widget integration
-  - [ ] Modify PlaybackWindow to include waveform above transcription
-  - [ ] Test layout and sizing
+- [x] Task: Add WaveformWidget to PlaybackWindow layout
+  - [x] Write tests for widget integration
+  - [x] Modify PlaybackWindow to include waveform above transcription
+  - [x] Test layout and sizing
 
 - [ ] Task: Wire waveform to PositionMonitor
   - [ ] Write tests for position synchronization

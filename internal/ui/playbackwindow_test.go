@@ -2,8 +2,10 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+	"verbal/internal/waveform"
 )
 
 func TestPlaybackWindow_Creation(t *testing.T) {
@@ -247,7 +249,7 @@ func TestPlaybackWindow_ErrorDisplay(t *testing.T) {
 	}
 }
 
-func TestFormatDuration(t *testing.T) {
+func TestFormatDurationSeconds(t *testing.T) {
 	tests := []struct {
 		seconds  float64
 		expected string
@@ -261,8 +263,126 @@ func TestFormatDuration(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := formatDuration(tt.seconds); got != tt.expected {
-			t.Errorf("formatDuration(%v) = %v, want %v", tt.seconds, got, tt.expected)
+		if got := formatDurationSeconds(tt.seconds); got != tt.expected {
+			t.Errorf("formatDurationSeconds(%v) = %v, want %v", tt.seconds, got, tt.expected)
 		}
+	}
+}
+
+func TestPlaybackWindow_SetWaveformWidget(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+
+	window := NewPlaybackWindow()
+
+	// Create a waveform widget
+	waveformWidget := NewWaveformWidget()
+
+	window.SetWaveformWidget(waveformWidget)
+
+	// Verify waveform widget was set
+	retrieved := window.GetWaveformWidget()
+	if retrieved == nil {
+		t.Error("GetWaveformWidget() returned nil")
+	}
+	if retrieved != waveformWidget {
+		t.Error("GetWaveformWidget() returned different widget")
+	}
+}
+
+func TestPlaybackWindow_WaveformSeekCallback(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+
+	window := NewPlaybackWindow()
+
+	// Create and set waveform widget
+	waveformWidget := NewWaveformWidget()
+	window.SetWaveformWidget(waveformWidget)
+
+	seekCalled := false
+	var seekPosition float64
+
+	window.SetWaveformSeekCallback(func(position float64) {
+		seekCalled = true
+		seekPosition = position
+	})
+
+	// Set waveform data with duration
+	waveformWidget.SetData(&waveform.Data{
+		Duration: 60 * time.Second,
+		Samples:  make([]waveform.Sample, 100),
+	})
+
+	// Simulate a click at 50% position
+	waveformWidget.simulateClickAt(0.5)
+
+	if !seekCalled {
+		t.Error("Waveform seek callback was not called")
+	}
+
+	expectedPosition := 50.0 // 50% of duration
+	if seekPosition != expectedPosition {
+		t.Errorf("Expected seek position %f, got %f", expectedPosition, seekPosition)
+	}
+}
+
+func TestPlaybackWindow_LoadingState(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+
+	window := NewPlaybackWindow()
+
+	// Verify loading is hidden initially
+	if window.loadingLabel.Visible() {
+		t.Error("Loading label should be hidden initially")
+	}
+
+	// Show loading
+	window.ShowLoading("Generating waveform...")
+
+	// Verify loading is visible with correct message
+	if !window.loadingLabel.Visible() {
+		t.Error("Loading label should be visible after ShowLoading")
+	}
+	if window.loadingLabel.Text() != "Generating waveform..." {
+		t.Errorf("Expected loading message 'Generating waveform...', got '%s'", window.loadingLabel.Text())
+	}
+
+	// Hide loading
+	window.HideLoading()
+
+	// Verify loading is hidden
+	if window.loadingLabel.Visible() {
+		t.Error("Loading label should be hidden after HideLoading")
+	}
+}
+
+func TestPlaybackWindow_UpdateWaveformPosition(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+
+	window := NewPlaybackWindow()
+
+	// Create and set waveform widget
+	waveformWidget := NewWaveformWidget()
+	window.SetWaveformWidget(waveformWidget)
+
+	// Set waveform data
+	waveformWidget.SetData(&waveform.Data{
+		Duration: 60 * time.Second,
+		Samples:  make([]waveform.Sample, 100),
+	})
+
+	// Update position
+	window.UpdateWaveformPosition(30 * time.Second)
+
+	// Verify position was updated
+	if waveformWidget.GetPosition() != 30*time.Second {
+		t.Errorf("Expected waveform position 30s, got %v", waveformWidget.GetPosition())
 	}
 }
