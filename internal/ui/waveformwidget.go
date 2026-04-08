@@ -69,6 +69,7 @@ func (ww *WaveformWidget) ClearData() {
 
 // SetPosition updates the current playback position.
 // The position indicator will be redrawn at the new location.
+// This method accepts time.Duration for internal use.
 func (ww *WaveformWidget) SetPosition(position time.Duration) {
 	ww.position = position
 	ww.queueDraw()
@@ -77,6 +78,12 @@ func (ww *WaveformWidget) SetPosition(position time.Duration) {
 // GetPosition returns the current playback position.
 func (ww *WaveformWidget) GetPosition() time.Duration {
 	return ww.position
+}
+
+// UpdatePosition updates the waveform position indicator from seconds.
+// This implements the sync.WaveformUpdater interface.
+func (ww *WaveformWidget) UpdatePosition(seconds float64) {
+	ww.SetPosition(time.Duration(seconds * float64(time.Second)))
 }
 
 // SetPositionCallback sets the callback for when the user clicks on the waveform.

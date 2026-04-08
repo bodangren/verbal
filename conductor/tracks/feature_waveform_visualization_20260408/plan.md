@@ -60,10 +60,10 @@
   - [x] Modify PlaybackWindow to include waveform above transcription
   - [x] Test layout and sizing
 
-- [ ] Task: Wire waveform to PositionMonitor
-  - [ ] Write tests for position synchronization
-  - [ ] Implement callback for position updates
-  - [ ] Test sync at 10fps rate
+- [x] Task: Wire waveform to PositionMonitor
+  - [x] Write tests for position synchronization
+  - [x] Implement callback for position updates
+  - [x] Test sync at 10fps rate
 
 - [ ] Task: Add loading state UI
   - [ ] Write tests for loading state transitions

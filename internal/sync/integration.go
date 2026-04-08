@@ -36,21 +36,30 @@ type WordHighlighter interface {
 	GetHighlightedWord() int
 }
 
+// WaveformUpdater provides an interface for updating the waveform position indicator.
+type WaveformUpdater interface {
+	// UpdatePosition updates the waveform position indicator to the given time position.
+	// The position is in seconds.
+	UpdatePosition(position float64)
+}
+
 // Integration manages the complete video-transcription synchronization system.
-// It wires together the position monitor, sync controller, and word highlighting UI.
+// It wires together the position monitor, sync controller, word highlighting UI, and waveform display.
 //
 // The integration handles:
 //   - Position polling from the video player (via PositionMonitor)
 //   - Word lookup based on current position (via SyncController)
 //   - UI highlighting updates (via WordHighlighter)
+//   - Waveform position indicator updates (via WaveformUpdater)
 //   - Click-to-seek from words to video position
 //
 // Thread safety: All methods are safe for concurrent use.
 type Integration struct {
-	controller  *Controller
-	monitor     PositionMonitorInterface
-	highlighter WordHighlighter
-	player      PlaybackController
+	controller      *Controller
+	monitor         PositionMonitorInterface
+	highlighter     WordHighlighter
+	waveformUpdater WaveformUpdater
+	player          PlaybackController
 
 	mu      sync.RWMutex
 	running bool
@@ -78,6 +87,7 @@ type PositionMonitorInterface interface {
 //   - controller: The sync controller with transcription data
 //   - monitor: The position monitor polling the video player
 //   - highlighter: The UI component for word highlighting
+//   - waveformUpdater: The waveform widget for position updates (can be nil)
 //   - player: The video player for seeking on word clicks
 //
 // Example:
@@ -86,6 +96,7 @@ type PositionMonitorInterface interface {
 //	    syncController,
 //	    positionMonitor,
 //	    wordContainer,
+//	    waveformWidget,
 //	    playbackPipeline,
 //	)
 //	integration.Start()
@@ -94,14 +105,16 @@ func NewIntegration(
 	controller *Controller,
 	monitor PositionMonitorInterface,
 	highlighter WordHighlighter,
+	waveformUpdater WaveformUpdater,
 	player PlaybackController,
 ) *Integration {
 	return &Integration{
-		controller:  controller,
-		monitor:     monitor,
-		highlighter: highlighter,
-		player:      player,
-		running:     false,
+		controller:      controller,
+		monitor:         monitor,
+		highlighter:     highlighter,
+		waveformUpdater: waveformUpdater,
+		player:          player,
+		running:         false,
 	}
 }
 
@@ -115,11 +128,20 @@ func (i *Integration) Start() {
 		return
 	}
 
-	// Register position callback to update controller
+	// Register position callback to update controller and waveform
 	i.positionUnregister = i.monitor.RegisterCallback(func(position float64) {
 		// Update sync controller with new position
 		// This runs on the monitor's goroutine, controller handles thread safety
 		i.controller.UpdatePosition(position)
+
+		// Update waveform position indicator from main thread
+		if i.waveformUpdater != nil {
+			glib.IdleAdd(func() {
+				if i.waveformUpdater != nil {
+					i.waveformUpdater.UpdatePosition(position)
+				}
+			})
+		}
 	})
 
 	// Register word change callback to update UI
