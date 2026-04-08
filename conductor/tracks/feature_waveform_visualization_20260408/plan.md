@@ -32,22 +32,22 @@
   - [x] Implement WaveformWidget with Cairo rendering
   - [x] Test widget sizing and allocation
 
-- [ ] Task: Implement waveform drawing with Cairo
-  - [ ] Write tests for drawing functions
-  - [ ] Implement waveform path rendering (centered, amplitude-based)
-  - [ ] Test rendering with sample data
+- [x] Task: Implement waveform drawing with Cairo
+  - [x] Write tests for drawing functions
+  - [x] Implement waveform path rendering (centered, amplitude-based)
+  - [x] Test rendering with sample data
 
-- [ ] Task: Add playback position indicator
-  - [ ] Write tests for position calculation
-  - [ ] Implement vertical line indicator at current position
-  - [ ] Test position updates during playback
+- [x] Task: Add playback position indicator
+  - [x] Write tests for position calculation
+  - [x] Implement vertical line indicator at current position
+  - [x] Test position updates during playback
 
-- [ ] Task: Add click-to-seek functionality
-  - [ ] Write tests for coordinate-to-time mapping
-  - [ ] Implement click handler for seeking
-  - [ ] Test seek accuracy
+- [x] Task: Add click-to-seek functionality
+  - [x] Write tests for coordinate-to-time mapping
+  - [x] Implement click handler for seeking
+  - [x] Test seek accuracy
 
-- [ ] Task: Conductor - Phase 2 Verification
+- [x] Task: Conductor - Phase 2 Verification
 
 ---
 
