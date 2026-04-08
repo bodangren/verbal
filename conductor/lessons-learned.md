@@ -25,6 +25,8 @@
 - **Seek Boundary Validation:** Always validate seek positions against duration before calling GStreamer's `SeekSimple`. Negative seeks cause silent failures.
 - **SetState Return Values:** GStreamer's `SetState()` returns `gst.StateChangeReturn`, not an error. Check for `gst.StateChangeFailure` to detect failed transitions.
 - **Integration Test Patterns:** Integration tests should test complete workflows, state transitions, and edge cases. Table-driven tests with descriptive names make test failures self-documenting.
+- **Interface Changes Require Test Updates:** When adding new interface parameters (like `WaveformUpdater` to `NewIntegration`), update all test mocks and call sites immediately. Use `nil` for optional interfaces in tests.
+- **Normalization Edge Cases:** Single-value normalization produces 1.0 (value/max where max=value), not the original value. Document this behavior in test expectations.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
