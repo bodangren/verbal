@@ -258,8 +258,8 @@ func TestNormalizeAmplitude(t *testing.T) {
 		{
 			name:    "single value",
 			input:   []float64{0.5},
-			wantMin: 0.5,
-			wantMax: 0.5,
+			wantMin: 1.0, // Single value normalized to 1.0 (0.5/0.5)
+			wantMax: 1.0,
 			wantLen: 1,
 		},
 		{

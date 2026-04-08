@@ -80,6 +80,13 @@ func NewRecordingListItem(recording *db.Recording) *RecordingListItem {
 	infoBox.Append(metaBox)
 	box.Append(infoBox)
 
+	item := &RecordingListItem{
+		recording:            recording,
+		box:                  box,
+		onActivatedCallbacks: make([]func(*db.Recording), 0),
+		onDeleteCallbacks:    make([]func(*db.Recording), 0),
+	}
+
 	// Right: Delete button
 	deleteBtn := gtk.NewButtonFromIconName("user-trash-symbolic")
 	deleteBtn.AddCSSClass("recording-delete-btn")
@@ -88,13 +95,6 @@ func NewRecordingListItem(recording *db.Recording) *RecordingListItem {
 		item.emitDelete()
 	})
 	box.Append(deleteBtn)
-
-	item := &RecordingListItem{
-		recording:            recording,
-		box:                  box,
-		onActivatedCallbacks: make([]func(*db.Recording), 0),
-		onDeleteCallbacks:    make([]func(*db.Recording), 0),
-	}
 
 	// Setup click gesture for activation
 	clickGesture := gtk.NewGestureClick()

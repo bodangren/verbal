@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+	"verbal/internal/waveform"
 )
 
 // PlaybackWindow provides a split-pane layout for video playback with

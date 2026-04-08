@@ -126,6 +126,27 @@ func (m *mockPlaybackController) QueryPosition() float64 {
 	return m.position
 }
 
+type mockWaveformUpdater struct {
+	position float64
+	mu       sync.RWMutex
+}
+
+func newMockWaveformUpdater() *mockWaveformUpdater {
+	return &mockWaveformUpdater{}
+}
+
+func (m *mockWaveformUpdater) UpdatePosition(position float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.position = position
+}
+
+func (m *mockWaveformUpdater) GetPosition() float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.position
+}
+
 func TestNewIntegration(t *testing.T) {
 	result := &ai.TranscriptionResult{
 		Words: []ai.Word{
@@ -139,7 +160,8 @@ func TestNewIntegration(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 
 	if integration == nil {
 		t.Fatal("NewIntegration returned nil")
@@ -166,7 +188,8 @@ func TestIntegration_StartStop(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 
 	// Test Start
 	integration.Start()
@@ -212,7 +235,8 @@ func TestIntegration_PositionUpdate(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 	integration.Start()
 	defer integration.Stop()
 
@@ -241,7 +265,8 @@ func TestIntegration_WordHighlighting(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 	integration.Start()
 	defer integration.Stop()
 
@@ -273,7 +298,8 @@ func TestIntegration_HandleWordClick(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 	integration.Start()
 	defer integration.Stop()
 
@@ -311,7 +337,8 @@ func TestIntegration_GetCurrentPosition(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 
 	// Initially should be 0
 	if integration.GetCurrentPosition() != 0 {
@@ -339,7 +366,8 @@ func TestIntegration_GetCurrentWordIndex(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 
 	// Initially should be -1 (no word)
 	if integration.GetCurrentWordIndex() != -1 {
@@ -364,9 +392,10 @@ func TestIntegration_HandleWordClick_NilPlayer(t *testing.T) {
 	controller := NewController(result)
 	monitor := newMockPositionMonitor()
 	highlighter := newMockWordHighlighter()
+	waveform := newMockWaveformUpdater()
 
 	// Create integration with nil player
-	integration := NewIntegration(controller, monitor, highlighter, nil)
+	integration := NewIntegration(controller, monitor, highlighter, waveform, nil)
 	integration.Start()
 	defer integration.Stop()
 
@@ -388,7 +417,8 @@ func TestIntegration_MultiplePositionUpdates(t *testing.T) {
 	highlighter := newMockWordHighlighter()
 	player := newMockPlaybackController()
 
-	integration := NewIntegration(controller, monitor, highlighter, player)
+	waveform := newMockWaveformUpdater()
+	integration := NewIntegration(controller, monitor, highlighter, waveform, player)
 	integration.Start()
 	defer integration.Stop()
 

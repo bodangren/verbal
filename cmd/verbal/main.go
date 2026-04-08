@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"verbal/internal/ai"
 	"verbal/internal/db"
@@ -327,7 +328,7 @@ func loadRecording(state *appState, videoPath string) {
 
 	// Add/update recording in database
 	if state.recordingSvc != nil {
-		_, err := state.recordingSvc.AddRecording(videoPath, result.Duration)
+		_, err := state.recordingSvc.AddRecording(videoPath, time.Duration(result.Duration*float64(time.Second)))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to add recording to library: %v\n", err)
 		}
@@ -558,7 +559,13 @@ func setupSyncIntegration(state *appState, result *ai.TranscriptionResult) {
 		},
 	}
 
-	state.syncIntegration = sync.NewIntegration(controller, state.monitor, highlighter, player)
+	waveform := &waveformSyncAdapter{
+		updatePosition: func(pos float64) {
+			state.playbackWindow.UpdateWaveformPosition(time.Duration(pos * float64(time.Second)))
+		},
+	}
+
+	state.syncIntegration = sync.NewIntegration(controller, state.monitor, highlighter, waveform, player)
 
 	controller.RegisterPositionCallback(func(position float64) {
 		glib.IdleAdd(func() {
@@ -741,4 +748,15 @@ func (a *playbackSyncAdapter) QueryPosition() float64 {
 		return a.queryPosition()
 	}
 	return -1
+}
+
+// waveformSyncAdapter adapts PlaybackWindow to sync.WaveformUpdater interface
+type waveformSyncAdapter struct {
+	updatePosition func(float64)
+}
+
+func (a *waveformSyncAdapter) UpdatePosition(position float64) {
+	if a.updatePosition != nil {
+		a.updatePosition(position)
+	}
 }

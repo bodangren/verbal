@@ -78,7 +78,7 @@ func NewLibraryView() *LibraryView {
 	// List box for recordings
 	listBox := gtk.NewListBox()
 	listBox.AddCSSClass("library-list")
-	listBox.SetSelectionMode(gtk.SelectionModeNone)
+	listBox.SetSelectionMode(gtk.SelectionNone)
 
 	scrolled.SetChild(listBox)
 	box.Append(scrolled)

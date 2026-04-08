@@ -15,6 +15,7 @@ type RecordingLoaderResult struct {
 	VideoPath        string
 	MetadataPath     string
 	Exists           bool
+	Duration         float64 // Duration in seconds
 	HasTranscription bool
 	Transcription    *ai.TranscriptionResult
 	WordData         []WordData
@@ -104,6 +105,9 @@ func (rl *RecordingLoader) LoadRecording(videoPath string) *RecordingLoaderResul
 		Text:  metadata.Transcription.Text,
 		Words: metadata.Transcription.Words,
 	}
+
+	// Set duration from metadata (convert ms to seconds)
+	result.Duration = float64(metadata.DurationMs) / 1000.0
 
 	// Convert to WordData for UI
 	result.WordData = wordsToWordData(metadata.Transcription.Words)
