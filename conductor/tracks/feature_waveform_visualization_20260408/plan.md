@@ -78,22 +78,22 @@
 **Goal:** Add zoom, scroll, and selection capabilities
 
 ### Tasks
-- [ ] Task: Implement horizontal scrolling
-  - [ ] Write tests for scroll offset calculation
-  - [ ] Add scrollbar or scroll gesture handling
-  - [ ] Test scroll behavior with large files
+- [x] Task: Implement horizontal scrolling
+  - [x] Write tests for scroll offset calculation
+  - [x] Add scrollbar or scroll gesture handling
+  - [x] Test scroll behavior with large files
 
-- [ ] Task: Implement zoom in/out
-  - [ ] Write tests for zoom level calculations
-  - [ ] Add zoom controls (buttons or gestures)
-  - [ ] Test zoom with various file lengths
+- [x] Task: Implement zoom in/out
+  - [x] Write tests for zoom level calculations
+  - [x] Add zoom controls (buttons or gestures)
+  - [x] Test zoom with various file lengths
 
-- [ ] Task: Add time range selection
-  - [ ] Write tests for selection logic
-  - [ ] Implement drag-to-select interaction
-  - [ ] Test selection accuracy
+- [x] Task: Add time range selection
+  - [x] Write tests for selection logic
+  - [x] Implement drag-to-select interaction
+  - [x] Test selection accuracy
 
-- [ ] Task: Conductor - Phase 4 Verification
+- [~] Task: Conductor - Phase 4 Verification
 
 ---
 
