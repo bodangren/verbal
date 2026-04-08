@@ -1,93 +1,32 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
-- **SimpleAction for Menu Items:** Use `gio.NewSimpleAction("action-name", nil)` and `app.AddAction()` to create global menu actions. Set accelerators with `app.SetAccelsForAction("app.action-name", []string{"<Ctrl>key"})`.
-- **Factory Pattern for Providers:** Create a factory that implements `settings.ProviderFactory` interface for dependency injection. This allows the settings service to test connections without knowing provider internals.
-- **Settings Service Initialization:** Initialize settings service alongside other services in the activate function. Pass both repository and factory to the service constructor.
-- **GTK ComboBoxText vs DropDown:** ComboBoxText has simpler API for basic text selection. Use `SetActive()`/`GetActive()` instead of `SetSelected()`/`Selected()`. Connect to `ConnectChanged()` for selection changes.
-- **PasswordEntry for API Keys:** Use `gtk.NewPasswordEntry()` with `SetShowPeekIcon(true)` for secure API key input that allows user verification.
-- **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines (e.g., connection test results). This prevents GTK threading issues.
-- **Settings Dialog Pattern:** Use `gtk.Dialog` with transient parent for modal settings. Wire Save/Cancel callbacks for clean separation of concerns.
-- **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` with `ON CONFLICT` for upsert behavior.
-- **JSON Config in SQLite:** Store nested configuration (OpenAI, Google) as JSON columns. This avoids schema migrations when adding provider-specific fields.
-- **Clone Pattern for Settings:** Implement `Clone()` on Settings to prevent accidental mutation. This is especially important when passing settings between UI and service layers.
-- **IsEmpty vs Nil Check:** Distinguish between nil configs and empty configs with `IsEmpty()` method. This allows users to clear a provider's settings without deleting the entire settings record.
-- **Library View Stack Pattern:** Use `gtk.Stack` with `SetTransitionType(gtk.StackTransitionTypeSlideLeftRight)` for smooth view switching between library and playback.
-- **Search Debounce:** Use `time.AfterFunc(300*time.Millisecond)` pattern with timer cancellation on each keystroke for responsive search without excessive queries.
-- **Database Service Layer:** A service layer (`RecordingService`) between repository and UI simplifies business logic like merging search results from multiple columns.
-- **Upsert Pattern:** `UpdateOrInsert` based on unique fields (like file_path) prevents duplicate library entries when reopening files.
-- **GOTK4 CSS:** Use `gdk.DisplayGetDefault()` not `gtk.DefaultDisplay()`. Widgets have `AddCSSClass()` method directly.
+- **Waveform Cache Schema:** Use SQLite with JSON columns for flexible sample storage. `INSERT OR REPLACE` with `ON CONFLICT` handles upserts cleanly.
+- **Async Generation Pattern:** Use goroutines with progress/completion callbacks for long-running operations like waveform generation. Always call completion callback even on errors.
+- **Display Detection:** Use `os.Getenv("DISPLAY")` or `os.Getenv("WAYLAND_DISPLAY")` to detect if GTK/GStreamer tests can run. Skip tests gracefully when no display available.
+- **Normalization:** Audio amplitude normalization should convert negative values to absolute values before scaling to 0-1 range for waveform display.
+- **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` for upsert behavior.
+- **JSON Config in SQLite:** Store nested configuration as JSON columns to avoid schema migrations when adding provider-specific fields.
+- **Factory Pattern for Providers:** Create a factory implementing `settings.ProviderFactory` interface for dependency injection and testability.
+- **GTK ComboBoxText vs DropDown:** ComboBoxText has simpler API for basic text selection. Use `SetActive()`/`GetActive()` instead of `SetSelected()`/`Selected()`.
+- **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines. This prevents GTK threading issues.
 - **GStreamer GTK4:** `gtk4paintablesink` (from gst-plugins-bad) is required for embedded video in GTK4; `gtksink`/`gtkglsink` are GTK3 only.
 - **Pipeline State:** Use `sync.RWMutex` for thread-safe state tracking in GStreamer pipelines accessed from UI callbacks.
-- **Go Testing:** GStreamer tests need `XDG_RUNTIME_DIR` set; GTK tests require display connection.
-- **Hardware Fallback:** Always provide graceful fallback to test sources for environments without hardware. Use `HasVideoDevice()` and `HasAudioDevice()` to detect availability.
-- **Gotk4 Property Access:** Use `glib.InternObject(element).ObjectProperty("name")` to access GObject properties from GStreamer elements.
 - **GTK Widget Tests:** Skip GTK widget tests when no display is available (`DISPLAY` or `WAYLAND_DISPLAY` env vars).
 - **AI Provider Pattern:** Use REST APIs instead of native SDKs to avoid heavy dependencies. Factory pattern with environment-based config keeps provider selection flexible.
-- **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms".
-- **GTK Threading:** Use `glib.IdleAdd()` to update UI from goroutines. Never update GTK widgets directly from non-main threads.
-- **Metadata Persistence:** Store transcription results alongside recordings using JSON metadata files for easy recovery and history.
-- **Rewrite Review:** A rewrite can still regress completed functionality; verify the end-to-end wiring in `cmd/verbal/main.go` against the directive, not just `go test ./...`.
-- **wpctl Parsing:** `strings.TrimSpace` only strips ASCII whitespace. Unicode tree-drawing characters (│├└) need explicit removal with `strings.TrimLeft` when parsing `wpctl status` output.
-- **TDD for Bug Fixes:** Writing the test first exposed the wpctl parser bug immediately; the parseWpctlSources test saved debugging time.
-- **Edge Case Testing:** Even well-tested code benefits from edge case tests. Single-word transcriptions, concurrent callbacks, and rapid position updates revealed subtle race conditions that 98% coverage didn't catch.
-- **Callback Safety:** Unregistering a callback during its execution requires careful handling. The copy-then-iterate pattern in the controller prevents panics from concurrent modification.
-- **Custom .env Parser:** A simple bufio.Scanner-based parser avoids the godotenv dependency. Always check os.IsNotExist and don't override existing env vars.
-- **httptest for HTTP Clients:** net/http/httptest is the gold standard for testing HTTP clients in Go. Use NewProviderWithClient pattern to inject test servers.
-- **OpenAI Whisper API:** Use `response_format: verbose_json` + `timestamp_granularities[]: word` for word-level timestamps. Response uses `word` (not `text`) field for individual words.
 - **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms". TrimSuffix("s") then ParseFloat.
-- **Retry Pattern:** Embed retry logic directly in Transcribe() method. Use IsRetryable() to decide whether to retry. Auth errors (401/403) should never retry.
 - **Backoff Jitter:** Add ±25% jitter to exponential backoff to prevent thundering herd problems. Use `rand.Int63n()` for randomness.
-- **Audio Extraction:** Video recordings need FFmpeg conversion to WAV (16kHz, mono, PCM16) before transcription. Use `-vn -acodec pcm_s16le -ar 16000 -ac 1` flags.
 - **Binary Search for Timestamps:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use binary search, not linear scan.
-- **Test Coverage for Simple Getters:** Even simple getter methods like `GetCurrentPosition()` and `GetCurrentWordIndexCached()` need unit tests to ensure thread-safety and correct caching behavior. Don't assume "too simple to test."
-- **GTK4 Cursor:** Use `gdk.NewCursorFromName("pointer", nil)` not `gtk.NewCursor()`. Cursors are set via `widget.SetCursor()`.
-- **GStreamer Export:** Use decodebin + x264enc/voaacenc for trim+export pipelines. Seeking before playback sets start position; monitor position in bus messages to stop at end time.
+- **GTK4 Paned Widget:** Use `gtk.Paned` for split-pane layouts. Set position with `SetPosition()` and retrieve with `Position()`.
+- **GTK4 Scale (Slider):** Use `gtk.NewScaleWithRange()` for sliders. Call `SetHExpand(true)` to make it expand horizontally.
 - **GTK Stack:** Use unique child names in GtkStack. Adding duplicate names causes warnings. Remove old children before adding new ones with the same name.
-- **GTK Test Init:** GTK4 tests require `TestMain` with `gtk.Init()` to initialize the display before creating widgets. Without it, tests segfault on `gtk.NewBox` and other widget constructors.
-- **FlowBox Scrolling:** FlowBox doesn't have `ScrollToChild()` - wrap in ScrolledWindow and manage scrolling through the parent.
-- **Widget Click Signals:** Use `gtk.GestureClick` controller with `ConnectReleased()` for click handling in GTK4. `ConnectClick` doesn't exist.
-- **GStreamer Query API:** `QueryPosition` and `QueryDuration` return `(int64, bool)` where the int64 is the value and bool indicates success. Time values are in nanoseconds (1 second = 1,000,000,000 ns).
-- **Playback vs Recording Pipelines:** Keep playback and recording pipelines separate. Playback needs position query/seek; recording needs valve control for start/stop.
-- **Sync Integration Pattern:** Create a high-level Integration type that wires PositionMonitor → SyncController → WordHighlighter. This centralizes the sync logic and makes it testable.
-- **Position Polling:** 10fps (100ms) is sufficient for word-level sync. Higher rates waste CPU with no perceptible benefit for reading speed.
-- **Interface Segregation:** Define small interfaces (PipelineQuerier, PlaybackController, WordHighlighter) to make testing easier with mocks.
-- **glib.IdleAdd for UI Updates:** All UI updates from goroutines must use `glib.IdleAdd()`. The sync controller callbacks run on the monitor's goroutine, so highlight updates need IdleAdd.
-- **GTK4 Paned Widget:** Use `gtk.Paned` for split-pane layouts. Set position with `SetPosition()` and retrieve with `Position()`. Use `SetStartChild()` and `SetEndChild()` for the two panes.
-- **GTK4 Scale (Slider):** Use `gtk.NewScaleWithRange()` for sliders. Call `SetHExpand(true)` to make it expand horizontally. Connect to `ConnectValueChanged()` for seek functionality.
-- **GTK4 Icon Buttons:** Use `gtk.NewButtonFromIconName()` with icon names like `"media-playback-start-symbolic"` for media controls. Add tooltip with `SetTooltipText()`.
-- **Recording Loader Pattern:** Create a dedicated loader type that handles both the video file and its sidecar metadata JSON. Return a result struct with all fields rather than multiple returns for complex loading operations.
-- **Graceful Metadata Handling:** Missing or corrupted metadata files should not fail the video loading process. Load video successfully and treat missing transcription as "not yet transcribed" state.
-- **WordData Conversion:** Maintain separate types for AI layer (`ai.Word`) and UI layer (`WordData`) even if similar. The UI type can have additional presentation-specific fields without polluting the AI layer.
-- **WCAG Contrast:** Semi-transparent gold (`rgba(255, 215, 0, 0.5)`) fails WCAG AA contrast on light backgrounds. Use GNOME accent blue (`#3584E4`) with white text for reliable 4.5:1+ contrast.
-- **O(1) Highlight Updates:** Track `lastHighlightedIndex` in WordContainer to clear only the previous word instead of iterating all words on every 10fps position update. Critical for long transcriptions.
-- **Seek Boundary Validation:** Always validate seek positions against duration before calling GStreamer's `SeekSimple`. Negative seeks and past-end seeks cause silent failures or pipeline errors.
-- **Seek Return Value:** Check `SeekTo()` return value before updating sync state. Failed seeks should not update the highlighted word to avoid video-transcription desync.
-- **Keyboard Navigation:** GTK4 word widgets need `gtk.EventControllerKey` for Enter/Space activation. Mouse-only interaction excludes keyboard users.
-- **GStreamer Error Propagation:** `fmt.Printf` in bus watchers is insufficient for user-facing errors. Use callbacks or error channels to surface pipeline failures to the UI.
+- **WCAG Contrast:** Semi-transparent gold (`rgba(255, 215, 0, 0.5)`) fails WCAG AA contrast. Use GNOME accent blue (`#3584E4`) with white text for reliable 4.5:1+ contrast.
+- **O(1) Highlight Updates:** Track `lastHighlightedIndex` to clear only the previous word instead of iterating all words on every 10fps position update.
+- **Seek Boundary Validation:** Always validate seek positions against duration before calling GStreamer's `SeekSimple`. Negative seeks cause silent failures.
 - **SetState Return Values:** GStreamer's `SetState()` returns `gst.StateChangeReturn`, not an error. Check for `gst.StateChangeFailure` to detect failed transitions.
-- **CSS Class Completeness:** Every CSS class added in Go code must have a corresponding rule in the stylesheet. Missing `.word-hover` and `.word-container` rules caused silent style failures.
-- **gotk4-gstreamer gtk4paintablesink:** The gotk4-gstreamer bindings don't expose `NewGtk4PaintableSink`. Create the element with `gst.ElementFactoryMake("gtk4paintablesink", "")` and get the paintable via `element.ObjectProperty("paintable")`, then wrap in `gtk.NewPictureForPaintable()`.
-- **gotk4-gstreamer Pipeline access:** `media.PlaybackPipeline` has an unexported `pipeline` field. Don't try to access it directly; use the public `QueryPosition()`, `QueryDuration()`, and `SeekTo()` methods instead.
-- **gio.SimpleAction ConnectActivate:** Requires `func(parameter *glib.Variant)`, not `func()`. Use `func(_ *glib.Variant)` when no parameter is needed.
-- **gtk.ResponseAccept:** The constant is `gtk.ResponseAccept`, not `gtk.ResponseTypeAccept`. `ResponseType` is the type, `ResponseAccept` is the value.
-- **FileChooserNative parent:** `gtk.NewFileChooserNative` expects `*gtk.Window`, not `*gtk.ApplicationWindow`. Pass `&appWindow.Window` since `ApplicationWindow` embeds `Window`.
-- **gotk4-gstreamer gtk4paintablesink:** The gotk4-gstreamer bindings don't expose `NewGtk4PaintableSink`. Create the element with `gst.ElementFactoryMake("gtk4paintablesink", "")` and get the paintable via `element.ObjectProperty("paintable")`, then wrap in `gtk.NewPictureForPaintable()`.
-- **gotk4-gstreamer Pipeline access:** `media.PlaybackPipeline` has an unexported `pipeline` field. Don't try to access it directly; use the public `QueryPosition()`, `QueryDuration()`, and `SeekTo()` methods instead.
-- **gio.SimpleAction ConnectActivate:** Requires `func(parameter *glib.Variant)`, not `func()`. Use `func(_ *glib.Variant)` when no parameter is needed.
-- **gtk.ResponseAccept:** The constant is `gtk.ResponseAccept`, not `gtk.ResponseTypeAccept`. `ResponseType` is the type, `ResponseAccept` is the value.
-- **FileChooserNative parent:** `gtk.NewFileChooserNative` expects `*gtk.Window`, not `*gtk.ApplicationWindow`. Pass `&appWindow.Window` since `ApplicationWindow` embeds `Window`.
-- **Integration Test Patterns:** Integration tests should test complete workflows (end-to-end), state transitions (provider switching), and edge cases (validation scenarios). Table-driven tests with descriptive names make test failures self-documenting.
-- **Config Independence Testing:** When testing provider switching, verify that changing the active provider doesn't corrupt inactive provider configs. Clone patterns help ensure isolation.
+- **Integration Test Patterns:** Integration tests should test complete workflows, state transitions, and edge cases. Table-driven tests with descriptive names make test failures self-documenting.
 
 ## General
-- **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build or dependency conflict. Prioritize surgical fixes (e.g., fixing type errors, adjusting `go.mod`) over "nuclear" resets. The cost of inference and user review is high; discarding work without explicit permission is a failure of judgment.
-- **CGO & Build Times:** Large C-based bindings (GTK4, GStreamer) have significant first-build overhead. If a build hangs, diagnose the toolchain (e.g., background Go downloads) rather than assuming the code is "bloated" or "broken."
+- **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
+- **CGO & Build Times:** Large C-based bindings (GTK4, GStreamer) have significant first-build overhead. If a build hangs, diagnose the toolchain rather than assuming the code is "broken."
 - **CODE REVIEW:** Passing tests ≠ working feature. Manual QA is essential for hardware/OS-dependent features.
-
-## Superseded (Tauri/Rust)
-- Tauri v2 requires WebKitGTK 4.1 on Linux.
-- FFmpeg `filter_complex` with trim+concat is cleanest for multi-segment cuts.
-- `tokio::process::Command` for async FFmpeg; `std::process::Command` blocks runtime.
-- Transcription job state machine: Pending → Processing → Completed/Failed/Cancelled.
-- `Arc<RwLock<T>>` for shared state in Tauri commands.

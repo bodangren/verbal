@@ -9,17 +9,17 @@
   - [x] Implement WaveformGenerator with audio extraction pipeline
   - [x] Test with various audio formats
 
-- [~] Task: Implement audio downsampling and amplitude extraction
-  - [ ] Write tests for amplitude calculation from audio samples
-  - [ ] Implement downsample algorithm (reduce to ~1000 samples per minute)
-  - [ ] Test downsampling accuracy
+- [x] Task: Implement audio downsampling and amplitude extraction [bdc30b4]
+  - [x] Write tests for amplitude calculation from audio samples
+  - [x] Implement downsample algorithm (reduce to ~1000 samples per minute)
+  - [x] Test downsampling accuracy
 
-- [ ] Task: Create WaveformCache for data persistence
-  - [ ] Write tests for cache storage and retrieval
-  - [ ] Implement SQLite schema for waveform data
-  - [ ] Test cache hit/miss scenarios
+- [x] Task: Create WaveformCache for data persistence [bdc30b4]
+  - [x] Write tests for cache storage and retrieval
+  - [x] Implement SQLite schema for waveform data
+  - [x] Test cache hit/miss scenarios
 
-- [ ] Task: Conductor - Phase 1 Verification
+- [x] Task: Conductor - Phase 1 Verification [bdc30b4]
 
 ---
 

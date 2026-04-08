@@ -16,7 +16,7 @@
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
 - Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
 - **Word virtualization** - All word labels are created upfront in FlowBox. For very long recordings (1+ hours), this creates thousands of GTK widgets. Virtualized rendering would be needed for large transcriptions. [severity: low]
-- ~~Dual Segment types~~ - ui.Segment and media.Segment conversion implemented in main.go. Consolidating types deferred; separation keeps AI layer clean. [resolved: 2026-04-05]
+- **Waveform generation uses synthetic data** - Current implementation generates synthetic waveform samples. Full implementation should extract actual audio data using GStreamer appsink. [severity: low]
 - **Export pipeline uses re-encoding** - SegmentExporter decodes and re-encodes (x264enc + voaacenc) instead of stream copy. This is slower and may reduce quality. Stream copy would be faster but requires matching codec parameters. [severity: low]
 
 ## Resolved
