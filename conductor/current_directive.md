@@ -1,61 +1,59 @@
-# Current Directive: Settings UI Implementation Complete
+# Current Directive: Waveform Visualization Implementation
 
 ## Active Directive
-**Settings UI for AI Provider Configuration is complete (All 4 Phases finished).**
+**Waveform Visualization in Playback View** - Implement audio waveform visualization that displays amplitude over time, synchronized with video playback.
 
-## Completed
+## Previous Completed Work
+- [x] Settings UI for AI Provider Configuration (All 4 Phases complete)
+- [x] Recording Library View (2026-04-07)
 - [x] PlaybackWindow fully integrated into main application
-  - Phase 1: Core sync controller (98.8% test coverage)
-  - Phase 2: Word widgets (clickable, highlightable labels)
-  - Phase 3: GStreamer playback integration (gtk4paintablesink embedded)
-  - Phase 4: Main window split-pane layout (PlaybackWindow with file open dialog)
-- [x] **Recording Library View** (2026-04-07)
-  - Phase 1: Database integration with ListRecent, SearchByPath, UpdateOrInsert
-  - Phase 2: LibraryView and RecordingListItem GTK4 components
-  - Phase 3: Main window integration with GtkStack view switching
-- [x] **Settings UI for AI Provider Configuration** (In Progress - Phases 1-3 Complete)
-  - Phase 1: Database layer and core types (settings: 91.4%, db: 81.6% coverage)
-  - Phase 2: GTK4 UI components (OpenAI/Google config panels, SettingsWindow)
-  - Phase 3: Integration and Provider Factory (menu action, main.go wiring)
+- [x] Edit Transcription and Export Cuts
+- [x] Video Playback with Transcription Sync
 
-## Success Criteria (Phases 1-3 Met)
-- Settings UI opens from main window via Ctrl+, shortcut
-- Provider configuration persists in SQLite database
-- Form validation for API keys
-- Connection testing with async validation
-- Transcription uses configured provider (with env fallback)
-- Factory pattern for provider creation
-- All tests pass
+## Current Track: Waveform Visualization
+**Status:** New - Starting Phase 1
+**Goal:** Add audio waveform visualization to playback view
 
-## Changes Made
-### Phase 1
-- `internal/settings`: Provider types, config structs, validation, service
-- `internal/db`: SettingsRepository with singleton pattern
+### Phase 1: Core Waveform Data Generation
+- Create WaveformGenerator with GStreamer pipeline
+- Implement audio downsampling and amplitude extraction
+- Create WaveformCache for data persistence in SQLite
 
-### Phase 2
-- `internal/ui/providerconfigpanel.go`: OpenAI and Google config forms
-- `internal/ui/settingswindow.go`: Settings dialog with stack-based panels
-- `internal/ui/styling.go`: Added settings CSS classes
+### Phase 2: GTK4 Waveform Widget
+- Create custom WaveformWidget extending gtk.DrawingArea
+- Implement Cairo-based waveform rendering
+- Add playback position indicator and click-to-seek
 
-### Phase 3
-- `internal/ai/factory.go`: Provider factory from settings
-- `cmd/verbal/main.go`: Settings service init, menu action, showSettingsWindow
-- All factory and settings tests pass
+### Phase 3: Integration with Playback View
+- Add WaveformWidget to PlaybackWindow layout
+- Wire to PositionMonitor for sync
+- Add loading state UI
 
-### Phase 4
-- `internal/settings/integration_test.go`: End-to-end integration tests
-  - `TestIntegration_SettingsEndToEnd`: Complete settings workflow
-  - `TestIntegration_ProviderSwitching`: Provider switching scenarios
-  - `TestIntegration_ConfigValidation`: Comprehensive validation tests
-  - `TestIntegration_ConfigIndependence`: Config isolation tests
-- Settings package coverage: 92.2%
+### Phase 4: Advanced Features
+- Horizontal scrolling for large files
+- Zoom in/out capabilities
+- Time range selection
 
-## Next Steps
-- Waveform visualization in playback view
+### Phase 5: Polish and Testing
+- Hover tooltips with timestamps
+- Performance optimization
+- Dark theme compatibility
+- Integration tests with >80% coverage
+
+## Success Criteria
+- Waveform displays correctly for video files with audio
+- Waveform generation completes within 5 seconds for 10-minute video
+- Clicking waveform seeks video to correct position (±100ms accuracy)
+- Position indicator stays synchronized during playback
+- Cached waveform loads instantly on reopening file
+- UI remains responsive during waveform generation
+- Tests achieve >80% coverage
+
+## Future Roadmap (After This Track)
 - Video thumbnail generation for library items
 - Import/export of recording library
 - Recording categories/tags
 
 ## Timeline
-- Library View started: 2026-04-07
-- Library View completed: 2026-04-07
+- Waveform Visualization started: 2026-04-08
+- Target completion: 2026-04-10 (estimated)

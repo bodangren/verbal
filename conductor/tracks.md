@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [~] **Track: Feature - Waveform Visualization** [started: 2026-04-08]
+  *Focus: Add audio waveform visualization to playback view for visual navigation and editing cues.*
+  *Link: [./tracks/feature_waveform_visualization_20260408/](./tracks/feature_waveform_visualization_20260408/)*
+
 - [x] **Track: Feature - Settings UI for AI Provider Configuration** [started: 2026-04-07, completed: 2026-04-08]
   *Focus: Add settings/preferences UI for configuring AI transcription providers.*
   *Link: [./tracks/feature_settings_ui_20260407/](./tracks/feature_settings_ui_20260407/)*
