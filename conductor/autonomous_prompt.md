@@ -1,6 +1,7 @@
 AUTONOMOUS CONDUCTOR — UNATTENDED RUN
 
 1. Load Context (skip any missing file silently):
+   Use the conductor skill.
    Read conductor/tracks.md, conductor/tech-debt.md, conductor/lessons-learned.md.
    Try conductor/current_directive.md — if absent, skip it.
 
@@ -17,7 +18,7 @@ AUTONOMOUS CONDUCTOR — UNATTENDED RUN
 
 5. Finalize:
    Update tech-debt.md and lessons-learned.md (≤50 lines each).
-   Commit checkpoint, push.
+   Commit checkpoint with git note (include your model name in the commit title), push.
 
 CRITICAL UNATTENDED RULES:
 - Any prompt asking "Proceed?", "Continue?", or "Shall I?" → answer yes.
