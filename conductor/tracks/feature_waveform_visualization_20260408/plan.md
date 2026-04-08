@@ -27,10 +27,10 @@
 **Goal:** Create a custom GTK4 widget for waveform visualization
 
 ### Tasks
-- [ ] Task: Create WaveformWidget type extending gtk.DrawingArea
-  - [ ] Write tests for widget creation and configuration
-  - [ ] Implement WaveformWidget with Cairo rendering
-  - [ ] Test widget sizing and allocation
+- [x] Task: Create WaveformWidget type extending gtk.DrawingArea
+  - [x] Write tests for widget creation and configuration
+  - [x] Implement WaveformWidget with Cairo rendering
+  - [x] Test widget sizing and allocation
 
 - [ ] Task: Implement waveform drawing with Cairo
   - [ ] Write tests for drawing functions
