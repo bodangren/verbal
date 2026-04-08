@@ -27,6 +27,9 @@
 - **Integration Test Patterns:** Integration tests should test complete workflows, state transitions, and edge cases. Table-driven tests with descriptive names make test failures self-documenting.
 - **Interface Changes Require Test Updates:** When adding new interface parameters (like `WaveformUpdater` to `NewIntegration`), update all test mocks and call sites immediately. Use `nil` for optional interfaces in tests.
 - **Normalization Edge Cases:** Single-value normalization produces 1.0 (value/max where max=value), not the original value. Document this behavior in test expectations.
+- **Viewport-Based Rendering:** For large datasets (waveforms with 100k+ samples), only render visible samples based on scroll/zoom offset. This keeps rendering O(visible) instead of O(total).
+- **Zoom/Scroll Math:** When implementing zoom, calculate visible time range as duration/zoom. Scroll offset (0.0-1.0) maps to the remaining time range. Use xToTime/timeToX conversions consistently.
+- **GTK Tooltip Alternative:** Complex tooltip windows with gotk4 have API compatibility issues. Simpler approach: track hover position internally and let parent UI display tooltips.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
