@@ -1,11 +1,11 @@
 {
   "track_id": "feature_waveform_visualization_20260408",
   "type": "feature",
-  "status": "new",
+  "status": "in_progress",
   "created_at": "2026-04-08T00:00:00Z",
-  "updated_at": "2026-04-08T00:00:00Z",
+  "updated_at": "2026-04-08T06:00:00Z",
   "description": "Add audio waveform visualization to the playback view for visual navigation and editing cues",
   "estimated_tasks": 22,
-  "actual_tasks": null,
-  "deviation_notes": ""
+  "actual_tasks": 3,
+  "deviation_notes": "Phase 1 complete. Phase 2 (GTK4 widget) pending."
 }
