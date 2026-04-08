@@ -6,8 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [~] **Track: Feature - Waveform Visualization** [started: 2026-04-08]
+- [x] **Track: Feature - Waveform Visualization** [started: 2026-04-08, completed: 2026-04-09]
   *Focus: Add audio waveform visualization to playback view for visual navigation and editing cues.*
+  *Status: All 5 phases complete. Features: data generation, GTK4 widget, integration, scroll/zoom/selection, tooltips.*
   *Link: [./tracks/feature_waveform_visualization_20260408/](./tracks/feature_waveform_visualization_20260408/)*
 
 - [x] **Track: Feature - Settings UI for AI Provider Configuration** [started: 2026-04-07, completed: 2026-04-08]

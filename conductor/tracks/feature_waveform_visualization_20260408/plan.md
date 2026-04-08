@@ -121,7 +121,7 @@
   - [x] Test error handling (corrupt audio, missing files)
   - [x] Note: GTK tests require display; coverage measured when display available
 
-- [~] Task: Conductor - Phase 5 Verification
+- [x] Task: Conductor - Phase 5 Verification [8f8c359]
 
 ---
 
