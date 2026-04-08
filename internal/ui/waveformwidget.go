@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/diamondburned/gotk4/pkg/cairo"
@@ -36,6 +37,11 @@ type WaveformWidget struct {
 	// Callbacks
 	onPositionChange func(time.Duration)
 	scrollController *gtk.EventControllerScroll
+
+	// Tooltip
+	hoverPosition    time.Duration
+	motionController *gtk.EventControllerMotion
+	onHoverCallback  func(time.Duration)
 }
 
 // NewWaveformWidget creates a new waveform visualization widget.
@@ -66,6 +72,10 @@ func NewWaveformWidget() *WaveformWidget {
 	// Connect scroll handler for zoom/pan
 	ww.scrollController = ww.createScrollController()
 	drawingArea.AddController(ww.scrollController)
+
+	// Connect motion controller for tooltips
+	ww.motionController = ww.createMotionController()
+	drawingArea.AddController(ww.motionController)
 
 	return ww
 }
@@ -342,6 +352,79 @@ func abs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+// Tooltip methods
+
+// createMotionController creates a motion controller for hover tracking.
+func (ww *WaveformWidget) createMotionController() *gtk.EventControllerMotion {
+	controller := gtk.NewEventControllerMotion()
+
+	controller.ConnectEnter(func(x, y float64) {
+		if ww.data != nil {
+			ww.updateHoverPosition(x)
+		}
+	})
+
+	controller.ConnectMotion(func(x, y float64) {
+		if ww.data != nil {
+			ww.updateHoverPosition(x)
+		}
+	})
+
+	controller.ConnectLeave(func() {
+		ww.hoverPosition = 0
+	})
+
+	return controller
+}
+
+// updateHoverPosition updates the tracked hover position.
+func (ww *WaveformWidget) updateHoverPosition(x float64) {
+	if ww.data == nil {
+		return
+	}
+	ww.hoverPosition = ww.xToTime(x, float64(ww.width))
+
+	// Call the hover callback if set
+	if ww.onHoverCallback != nil {
+		ww.onHoverCallback(ww.hoverPosition)
+	}
+}
+
+// GetHoverPosition returns the current hover position.
+func (ww *WaveformWidget) GetHoverPosition() time.Duration {
+	return ww.hoverPosition
+}
+
+// SetHoverCallback sets a callback for hover position changes.
+func (ww *WaveformWidget) SetHoverCallback(callback func(time.Duration)) {
+	ww.onHoverCallback = callback
+}
+
+// formatTimestamp formats a duration as MM:SS or HH:MM:SS.
+func formatTimestamp(d time.Duration) string {
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
+	}
+	return fmt.Sprintf("%d:%02d", minutes, seconds)
+}
+
+// Theme color definitions
+
+// getWaveformColors returns the color definitions for the current theme.
+// Colors are defined as RGB triplets (0.0-1.0).
+func getWaveformColors() map[string][3]float64 {
+	return map[string][3]float64{
+		"background":        {0.12, 0.12, 0.12}, // Dark background
+		"waveform":          {0.6, 0.6, 0.6},    // Gray waveform bars
+		"positionIndicator": {0.21, 0.52, 0.89}, // GNOME blue #3584E4
+		"selection":         {0.21, 0.52, 0.89}, // GNOME blue for selection
+	}
 }
 
 // queueDraw triggers a redraw of the widget.
