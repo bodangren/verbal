@@ -369,3 +369,39 @@ func (pw *PlaybackWindow) UpdateWaveformPosition(position time.Duration) {
 		pw.waveformWidget.SetPosition(position)
 	}
 }
+
+// GenerateWaveform generates waveform data for the given file path and updates the widget.
+// It shows a loading state during generation and hides it when complete.
+// The onComplete callback is called with the generated data or error.
+func (pw *PlaybackWindow) GenerateWaveform(filePath string, generator interface {
+	GenerateAsync(filePath string, onProgress func(float64), onComplete func(*waveform.Data, error)) error
+}, onComplete func(*waveform.Data, error)) {
+	pw.ShowLoading("Generating waveform...")
+
+	err := generator.GenerateAsync(filePath, func(progress float64) {
+		// Update loading message with progress
+		if progress < 1.0 {
+			pw.ShowLoading(fmt.Sprintf("Generating waveform... %.0f%%", progress*100))
+		}
+	}, func(data *waveform.Data, err error) {
+		pw.HideLoading()
+
+		if err != nil {
+			pw.ShowError(fmt.Sprintf("Failed to generate waveform: %v", err))
+		} else if data != nil && pw.waveformWidget != nil {
+			pw.waveformWidget.SetData(data)
+		}
+
+		if onComplete != nil {
+			onComplete(data, err)
+		}
+	})
+
+	if err != nil {
+		pw.HideLoading()
+		pw.ShowError(fmt.Sprintf("Failed to start waveform generation: %v", err))
+		if onComplete != nil {
+			onComplete(nil, err)
+		}
+	}
+}

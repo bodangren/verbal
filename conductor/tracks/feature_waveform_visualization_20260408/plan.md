@@ -65,10 +65,10 @@
   - [x] Implement callback for position updates
   - [x] Test sync at 10fps rate
 
-- [ ] Task: Add loading state UI
-  - [ ] Write tests for loading state transitions
-  - [ ] Implement progress indicator during generation
-  - [ ] Test async generation flow
+- [x] Task: Add loading state UI
+  - [x] Write tests for loading state transitions
+  - [x] Implement progress indicator during generation
+  - [x] Test async generation flow
 
 - [ ] Task: Conductor - Phase 3 Verification
 
