@@ -150,6 +150,25 @@ const ApplicationCSS = `
 	font-size: 24px;
 }
 
+.recording-thumbnail {
+	background-color: rgba(0, 0, 0, 0.10);
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.recording-thumbnail-placeholder {
+	font-size: 20px;
+	opacity: 0.85;
+}
+
+.recording-thumbnail-duration {
+	background-color: rgba(0, 0, 0, 0.65);
+	color: #FFFFFF;
+	font-size: 8.5pt;
+	padding: 1px 6px;
+	border-radius: 8px;
+}
+
 .recording-filename {
 	font-weight: 600;
 	font-size: 11pt;

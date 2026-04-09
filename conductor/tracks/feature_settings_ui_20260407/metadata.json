@@ -2,8 +2,8 @@
   "id": "feature_settings_ui_20260407",
   "type": "feature",
   "title": "Settings UI for AI Provider Configuration",
-  "status": "in_progress",
+  "status": "completed",
   "started": "2026-04-07",
-  "completed": null,
+  "completed": "2026-04-08",
   "description": "Add a settings/preferences UI for configuring AI transcription providers (OpenAI, Google) without requiring environment variables."
 }

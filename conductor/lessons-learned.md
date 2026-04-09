@@ -8,11 +8,14 @@
 - **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` for upsert behavior.
 - **JSON Config in SQLite:** Store nested configuration as JSON columns to avoid schema migrations when adding provider-specific fields.
 - **Factory Pattern for Providers:** Create a factory implementing `settings.ProviderFactory` interface for dependency injection and testability.
+- **Exact vs Fuzzy DB Lookup:** Use exact `file_path = ?` lookup for mutation targets (transcription status/data updates). Keep LIKE search only for user-facing discovery/filtering.
 - **GTK ComboBoxText vs DropDown:** ComboBoxText has simpler API for basic text selection. Use `SetActive()`/`GetActive()` instead of `SetSelected()`/`Selected()`.
 - **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines. This prevents GTK threading issues.
 - **GStreamer GTK4:** `gtk4paintablesink` (from gst-plugins-bad) is required for embedded video in GTK4; `gtksink`/`gtkglsink` are GTK3 only.
 - **Pipeline State:** Use `sync.RWMutex` for thread-safe state tracking in GStreamer pipelines accessed from UI callbacks.
 - **GTK Widget Tests:** Skip GTK widget tests when no display is available (`DISPLAY` or `WAYLAND_DISPLAY` env vars).
+- **Avoid Package-Level Test Bypass:** Do not `os.Exit(0)` in `TestMain` for headless environments; it creates false-green package results by skipping all tests silently. Gate only display-required tests with `t.Skip`.
+- **Startup Smoke Gate:** Add a non-UI startup mode (for example `--smoke-check`) so CI can validate binary build plus database/service wiring without launching GTK event loop.
 - **AI Provider Pattern:** Use REST APIs instead of native SDKs to avoid heavy dependencies. Factory pattern with environment-based config keeps provider selection flexible.
 - **Google Speech Duration:** Google's duration format uses decimal seconds (e.g., "1.5s") not "1s500ms". TrimSuffix("s") then ParseFloat.
 - **Backoff Jitter:** Add ±25% jitter to exponential backoff to prevent thundering herd problems. Use `rand.Int63n()` for randomness.

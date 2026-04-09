@@ -74,6 +74,11 @@ func (s *RecordingService) AddRecording(filePath string, duration time.Duration)
 
 // UpdateTranscription updates the transcription data for a recording.
 func (s *RecordingService) UpdateTranscription(id int64, transcriptionJSON string) error {
+	return s.UpdateTranscriptionStatus(id, "completed", transcriptionJSON)
+}
+
+// UpdateTranscriptionStatus updates transcription payload and status for a recording.
+func (s *RecordingService) UpdateTranscriptionStatus(id int64, status, transcriptionJSON string) error {
 	// First, get the existing recording
 	rec, err := s.db.RecordingRepo().GetByID(id)
 	if err != nil {
@@ -82,7 +87,7 @@ func (s *RecordingService) UpdateTranscription(id int64, transcriptionJSON strin
 
 	// Update transcription data
 	rec.TranscriptionJSON = transcriptionJSON
-	rec.TranscriptionStatus = "completed"
+	rec.TranscriptionStatus = status
 
 	if err := s.db.RecordingRepo().Update(rec); err != nil {
 		return fmt.Errorf("update transcription: %w", err)
@@ -94,6 +99,11 @@ func (s *RecordingService) UpdateTranscription(id int64, transcriptionJSON strin
 // GetByID retrieves a recording by its ID.
 func (s *RecordingService) GetByID(id int64) (*Recording, error) {
 	return s.db.RecordingRepo().GetByID(id)
+}
+
+// GetByPath retrieves a recording by exact file path.
+func (s *RecordingService) GetByPath(filePath string) (*Recording, error) {
+	return s.db.RecordingRepo().GetByPathExact(filePath)
 }
 
 // Delete removes a recording from the library.

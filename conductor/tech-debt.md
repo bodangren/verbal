@@ -7,7 +7,6 @@
 
 ### Medium Severity
 - **Settings created without DB connection in main.go** - `SettingsRepository` was previously created via `&db.SettingsRepository{}` without a db connection (nil *sql.DB). Fixed during review to use `database.SettingsRepo()`. Pattern should be audited for similar issues. [severity: medium]
-- **Transcription search by file path is imprecise** - `runTranscription` uses `state.recordingSvc.Search(state.currentPath)` to find recordings, which does a LIKE search. This could match multiple or wrong recordings. Should use a dedicated `GetByPath` method instead. [severity: medium]
 - **`go vet` and `go build` timeout on full project** - The UI package takes >2 minutes to vet/build due to CGo/GTK dependencies. Consider splitting build targets or caching. [severity: medium]
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
 
@@ -39,6 +38,7 @@
 - ~~Missing CSS classes and keyboard navigation~~ [resolved: 2026-04-04 - Added .word-hover, .word-container, focus styles, Enter/Space activation]
 - ~~Export callback stub~~ [resolved: 2026-04-05 - Wired save dialog, SegmentExporter, progress/error callbacks]
 - ~~Settings UI implementation~~ [resolved: 2026-04-08 - All 4 phases complete: database layer, GTK4 UI components, main.go integration, integration tests with 92.2% coverage]
+- ~~Transcription search by file path is imprecise~~ [resolved: 2026-04-10 - Added exact path lookup (`GetByPathExact`/`GetByPath`) and replaced `runTranscription` LIKE-search update path; added status-aware update method for error vs completed]
 
 ## Superseded (Tauri/Rust Implementation)
 

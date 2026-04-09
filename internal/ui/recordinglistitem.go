@@ -15,10 +15,11 @@ import (
 // RecordingListItem represents a single recording entry in the library view.
 // It displays the recording's metadata and provides interaction handlers.
 type RecordingListItem struct {
-	recording *db.Recording
-	box       *gtk.Box
-	selected  bool
-	mu        sync.RWMutex
+	recording       *db.Recording
+	box             *gtk.Box
+	thumbnailWidget *ThumbnailWidget
+	selected        bool
+	mu              sync.RWMutex
 
 	onActivatedCallbacks []func(*db.Recording)
 	onDeleteCallbacks    []func(*db.Recording)
@@ -34,16 +35,17 @@ func NewRecordingListItem(recording *db.Recording) *RecordingListItem {
 	box.SetMarginTop(8)
 	box.SetMarginBottom(8)
 
-	// Left side: Icon/thumbnail placeholder
-	iconBox := gtk.NewBox(gtk.OrientationVertical, 0)
-	iconBox.AddCSSClass("recording-icon")
-	iconBox.SetSizeRequest(64, 48)
-
-	iconLabel := gtk.NewLabel("🎬")
-	iconLabel.AddCSSClass("recording-icon-label")
-	iconBox.Append(iconLabel)
-
-	box.Append(iconBox)
+	// Left side: Thumbnail with duration overlay.
+	thumbnailWidget := NewThumbnailWidget()
+	thumbnailWidget.SetDuration(recording.Duration)
+	if recording.ThumbnailData != "" {
+		if err := thumbnailWidget.SetThumbnailBase64(recording.ThumbnailData, recording.ThumbnailMIMEType); err != nil {
+			thumbnailWidget.ShowPlaceholder()
+		}
+	} else {
+		thumbnailWidget.ShowPlaceholder()
+	}
+	box.Append(thumbnailWidget.Widget())
 
 	// Center: Info
 	infoBox := gtk.NewBox(gtk.OrientationVertical, 4)
@@ -83,6 +85,7 @@ func NewRecordingListItem(recording *db.Recording) *RecordingListItem {
 	item := &RecordingListItem{
 		recording:            recording,
 		box:                  box,
+		thumbnailWidget:      thumbnailWidget,
 		onActivatedCallbacks: make([]func(*db.Recording), 0),
 		onDeleteCallbacks:    make([]func(*db.Recording), 0),
 	}
@@ -205,6 +208,37 @@ func (i *RecordingListItem) emitDelete() {
 
 	for _, cb := range callbacks {
 		cb(rec)
+	}
+}
+
+// SetThumbnailLoading updates the loading state for thumbnail generation.
+func (i *RecordingListItem) SetThumbnailLoading(loading bool) {
+	if i.thumbnailWidget != nil {
+		i.thumbnailWidget.SetLoading(loading)
+	}
+}
+
+// UpdateThumbnail updates both the rendered thumbnail and the recording model.
+func (i *RecordingListItem) UpdateThumbnail(data, mimeType string, generatedAt time.Time) {
+	i.mu.Lock()
+	i.recording.ThumbnailData = data
+	i.recording.ThumbnailMIMEType = mimeType
+	i.recording.ThumbnailGeneratedAt = &generatedAt
+	i.mu.Unlock()
+
+	if i.thumbnailWidget != nil {
+		i.thumbnailWidget.SetLoading(false)
+		if err := i.thumbnailWidget.SetThumbnailBase64(data, mimeType); err != nil {
+			i.thumbnailWidget.ShowPlaceholder()
+		}
+	}
+}
+
+// ShowThumbnailPlaceholder shows placeholder state and removes loading indicator.
+func (i *RecordingListItem) ShowThumbnailPlaceholder() {
+	if i.thumbnailWidget != nil {
+		i.thumbnailWidget.SetLoading(false)
+		i.thumbnailWidget.ShowPlaceholder()
 	}
 }
 

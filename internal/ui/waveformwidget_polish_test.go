@@ -182,13 +182,18 @@ func TestWaveformWidget_DrawPerformance(t *testing.T) {
 	// We're not measuring actual time here, just ensuring they complete
 	for i := 0; i < 100; i++ {
 		x := float64(i * 10)
-		_ = ww.xToTime(x, viewWidth)
+		timeAtX := ww.xToTime(x, viewWidth)
+		roundTripX := ww.timeToX(timeAtX, viewWidth)
+		if diff := roundTripX - x; diff < -1.0 || diff > 1.0 {
+			t.Fatalf("x/time round-trip drift too large: x=%f roundTrip=%f diff=%f", x, roundTripX, diff)
+		}
 
 		timePos := time.Duration(i) * time.Second
-		_ = ww.timeToX(timePos, viewWidth)
+		xPos := ww.timeToX(timePos, viewWidth)
+		if xPos < 0 {
+			t.Fatalf("expected non-negative x coordinate, got %f", xPos)
+		}
 	}
-
-	// If we get here without timeout, performance is acceptable
 }
 
 func TestWaveformWidget_ThemeColors(t *testing.T) {

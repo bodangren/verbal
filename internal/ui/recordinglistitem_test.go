@@ -145,3 +145,27 @@ func TestRecordingListItem_OnDelete(t *testing.T) {
 		t.Error("Expected OnDelete callback to be called")
 	}
 }
+
+func TestRecordingListItem_UpdateThumbnailUpdatesModel(t *testing.T) {
+	rec := &db.Recording{
+		ID:                  3,
+		FilePath:            "/home/user/video.mp4",
+		Duration:            60 * time.Second,
+		TranscriptionStatus: "completed",
+	}
+
+	item := NewRecordingListItem(rec)
+	generatedAt := time.Now().UTC()
+	item.UpdateThumbnail("invalid-base64", "image/jpeg", generatedAt)
+
+	updated := item.GetRecording()
+	if updated.ThumbnailData != "invalid-base64" {
+		t.Errorf("Expected thumbnail data to be updated")
+	}
+	if updated.ThumbnailMIMEType != "image/jpeg" {
+		t.Errorf("Expected thumbnail MIME type to be updated")
+	}
+	if updated.ThumbnailGeneratedAt == nil {
+		t.Fatal("Expected ThumbnailGeneratedAt to be set")
+	}
+}

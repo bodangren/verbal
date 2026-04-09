@@ -141,9 +141,19 @@ func (p *PlaybackPipeline) Pause() error {
 func (p *PlaybackPipeline) Stop() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.pipeline == nil {
+		p.state = StateStopped
+		return nil
+	}
+
+	// READY keeps elements instantiated, but some invalid/partial media sources
+	// can fail this transition. Fall back to NULL to guarantee quiescence.
 	ret := p.pipeline.SetState(gst.StateReady)
 	if ret == gst.StateChangeFailure {
-		return fmt.Errorf("failed to stop playback: state change failed")
+		ret = p.pipeline.SetState(gst.StateNull)
+		if ret == gst.StateChangeFailure {
+			return fmt.Errorf("failed to stop playback: state change failed")
+		}
 	}
 	p.state = StateStopped
 	return nil

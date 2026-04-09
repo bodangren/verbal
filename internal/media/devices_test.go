@@ -65,7 +65,45 @@ func TestParseWpctlSources_NoSources(t *testing.T) {
 }
 
 func TestListVideoDevices_NoMockDevices(t *testing.T) {
-	if os.Getenv("CI") != "" {
-		t.Skip("skipping in CI (no /dev/video*)")
+	devices, err := ListVideoDevices()
+	if err != nil {
+		t.Fatalf("ListVideoDevices() returned error: %v", err)
+	}
+
+	for i, device := range devices {
+		if device.Type != DeviceVideo {
+			t.Fatalf("device %d type = %v, want %v", i, device.Type, DeviceVideo)
+		}
+		if device.Path == "" {
+			t.Fatalf("device %d has empty path", i)
+		}
+		if i == 0 && !device.IsDefault {
+			t.Fatalf("first device should be marked default")
+		}
+	}
+}
+
+func TestListAudioDevices_FallbackWhenWpctlMissing(t *testing.T) {
+	originalPath := os.Getenv("PATH")
+	t.Setenv("PATH", t.TempDir())
+	t.Cleanup(func() {
+		t.Setenv("PATH", originalPath)
+	})
+
+	devices, err := ListAudioDevices()
+	if err != nil {
+		t.Fatalf("ListAudioDevices() returned error: %v", err)
+	}
+	if len(devices) != 1 {
+		t.Fatalf("expected single fallback device, got %d", len(devices))
+	}
+	if devices[0].Name != "Default Audio Input" {
+		t.Fatalf("unexpected fallback name: %q", devices[0].Name)
+	}
+	if devices[0].Path != "default" {
+		t.Fatalf("unexpected fallback path: %q", devices[0].Path)
+	}
+	if !devices[0].IsDefault {
+		t.Fatal("fallback device should be default")
 	}
 }

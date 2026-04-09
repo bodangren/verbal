@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -117,6 +119,65 @@ func TestRecordingRepository_GetByID_NotFound(t *testing.T) {
 	_, err = repo.GetByID(999)
 	if err == nil {
 		t.Error("Expected error for non-existent ID")
+	}
+}
+
+func TestRecordingRepository_GetByPathExact(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	repo := db.RecordingRepo()
+
+	exact := &Recording{
+		FilePath:            "/home/user/video.mp4",
+		Duration:            120 * time.Second,
+		TranscriptionStatus: "pending",
+	}
+	partial := &Recording{
+		FilePath:            "/home/user/video.mp4.bak",
+		Duration:            60 * time.Second,
+		TranscriptionStatus: "pending",
+	}
+
+	if err := repo.Insert(exact); err != nil {
+		t.Fatalf("Insert(exact) error = %v", err)
+	}
+	if err := repo.Insert(partial); err != nil {
+		t.Fatalf("Insert(partial) error = %v", err)
+	}
+
+	got, err := repo.GetByPathExact("/home/user/video.mp4")
+	if err != nil {
+		t.Fatalf("GetByPathExact() error = %v", err)
+	}
+	if got.ID != exact.ID {
+		t.Errorf("Expected exact ID %d, got %d", exact.ID, got.ID)
+	}
+	if got.FilePath != exact.FilePath {
+		t.Errorf("Expected FilePath %s, got %s", exact.FilePath, got.FilePath)
+	}
+}
+
+func TestRecordingRepository_GetByPathExact_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer db.Close()
+
+	repo := db.RecordingRepo()
+
+	_, err = repo.GetByPathExact("/does/not/exist.mp4")
+	if err == nil {
+		t.Fatal("Expected error for missing exact path")
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("Expected sql.ErrNoRows, got %v", err)
 	}
 }
 

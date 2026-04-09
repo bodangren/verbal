@@ -6,9 +6,24 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [~] **Track: Feature - Video Thumbnails for Library Items** [started: 2026-04-09]
+- [x] **Track: Bugfix - Exact Recording Lookup for Transcription Updates** [started: 2026-04-10, completed: 2026-04-10]
+  *Focus: Replace LIKE-based DB lookup in transcription update paths with exact file path matching to avoid wrong-record writes.*
+  *Status: Completed. Added exact-path lookup methods (`GetByPathExact`, `GetByPath`), switched transcription persistence paths to exact matching, and added status-aware update handling for error vs completed states.*
+  *Link: [./tracks/bugfix_recording_lookup_exact_match_20260410/](./tracks/bugfix_recording_lookup_exact_match_20260410/)*
+
+- [x] **Track: Feature - Database & Recording Management** [started: 2026-04-06, completed: 2026-04-10]
+  *Focus: Implement persistent storage layer (SQLite) for recording history, metadata, and searchable transcripts.*
+  *Status: Reconciled to completed on 2026-04-10. Original partial execution was finalized through successor tracks and documented with full Conductor artifacts.*
+  *Link: [./tracks/feature_database_recording_management_20260406/](./tracks/feature_database_recording_management_20260406/)*
+
+- [x] **Track: Chore - Test Truthfulness and Runtime Verification** [started: 2026-04-09, reopened: 2026-04-09, revalidated: 2026-04-09, rerun: 2026-04-09]
+  *Focus: Audit every test for behavioral validity, close false-positive coverage gaps, add runtime build/start smoke checks, and revalidate against latest workspace state.*
+  *Status: Revalidation rerun completed on 2026-04-09. Verified again by full suite pass (`go test ./... -count=1`), full build pass (`go build ./...`), startup smoke E2E pass (`TestE2E_BinaryBuildAndStartupSmoke`), direct startup smoke path (`go run ./cmd/verbal --smoke-check`), and bounded live GTK launch (`timeout 10s go run ./cmd/verbal` stayed running until timeout).*
+  *Link: [./tracks/chore_test_truthfulness_e2e_20260409/](./tracks/chore_test_truthfulness_e2e_20260409/)*
+
+- [x] **Track: Feature - Video Thumbnails for Library Items** [started: 2026-04-09, completed: 2026-04-09]
   *Focus: Generate video thumbnails for recording library items using GStreamer frame extraction.*
-  *Status: Phase 1 in progress - Database schema and storage.*
+  *Status: All 5 phases complete. Features: DB-backed thumbnail persistence, GStreamer extraction, thumbnail widget integration, background queued generation, and freshness regeneration checks.*
   *Link: [./tracks/feature_video_thumbnails_20260409/](./tracks/feature_video_thumbnails_20260409/)*
 
 - [x] **Track: Feature - Waveform Visualization** [started: 2026-04-08, completed: 2026-04-09]
@@ -99,8 +114,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [ ] **Track: Enhanced UI/UX & Waveform Visualization**
   Integrate real-time audio waveform visualization and a timeline view for transcripts synchronized with video playback.
 
-- [ ] **Track: Database & Recording Management**
-  Implement a persistent storage layer (SQLite) to manage recording history, metadata, and searchable transcripts.
+- [ ] **Track: Recording Data Lifecycle Enhancements**
+  Add import/export, repair tooling, and recovery workflows for library database content.
 
 - [ ] **Track: Offline AI & Local Transcription**
   Add support for local transcription engines like Whisper (via CGo or local binary) to fulfill offline-first capabilities.

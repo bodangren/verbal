@@ -125,32 +125,18 @@ func (g *Generator) getDuration(filePath string) (time.Duration, error) {
 	if ret == gst.StateChangeFailure {
 		return 0, fmt.Errorf("failed to set pipeline state")
 	}
+	defer pipeline.SetState(gst.StateNull)
 
-	// Wait for state change or timeout
-	done := make(chan bool, 1)
-	go func() {
-		// Query duration
-		_, _ = pipeline.QueryDuration(gst.FormatTime)
-		done <- true
-	}()
-
-	select {
-	case <-done:
-		// Continue
-	case <-time.After(5 * time.Second):
-		pipeline.SetState(gst.StateNull)
-		return 0, fmt.Errorf("timeout getting duration")
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		duration, success := pipeline.QueryDuration(gst.FormatTime)
+		if success && duration > 0 {
+			return time.Duration(duration), nil
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 
-	// Query duration
-	duration, success := pipeline.QueryDuration(gst.FormatTime)
-	pipeline.SetState(gst.StateNull)
-
-	if !success {
-		return 0, fmt.Errorf("could not query duration")
-	}
-
-	return time.Duration(duration), nil
+	return 0, fmt.Errorf("could not query duration")
 }
 
 // extractAudioSamples extracts raw audio amplitude samples from a file.

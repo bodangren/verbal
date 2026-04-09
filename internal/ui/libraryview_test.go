@@ -210,3 +210,24 @@ func TestLibraryView_ShowEmptyState(t *testing.T) {
 		t.Error("Expected showingEmptyState to be false when recordings exist")
 	}
 }
+
+func TestLibraryView_UpdateThumbnailAndLoading(t *testing.T) {
+	view := NewLibraryView()
+	now := time.Now().UTC()
+
+	recordings := []*db.Recording{
+		{ID: 1, FilePath: "/path/to/video.mp4", Duration: 60 * time.Second},
+	}
+	view.SetRecordings(recordings)
+
+	view.SetThumbnailLoading(1, true)
+	view.UpdateThumbnail(1, "invalid-base64", "image/jpeg", now)
+
+	rec := view.items[0].GetRecording()
+	if rec.ThumbnailData != "invalid-base64" {
+		t.Errorf("Expected thumbnail data to be updated on item recording")
+	}
+	if rec.ThumbnailGeneratedAt == nil {
+		t.Fatal("Expected ThumbnailGeneratedAt to be set after UpdateThumbnail")
+	}
+}

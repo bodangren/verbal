@@ -1,11 +1,11 @@
 {
   "track_id": "feature_video_thumbnails_20260409",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "created_at": "2026-04-09T00:00:00Z",
-  "updated_at": "2026-04-09T00:00:00Z",
+  "updated_at": "2026-04-09T12:00:00Z",
   "description": "Generate video thumbnails for recording library items using GStreamer frame extraction",
   "estimated_tasks": 12,
-  "actual_tasks": null,
-  "deviation_notes": ""
+  "actual_tasks": 18,
+  "deviation_notes": "Functional implementation complete. Package-level coverage for internal/ui and internal/thumbnail remains below 80 percent target."
 }

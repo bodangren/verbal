@@ -19,6 +19,7 @@ type LibraryView struct {
 	emptyStateBox     *gtk.Box
 	openFileBtn       *gtk.Button
 	items             []*RecordingListItem
+	itemsByRecording  map[int64]*RecordingListItem
 	showingEmptyState bool
 	mu                sync.RWMutex
 
@@ -116,6 +117,7 @@ func NewLibraryView() *LibraryView {
 		emptyStateBox:     emptyBox,
 		openFileBtn:       openFileBtn,
 		items:             make([]*RecordingListItem, 0),
+		itemsByRecording:  make(map[int64]*RecordingListItem),
 		showingEmptyState: false,
 
 		onRecordingSelectedCallbacks: make([]func(*db.Recording), 0),
@@ -161,6 +163,7 @@ func (v *LibraryView) SetRecordings(recordings []*db.Recording) {
 		v.listBox.Remove(item.Widget())
 	}
 	v.items = make([]*RecordingListItem, 0, len(recordings))
+	v.itemsByRecording = make(map[int64]*RecordingListItem, len(recordings))
 
 	// Show/hide empty state
 	if len(recordings) == 0 {
@@ -181,9 +184,43 @@ func (v *LibraryView) SetRecordings(recordings []*db.Recording) {
 			})
 
 			v.items = append(v.items, item)
+			v.itemsByRecording[rec.ID] = item
 			v.listBox.Append(item.Widget())
 		}
 	}
+}
+
+// SetThumbnailLoading sets the loading state for a single recording item.
+func (v *LibraryView) SetThumbnailLoading(recordingID int64, loading bool) {
+	v.mu.RLock()
+	item, ok := v.itemsByRecording[recordingID]
+	v.mu.RUnlock()
+	if !ok {
+		return
+	}
+	item.SetThumbnailLoading(loading)
+}
+
+// UpdateThumbnail updates thumbnail data for a single recording item.
+func (v *LibraryView) UpdateThumbnail(recordingID int64, data, mimeType string, generatedAt time.Time) {
+	v.mu.RLock()
+	item, ok := v.itemsByRecording[recordingID]
+	v.mu.RUnlock()
+	if !ok {
+		return
+	}
+	item.UpdateThumbnail(data, mimeType, generatedAt)
+}
+
+// ShowThumbnailPlaceholder resets a single item to placeholder thumbnail state.
+func (v *LibraryView) ShowThumbnailPlaceholder(recordingID int64) {
+	v.mu.RLock()
+	item, ok := v.itemsByRecording[recordingID]
+	v.mu.RUnlock()
+	if !ok {
+		return
+	}
+	item.ShowThumbnailPlaceholder()
 }
 
 // showEmptyState shows the empty state view.

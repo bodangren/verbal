@@ -1,0 +1,10 @@
+{
+  "id": "bugfix_recording_lookup_exact_match_20260410",
+  "name": "Exact Recording Lookup for Transcription Updates",
+  "type": "bugfix",
+  "status": "completed",
+  "started": "2026-04-10",
+  "completed": "2026-04-10",
+  "description": "Replace path LIKE-search usage in transcription update flow with exact path lookup to avoid updating the wrong recording.",
+  "deviation_notes": "Expanded scope to include explicit error-status persistence (`UpdateTranscriptionStatus`) so failed transcriptions are no longer marked completed."
+}

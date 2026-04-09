@@ -5,5 +5,7 @@
   "description": "Implement synchronized video playback with word-level transcription highlighting. Users can click on transcribed words to jump to that timestamp in the video.",
   "started": "2026-03-31",
   "target_completion": "2026-03-31",
-  "status": "in_progress"
+  "completed": "2026-04-04",
+  "status": "completed",
+  "deviation_notes": "Core functionality and automated checks completed; manual QA on display and hardware remained documented as residual risk."
 }

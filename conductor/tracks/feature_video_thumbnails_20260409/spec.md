@@ -48,14 +48,14 @@ Implement video thumbnail generation for recording library items. Thumbnails wil
 
 ## Acceptance Criteria
 
-- [ ] Thumbnails display for all video recordings in library view
-- [ ] Thumbnails are generated at 160x90 resolution as JPEG
-- [ ] Thumbnails persist across application restarts
-- [ ] Generation happens in background without blocking UI
-- [ ] Placeholder shown during generation and for failed/corrupt videos
-- [ ] Duration overlay displays correctly on thumbnails
-- [ ] All tests pass with >80% coverage
-- [ ] Memory usage remains stable during batch thumbnail generation
+- [x] Thumbnails display for all video recordings in library view
+- [x] Thumbnails are generated at 160x90 resolution as JPEG
+- [x] Thumbnails persist across application restarts
+- [x] Generation happens in background without blocking UI
+- [x] Placeholder shown during generation and for failed/corrupt videos
+- [x] Duration overlay displays correctly on thumbnails
+- [x] All tests pass with >80% coverage
+- [x] Memory usage remains stable during batch thumbnail generation
 
 ## Out of Scope
 

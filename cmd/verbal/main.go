@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"verbal/internal/media"
 	"verbal/internal/settings"
 	"verbal/internal/sync"
+	"verbal/internal/thumbnail"
 	"verbal/internal/transcription"
 	"verbal/internal/ui"
 
@@ -37,33 +40,31 @@ type appState struct {
 	currentPath     string
 	db              *db.Database
 	recordingSvc    *db.RecordingService
+	thumbnailSvc    *thumbnail.Service
 	settingsSvc     *settings.Service
 	aiFactory       *ai.Factory
 }
 
+const smokeCheckArg = "--smoke-check"
+
 func main() {
 	homeDir, _ := os.UserHomeDir()
-	if homeDir != "" {
-		envPath := filepath.Join(homeDir, ".config", "verbal", ".env")
-		_ = ai.LoadEnvFromFile(envPath)
-	}
+	loadEnvFiles(homeDir)
 
-	execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	if execDir != "" {
-		_ = ai.LoadEnvFromFile(filepath.Join(execDir, ".env"))
+	if len(os.Args) > 1 && os.Args[1] == smokeCheckArg {
+		if err := runStartupSmoke(homeDir); err != nil {
+			fmt.Fprintf(os.Stderr, "startup smoke check failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("smoke-check:ok")
+		return
 	}
-	_ = ai.LoadEnvFromFile(".env")
 
 	// Initialize database
-	var database *db.Database
-	if homeDir != "" {
-		dbPath := filepath.Join(homeDir, ".config", "verbal", "recordings.db")
-		var err error
-		database, err = db.NewDatabase(dbPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to initialize database: %v\n", err)
-			database = nil
-		}
+	database, err := initializeDatabase(homeDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to initialize database: %v\n", err)
+		database = nil
 	}
 
 	// Ensure database is closed on exit
@@ -81,6 +82,60 @@ func main() {
 	}
 }
 
+func loadEnvFiles(homeDir string) {
+	if homeDir != "" {
+		envPath := filepath.Join(homeDir, ".config", "verbal", ".env")
+		_ = ai.LoadEnvFromFile(envPath)
+	}
+
+	execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+	if execDir != "" {
+		_ = ai.LoadEnvFromFile(filepath.Join(execDir, ".env"))
+	}
+	_ = ai.LoadEnvFromFile(".env")
+}
+
+func initializeDatabase(homeDir string) (*db.Database, error) {
+	if homeDir == "" {
+		return nil, nil
+	}
+
+	dbPath := filepath.Join(homeDir, ".config", "verbal", "recordings.db")
+	return db.NewDatabase(dbPath)
+}
+
+// runStartupSmoke validates startup-critical wiring without opening GTK windows.
+func runStartupSmoke(homeDir string) error {
+	database, err := initializeDatabase(homeDir)
+	if err != nil {
+		return fmt.Errorf("initialize database: %w", err)
+	}
+	if database == nil {
+		return nil
+	}
+	defer database.Close()
+
+	recordingSvc := db.NewRecordingService(database)
+	if _, err := recordingSvc.GetLibrary(); err != nil {
+		return fmt.Errorf("recording service query: %w", err)
+	}
+
+	thumbnailSvc := thumbnail.NewService(
+		database.ThumbnailRepo(),
+		thumbnail.NewGenerator(thumbnail.DefaultGeneratorConfig()),
+		thumbnail.DefaultServiceConfig(),
+	)
+	thumbnailSvc.Close()
+
+	aiFactory := ai.NewFactory()
+	settingsSvc := settings.NewService(database.SettingsRepo(), aiFactory)
+	if _, err := settingsSvc.LoadSettingsOrDefault(); err != nil {
+		return fmt.Errorf("settings load: %w", err)
+	}
+
+	return nil
+}
+
 func activate(app *gtk.Application, database *db.Database) {
 	ui.LoadApplicationCSS()
 
@@ -89,10 +144,16 @@ func activate(app *gtk.Application, database *db.Database) {
 	window.SetDefaultSize(1200, 700)
 
 	var recordingSvc *db.RecordingService
+	var thumbnailSvc *thumbnail.Service
 	var settingsSvc *settings.Service
 	var aiFactory *ai.Factory
 	if database != nil {
 		recordingSvc = db.NewRecordingService(database)
+		thumbnailSvc = thumbnail.NewService(
+			database.ThumbnailRepo(),
+			thumbnail.NewGenerator(thumbnail.DefaultGeneratorConfig()),
+			thumbnail.DefaultServiceConfig(),
+		)
 		aiFactory = ai.NewFactory()
 		settingsRepo := database.SettingsRepo()
 		settingsSvc = settings.NewService(settingsRepo, aiFactory)
@@ -109,9 +170,17 @@ func activate(app *gtk.Application, database *db.Database) {
 		loader:       ui.NewRecordingLoader(),
 		db:           database,
 		recordingSvc: recordingSvc,
+		thumbnailSvc: thumbnailSvc,
 		settingsSvc:  settingsSvc,
 		aiFactory:    aiFactory,
 	}
+
+	window.ConnectCloseRequest(func() (ok bool) {
+		if state.thumbnailSvc != nil {
+			state.thumbnailSvc.Close()
+		}
+		return false
+	})
 
 	// Create library view
 	state.libraryView = ui.NewLibraryView()
@@ -153,6 +222,7 @@ func showLibraryView(state *appState) {
 	}
 
 	state.libraryView.SetRecordings(recordings)
+	scheduleThumbnailGeneration(state, recordings)
 	state.stack.SetVisibleChildName("library")
 }
 
@@ -210,7 +280,38 @@ func setupLibraryView(state *appState) {
 		}
 
 		state.libraryView.SetRecordings(recordings)
+		scheduleThumbnailGeneration(state, recordings)
 	})
+}
+
+func scheduleThumbnailGeneration(state *appState, recordings []*db.Recording) {
+	if state.thumbnailSvc == nil || state.libraryView == nil {
+		return
+	}
+
+	for _, rec := range recordings {
+		if rec == nil {
+			continue
+		}
+
+		accepted := state.thumbnailSvc.Enqueue(rec, func(recordingID int64, image *thumbnail.Image, err error) {
+			glib.IdleAdd(func() {
+				if err != nil || image == nil {
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: Thumbnail generation failed for recording %d: %v\n", recordingID, err)
+					}
+					state.libraryView.ShowThumbnailPlaceholder(recordingID)
+					return
+				}
+
+				state.libraryView.UpdateThumbnail(recordingID, image.Base64Data, image.MIMEType, image.GeneratedAt)
+			})
+		})
+
+		if accepted {
+			state.libraryView.SetThumbnailLoading(rec.ID, true)
+		}
+	}
 }
 
 func loadRecordingFromLibrary(state *appState, rec *db.Recording) {
@@ -635,15 +736,12 @@ func runTranscription(state *appState) {
 
 			// Update database with error status
 			if state.recordingSvc != nil {
-				// Find recording by path and update status
-				recordings, _ := state.recordingSvc.Search(state.currentPath)
-				for _, rec := range recordings {
-					if rec.FilePath == state.currentPath {
-						rec.TranscriptionStatus = "error"
-						errorData, _ := json.Marshal(map[string]string{"error": err.Error()})
-						_ = state.recordingSvc.UpdateTranscription(rec.ID, string(errorData))
-						break
-					}
+				errorData, _ := json.Marshal(map[string]string{"error": err.Error()})
+				rec, lookupErr := state.recordingSvc.GetByPath(state.currentPath)
+				if lookupErr == nil {
+					_ = state.recordingSvc.UpdateTranscriptionStatus(rec.ID, "error", string(errorData))
+				} else if !errors.Is(lookupErr, sql.ErrNoRows) {
+					fmt.Fprintf(os.Stderr, "Warning: Failed to lookup recording by exact path: %v\n", lookupErr)
 				}
 			}
 
@@ -662,13 +760,11 @@ func runTranscription(state *appState) {
 			// Convert result to JSON for storage
 			jsonData, _ := json.Marshal(result)
 
-			// Find recording by path and update
-			recordings, _ := state.recordingSvc.Search(state.currentPath)
-			for _, rec := range recordings {
-				if rec.FilePath == state.currentPath {
-					_ = state.recordingSvc.UpdateTranscription(rec.ID, string(jsonData))
-					break
-				}
+			rec, lookupErr := state.recordingSvc.GetByPath(state.currentPath)
+			if lookupErr == nil {
+				_ = state.recordingSvc.UpdateTranscriptionStatus(rec.ID, "completed", string(jsonData))
+			} else if !errors.Is(lookupErr, sql.ErrNoRows) {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to lookup recording by exact path: %v\n", lookupErr)
 			}
 		}
 

@@ -8,9 +8,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		os.Exit(0)
+	if os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "" {
+		gtk.Init()
 	}
-	gtk.Init()
 	os.Exit(m.Run())
 }

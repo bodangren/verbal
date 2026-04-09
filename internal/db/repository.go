@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -13,13 +14,16 @@ import (
 
 // Recording represents a video/audio recording in the database.
 type Recording struct {
-	ID                  int64
-	FilePath            string
-	Duration            time.Duration
-	TranscriptionStatus string
-	TranscriptionJSON   string
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	ID                   int64
+	FilePath             string
+	Duration             time.Duration
+	TranscriptionStatus  string
+	TranscriptionJSON    string
+	ThumbnailData        string
+	ThumbnailMIMEType    string
+	ThumbnailGeneratedAt *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 // Database wraps the SQL database connection.
@@ -66,6 +70,11 @@ func (d *Database) RecordingRepo() *RecordingRepository {
 	return &RecordingRepository{db: d.db}
 }
 
+// ThumbnailRepo returns a ThumbnailRepository for thumbnail operations.
+func (d *Database) ThumbnailRepo() *ThumbnailRepository {
+	return &ThumbnailRepository{db: d.db}
+}
+
 // migrate runs database migrations.
 func (d *Database) migrate() error {
 	schema := `
@@ -75,6 +84,9 @@ func (d *Database) migrate() error {
 		duration INTEGER NOT NULL DEFAULT 0,
 		transcription_status TEXT NOT NULL DEFAULT 'pending',
 		transcription_json TEXT NOT NULL DEFAULT '',
+		thumbnail_data TEXT NOT NULL DEFAULT '',
+		thumbnail_mime_type TEXT NOT NULL DEFAULT '',
+		thumbnail_generated_at DATETIME NULL,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
@@ -88,8 +100,34 @@ func (d *Database) migrate() error {
 	);
 	`
 
-	_, err := d.db.Exec(schema)
-	return err
+	if _, err := d.db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Backfill new columns on older DB files.
+	if err := d.addRecordingColumnIfMissing("thumbnail_data", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := d.addRecordingColumnIfMissing("thumbnail_mime_type", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := d.addRecordingColumnIfMissing("thumbnail_generated_at", "DATETIME NULL"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Database) addRecordingColumnIfMissing(columnName, columnDef string) error {
+	_, err := d.db.Exec(fmt.Sprintf("ALTER TABLE recordings ADD COLUMN %s %s", columnName, columnDef))
+	if err == nil {
+		return nil
+	}
+	// SQLite returns "duplicate column name" if this column already exists.
+	if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+		return nil
+	}
+	return fmt.Errorf("add recordings.%s column: %w", columnName, err)
 }
 
 // RecordingRepository provides CRUD operations for recordings.
@@ -104,9 +142,23 @@ func (r *RecordingRepository) Insert(rec *Recording) error {
 	rec.UpdatedAt = now
 
 	result, err := r.db.Exec(`
-		INSERT INTO recordings (file_path, duration, transcription_status, transcription_json, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, rec.FilePath, rec.Duration.Nanoseconds(), rec.TranscriptionStatus, rec.TranscriptionJSON, rec.CreatedAt, rec.UpdatedAt)
+		INSERT INTO recordings (
+			file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`,
+		rec.FilePath,
+		rec.Duration.Nanoseconds(),
+		rec.TranscriptionStatus,
+		rec.TranscriptionJSON,
+		rec.ThumbnailData,
+		rec.ThumbnailMIMEType,
+		thumbnailGeneratedAtValue(rec.ThumbnailGeneratedAt),
+		rec.CreatedAt,
+		rec.UpdatedAt,
+	)
 	if err != nil {
 		return fmt.Errorf("insert recording: %w", err)
 	}
@@ -124,24 +176,77 @@ func (r *RecordingRepository) Insert(rec *Recording) error {
 func (r *RecordingRepository) GetByID(id int64) (*Recording, error) {
 	rec := &Recording{}
 	var durationNS int64
+	var thumbnailGeneratedAt sql.NullString
 
 	err := r.db.QueryRow(`
-		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
 		FROM recordings
 		WHERE id = ?
-	`, id).Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt)
+	`, id).Scan(
+		&rec.ID,
+		&rec.FilePath,
+		&durationNS,
+		&rec.TranscriptionStatus,
+		&rec.TranscriptionJSON,
+		&rec.ThumbnailData,
+		&rec.ThumbnailMIMEType,
+		&thumbnailGeneratedAt,
+		&rec.CreatedAt,
+		&rec.UpdatedAt,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("get recording by id: %w", err)
 	}
 
 	rec.Duration = time.Duration(durationNS)
+	rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
+	return rec, nil
+}
+
+// GetByPathExact retrieves a recording by exact file path.
+func (r *RecordingRepository) GetByPathExact(filePath string) (*Recording, error) {
+	rec := &Recording{}
+	var durationNS int64
+	var thumbnailGeneratedAt sql.NullString
+
+	err := r.db.QueryRow(`
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
+		FROM recordings
+		WHERE file_path = ?
+	`, filePath).Scan(
+		&rec.ID,
+		&rec.FilePath,
+		&durationNS,
+		&rec.TranscriptionStatus,
+		&rec.TranscriptionJSON,
+		&rec.ThumbnailData,
+		&rec.ThumbnailMIMEType,
+		&thumbnailGeneratedAt,
+		&rec.CreatedAt,
+		&rec.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get recording by path: %w", err)
+	}
+
+	rec.Duration = time.Duration(durationNS)
+	rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
 	return rec, nil
 }
 
 // List returns all recordings ordered by created_at descending (newest first).
 func (r *RecordingRepository) List() ([]*Recording, error) {
 	rows, err := r.db.Query(`
-		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
 		FROM recordings
 		ORDER BY created_at DESC
 	`)
@@ -154,10 +259,23 @@ func (r *RecordingRepository) List() ([]*Recording, error) {
 	for rows.Next() {
 		rec := &Recording{}
 		var durationNS int64
-		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+		var thumbnailGeneratedAt sql.NullString
+		if err := rows.Scan(
+			&rec.ID,
+			&rec.FilePath,
+			&durationNS,
+			&rec.TranscriptionStatus,
+			&rec.TranscriptionJSON,
+			&rec.ThumbnailData,
+			&rec.ThumbnailMIMEType,
+			&thumbnailGeneratedAt,
+			&rec.CreatedAt,
+			&rec.UpdatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan recording: %w", err)
 		}
 		rec.Duration = time.Duration(durationNS)
+		rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
 		recordings = append(recordings, rec)
 	}
 
@@ -174,9 +292,22 @@ func (r *RecordingRepository) Update(rec *Recording) error {
 
 	_, err := r.db.Exec(`
 		UPDATE recordings
-		SET file_path = ?, duration = ?, transcription_status = ?, transcription_json = ?, updated_at = ?
+		SET
+			file_path = ?, duration = ?, transcription_status = ?, transcription_json = ?,
+			thumbnail_data = ?, thumbnail_mime_type = ?, thumbnail_generated_at = ?,
+			updated_at = ?
 		WHERE id = ?
-	`, rec.FilePath, rec.Duration.Nanoseconds(), rec.TranscriptionStatus, rec.TranscriptionJSON, rec.UpdatedAt, rec.ID)
+	`,
+		rec.FilePath,
+		rec.Duration.Nanoseconds(),
+		rec.TranscriptionStatus,
+		rec.TranscriptionJSON,
+		rec.ThumbnailData,
+		rec.ThumbnailMIMEType,
+		thumbnailGeneratedAtValue(rec.ThumbnailGeneratedAt),
+		rec.UpdatedAt,
+		rec.ID,
+	)
 	if err != nil {
 		return fmt.Errorf("update recording: %w", err)
 	}
@@ -199,7 +330,10 @@ func (r *RecordingRepository) SearchByTranscription(query string) ([]*Recording,
 	likeQuery := "%" + query + "%"
 
 	rows, err := r.db.Query(`
-		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
 		FROM recordings
 		WHERE transcription_json LIKE ?
 		ORDER BY created_at DESC
@@ -213,10 +347,23 @@ func (r *RecordingRepository) SearchByTranscription(query string) ([]*Recording,
 	for rows.Next() {
 		rec := &Recording{}
 		var durationNS int64
-		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+		var thumbnailGeneratedAt sql.NullString
+		if err := rows.Scan(
+			&rec.ID,
+			&rec.FilePath,
+			&durationNS,
+			&rec.TranscriptionStatus,
+			&rec.TranscriptionJSON,
+			&rec.ThumbnailData,
+			&rec.ThumbnailMIMEType,
+			&thumbnailGeneratedAt,
+			&rec.CreatedAt,
+			&rec.UpdatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan recording: %w", err)
 		}
 		rec.Duration = time.Duration(durationNS)
+		rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
 		recordings = append(recordings, rec)
 	}
 
@@ -230,7 +377,10 @@ func (r *RecordingRepository) SearchByTranscription(query string) ([]*Recording,
 // ListRecent returns the most recent recordings up to the specified limit.
 func (r *RecordingRepository) ListRecent(limit int) ([]*Recording, error) {
 	rows, err := r.db.Query(`
-		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
 		FROM recordings
 		ORDER BY created_at DESC
 		LIMIT ?
@@ -244,10 +394,23 @@ func (r *RecordingRepository) ListRecent(limit int) ([]*Recording, error) {
 	for rows.Next() {
 		rec := &Recording{}
 		var durationNS int64
-		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+		var thumbnailGeneratedAt sql.NullString
+		if err := rows.Scan(
+			&rec.ID,
+			&rec.FilePath,
+			&durationNS,
+			&rec.TranscriptionStatus,
+			&rec.TranscriptionJSON,
+			&rec.ThumbnailData,
+			&rec.ThumbnailMIMEType,
+			&thumbnailGeneratedAt,
+			&rec.CreatedAt,
+			&rec.UpdatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan recording: %w", err)
 		}
 		rec.Duration = time.Duration(durationNS)
+		rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
 		recordings = append(recordings, rec)
 	}
 
@@ -263,7 +426,10 @@ func (r *RecordingRepository) SearchByPath(query string) ([]*Recording, error) {
 	likeQuery := "%" + query + "%"
 
 	rows, err := r.db.Query(`
-		SELECT id, file_path, duration, transcription_status, transcription_json, created_at, updated_at
+		SELECT
+			id, file_path, duration, transcription_status, transcription_json,
+			thumbnail_data, thumbnail_mime_type, thumbnail_generated_at,
+			created_at, updated_at
 		FROM recordings
 		WHERE file_path LIKE ?
 		ORDER BY created_at DESC
@@ -277,10 +443,23 @@ func (r *RecordingRepository) SearchByPath(query string) ([]*Recording, error) {
 	for rows.Next() {
 		rec := &Recording{}
 		var durationNS int64
-		if err := rows.Scan(&rec.ID, &rec.FilePath, &durationNS, &rec.TranscriptionStatus, &rec.TranscriptionJSON, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+		var thumbnailGeneratedAt sql.NullString
+		if err := rows.Scan(
+			&rec.ID,
+			&rec.FilePath,
+			&durationNS,
+			&rec.TranscriptionStatus,
+			&rec.TranscriptionJSON,
+			&rec.ThumbnailData,
+			&rec.ThumbnailMIMEType,
+			&thumbnailGeneratedAt,
+			&rec.CreatedAt,
+			&rec.UpdatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("scan recording: %w", err)
 		}
 		rec.Duration = time.Duration(durationNS)
+		rec.ThumbnailGeneratedAt = parseThumbnailGeneratedAt(thumbnailGeneratedAt)
 		recordings = append(recordings, rec)
 	}
 
@@ -310,4 +489,24 @@ func (r *RecordingRepository) UpdateOrInsert(rec *Recording) error {
 
 	// Recording doesn't exist, insert it
 	return r.Insert(rec)
+}
+
+func thumbnailGeneratedAtValue(t *time.Time) any {
+	if t == nil {
+		return nil
+	}
+	return t.UTC().Format(time.RFC3339Nano)
+}
+
+func parseThumbnailGeneratedAt(value sql.NullString) *time.Time {
+	if !value.Valid || value.String == "" {
+		return nil
+	}
+
+	parsed, err := time.Parse(time.RFC3339Nano, value.String)
+	if err != nil {
+		return nil
+	}
+	parsed = parsed.UTC()
+	return &parsed
 }

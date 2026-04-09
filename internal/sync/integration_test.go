@@ -252,7 +252,7 @@ func TestIntegration_PositionUpdate(t *testing.T) {
 	}
 }
 
-func TestIntegration_WordHighlighting(t *testing.T) {
+func TestIntegration_PositionUpdateTracksCurrentWordIndex(t *testing.T) {
 	result := &ai.TranscriptionResult{
 		Words: []ai.Word{
 			{Text: "Hello", Start: 0.0, End: 0.5},
@@ -277,9 +277,8 @@ func TestIntegration_WordHighlighting(t *testing.T) {
 	monitor.EmitPosition(0.2)
 	time.Sleep(100 * time.Millisecond) // Allow glib.IdleAdd to process
 
-	// Note: In a real GTK environment, glib.IdleAdd would execute
-	// In tests without GTK, the callback won't actually run
-	// But we can verify the controller has the right word index
+	// We assert controller-side word tracking, which is deterministic here even
+	// when GTK idle callbacks are not pumped in this test context.
 	if controller.GetCurrentWordIndexCached() != 0 {
 		t.Errorf("Expected word index 0, got %d", controller.GetCurrentWordIndexCached())
 	}
@@ -399,8 +398,16 @@ func TestIntegration_HandleWordClick_NilPlayer(t *testing.T) {
 	integration.Start()
 	defer integration.Stop()
 
-	// Should not panic with nil player
+	initialPosition := controller.GetCurrentPosition()
+
+	// Nil player should no-op without mutating controller state.
 	integration.HandleWordClick(0.5, 0)
+	if controller.GetCurrentPosition() != initialPosition {
+		t.Errorf("expected position to remain %f, got %f", initialPosition, controller.GetCurrentPosition())
+	}
+	if controller.GetCurrentWordIndexCached() != -1 {
+		t.Errorf("expected cached word index to remain -1, got %d", controller.GetCurrentWordIndexCached())
+	}
 }
 
 func TestIntegration_MultiplePositionUpdates(t *testing.T) {

@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -215,6 +217,38 @@ func TestRecordingService_UpdateTranscription(t *testing.T) {
 	}
 }
 
+func TestRecordingService_UpdateTranscriptionStatus(t *testing.T) {
+	tmpDir := t.TempDir()
+	database, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer database.Close()
+
+	svc := NewRecordingService(database)
+
+	rec, err := svc.AddRecording("/path/to/recording.mp4", 120*time.Second)
+	if err != nil {
+		t.Fatalf("AddRecording() error = %v", err)
+	}
+
+	errorJSON := `{"error":"provider unavailable"}`
+	if err := svc.UpdateTranscriptionStatus(rec.ID, "error", errorJSON); err != nil {
+		t.Fatalf("UpdateTranscriptionStatus() error = %v", err)
+	}
+
+	got, err := database.RecordingRepo().GetByID(rec.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+	if got.TranscriptionStatus != "error" {
+		t.Errorf("Expected TranscriptionStatus 'error', got %s", got.TranscriptionStatus)
+	}
+	if got.TranscriptionJSON != errorJSON {
+		t.Errorf("Expected TranscriptionJSON %s, got %s", errorJSON, got.TranscriptionJSON)
+	}
+}
+
 func TestRecordingService_UpdateTranscription_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	database, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
@@ -275,6 +309,52 @@ func TestRecordingService_GetByID_NotFound(t *testing.T) {
 	_, err = svc.GetByID(999)
 	if err == nil {
 		t.Error("Expected error for non-existent recording")
+	}
+}
+
+func TestRecordingService_GetByPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	database, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer database.Close()
+
+	svc := NewRecordingService(database)
+
+	rec, err := svc.AddRecording("/tmp/exact.mp4", 45*time.Second)
+	if err != nil {
+		t.Fatalf("AddRecording() error = %v", err)
+	}
+	if _, err := svc.AddRecording("/tmp/exact.mp4.bak", 30*time.Second); err != nil {
+		t.Fatalf("AddRecording() backup error = %v", err)
+	}
+
+	got, err := svc.GetByPath("/tmp/exact.mp4")
+	if err != nil {
+		t.Fatalf("GetByPath() error = %v", err)
+	}
+	if got.ID != rec.ID {
+		t.Errorf("Expected exact ID %d, got %d", rec.ID, got.ID)
+	}
+}
+
+func TestRecordingService_GetByPath_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	database, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer database.Close()
+
+	svc := NewRecordingService(database)
+
+	_, err = svc.GetByPath("/tmp/missing.mp4")
+	if err == nil {
+		t.Fatal("Expected error for missing path")
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("Expected sql.ErrNoRows, got %v", err)
 	}
 }
 
