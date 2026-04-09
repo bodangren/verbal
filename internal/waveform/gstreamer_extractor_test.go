@@ -189,3 +189,69 @@ func TestAudioExtractorInterface(t *testing.T) {
 		t.Errorf("expected 3 samples, got %d", len(samples))
 	}
 }
+
+func TestGStreamerExtractor_Extract_FileNotFound(t *testing.T) {
+	extractor := NewGStreamerExtractor(DefaultExtractorConfig())
+
+	_, err := extractor.Extract("/nonexistent/path/file.mp4")
+	if err == nil {
+		t.Error("expected error for non-existent file, got nil")
+	}
+}
+
+func TestGStreamerExtractor_Extract_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		filePath  string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "empty path",
+			filePath:  "",
+			wantError: true,
+			errorMsg:  "file path is empty",
+		},
+		{
+			name:      "non-existent file",
+			filePath:  "/tmp/nonexistent_12345.mp4",
+			wantError: true,
+			errorMsg:  "file not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extractor := NewGStreamerExtractor(DefaultExtractorConfig())
+			_, err := extractor.Extract(tt.filePath)
+
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("expected error containing %q, got nil", tt.errorMsg)
+				} else if tt.errorMsg != "" && !containsSubstring(err.Error(), tt.errorMsg) {
+					t.Errorf("expected error containing %q, got %q", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(s[:len(substr)] == substr) ||
+		(s[len(s)-len(substr):] == substr) ||
+		containsMiddle(s, substr))
+}
+
+func containsMiddle(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

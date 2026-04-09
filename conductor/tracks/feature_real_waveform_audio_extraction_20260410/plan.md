@@ -18,24 +18,24 @@
 - [x] Handle mono/stereo conversion via audioconvert element [commit: 8b60e3c]
 - [x] Write unit tests for buffer conversion logic [commit: 8b60e3c]
 
-## Phase 2: Integration and Real Extraction
+## Phase 2: Integration and Real Extraction [checkpoint: ba68503]
 
 ### Task 2.1: Integrate Real Extraction into Generator
-- [~] Replace `extractAudioSamples` synthetic implementation with GStreamer call
-- [~] Update `Generate` method to use real extraction
-- [~] Ensure proper error propagation
-- [~] Update existing generator tests for new behavior
+- [x] Replace `extractAudioSamples` synthetic implementation with GStreamer call [commit: ba68503]
+- [x] Update `Generate` method to use real extraction [commit: ba68503]
+- [x] Ensure proper error propagation [commit: ba68503]
+- [x] Update existing generator tests for new behavior [commit: ba68503]
 
 ### Task 2.2: Handle Edge Cases and Error Scenarios
-- [ ] Handle files without audio tracks (return empty samples or error)
-- [ ] Handle unsupported formats gracefully
-- [ ] Add timeout for extraction operations
-- [ ] Write tests for edge cases
+- [~] Handle files without audio tracks (return empty samples or error)
+- [~] Handle unsupported formats gracefully
+- [~] Add timeout for extraction operations
+- [~] Write tests for edge cases
 
 ### Task 2.3: Performance and Memory Optimization
 - [ ] Implement chunked processing for large files
 - [ ] Add progress reporting during extraction
-- [ ] Ensure proper pipeline cleanup (SetState NULL)
+- [ ] Ensure proper pipeline cleanup
 - [ ] Profile memory usage with large files
 
 ## Phase 3: Verification and Documentation

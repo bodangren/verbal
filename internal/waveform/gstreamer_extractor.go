@@ -28,6 +28,11 @@ func (e *GStreamerExtractor) Extract(filePath string) ([]float64, error) {
 		return nil, fmt.Errorf("file path is empty")
 	}
 
+	// Check if file exists
+	if _, err := os.Stat(filePath); err != nil {
+		return nil, fmt.Errorf("file not found: %w", err)
+	}
+
 	// Create temporary file for raw audio output
 	tempDir := os.TempDir()
 	tempFile := filepath.Join(tempDir, fmt.Sprintf("waveform_extract_%d.raw", time.Now().UnixNano()))
