@@ -16,6 +16,20 @@ func NewGenerator(config Config) *Generator {
 	}
 	return &Generator{
 		sampleRate: sampleRate,
+		extractor:  NewGStreamerExtractor(DefaultExtractorConfig()),
+	}
+}
+
+// NewGeneratorWithExtractor creates a generator with a custom audio extractor.
+// Useful for testing with mock extractors.
+func NewGeneratorWithExtractor(config Config, extractor AudioExtractor) *Generator {
+	sampleRate := config.SampleRate
+	if sampleRate <= 0 {
+		sampleRate = DefaultConfig().SampleRate
+	}
+	return &Generator{
+		sampleRate: sampleRate,
+		extractor:  extractor,
 	}
 }
 
@@ -140,25 +154,16 @@ func (g *Generator) getDuration(filePath string) (time.Duration, error) {
 }
 
 // extractAudioSamples extracts raw audio amplitude samples from a file.
+// Uses the configured AudioExtractor to extract real audio data.
 func (g *Generator) extractAudioSamples(filePath string, duration time.Duration) ([]float64, error) {
-	// For simplicity, generate placeholder samples based on the duration
-	// In a full implementation, this would use GStreamer's appsink to extract actual audio data
-	numSamples := int(duration.Seconds() * float64(g.sampleRate))
-	if numSamples < 10 {
-		numSamples = 10
+	if g.extractor == nil {
+		return nil, fmt.Errorf("no audio extractor configured")
 	}
 
-	samples := make([]float64, numSamples)
-
-	// Generate synthetic waveform for testing
-	// This simulates varying amplitudes
-	for i := 0; i < numSamples; i++ {
-		// Create a simple waveform pattern
-		amplitude := 0.5 + 0.3*float64(i%7)/7.0 + 0.2*float64(i%13)/13.0
-		if amplitude > 1.0 {
-			amplitude = 1.0
-		}
-		samples[i] = amplitude * 0.8 // Scale to leave headroom
+	// Extract real audio samples using the extractor
+	samples, err := g.extractor.Extract(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("extraction failed: %w", err)
 	}
 
 	return samples, nil

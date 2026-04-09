@@ -1,31 +1,30 @@
 # Implementation Plan: Real Audio Waveform Extraction
 
-## Phase 1: Foundation and Testing Infrastructure
+## Phase 1: Foundation and Testing Infrastructure [checkpoint: a84d3b8]
 
 ### Task 1.1: Create Audio Extractor Interface and Tests
-- [ ] Define `AudioExtractor` interface with `Extract(filePath string) ([]float64, error)` method
-- [ ] Write unit tests for the interface contract
-- [ ] Create mock implementation for testing
+- [x] Define `AudioExtractor` interface with `Extract(filePath string) ([]float64, error)` method [commit: 8b60e3c]
+- [x] Write unit tests for the interface contract [commit: 8b60e3c]
+- [x] Create mock implementation for testing [commit: 8b60e3c]
 
-### Task 1.2: Create GStreamer Appsink Extractor Structure
-- [ ] Create `gstreamer_extractor.go` with `GStreamerExtractor` struct
-- [ ] Implement pipeline construction with appsink
-- [ ] Add pipeline state management (NULL → READY → PAUSED → PLAYING)
-- [ ] Write tests for pipeline construction (mock GStreamer where possible)
+### Task 1.2: Create GStreamer Extractor Structure
+- [x] Create `gstreamer_extractor.go` with `GStreamerExtractor` struct [commit: 8b60e3c]
+- [x] Implement pipeline construction using gst-launch-1.0 (appsink not available in gotk4-gstreamer) [commit: 8b60e3c]
+- [x] Add extraction with timeout support [commit: 8b60e3c]
+- [x] Write tests for extraction and conversion logic [commit: 8b60e3c]
 
 ### Task 1.3: Implement Audio Buffer Processing
-- [ ] Handle appsink `new-sample` signal/buffer capture
-- [ ] Convert 16-bit PCM to float64 amplitude values
-- [ ] Handle mono/stereo conversion
-- [ ] Write unit tests for buffer conversion logic
+- [x] Convert 16-bit PCM to float64 amplitude values [commit: 8b60e3c]
+- [x] Handle mono/stereo conversion via audioconvert element [commit: 8b60e3c]
+- [x] Write unit tests for buffer conversion logic [commit: 8b60e3c]
 
 ## Phase 2: Integration and Real Extraction
 
 ### Task 2.1: Integrate Real Extraction into Generator
-- [ ] Replace `extractAudioSamples` synthetic implementation with GStreamer call
-- [ ] Update `Generate` method to use real extraction
-- [ ] Ensure proper error propagation
-- [ ] Update existing generator tests for new behavior
+- [~] Replace `extractAudioSamples` synthetic implementation with GStreamer call
+- [~] Update `Generate` method to use real extraction
+- [~] Ensure proper error propagation
+- [~] Update existing generator tests for new behavior
 
 ### Task 2.2: Handle Edge Cases and Error Scenarios
 - [ ] Handle files without audio tracks (return empty samples or error)
@@ -51,7 +50,7 @@
 - [ ] Update package documentation (GoDoc)
 - [ ] Add implementation notes to plan.md
 - [ ] Mark tech-debt item as resolved
-- [ ] Update lessons-learned.md with GStreamer appsink patterns
+- [ ] Update lessons-learned.md with GStreamer patterns
 
 ### Task 3.3: Final Verification and Checkpoint
 - [ ] Run full project build: `go build ./...`
@@ -65,24 +64,26 @@
 
 ### GStreamer Pipeline Design
 
-The extraction pipeline should follow this structure:
+The extraction pipeline uses gst-launch-1.0 command:
 ```
-filesrc location=<file> ! decodebin ! audioconvert ! audioresample ! 
-audio/x-raw,format=S16LE,channels=1,rate=16000 ! appsink name=sink
+gst-launch-1.0 filesrc location=<file> ! decodebin ! audioconvert ! 
+audioresample ! audio/x-raw,format=S16LE,channels=1,rate=16000 ! 
+filesink location=<temp>
 ```
 
 Key elements:
 - `decodebin`: Auto-detects and decodes various formats
-- `audioconvert`: Converts to consistent format
+- `audioconvert`: Converts to consistent format (mono)
 - `audioresample`: Resamples to 16kHz
-- `appsink`: Captures raw audio buffers
+- Output written to temp file, then read and converted
 
-### Progress Reporting
+### Architecture Decisions
 
-Progress can be estimated by:
-1. Querying total file duration (already implemented)
-2. Tracking processed samples vs expected total
-3. Or using GStreamer's position queries
+1. **Used gst-launch-1.0 instead of appsink**: The gotk4-gstreamer bindings don't expose AppSink type directly. Using gst-launch-1.0 subprocess is a pragmatic workaround that still extracts real audio data.
+
+2. **AudioExtractor Interface**: Created interface for testability and future flexibility (could add FFmpeg backend).
+
+3. **Normalization**: Audio samples are normalized to [0.0, 1.0] range by taking absolute value and dividing by 32768 (max int16).
 
 ### Error Handling Strategy
 
@@ -94,6 +95,6 @@ Progress can be estimated by:
 ### Testing Strategy
 
 Since GStreamer requires a display/audio system:
-- Unit tests should mock GStreamer where possible
+- Unit tests mock extractor interface where possible
 - Integration tests check for DISPLAY/WAYLAND_DISPLAY and skip if unavailable
-- Create small test audio files for validation
+- Conversion logic tested independently of GStreamer
