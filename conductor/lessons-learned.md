@@ -1,6 +1,9 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
+- **GStreamer Real Audio Extraction:** When gotk4-gstreamer bindings don't expose appsink, use gst-launch-1.0 subprocess with `filesrc ! decodebin ! audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=1,rate=16000 ! filesink` pattern. Extract to temp file, then read/convert.
+- **S16LE to Float64 Conversion:** Little-endian: `value := int16(data[offset]) | int16(data[offset+1])<<8`. Normalize to [0.0, 1.0] by taking absolute value and dividing by 32768.
+- **AudioExtractor Interface Pattern:** Create interface for audio extraction to enable testing with mocks and future backend flexibility (FFmpeg, etc.).
 - **Waveform Cache Schema:** Use SQLite with JSON columns for flexible sample storage. `INSERT OR REPLACE` with `ON CONFLICT` handles upserts cleanly.
 - **Async Generation Pattern:** Use goroutines with progress/completion callbacks for long-running operations like waveform generation. Always call completion callback even on errors.
 - **Display Detection:** Use `os.Getenv("DISPLAY")` or `os.Getenv("WAYLAND_DISPLAY")` to detect if GTK/GStreamer tests can run. Skip tests gracefully when no display available.
