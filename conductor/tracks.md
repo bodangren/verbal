@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [~] **Track: Feature - Video Thumbnails for Library Items** [started: 2026-04-09]
+  *Focus: Generate video thumbnails for recording library items using GStreamer frame extraction.*
+  *Status: Phase 1 in progress - Database schema and storage.*
+  *Link: [./tracks/feature_video_thumbnails_20260409/](./tracks/feature_video_thumbnails_20260409/)*
+
 - [x] **Track: Feature - Waveform Visualization** [started: 2026-04-08, completed: 2026-04-09]
   *Focus: Add audio waveform visualization to playback view for visual navigation and editing cues.*
   *Status: All 5 phases complete. Features: data generation, GTK4 widget, integration, scroll/zoom/selection, tooltips.*
