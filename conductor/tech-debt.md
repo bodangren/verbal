@@ -19,6 +19,8 @@
 - ~~**Waveform generation uses synthetic data**~~ - [resolved: 2026-04-10] Replaced with GStreamer-based real audio extraction using gst-launch-1.0 subprocess approach.
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. Consider adding tooltip overlay or status bar display. [severity: low]
 - **Export pipeline uses re-encoding** - SegmentExporter decodes and re-encodes (x264enc + voaacenc) instead of stream copy. This is slower and may reduce quality. Stream copy would be faster but requires matching codec parameters. [severity: low]
+- **DatabaseRepairer needs real ThumbnailGenerator integration** - Currently uses interface; needs integration with actual thumbnail.GstreamerExtractor for production use. [severity: low]
+- **Repair UI not yet implemented** - DatabaseInspector and DatabaseRepairer are ready but need GTK4 UI integration (Phase 3). [severity: low]
 
 ## Resolved
 

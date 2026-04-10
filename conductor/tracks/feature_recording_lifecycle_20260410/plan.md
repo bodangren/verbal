@@ -24,22 +24,22 @@
 
 **Objective**: Implement detection and repair capabilities for database integrity issues.
 
-- [ ] Task: Create DatabaseInspector for issue detection
-  - [ ] Implement CheckOrphanedRecordings() - find DB entries without media files
-  - [ ] Implement CheckMissingThumbnails() - find recordings without thumbnails
-  - [ ] Implement CheckInvalidTranscriptions() - validate JSON parseability
-  - [ ] Write unit tests for each check function
+- [x] Task: Create DatabaseInspector for issue detection [9ee01ee]
+  - [x] Implement CheckOrphanedRecordings() - find DB entries without media files
+  - [x] Implement CheckMissingThumbnails() - find recordings without thumbnails
+  - [x] Implement CheckInvalidTranscriptions() - validate JSON parseability
+  - [x] Write unit tests for each check function
 
-- [ ] Task: Create DatabaseRepairer for issue resolution
-  - [ ] Implement RemoveOrphanedEntry() - delete DB entry for missing file
-  - [ ] Implement MarkAsUnavailable() - flag recording with missing media
-  - [ ] Implement RegenerateThumbnail() - recreate missing thumbnails
-  - [ ] Write unit tests for repair operations
+- [x] Task: Create DatabaseRepairer for issue resolution [ba51527]
+  - [x] Implement RemoveOrphanedEntry() - delete DB entry for missing file
+  - [x] Implement MarkAsUnavailable() - flag recording with missing media
+  - [x] Implement RegenerateThumbnail() - recreate missing thumbnails
+  - [x] Write unit tests for repair operations
 
-- [ ] Task: Create repair report generation
-  - [ ] Define RepairReport struct with issue counts and actions taken
-  - [ ] Implement JSON/text report export
-  - [ ] Write unit tests for report generation
+- [x] Task: Create repair report generation [1126a38]
+  - [x] Define RepairReport struct with issue counts and actions taken
+  - [x] Implement JSON/text report export
+  - [x] Write unit tests for report generation
 
 ## Phase 3: Import/Export UI Components
 

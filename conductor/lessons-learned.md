@@ -40,6 +40,11 @@
 - **Duplicate Handling Strategy:** Use enum-based duplicate handling (Skip/Replace/Rename) for import operations. This gives users control over how conflicts are resolved.
 - **Mock File System Testing:** Create mock implementations of file providers and stores for testing import/export logic without actual I/O. This enables fast, reliable unit tests.
 - **ZIP Archive Structure:** Organize exported recordings with clear directory structure (`media/`, `transcription/`, `thumbnail/`) and a top-level `manifest.json` for easy parsing.
+- **Database Inspector/Repairer Pattern:** Separate detection (Inspector) from resolution (Repairer) for clean separation of concerns. Inspector generates reports; Repairer acts on them.
+- **Repository Interface Abstraction:** Define minimal interfaces (RecordingRepository, WritableRecordingRepository) for DB operations. This enables testing with mocks and keeps business logic decoupled from storage implementation.
+- **ThumbnailGenerator Interface:** Abstract thumbnail generation behind an interface to allow mocking in tests and future backend flexibility (FFmpeg, etc.).
+- **Inspection/Repair Report Pattern:** Provide both JSON (for programmatic use) and text (for human readability) output formats. Include SaveToFile() for persistence.
+- **JSON Tags for API Consistency:** Always use JSON tags on struct fields to ensure consistent snake_case naming in serialized output, matching API conventions.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
