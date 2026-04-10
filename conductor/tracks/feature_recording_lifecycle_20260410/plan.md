@@ -8,11 +8,11 @@
   - [x] Write unit tests for model validation
   - [x] Implement manifest serialization/deserialization (JSON)
 
-- [ ] Task: Create Exporter interface and basic implementation
-  - [ ] Define Exporter interface with Export(recordingID) and ExportAll() methods
-  - [ ] Implement ArchiveExporter using archive/zip
-  - [ ] Add progress callback support for UI updates
-  - [ ] Write unit tests with mock filesystem
+- [x] Task: Create Exporter interface and basic implementation [243743e]
+  - [x] Define Exporter interface with Export(recordingID) and ExportAll() methods
+  - [x] Implement ArchiveExporter using archive/zip
+  - [x] Add progress callback support for UI updates
+  - [x] Write unit tests with mock filesystem
 
 - [ ] Task: Create Importer interface and basic implementation
   - [ ] Define Importer interface with Import(archivePath) method
