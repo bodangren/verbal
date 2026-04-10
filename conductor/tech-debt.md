@@ -6,6 +6,7 @@
 *(none currently)*
 
 ### Medium Severity
+- **GStreamer pipeline path injection in waveform package** - `waveform/generator.go:getDuration()` and `waveform/gstreamer_extractor.go:runExtractionPipeline()` interpolate file paths directly into GStreamer pipeline strings without sanitization or quoting. The `thumbnail/gstreamer_extractor.go` correctly uses `quoteLocation()` for proper escaping. The waveform package should adopt the same pattern. [severity: medium]
 - **Settings created without DB connection in main.go** - `SettingsRepository` was previously created via `&db.SettingsRepository{}` without a db connection (nil *sql.DB). Fixed during review to use `database.SettingsRepo()`. Pattern should be audited for similar issues. [severity: medium]
 - **`go vet` and `go build` timeout on full project** - The UI package takes >2 minutes to vet/build due to CGo/GTK dependencies. Consider splitting build targets or caching. [severity: medium]
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]

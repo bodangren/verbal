@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,9 @@ import (
 )
 
 func TestWaveformWidget_ScrollOffset(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	// Create test data: 100 seconds of audio at 10 samples/sec = 1000 samples
@@ -77,6 +81,9 @@ func TestWaveformWidget_ScrollOffset(t *testing.T) {
 }
 
 func TestWaveformWidget_ZoomLevel(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	tests := []struct {
@@ -147,6 +154,9 @@ func TestWaveformWidget_ZoomLevel(t *testing.T) {
 }
 
 func TestWaveformWidget_TimeRangeSelection(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	// Create test data
@@ -212,6 +222,9 @@ func TestWaveformWidget_TimeRangeSelection(t *testing.T) {
 }
 
 func TestWaveformWidget_TimeToX(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	data := &waveform.Data{
@@ -272,6 +285,9 @@ func TestWaveformWidget_TimeToX(t *testing.T) {
 }
 
 func TestWaveformWidget_XToTime(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	data := &waveform.Data{

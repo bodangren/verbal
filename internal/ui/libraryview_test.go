@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,9 @@ import (
 )
 
 func TestLibraryView_New(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 	if view == nil {
 		t.Fatal("NewLibraryView() returned nil")
@@ -19,6 +23,9 @@ func TestLibraryView_New(t *testing.T) {
 }
 
 func TestLibraryView_SetRecordings(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	recordings := []*db.Recording{
@@ -35,6 +42,9 @@ func TestLibraryView_SetRecordings(t *testing.T) {
 }
 
 func TestLibraryView_SetRecordings_Empty(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	view.SetRecordings([]*db.Recording{})
@@ -45,6 +55,9 @@ func TestLibraryView_SetRecordings_Empty(t *testing.T) {
 }
 
 func TestLibraryView_OnRecordingSelected(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	recordings := []*db.Recording{
@@ -73,6 +86,9 @@ func TestLibraryView_OnRecordingSelected(t *testing.T) {
 }
 
 func TestLibraryView_OnRecordingDelete(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	recordings := []*db.Recording{
@@ -101,6 +117,9 @@ func TestLibraryView_OnRecordingDelete(t *testing.T) {
 }
 
 func TestLibraryView_OnOpenFile(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	var called bool
@@ -116,6 +135,9 @@ func TestLibraryView_OnOpenFile(t *testing.T) {
 }
 
 func TestLibraryView_OnSearch(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	var searchQuery string
@@ -131,6 +153,9 @@ func TestLibraryView_OnSearch(t *testing.T) {
 }
 
 func TestLibraryView_GetSelectedRecordings(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	recordings := []*db.Recording{
@@ -160,6 +185,9 @@ func TestLibraryView_GetSelectedRecordings(t *testing.T) {
 }
 
 func TestLibraryView_ClearSelection(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	recordings := []*db.Recording{
@@ -192,6 +220,9 @@ func TestLibraryView_ClearSelection(t *testing.T) {
 }
 
 func TestLibraryView_ShowEmptyState(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 
 	// Initially should show empty state when no recordings
@@ -212,6 +243,9 @@ func TestLibraryView_ShowEmptyState(t *testing.T) {
 }
 
 func TestLibraryView_UpdateThumbnailAndLoading(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	view := NewLibraryView()
 	now := time.Now().UTC()
 

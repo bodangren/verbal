@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +10,9 @@ import (
 )
 
 func TestWaveformWidget_TimestampTooltip(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	ww := NewWaveformWidget()
 
 	// Create test data: 100 seconds of audio
@@ -102,6 +106,9 @@ func TestFormatTimeTooltip(t *testing.T) {
 }
 
 func TestWaveformWidget_PerformanceWithLargeFiles(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	// This test verifies that the waveform widget can handle large files
 	// without excessive memory or CPU usage
 
@@ -155,6 +162,9 @@ func TestWaveformWidget_PerformanceWithLargeFiles(t *testing.T) {
 }
 
 func TestWaveformWidget_DrawPerformance(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	// Test that drawing operations complete quickly
 	ww := NewWaveformWidget()
 
@@ -197,6 +207,9 @@ func TestWaveformWidget_DrawPerformance(t *testing.T) {
 }
 
 func TestWaveformWidget_ThemeColors(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	// Test that colors are properly defined for both light and dark themes
 
 	colors := getWaveformColors()

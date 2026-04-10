@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,9 @@ import (
 )
 
 func TestRecordingListItem_New(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  1,
 		FilePath:            "/home/user/videos/interview.mp4",
@@ -53,6 +57,9 @@ func TestRecordingListItem_FormatDuration(t *testing.T) {
 }
 
 func TestRecordingListItem_GetRecording(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  42,
 		FilePath:            "/path/to/video.mp4",
@@ -72,6 +79,9 @@ func TestRecordingListItem_GetRecording(t *testing.T) {
 }
 
 func TestRecordingListItem_SetSelected(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  1,
 		FilePath:            "/home/user/video.mp4",
@@ -97,6 +107,9 @@ func TestRecordingListItem_SetSelected(t *testing.T) {
 }
 
 func TestRecordingListItem_OnActivated(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  1,
 		FilePath:            "/home/user/video.mp4",
@@ -122,6 +135,9 @@ func TestRecordingListItem_OnActivated(t *testing.T) {
 }
 
 func TestRecordingListItem_OnDelete(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  1,
 		FilePath:            "/home/user/video.mp4",
@@ -147,6 +163,9 @@ func TestRecordingListItem_OnDelete(t *testing.T) {
 }
 
 func TestRecordingListItem_UpdateThumbnailUpdatesModel(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	rec := &db.Recording{
 		ID:                  3,
 		FilePath:            "/home/user/video.mp4",

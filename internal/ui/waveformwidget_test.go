@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,9 @@ import (
 )
 
 func TestWaveformWidget_Creation(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 	if widget == nil {
 		t.Fatal("NewWaveformWidget returned nil")
@@ -28,6 +32,9 @@ func TestWaveformWidget_Creation(t *testing.T) {
 }
 
 func TestWaveformWidget_SetData(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 
 	// Create test waveform data
@@ -54,6 +61,9 @@ func TestWaveformWidget_SetData(t *testing.T) {
 }
 
 func TestWaveformWidget_SetPosition(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 
 	// Set duration first (needed for position calculation)
@@ -72,6 +82,9 @@ func TestWaveformWidget_SetPosition(t *testing.T) {
 }
 
 func TestWaveformWidget_SetPositionCallback(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 
 	var callbackCalled bool
@@ -103,6 +116,9 @@ func TestWaveformWidget_SetPositionCallback(t *testing.T) {
 }
 
 func TestWaveformWidget_ClearData(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 
 	// Set some data
@@ -121,6 +137,9 @@ func TestWaveformWidget_ClearData(t *testing.T) {
 }
 
 func TestWaveformWidget_SizeAllocation(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewWaveformWidget()
 
 	// Set size request

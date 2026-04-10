@@ -2,11 +2,15 @@ package ui
 
 import (
 	"encoding/base64"
+	"os"
 	"testing"
 	"time"
 )
 
 func TestThumbnailWidget_New(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewThumbnailWidget()
 	if widget == nil {
 		t.Fatal("NewThumbnailWidget() returned nil")
@@ -17,6 +21,9 @@ func TestThumbnailWidget_New(t *testing.T) {
 }
 
 func TestThumbnailWidget_SetDuration(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewThumbnailWidget()
 	widget.SetDuration(95 * time.Second)
 	if widget.durationLabel.Label() != "1:35" {
@@ -39,6 +46,9 @@ func TestDecodeThumbnailPixbuf_AcceptsValidGIF(t *testing.T) {
 }
 
 func TestThumbnailWidget_SetThumbnailBase64Fallback(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
 	widget := NewThumbnailWidget()
 	widget.ShowPlaceholder()
 
