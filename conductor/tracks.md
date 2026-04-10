@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10]
+- [~] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10, started: 2026-04-10]
   *Focus: Add import/export, repair tooling, and recovery workflows for library database content.*
-  *Status: New. Ready for implementation.*
+  *Status: Phase 1 in progress. Data models, Exporter interface, and Importer interface complete with 84.7% test coverage.*
   *Link: [./tracks/feature_recording_lifecycle_20260410/](./tracks/feature_recording_lifecycle_20260410/)*
 
 - [x] **Track: Feature - Real Audio Waveform Extraction** [started: 2026-04-10, completed: 2026-04-10]
