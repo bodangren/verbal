@@ -4,11 +4,9 @@
 
 **Objective**: Establish the foundational data structures and interfaces for import/export operations.
 
-- [ ] Task: Create export data models and manifest structure
-  - [ ] Define ExportManifest struct (version, recordings, checksums)
-  - [ ] Define ExportedRecording struct (metadata, file paths)
-  - [ ] Write unit tests for model validation
-  - [ ] Implement manifest serialization/deserialization (JSON)
+- [x] Task: Create export data models and manifest structure [88ae180]
+  - [x] Write unit tests for model validation
+  - [x] Implement manifest serialization/deserialization (JSON)
 
 - [ ] Task: Create Exporter interface and basic implementation
   - [ ] Define Exporter interface with Export(recordingID) and ExportAll() methods
