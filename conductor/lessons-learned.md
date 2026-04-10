@@ -36,6 +36,10 @@
 - **Viewport-Based Rendering:** For large datasets (waveforms with 100k+ samples), only render visible samples based on scroll/zoom offset. This keeps rendering O(visible) instead of O(total).
 - **Zoom/Scroll Math:** When implementing zoom, calculate visible time range as duration/zoom. Scroll offset (0.0-1.0) maps to the remaining time range. Use xToTime/timeToX conversions consistently.
 - **GTK Tooltip Alternative:** Complex tooltip windows with gotk4 have API compatibility issues. Simpler approach: track hover position internally and let parent UI display tooltips.
+- **Import/Export Manifest Pattern:** Use a versioned JSON manifest in ZIP archives for import/export. Include SHA-256 checksums for all files to verify integrity during import.
+- **Duplicate Handling Strategy:** Use enum-based duplicate handling (Skip/Replace/Rename) for import operations. This gives users control over how conflicts are resolved.
+- **Mock File System Testing:** Create mock implementations of file providers and stores for testing import/export logic without actual I/O. This enables fast, reliable unit tests.
+- **ZIP Archive Structure:** Organize exported recordings with clear directory structure (`media/`, `transcription/`, `thumbnail/`) and a top-level `manifest.json` for easy parsing.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
