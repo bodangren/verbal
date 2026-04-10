@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10]
+  *Focus: Add import/export, repair tooling, and recovery workflows for library database content.*
+  *Status: New. Ready for implementation.*
+  *Link: [./tracks/feature_recording_lifecycle_20260410/](./tracks/feature_recording_lifecycle_20260410/)*
+
 - [x] **Track: Feature - Real Audio Waveform Extraction** [started: 2026-04-10, completed: 2026-04-10]
   *Focus: Replace synthetic waveform data generation with real audio extraction using GStreamer.*
   *Status: Completed. All 3 phases finished: AudioExtractor interface, GStreamerExtractor implementation with gst-launch-1.0, Generator integration, and comprehensive tests.*
