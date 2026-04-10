@@ -2,7 +2,10 @@ package lifecycle
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"verbal/internal/db"
 )
@@ -15,10 +18,10 @@ type RecordingRepository interface {
 
 // InspectionReport contains the results of all database integrity checks.
 type InspectionReport struct {
-	TotalIssues           int
-	OrphanedRecordings    []*db.Recording
-	MissingThumbnails     []*db.Recording
-	InvalidTranscriptions []*db.Recording
+	TotalIssues           int             `json:"total_issues"`
+	OrphanedRecordings    []*db.Recording `json:"orphaned_recordings"`
+	MissingThumbnails     []*db.Recording `json:"missing_thumbnails"`
+	InvalidTranscriptions []*db.Recording `json:"invalid_transcriptions"`
 }
 
 // DatabaseInspector provides methods for detecting database integrity issues.
@@ -124,4 +127,79 @@ func (i *DatabaseInspector) RunAllChecks() (*InspectionReport, error) {
 	report.TotalIssues = len(orphaned) + len(missingThumbs) + len(invalidTranscriptions)
 
 	return report, nil
+}
+
+// ToJSON serializes the inspection report to JSON format.
+func (r *InspectionReport) ToJSON() ([]byte, error) {
+	return json.MarshalIndent(r, "", "  ")
+}
+
+// recordingSummary represents a simplified recording for text reports.
+type recordingSummary struct {
+	ID        int64     `json:"id"`
+	FilePath  string    `json:"file_path"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ToText generates a human-readable text report.
+func (r *InspectionReport) ToText() string {
+	var sb strings.Builder
+
+	sb.WriteString("=" + strings.Repeat("=", 50) + "\n")
+	sb.WriteString("DATABASE INSPECTION REPORT\n")
+	sb.WriteString("=" + strings.Repeat("=", 50) + "\n\n")
+
+	sb.WriteString(fmt.Sprintf("Generated: %s\n", time.Now().Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("Total Issues: %d\n\n", r.TotalIssues))
+
+	if r.TotalIssues == 0 {
+		sb.WriteString("No issues found. Database is healthy.\n")
+		return sb.String()
+	}
+
+	// Orphaned recordings
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	sb.WriteString(fmt.Sprintf("ORPHANED RECORDINGS (%d)\n", len(r.OrphanedRecordings)))
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	for _, rec := range r.OrphanedRecordings {
+		sb.WriteString(fmt.Sprintf("  ID: %d\n", rec.ID))
+		sb.WriteString(fmt.Sprintf("  Path: %s\n", rec.FilePath))
+		sb.WriteString(fmt.Sprintf("  Created: %s\n\n", rec.CreatedAt.Format(time.RFC3339)))
+	}
+
+	// Missing thumbnails
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	sb.WriteString(fmt.Sprintf("MISSING THUMBNAILS (%d)\n", len(r.MissingThumbnails)))
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	for _, rec := range r.MissingThumbnails {
+		sb.WriteString(fmt.Sprintf("  ID: %d\n", rec.ID))
+		sb.WriteString(fmt.Sprintf("  Path: %s\n", rec.FilePath))
+		sb.WriteString(fmt.Sprintf("  Created: %s\n\n", rec.CreatedAt.Format(time.RFC3339)))
+	}
+
+	// Invalid transcriptions
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	sb.WriteString(fmt.Sprintf("INVALID TRANSCRIPTIONS (%d)\n", len(r.InvalidTranscriptions)))
+	sb.WriteString(strings.Repeat("-", 50) + "\n")
+	for _, rec := range r.InvalidTranscriptions {
+		sb.WriteString(fmt.Sprintf("  ID: %d\n", rec.ID))
+		sb.WriteString(fmt.Sprintf("  Path: %s\n", rec.FilePath))
+		sb.WriteString(fmt.Sprintf("  Created: %s\n\n", rec.CreatedAt.Format(time.RFC3339)))
+	}
+
+	return sb.String()
+}
+
+// SaveToFile saves the inspection report as JSON to the specified path.
+func (r *InspectionReport) SaveToFile(path string) error {
+	data, err := r.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize report: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write report file: %w", err)
+	}
+
+	return nil
 }

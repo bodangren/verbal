@@ -2,9 +2,11 @@ package lifecycle
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"verbal/internal/db"
@@ -26,11 +28,11 @@ type WritableRecordingRepository interface {
 
 // RepairReport contains the results of all repair operations.
 type RepairReport struct {
-	TotalRepairs          int
-	RemovedOrphans        []int64
-	MarkedUnavailable     []int64
-	RegeneratedThumbnails []int64
-	Errors                []string
+	TotalRepairs          int      `json:"total_repairs"`
+	RemovedOrphans        []int64  `json:"removed_orphans"`
+	MarkedUnavailable     []int64  `json:"marked_unavailable"`
+	RegeneratedThumbnails []int64  `json:"regenerated_thumbnails"`
+	Errors                []string `json:"errors"`
 }
 
 // DatabaseRepairer provides methods for resolving database integrity issues.
@@ -159,4 +161,52 @@ type RepairResult struct {
 	Success bool
 	Action  string
 	Error   error
+}
+
+// ToJSON serializes the repair report to JSON format.
+func (r *RepairReport) ToJSON() ([]byte, error) {
+	return json.MarshalIndent(r, "", "  ")
+}
+
+// ToText generates a human-readable text report.
+func (r *RepairReport) ToText() string {
+	var sb strings.Builder
+
+	sb.WriteString("=" + strings.Repeat("=", 50) + "\n")
+	sb.WriteString("DATABASE REPAIR REPORT\n")
+	sb.WriteString("=" + strings.Repeat("=", 50) + "\n\n")
+
+	sb.WriteString(fmt.Sprintf("Generated: %s\n", time.Now().Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("Total Repairs: %d\n", r.TotalRepairs))
+	sb.WriteString(fmt.Sprintf("Removed Orphans: %d\n", len(r.RemovedOrphans)))
+	sb.WriteString(fmt.Sprintf("Marked Unavailable: %d\n", len(r.MarkedUnavailable)))
+	sb.WriteString(fmt.Sprintf("Regenerated Thumbnails: %d\n\n", len(r.RegeneratedThumbnails)))
+
+	if len(r.Errors) > 0 {
+		sb.WriteString(strings.Repeat("-", 50) + "\n")
+		sb.WriteString("ERRORS\n")
+		sb.WriteString(strings.Repeat("-", 50) + "\n")
+		for _, err := range r.Errors {
+			sb.WriteString(fmt.Sprintf("  - %s\n", err))
+		}
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString("No errors occurred during repair.\n\n")
+	}
+
+	return sb.String()
+}
+
+// SaveToFile saves the repair report as JSON to the specified path.
+func (r *RepairReport) SaveToFile(path string) error {
+	data, err := r.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to serialize report: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write report file: %w", err)
+	}
+
+	return nil
 }
