@@ -14,11 +14,11 @@
   - [x] Add progress callback support for UI updates
   - [x] Write unit tests with mock filesystem
 
-- [ ] Task: Create Importer interface and basic implementation
-  - [ ] Define Importer interface with Import(archivePath) method
-  - [ ] Implement ArchiveImporter with ZIP extraction
-  - [ ] Add duplicate detection logic (by file hash)
-  - [ ] Write unit tests for import validation
+- [x] Task: Create Importer interface and basic implementation [4461c1a]
+  - [x] Define Importer interface with Import(archivePath) method
+  - [x] Implement ArchiveImporter with ZIP extraction
+  - [x] Add duplicate detection logic (by file hash)
+  - [x] Write unit tests for import validation
 
 ## Phase 2: Database Repair and Validation System
 
