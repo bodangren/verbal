@@ -25,6 +25,7 @@ type LibraryView struct {
 
 	onRecordingSelectedCallbacks []func(*db.Recording)
 	onRecordingDeleteCallbacks   []func(*db.Recording)
+	onRecordingExportCallbacks   []func(*db.Recording)
 	onOpenFileCallbacks          []func()
 	onSearchCallbacks            []func(string)
 	searchDebounceTimer          *time.Timer
@@ -122,6 +123,7 @@ func NewLibraryView() *LibraryView {
 
 		onRecordingSelectedCallbacks: make([]func(*db.Recording), 0),
 		onRecordingDeleteCallbacks:   make([]func(*db.Recording), 0),
+		onRecordingExportCallbacks:   make([]func(*db.Recording), 0),
 		onOpenFileCallbacks:          make([]func(), 0),
 		onSearchCallbacks:            make([]func(string), 0),
 	}
@@ -181,6 +183,9 @@ func (v *LibraryView) SetRecordings(recordings []*db.Recording) {
 			})
 			item.OnDelete(func(r *db.Recording) {
 				v.emitRecordingDelete(r)
+			})
+			item.OnExport(func(r *db.Recording) {
+				v.emitRecordingExport(r)
 			})
 
 			v.items = append(v.items, item)
@@ -300,6 +305,25 @@ func (v *LibraryView) emitRecordingDelete(rec *db.Recording) {
 	v.mu.RLock()
 	callbacks := make([]func(*db.Recording), len(v.onRecordingDeleteCallbacks))
 	copy(callbacks, v.onRecordingDeleteCallbacks)
+	v.mu.RUnlock()
+
+	for _, cb := range callbacks {
+		cb(rec)
+	}
+}
+
+// OnRecordingExport registers a callback for when a recording export is requested.
+func (v *LibraryView) OnRecordingExport(callback func(*db.Recording)) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.onRecordingExportCallbacks = append(v.onRecordingExportCallbacks, callback)
+}
+
+// emitRecordingExport triggers all recording export callbacks.
+func (v *LibraryView) emitRecordingExport(rec *db.Recording) {
+	v.mu.RLock()
+	callbacks := make([]func(*db.Recording), len(v.onRecordingExportCallbacks))
+	copy(callbacks, v.onRecordingExportCallbacks)
 	v.mu.RUnlock()
 
 	for _, cb := range callbacks {

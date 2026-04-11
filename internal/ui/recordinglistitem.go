@@ -23,6 +23,7 @@ type RecordingListItem struct {
 
 	onActivatedCallbacks []func(*db.Recording)
 	onDeleteCallbacks    []func(*db.Recording)
+	onExportCallbacks    []func(*db.Recording)
 }
 
 // NewRecordingListItem creates a new list item for the given recording.
@@ -88,6 +89,13 @@ func NewRecordingListItem(recording *db.Recording) *RecordingListItem {
 		thumbnailWidget:      thumbnailWidget,
 		onActivatedCallbacks: make([]func(*db.Recording), 0),
 		onDeleteCallbacks:    make([]func(*db.Recording), 0),
+		onExportCallbacks:    make([]func(*db.Recording), 0),
+	}
+
+	// Check if recording is available and apply styling
+	if !recording.IsAvailable() {
+		box.AddCSSClass("recording-unavailable")
+		filenameLabel.SetTooltipText(recording.FilePath + " (File not found)")
 	}
 
 	// Right: Delete button
@@ -239,6 +247,26 @@ func (i *RecordingListItem) ShowThumbnailPlaceholder() {
 	if i.thumbnailWidget != nil {
 		i.thumbnailWidget.SetLoading(false)
 		i.thumbnailWidget.ShowPlaceholder()
+	}
+}
+
+// OnExport registers a callback for when the export is requested.
+func (i *RecordingListItem) OnExport(callback func(*db.Recording)) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.onExportCallbacks = append(i.onExportCallbacks, callback)
+}
+
+// emitExport triggers all export callbacks.
+func (i *RecordingListItem) emitExport() {
+	i.mu.RLock()
+	callbacks := make([]func(*db.Recording), len(i.onExportCallbacks))
+	copy(callbacks, i.onExportCallbacks)
+	rec := i.recording
+	i.mu.RUnlock()
+
+	for _, cb := range callbacks {
+		cb(rec)
 	}
 }
 

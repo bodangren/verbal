@@ -141,6 +141,20 @@ const ApplicationCSS = `
 	box-shadow: 0 0 0 1px #3584E4;
 }
 
+.recording-unavailable {
+	opacity: 0.6;
+	background-color: rgba(0, 0, 0, 0.03);
+}
+
+.recording-unavailable .recording-filename {
+	color: @insensitive_fg_color;
+}
+
+.recording-unavailable .recording-thumbnail {
+	filter: grayscale(100%);
+	opacity: 0.7;
+}
+
 .recording-icon {
 	background-color: rgba(0, 0, 0, 0.05);
 	border-radius: 6px;

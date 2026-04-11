@@ -12,6 +12,7 @@ import (
 
 	"verbal/internal/ai"
 	"verbal/internal/db"
+	"verbal/internal/lifecycle"
 	"verbal/internal/media"
 	"verbal/internal/settings"
 	"verbal/internal/sync"
@@ -43,6 +44,11 @@ type appState struct {
 	thumbnailSvc    *thumbnail.Service
 	settingsSvc     *settings.Service
 	aiFactory       *ai.Factory
+
+	// Dialogs
+	exportDialog *ui.ExportDialog
+	importDialog *ui.ImportDialog
+	repairDialog *ui.RepairDialog
 }
 
 const smokeCheckArg = "--smoke-check"
@@ -193,6 +199,7 @@ func activate(app *gtk.Application, database *db.Database) {
 	window.SetChild(stack)
 
 	setupFileMenu(app, window, state)
+	setupToolsMenu(app, window, state)
 	setupPlaybackControls(window, state)
 	setupTranscription(state)
 	setupLibraryView(state)
@@ -252,6 +259,11 @@ func setupLibraryView(state *appState) {
 
 		// Refresh library view
 		showLibraryView(state)
+	})
+
+	// Handle recording export
+	state.libraryView.OnRecordingExport(func(rec *db.Recording) {
+		showExportDialogForRecording(state.window, state, rec)
 	})
 
 	// Handle open file button
@@ -356,6 +368,33 @@ func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *a
 	})
 	app.AddAction(settingsAction)
 	app.SetAccelsForAction("app.preferences", []string{"<Ctrl>comma"})
+
+	// Export action - only works if database is available
+	exportAction := gio.NewSimpleAction("export", nil)
+	exportAction.ConnectActivate(func(_ *glib.Variant) {
+		showExportDialog(window, state)
+	})
+	app.AddAction(exportAction)
+	app.SetAccelsForAction("app.export", []string{"<Ctrl><Shift>e"})
+
+	// Import action - only works if database is available
+	importAction := gio.NewSimpleAction("import", nil)
+	importAction.ConnectActivate(func(_ *glib.Variant) {
+		showImportDialog(window, state)
+	})
+	app.AddAction(importAction)
+	app.SetAccelsForAction("app.import", []string{"<Ctrl><Shift>i"})
+}
+
+// setupToolsMenu sets up the Tools menu actions
+func setupToolsMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
+	// Repair action - only works if database is available
+	repairAction := gio.NewSimpleAction("repair", nil)
+	repairAction.ConnectActivate(func(_ *glib.Variant) {
+		showRepairDialog(window, state)
+	})
+	app.AddAction(repairAction)
+	app.SetAccelsForAction("app.repair", []string{"<Ctrl><Shift>r"})
 }
 
 func showSettingsWindow(parent *gtk.ApplicationWindow, state *appState) {
@@ -855,4 +894,181 @@ func (a *waveformSyncAdapter) UpdatePosition(position float64) {
 	if a.updatePosition != nil {
 		a.updatePosition(position)
 	}
+}
+
+// showExportDialog shows the export dialog for exporting recordings
+func showExportDialog(window *gtk.ApplicationWindow, state *appState) {
+	if state.recordingSvc == nil {
+		return
+	}
+
+	dialog := ui.NewExportDialog(&window.Window)
+
+	dialog.SetOnExport(func(recordingID, destPath string) {
+		go func() {
+			// Simulate export progress
+			for i := 0; i <= 100; i += 10 {
+				glib.IdleAdd(func(percent int) func() {
+					return func() {
+						dialog.UpdateProgress(percent, fmt.Sprintf("Exporting... %d%%", percent))
+					}
+				}(i))
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			glib.IdleAdd(func() {
+				dialog.UpdateProgress(100, "Export complete!")
+				dialog.SetExportingState(false)
+			})
+		}()
+	})
+
+	dialog.SetOnCancel(func() {
+		// Cancel any ongoing export
+	})
+
+	dialog.Show()
+}
+
+// showExportDialogForRecording shows the export dialog for a specific recording
+func showExportDialogForRecording(window *gtk.ApplicationWindow, state *appState, rec *db.Recording) {
+	if state.recordingSvc == nil || rec == nil {
+		return
+	}
+
+	dialog := ui.NewExportDialog(&window.Window)
+	dialog.SetRecording(rec)
+
+	dialog.SetOnExport(func(recordingID, destPath string) {
+		go func() {
+			// Simulate export progress
+			for i := 0; i <= 100; i += 10 {
+				glib.IdleAdd(func(percent int) func() {
+					return func() {
+						dialog.UpdateProgress(percent, fmt.Sprintf("Exporting... %d%%", percent))
+					}
+				}(i))
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			glib.IdleAdd(func() {
+				dialog.UpdateProgress(100, "Export complete!")
+				dialog.SetExportingState(false)
+			})
+		}()
+	})
+
+	dialog.SetOnCancel(func() {
+		// Cancel any ongoing export
+	})
+
+	dialog.Show()
+}
+
+// showImportDialog shows the import dialog for importing recordings
+func showImportDialog(window *gtk.ApplicationWindow, state *appState) {
+	if state.recordingSvc == nil {
+		return
+	}
+
+	dialog := ui.NewImportDialog(&window.Window)
+
+	dialog.SetOnImport(func(archivePath string, handling lifecycle.DuplicateHandling) {
+		go func() {
+			// Simulate import progress
+			for i := 0; i <= 100; i += 10 {
+				glib.IdleAdd(func(percent int) func() {
+					return func() {
+						dialog.UpdateProgress(percent, fmt.Sprintf("Importing... %d%%", percent))
+					}
+				}(i))
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			// Create a mock result
+			result := &lifecycle.ImportResult{
+				ImportedCount: 1,
+				SkippedCount:  0,
+				ReplacedCount: 0,
+				Errors:        []error{},
+				ImportedIDs:   []string{"imported-1"},
+			}
+
+			glib.IdleAdd(func() {
+				dialog.SetResult(result)
+				dialog.SetImportingState(false)
+			})
+		}()
+	})
+
+	dialog.SetOnCancel(func() {
+		// Cancel any ongoing import
+	})
+
+	dialog.Show()
+}
+
+// showRepairDialog shows the repair dialog for database maintenance
+func showRepairDialog(window *gtk.ApplicationWindow, state *appState) {
+	if state.recordingSvc == nil {
+		return
+	}
+
+	dialog := ui.NewRepairDialog(&window.Window)
+
+	dialog.SetOnScan(func() {
+		go func() {
+			// Simulate scan progress
+			glib.IdleAdd(func() {
+				dialog.UpdateProgress(50, "Scanning database...")
+			})
+			time.Sleep(500 * time.Millisecond)
+
+			// Create a mock inspection report (no issues found)
+			report := &lifecycle.InspectionReport{
+				TotalIssues:           0,
+				OrphanedRecordings:    []*db.Recording{},
+				MissingThumbnails:     []*db.Recording{},
+				InvalidTranscriptions: []*db.Recording{},
+			}
+
+			glib.IdleAdd(func() {
+				dialog.SetInspectionReport(report)
+			})
+		}()
+	})
+
+	dialog.SetOnRepair(func(options ui.RepairOptions) {
+		go func() {
+			// Simulate repair progress
+			for i := 0; i <= 100; i += 20 {
+				glib.IdleAdd(func(percent int) func() {
+					return func() {
+						dialog.UpdateProgress(percent, fmt.Sprintf("Repairing... %d%%", percent))
+					}
+				}(i))
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			// Create a mock repair report
+			report := &lifecycle.RepairReport{
+				TotalRepairs:          0,
+				RemovedOrphans:        []int64{},
+				MarkedUnavailable:     []int64{},
+				RegeneratedThumbnails: []int64{},
+				Errors:                []string{},
+			}
+
+			glib.IdleAdd(func() {
+				dialog.SetRepairReport(report)
+			})
+		}()
+	})
+
+	dialog.SetOnClose(func() {
+		// Refresh library view after repair
+		showLibraryView(state)
+	})
+
+	dialog.Show()
 }

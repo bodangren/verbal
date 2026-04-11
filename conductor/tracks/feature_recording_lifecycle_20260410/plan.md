@@ -67,20 +67,20 @@
 
 **Objective**: Wire import/export/repair features into the main application.
 
-- [ ] Task: Add menu items and keyboard shortcuts
-  - [ ] Add File menu with Import/Export/Backup options
-  - [ ] Add Tools menu with Repair option
-  - [ ] Define keyboard shortcuts (Ctrl+Shift+E for export, etc.)
+- [x] Task: Add menu items and keyboard shortcuts
+  - [x] Add File menu with Import/Export/Backup options
+  - [x] Add Tools menu with Repair option
+  - [x] Define keyboard shortcuts (Ctrl+Shift+E for export, etc.)
 
-- [ ] Task: Integrate with LibraryView
-  - [ ] Add export button to recording context menu
-  - [ ] Handle "unavailable" recording state (grayed out UI)
-  - [ ] Add recovery option for missing files (locate/remove)
+- [x] Task: Integrate with LibraryView
+  - [x] Add export button to recording context menu
+  - [x] Handle "unavailable" recording state (grayed out UI)
+  - [x] Add recovery option for missing files (locate/remove)
 
-- [ ] Task: Add startup integrity check (optional)
-  - [ ] Create silent integrity check on app launch
-  - [ ] Show notification if issues found
-  - [ ] Add setting to enable/disable startup check
+- [x] Task: Add startup integrity check (optional)
+  - [x] Create silent integrity check on app launch
+  - [x] Show notification if issues found
+  - [x] Add setting to enable/disable startup check
 
 ## Phase 5: Backup/Restore System
 

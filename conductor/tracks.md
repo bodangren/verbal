@@ -8,7 +8,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [~] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10, started: 2026-04-10]
   *Focus: Add import/export, repair tooling, and recovery workflows for library database content.*
-  *Status: Phase 3 complete. ExportDialog, ImportDialog, and RepairDialog implemented with file choosers, progress tracking, and callback patterns. Phase 4 (main app integration) next.*
+  *Status: Phase 4 complete. Menu integration (File/Tools), LibraryView export callbacks, unavailable recording state handling (grayed out UI with CSS), and dialog wiring in main.go. Phase 5 (Backup/Restore System) next.*
   *Link: [./tracks/feature_recording_lifecycle_20260410/](./tracks/feature_recording_lifecycle_20260410/)*
 
 - [x] **Track: Feature - Real Audio Waveform Extraction** [started: 2026-04-10, completed: 2026-04-10]

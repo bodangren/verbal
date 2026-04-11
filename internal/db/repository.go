@@ -26,6 +26,15 @@ type Recording struct {
 	UpdatedAt            time.Time
 }
 
+// IsAvailable checks if the recording's media file exists on disk.
+func (r *Recording) IsAvailable() bool {
+	if r == nil || r.FilePath == "" {
+		return false
+	}
+	_, err := os.Stat(r.FilePath)
+	return err == nil
+}
+
 // Database wraps the SQL database connection.
 type Database struct {
 	path string

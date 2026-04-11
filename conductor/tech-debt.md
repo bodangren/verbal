@@ -21,6 +21,7 @@
 - **Export pipeline uses re-encoding** - SegmentExporter decodes and re-encodes (x264enc + voaacenc) instead of stream copy. This is slower and may reduce quality. Stream copy would be faster but requires matching codec parameters. [severity: low]
 - **DatabaseRepairer needs real ThumbnailGenerator integration** - Currently uses interface; needs integration with actual thumbnail.GstreamerExtractor for production use. [severity: low]
 - ~~Repair UI not yet implemented~~ - [resolved: 2026-04-11] ExportDialog, ImportDialog, and RepairDialog implemented with progress tracking, file choosers, and callback patterns.
+- ~~Import/Export/ Repair menu integration~~ - [resolved: 2026-04-12] Menu actions added to File (Import/Export) and Tools (Repair) menus with keyboard shortcuts (Ctrl+Shift+I/E/R). Dialogs wired in main.go with simulation for actual operations.
 
 ## Resolved
 

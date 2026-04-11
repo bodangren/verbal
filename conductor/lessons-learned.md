@@ -49,6 +49,9 @@
 - **Progress Callback Pattern:** Use `UpdateProgress(percent int, message string)` method for async operations. Store progress state internally for testing in headless environments.
 - **Export/Import UI State Management:** Disable controls during operations (`SetExportingState`, `SetImportingState`, `SetRepairingState`) to prevent user interaction while async work is in progress.
 - **Enum-based Duplicate Handling:** Use typed constants (`DuplicateSkip`, `DuplicateReplace`, `DuplicateRename`) for import conflict resolution, giving users clear control over behavior.
+- **GTK4 Menu Actions:** Use `gio.NewSimpleAction()` with `app.AddAction()` and `app.SetAccelsForAction()` for global menu items and keyboard shortcuts. Actions work across the entire application.
+- **Recording Availability Check:** Use `os.Stat()` to verify file existence and provide visual feedback (CSS classes like `recording-unavailable` with opacity/grayscale) for missing files.
+- **Dialog Reuse:** Create dialog instances on-demand in response to user actions rather than keeping them in app state. This simplifies state management and allows for dialog customization per context.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
