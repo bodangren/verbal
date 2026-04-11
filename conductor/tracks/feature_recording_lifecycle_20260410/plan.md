@@ -45,23 +45,23 @@
 
 **Objective**: Build GTK4 UI for import/export operations.
 
-- [ ] Task: Create ExportDialog component
-  - [ ] Design dialog UI with single vs all recordings selection
-  - [ ] Add destination folder chooser
-  - [ ] Integrate progress bar with exporter callbacks
-  - [ ] Write tests for dialog interactions
+- [x] Task: Create ExportDialog component
+  - [x] Design dialog UI with single vs all recordings selection
+  - [x] Add destination folder chooser
+  - [x] Integrate progress bar with exporter callbacks
+  - [x] Write tests for dialog interactions
 
-- [ ] Task: Create ImportDialog component
-  - [ ] Design dialog UI with file chooser (ZIP filter)
-  - [ ] Add duplicate handling options (skip/rename/overwrite)
-  - [ ] Integrate progress bar with importer callbacks
-  - [ ] Write tests for dialog interactions
+- [x] Task: Create ImportDialog component
+  - [x] Design dialog UI with file chooser (ZIP filter)
+  - [x] Add duplicate handling options (skip/rename/overwrite)
+  - [x] Integrate progress bar with importer callbacks
+  - [x] Write tests for dialog interactions
 
-- [ ] Task: Create RepairDialog component
-  - [ ] Design dialog showing scan results
-  - [ ] Add checkboxes for selecting which issues to repair
-  - [ ] Show repair progress and final report
-  - [ ] Write tests for dialog interactions
+- [x] Task: Create RepairDialog component
+  - [x] Design dialog showing scan results
+  - [x] Add checkboxes for selecting which issues to repair
+  - [x] Show repair progress and final report
+  - [x] Write tests for dialog interactions
 
 ## Phase 4: Integration with Library View and Main Application
 

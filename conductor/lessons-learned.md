@@ -45,6 +45,10 @@
 - **ThumbnailGenerator Interface:** Abstract thumbnail generation behind an interface to allow mocking in tests and future backend flexibility (FFmpeg, etc.).
 - **Inspection/Repair Report Pattern:** Provide both JSON (for programmatic use) and text (for human readability) output formats. Include SaveToFile() for persistence.
 - **JSON Tags for API Consistency:** Always use JSON tags on struct fields to ensure consistent snake_case naming in serialized output, matching API conventions.
+- **GTK Dialog Patterns:** Create reusable dialog components with clear separation between UI setup, callback registration, and state management. Use `&dialog.Window` to get the underlying window for `FileChooserNative`.
+- **Progress Callback Pattern:** Use `UpdateProgress(percent int, message string)` method for async operations. Store progress state internally for testing in headless environments.
+- **Export/Import UI State Management:** Disable controls during operations (`SetExportingState`, `SetImportingState`, `SetRepairingState`) to prevent user interaction while async work is in progress.
+- **Enum-based Duplicate Handling:** Use typed constants (`DuplicateSkip`, `DuplicateReplace`, `DuplicateRename`) for import conflict resolution, giving users clear control over behavior.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
