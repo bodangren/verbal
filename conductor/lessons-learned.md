@@ -55,6 +55,9 @@
 - **Backup Timestamp Uniqueness:** When creating multiple backups in rapid succession (tests), include milliseconds in filenames to prevent overwrites: `20060102_150405.000`.
 - **Background Scheduler Pattern:** Use a ticker-based goroutine with graceful shutdown (stop channel) for scheduled tasks. Calculate next run time from frequency settings, not just fixed intervals.
 - **File Copy with io.Copy:** Use `io.Copy()` for efficient database backup file duplication - handles large files and streaming properly.
+- **Menu Action Integration:** Use `gio.NewSimpleAction()` with `app.AddAction()` and `app.SetAccelsForAction()` for global menu items. The action name should use kebab-case (e.g., "backup-settings") and the accelerator uses GTK syntax (e.g., "<Ctrl><Shift>b").
+- **Dialog State Management:** When integrating dialogs into main.go, pre-populate dialog state from existing managers/services, then use callbacks to propagate changes back. This creates a clean separation between UI and business logic.
+- **Resource Cleanup Pattern:** Always add resource cleanup (like `scheduler.Stop()`) to the window's `ConnectCloseRequest` handler to ensure graceful shutdown of background goroutines.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
