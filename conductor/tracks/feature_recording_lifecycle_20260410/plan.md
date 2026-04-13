@@ -94,14 +94,14 @@
   - [x] Implement backup rotation (keep N most recent)
   - [x] Write unit tests for backup operations
 
-- [~] Task: Create BackupScheduler
-  - [ ] Implement background scheduler goroutine
-  - [ ] Support daily/weekly backup frequencies
-  - [ ] Trigger backup based on settings
-  - [ ] Handle backup failures gracefully
-  - [ ] Write unit tests for scheduler
+- [x] Task: Create BackupScheduler
+  - [x] Implement background scheduler goroutine
+  - [x] Support daily/weekly backup frequencies
+  - [x] Trigger backup based on settings
+  - [x] Handle backup failures gracefully
+  - [x] Write unit tests for scheduler
 
-- [ ] Task: Create BackupSettings UI
+- [~] Task: Create BackupSettings UI
   - [ ] Add auto-backup enable/disable toggle
   - [ ] Add backup frequency setting (daily/weekly)
   - [ ] Add backup retention count setting
