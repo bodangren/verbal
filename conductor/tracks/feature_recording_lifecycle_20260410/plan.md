@@ -85,8 +85,9 @@
 ## Phase 5: Backup/Restore System
 
 **Objective**: Implement database backup and restore functionality.
+**Status**: In Progress
 
-- [ ] Task: Create BackupManager
+- [~] Task: Create BackupManager
   - [ ] Implement CreateBackup() - copy SQLite DB with timestamp
   - [ ] Implement ListBackups() - enumerate backup files
   - [ ] Implement RestoreBackup() - restore from backup file

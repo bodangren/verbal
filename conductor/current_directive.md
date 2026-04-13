@@ -35,11 +35,11 @@
 - [x] DatabaseRepairer for issue resolution
 - [x] RepairReport with JSON/text export
 
-## Next Phase
-**Phase 5:** Backup/Restore System
-- Create BackupManager with rotation
-- Add BackupSettings UI
-- Implement automatic backup scheduler
+## In Progress
+**Phase 5:** Backup/Restore System [IN PROGRESS]
+- [~] Create BackupManager with rotation
+- [~] Add BackupSettings UI
+- [ ] Implement automatic backup scheduler
 
 ## Success Criteria
 - [x] User can export single recording to ZIP
