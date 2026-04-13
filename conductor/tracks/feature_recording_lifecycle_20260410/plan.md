@@ -87,12 +87,19 @@
 **Objective**: Implement database backup and restore functionality.
 **Status**: In Progress
 
-- [~] Task: Create BackupManager
-  - [ ] Implement CreateBackup() - copy SQLite DB with timestamp
-  - [ ] Implement ListBackups() - enumerate backup files
-  - [ ] Implement RestoreBackup() - restore from backup file
-  - [ ] Implement backup rotation (keep N most recent)
-  - [ ] Write unit tests for backup operations
+- [x] Task: Create BackupManager
+  - [x] Implement CreateBackup() - copy SQLite DB with timestamp
+  - [x] Implement ListBackups() - enumerate backup files
+  - [x] Implement RestoreBackup() - restore from backup file
+  - [x] Implement backup rotation (keep N most recent)
+  - [x] Write unit tests for backup operations
+
+- [~] Task: Create BackupScheduler
+  - [ ] Implement background scheduler goroutine
+  - [ ] Support daily/weekly backup frequencies
+  - [ ] Trigger backup based on settings
+  - [ ] Handle backup failures gracefully
+  - [ ] Write unit tests for scheduler
 
 - [ ] Task: Create BackupSettings UI
   - [ ] Add auto-backup enable/disable toggle
