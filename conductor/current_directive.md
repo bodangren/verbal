@@ -61,8 +61,24 @@
 - [x] All new code has >80% test coverage
 
 ## Current Status
-**Phase 5 Complete** - Backup/Restore System fully implemented.
-The feature is ready for integration into main.go and menu system.
+**Phase 5 Complete & Integrated** - Backup/Restore System fully implemented and integrated into main.go.
+
+### Menu Integration (Completed 2026-04-14)
+- [x] BackupManager and BackupScheduler added to appState
+- [x] Backup system initialized in activate() with default backup directory
+- [x] Menu action "backup-settings" added to File menu (Ctrl+Shift+B)
+- [x] showBackupSettingsDialog() function created with full functionality:
+  - Dialog pre-populated with current backup settings
+  - Auto-backup toggle integration with scheduler Start/Stop
+  - Frequency selector (Daily/Weekly) wired to scheduler
+  - Retention count spinner connected to BackupManager
+  - Backup directory chooser with browse functionality
+  - Manual backup button wired to TriggerBackup()
+  - Last/Next backup time display
+  - Proper cleanup on app close (scheduler.Stop())
+
+### Track Complete
+All phases of the Recording Data Lifecycle Enhancements track are now complete and integrated.
 
 ## Success Criteria
 - [x] User can export single recording to ZIP

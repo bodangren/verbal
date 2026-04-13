@@ -28,7 +28,7 @@
 - **DatabaseRepairer needs real ThumbnailGenerator integration** - Currently uses interface; needs integration with actual thumbnail.GstreamerExtractor for production use. [severity: low]
 - ~~Repair UI not yet implemented~~ - [resolved: 2026-04-11] ExportDialog, ImportDialog, and RepairDialog implemented with progress tracking, file choosers, and callback patterns.
 - ~~Import/Export/ Repair menu integration~~ - [resolved: 2026-04-12] Menu actions added to File (Import/Export) and Tools (Repair) menus with keyboard shortcuts (Ctrl+Shift+I/E/R). Dialogs wired in main.go with simulation for actual operations.
-- **Backup system needs menu integration** - BackupSettingsDialog, BackupManager, and BackupScheduler are implemented but need to be wired into main.go menu system. [severity: low]
+- ~~**Backup system needs menu integration**~~ - [resolved: 2026-04-14] Backup system integrated into main.go: BackupManager and BackupScheduler initialized with database, menu action added to File menu (Ctrl+Shift+B), BackupSettingsDialog wired with full functionality including manual backup, scheduler start/stop, and settings persistence.
 
 ## Resolved
 

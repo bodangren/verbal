@@ -74,6 +74,11 @@ func (d *Database) Close() error {
 	return d.db.Close()
 }
 
+// GetDBPath returns the path to the database file.
+func (d *Database) GetDBPath() string {
+	return d.path
+}
+
 // RecordingRepo returns a RecordingRepository for CRUD operations.
 func (d *Database) RecordingRepo() *RecordingRepository {
 	return &RecordingRepository{db: d.db}

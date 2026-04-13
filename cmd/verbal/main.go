@@ -45,6 +45,10 @@ type appState struct {
 	settingsSvc     *settings.Service
 	aiFactory       *ai.Factory
 
+	// Backup system
+	backupManager   *lifecycle.BackupManager
+	backupScheduler *lifecycle.BackupScheduler
+
 	// Dialogs
 	exportDialog *ui.ExportDialog
 	importDialog *ui.ImportDialog
@@ -181,9 +185,22 @@ func activate(app *gtk.Application, database *db.Database) {
 		aiFactory:    aiFactory,
 	}
 
+	// Initialize backup system if database is available
+	if database != nil {
+		dbPath := database.GetDBPath()
+		// Get home directory for default backup location
+		backupHomeDir, _ := os.UserHomeDir()
+		backupDir := filepath.Join(backupHomeDir, ".config", "verbal", "backups")
+		state.backupManager = lifecycle.NewBackupManager(dbPath, backupDir)
+		state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager)
+	}
+
 	window.ConnectCloseRequest(func() (ok bool) {
 		if state.thumbnailSvc != nil {
 			state.thumbnailSvc.Close()
+		}
+		if state.backupScheduler != nil {
+			state.backupScheduler.Stop()
 		}
 		return false
 	})
@@ -384,6 +401,14 @@ func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *a
 	})
 	app.AddAction(importAction)
 	app.SetAccelsForAction("app.import", []string{"<Ctrl><Shift>i"})
+
+	// Backup Settings action - only works if database is available
+	backupAction := gio.NewSimpleAction("backup-settings", nil)
+	backupAction.ConnectActivate(func(_ *glib.Variant) {
+		showBackupSettingsDialog(window, state)
+	})
+	app.AddAction(backupAction)
+	app.SetAccelsForAction("app.backup-settings", []string{"<Ctrl><Shift>b"})
 }
 
 // setupToolsMenu sets up the Tools menu actions
@@ -1068,6 +1093,61 @@ func showRepairDialog(window *gtk.ApplicationWindow, state *appState) {
 	dialog.SetOnClose(func() {
 		// Refresh library view after repair
 		showLibraryView(state)
+	})
+
+	dialog.Show()
+}
+
+// showBackupSettingsDialog shows the backup settings dialog
+func showBackupSettingsDialog(window *gtk.ApplicationWindow, state *appState) {
+	if state.backupManager == nil {
+		return
+	}
+
+	dialog := ui.NewBackupSettingsDialog(&window.Window)
+
+	// Set current values from backup manager/scheduler
+	dialog.SetAutoBackupEnabled(state.backupScheduler.IsRunning())
+	dialog.SetFrequency(state.backupScheduler.GetFrequency())
+	dialog.SetRetentionCount(state.backupManager.GetRetentionCount())
+	dialog.SetBackupDir(state.backupManager.GetBackupDir())
+
+	// Update last/next backup times if available
+	if !state.backupScheduler.GetLastBackupTime().IsZero() {
+		dialog.UpdateLastBackupTime(state.backupScheduler.GetLastBackupTime())
+	}
+	if !state.backupScheduler.GetNextBackupTime().IsZero() {
+		dialog.UpdateNextBackupTime(state.backupScheduler.GetNextBackupTime())
+	}
+
+	// Handle save
+	dialog.SetOnSave(func(enabled bool, freq lifecycle.BackupFrequency, retention int, backupDir string) {
+		// Update backup manager settings
+		state.backupManager.SetRetentionCount(retention)
+
+		// Update scheduler frequency and start/stop as needed
+		state.backupScheduler.SetFrequency(freq)
+
+		if enabled && !state.backupScheduler.IsRunning() {
+			state.backupScheduler.Start()
+		} else if !enabled && state.backupScheduler.IsRunning() {
+			state.backupScheduler.Stop()
+		}
+
+		// If backup directory changed, recreate manager with new path
+		if backupDir != state.backupManager.GetBackupDir() && backupDir != "" {
+			dbPath := state.backupManager.GetDBPath()
+			state.backupManager = lifecycle.NewBackupManager(dbPath, backupDir)
+			state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager)
+			if enabled {
+				state.backupScheduler.Start()
+			}
+		}
+	})
+
+	// Handle manual backup
+	dialog.SetOnManualBackup(func() (string, error) {
+		return state.backupScheduler.TriggerBackup()
 	})
 
 	dialog.Show()
