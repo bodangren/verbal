@@ -101,11 +101,11 @@
   - [x] Handle backup failures gracefully
   - [x] Write unit tests for scheduler
 
-- [~] Task: Create BackupSettings UI
-  - [ ] Add auto-backup enable/disable toggle
-  - [ ] Add backup frequency setting (daily/weekly)
-  - [ ] Add backup retention count setting
-  - [ ] Add manual backup/restore buttons
+- [x] Task: Create BackupSettings UI
+  - [x] Add auto-backup enable/disable toggle
+  - [x] Add backup frequency setting (daily/weekly)
+  - [x] Add backup retention count setting
+  - [x] Add manual backup/restore buttons
 
 - [ ] Task: Add automatic backup scheduler
   - [ ] Implement background backup goroutine

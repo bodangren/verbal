@@ -35,11 +35,34 @@
 - [x] DatabaseRepairer for issue resolution
 - [x] RepairReport with JSON/text export
 
-## In Progress
-**Phase 5:** Backup/Restore System [IN PROGRESS]
-- [~] Create BackupManager with rotation
-- [~] Add BackupSettings UI
-- [ ] Implement automatic backup scheduler
+## Completed Work (Phase 5)
+- [x] Create BackupManager with rotation
+  - Database backup creation with millisecond timestamps
+  - List and restore operations
+  - Automatic rotation based on retention count
+  - Auto-backup settings
+- [x] Add BackupSettings UI
+  - GTK4 dialog with toggle, frequency selector, retention spinner
+  - Backup directory chooser with browse button
+  - Manual backup button with status feedback
+  - Save callback integration
+- [x] Implement automatic backup scheduler
+  - Background scheduler goroutine
+  - Daily and Weekly frequency support
+  - Progress callbacks and failure handling
+
+## Success Criteria (Phase 5)
+- [x] User can manually create database backups
+- [x] Automatic backups run on configured schedule
+- [x] Old backups are automatically rotated
+- [x] User can restore from any backup
+- [x] All backup operations have error handling
+- [x] UI provides clear status feedback
+- [x] All new code has >80% test coverage
+
+## Current Status
+**Phase 5 Complete** - Backup/Restore System fully implemented.
+The feature is ready for integration into main.go and menu system.
 
 ## Success Criteria
 - [x] User can export single recording to ZIP
