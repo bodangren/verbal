@@ -1136,6 +1136,9 @@ func showBackupSettingsDialog(window *gtk.ApplicationWindow, state *appState) {
 
 		// If backup directory changed, recreate manager with new path
 		if backupDir != state.backupManager.GetBackupDir() && backupDir != "" {
+			if state.backupScheduler.IsRunning() {
+				state.backupScheduler.Stop()
+			}
 			dbPath := state.backupManager.GetDBPath()
 			state.backupManager = lifecycle.NewBackupManager(dbPath, backupDir)
 			state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager)

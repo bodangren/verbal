@@ -18,6 +18,8 @@
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
 
 ### Low Severity
+- **RecordingRepository query/scan duplication** - `internal/db/repository.go` has near-identical SELECT column lists and Scan blocks across 6 methods (List, SearchByTranscription, SearchByPath, ListRecent, GetByID, GetByPathExact). A helper function or struct-scanning pattern would reduce ~200 lines of duplication and prevent drift bugs. [severity: low, found: 2026-04-15 review]
+- **BackupManager ListBackups/listBackupsUnlocked duplication** - `internal/lifecycle/backup_manager.go:83-120` and `:188-221` are nearly identical. `ListBackups` acquires RLock then calls the same logic as `listBackupsUnlocked`. Consider having `ListBackups` call `listBackupsUnlocked` after acquiring the lock, or restructuring so `RotateBackups` uses the locked variant. [severity: low, found: 2026-04-15 review]
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
 - Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
