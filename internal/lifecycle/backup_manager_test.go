@@ -367,3 +367,115 @@ func TestCreateBackup_CreatesFileWithRestrictedPermissions(t *testing.T) {
 		t.Errorf("Backup file permissions = %04o, want %04o", mode, expectedMode)
 	}
 }
+
+// TestCreateBackup_UsesUnderscoreTimestampFormat verifies new backups use underscore format (Windows compatibility)
+func TestCreateBackup_UsesUnderscoreTimestampFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create a test database file
+	if err := os.WriteFile(dbPath, []byte("test database content"), 0644); err != nil {
+		t.Fatalf("Failed to create test db: %v", err)
+	}
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Get the filename
+	filename := filepath.Base(backup)
+
+	// Verify filename contains underscore timestamp format, not dot format
+	// Expected: verbal_backup_20060102_150405_000.db (underscore before milliseconds)
+	// Bad:      verbal_backup_20060102_150405.000.db (dot before milliseconds - problematic on Windows)
+	if strings.Contains(filename, ".") && !strings.HasSuffix(filename, ".db") {
+		t.Errorf("Backup filename uses dot in timestamp (not Windows-compatible): %s", filename)
+	}
+
+	// Verify the timestamp portion uses underscore format
+	// The pattern should be: verbal_backup_YYYYMMDD_HHMMSS_MMM.db
+	// Extract timestamp portion
+	if !strings.HasPrefix(filename, "verbal_backup_") || !strings.HasSuffix(filename, ".db") {
+		t.Errorf("Backup filename has unexpected format: %s", filename)
+	}
+
+	// Remove prefix and suffix to get timestamp part
+	timestampPart := strings.TrimPrefix(filename, "verbal_backup_")
+	timestampPart = strings.TrimSuffix(timestampPart, ".db")
+
+	// Should have format: 20060102_150405_000 (no dots)
+	if strings.Contains(timestampPart, ".") {
+		t.Errorf("Timestamp part contains dot (should use underscore): %s", timestampPart)
+	}
+
+	// Verify timestamp has expected parts: date_time_milliseconds
+	parts := strings.Split(timestampPart, "_")
+	if len(parts) != 3 {
+		t.Errorf("Timestamp part should have 3 underscore-separated components (date_time_millis), got %d: %s", len(parts), timestampPart)
+	}
+}
+
+// TestListBackups_HandlesBothTimestampFormats verifies old (dot) and new (underscore) format backups are both listed
+func TestListBackups_HandlesBothTimestampFormats(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create backup directory
+	if err := os.MkdirAll(backupDir, 0700); err != nil {
+		t.Fatalf("Failed to create backup dir: %v", err)
+	}
+
+	// Create a test database
+	if err := os.WriteFile(dbPath, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test db: %v", err)
+	}
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	// Create a backup with new format (will use underscore)
+	backup1, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	// Manually create a backup with old dot format to simulate legacy backup
+	oldFormatBackup := filepath.Join(backupDir, "verbal_backup_20260102_150405.123.db")
+	if err := os.WriteFile(oldFormatBackup, []byte("old format backup"), 0600); err != nil {
+		t.Fatalf("Failed to create old format backup: %v", err)
+	}
+
+	backups, err := bm.ListBackups()
+	if err != nil {
+		t.Fatalf("ListBackups() error = %v", err)
+	}
+
+	// Should have 2 backups
+	if len(backups) != 2 {
+		t.Errorf("Expected 2 backups, got %d", len(backups))
+	}
+
+	// Verify both backups are in the list
+	foundNew := false
+	foundOld := false
+	for _, backup := range backups {
+		if backup == backup1 {
+			foundNew = true
+		}
+		if backup == oldFormatBackup {
+			foundOld = true
+		}
+	}
+
+	if !foundNew {
+		t.Error("New format backup not found in list")
+	}
+	if !foundOld {
+		t.Error("Old format backup not found in list")
+	}
+}

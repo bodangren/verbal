@@ -53,7 +53,9 @@ func (bm *BackupManager) CreateBackup() (string, error) {
 	}
 
 	// Generate backup filename with timestamp (including milliseconds for uniqueness)
-	timestamp := time.Now().Format("20060102_150405.000")
+	// Use underscore instead of dot for Windows compatibility
+	now := time.Now()
+	timestamp := now.Format("20060102_150405") + fmt.Sprintf("_%03d", now.Nanosecond()/1e6)
 	backupName := fmt.Sprintf("verbal_backup_%s.db", timestamp)
 	backupPath := filepath.Join(bm.backupDir, backupName)
 
