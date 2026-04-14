@@ -10,41 +10,41 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
 
 **Objective:** Establish test coverage baseline and fix permission issues (medium severity).
 
-### Task 1.1: Write tests for backup file/directory permissions [ ]
+### Task 1.1: Write tests for backup file/directory permissions [x]
 
 **TDD Approach:**
-- [ ] Write test: `TestCreateBackup_CreatesDirectoryWithRestrictedPermissions`
+- [x] Write test: `TestCreateBackup_CreatesDirectoryWithRestrictedPermissions`
   - Verify backup dir is created with `0700` permissions
   - Use `os.Stat()` to check mode bits
-- [ ] Write test: `TestCreateBackup_CreatesFileWithRestrictedPermissions`
+- [x] Write test: `TestCreateBackup_CreatesFileWithRestrictedPermissions`
   - Verify backup file is created with `0600` permissions
   - Use `os.Stat()` to check mode bits
-- [ ] Run tests - should FAIL (current implementation uses `0755`/`0666`)
+- [x] Run tests - should FAIL (current implementation uses `0755`/`0666`)
 
-### Task 1.2: Implement permission fixes [ ]
+### Task 1.2: Implement permission fixes [x]
 
-- [ ] Change `os.MkdirAll(bm.backupDir, 0755)` to `os.MkdirAll(bm.backupDir, 0700)`
-- [ ] Use `os.OpenFile()` with `0600` permissions for backup file creation
-- [ ] Run tests - should PASS
-- [ ] Commit: `git commit -m "fix(backup): use restrictive permissions (0700/0600) for backup files"`
+- [x] Change `os.MkdirAll(bm.backupDir, 0755)` to `os.MkdirAll(bm.backupDir, 0700)`
+- [x] Use `os.OpenFile()` with `0600` permissions for backup file creation
+- [x] Run tests - should PASS
+- [x] Commit: `git commit -m "fix(backup): use restrictive permissions (0700/0600) for backup files"`
 
-### Task 1.3: Write tests for timestamp format fix [ ]
+### Task 1.3: Write tests for timestamp format fix [x]
 
 **TDD Approach:**
-- [ ] Write test: `TestCreateBackup_UsesUnderscoreTimestampFormat`
+- [x] Write test: `TestCreateBackup_UsesUnderscoreTimestampFormat`
   - Verify new backups use `20060102_150405_000` format
   - Assert filename does not contain dots except for `.db` extension
-- [ ] Write test: `TestListBackups_HandlesBothTimestampFormats`
+- [x] Write test: `TestListBackups_HandlesBothTimestampFormats`
   - Verify old format backups (`20060102_150405.000`) are still listed
   - Verify new format backups are listed
-- [ ] Run tests - should FAIL (current uses dot format)
+- [x] Run tests - should FAIL (current uses dot format)
 
-### Task 1.4: Implement timestamp format fix [ ]
+### Task 1.4: Implement timestamp format fix [x]
 
-- [ ] Change timestamp format from `20060102_150405.000` to `20060102_150405_000`
-- [ ] Update `ListBackups()` regex/parsing to handle both formats
-- [ ] Run tests - should PASS
-- [ ] Commit: `git commit -m "fix(backup): use underscore in timestamp format for Windows compatibility"`
+- [x] Change timestamp format from `20060102_150405.000` to `20060102_150405_000`
+- [x] Update `ListBackups()` regex/parsing to handle both formats
+- [x] Run tests - should PASS
+- [x] Commit: `git commit -m "fix(backup): use underscore in timestamp format for Windows compatibility"`
 
 ---
 

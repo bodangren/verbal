@@ -58,6 +58,9 @@
 - **Menu Action Integration:** Use `gio.NewSimpleAction()` with `app.AddAction()` and `app.SetAccelsForAction()` for global menu items. The action name should use kebab-case (e.g., "backup-settings") and the accelerator uses GTK syntax (e.g., "<Ctrl><Shift>b").
 - **Dialog State Management:** When integrating dialogs into main.go, pre-populate dialog state from existing managers/services, then use callbacks to propagate changes back. This creates a clean separation between UI and business logic.
 - **Resource Cleanup Pattern:** Always add resource cleanup (like `scheduler.Stop()`) to the window's `ConnectCloseRequest` handler to ensure graceful shutdown of background goroutines.
+- **File Permission Constants:** Use `0700` for directories and `0600` for sensitive files (backups containing user data). Go's `os.FileMode` with `Stat().Mode().Perm()` allows testing permission bits directly.
+- **Windows-Friendly Filenames:** Avoid dots in filename timestamps (e.g., `20060102_150405.000`) as they can be misinterpreted as file extensions. Use underscores: `20060102_150405_000`.
+- **TDD for Permission Fixes:** Writing tests that assert specific permission bits (0700, 0600) ensures the fixes are verified and prevents regression.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

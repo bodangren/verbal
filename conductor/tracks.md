@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Bugfix - Backup Atomicity and Safety** [created: 2026-04-14, status: planned]
+- [~] **Track: Bugfix - Backup Atomicity and Safety** [created: 2026-04-14, started: 2026-04-14]
   *Focus: Fix high severity backup safety issues: atomic backup/restore, proper file permissions, and safe SQLite operations.*
-  *Addresses tech debt: raw file copy on live DB, non-atomic restore without rollback, permissive file permissions, timestamp format.*
+  *Status: Phase 1 Complete. Permission fixes (0700/0600) and timestamp format (underscore for Windows compatibility) implemented. High severity items (BEGIN IMMEDIATE, atomic restore) pending.*
   *Link: [./tracks/bugfix_backup_atomicity_safety_20260414/](./tracks/bugfix_backup_atomicity_safety_20260414/)*
 
 - [x] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10, started: 2026-04-10, completed: 2026-04-14]
