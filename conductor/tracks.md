@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Bugfix - Backup Atomicity and Safety** [created: 2026-04-14, status: planned]
+  *Focus: Fix high severity backup safety issues: atomic backup/restore, proper file permissions, and safe SQLite operations.*
+  *Addresses tech debt: raw file copy on live DB, non-atomic restore without rollback, permissive file permissions, timestamp format.*
+  *Link: [./tracks/bugfix_backup_atomicity_safety_20260414/](./tracks/bugfix_backup_atomicity_safety_20260414/)*
+
 - [x] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10, started: 2026-04-10, completed: 2026-04-14]
   *Focus: Add import/export, repair tooling, and recovery workflows for library database content.*
   *Status: Completed. All 5 phases finished: Import/Export with ZIP archives, Repair tool with Inspector/Repairer, Backup system with Manager/Scheduler/Settings UI, and full menu integration into main.go. All features operational via keyboard shortcuts (Ctrl+Shift+I/E/R/B).*

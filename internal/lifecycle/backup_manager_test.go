@@ -303,3 +303,67 @@ func TestBackupManager_AutoBackupEnabled(t *testing.T) {
 		t.Error("Expected auto-backup to be disabled after SetAutoBackupEnabled(false)")
 	}
 }
+
+// TestCreateBackup_CreatesDirectoryWithRestrictedPermissions verifies backup dir uses 0700 permissions
+func TestCreateBackup_CreatesDirectoryWithRestrictedPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create a test database file
+	if err := os.WriteFile(dbPath, []byte("test database content"), 0644); err != nil {
+		t.Fatalf("Failed to create test db: %v", err)
+	}
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	_, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Verify backup directory has 0700 permissions
+	info, err := os.Stat(backupDir)
+	if err != nil {
+		t.Fatalf("Failed to stat backup directory: %v", err)
+	}
+
+	// Check permissions - should be 0700 (owner read/write/execute only)
+	mode := info.Mode().Perm()
+	expectedMode := os.FileMode(0700)
+	if mode != expectedMode {
+		t.Errorf("Backup directory permissions = %04o, want %04o", mode, expectedMode)
+	}
+}
+
+// TestCreateBackup_CreatesFileWithRestrictedPermissions verifies backup file uses 0600 permissions
+func TestCreateBackup_CreatesFileWithRestrictedPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create a test database file
+	if err := os.WriteFile(dbPath, []byte("test database content"), 0644); err != nil {
+		t.Fatalf("Failed to create test db: %v", err)
+	}
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Verify backup file has 0600 permissions
+	info, err := os.Stat(backup)
+	if err != nil {
+		t.Fatalf("Failed to stat backup file: %v", err)
+	}
+
+	// Check permissions - should be 0600 (owner read/write only)
+	mode := info.Mode().Perm()
+	expectedMode := os.FileMode(0600)
+	if mode != expectedMode {
+		t.Errorf("Backup file permissions = %04o, want %04o", mode, expectedMode)
+	}
+}

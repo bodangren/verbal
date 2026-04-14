@@ -1,0 +1,11 @@
+{
+  "track_id": "bugfix_backup_atomicity_safety_20260414",
+  "type": "bugfix",
+  "status": "new",
+  "created_at": "2026-04-14T00:00:00Z",
+  "updated_at": "2026-04-14T00:00:00Z",
+  "description": "Fix high severity backup safety issues: atomic backup/restore, proper file permissions, and safe SQLite operations",
+  "estimated_tasks": 12,
+  "actual_tasks": null,
+  "deviation_notes": ""
+}

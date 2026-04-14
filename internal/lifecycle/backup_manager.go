@@ -47,8 +47,8 @@ func (bm *BackupManager) CreateBackup() (string, error) {
 		return "", fmt.Errorf("database file does not exist: %s", bm.dbPath)
 	}
 
-	// Ensure backup directory exists
-	if err := os.MkdirAll(bm.backupDir, 0755); err != nil {
+	// Ensure backup directory exists with restricted permissions
+	if err := os.MkdirAll(bm.backupDir, 0700); err != nil {
 		return "", fmt.Errorf("create backup directory: %w", err)
 	}
 
@@ -64,7 +64,7 @@ func (bm *BackupManager) CreateBackup() (string, error) {
 	}
 	defer src.Close()
 
-	dst, err := os.Create(backupPath)
+	dst, err := os.OpenFile(backupPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", fmt.Errorf("create backup file: %w", err)
 	}
@@ -127,9 +127,9 @@ func (bm *BackupManager) RestoreBackup(backupPath string) error {
 		return fmt.Errorf("backup file does not exist: %s", backupPath)
 	}
 
-	// Ensure destination directory exists
+	// Ensure destination directory exists with restricted permissions
 	dbDir := filepath.Dir(bm.dbPath)
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
+	if err := os.MkdirAll(dbDir, 0700); err != nil {
 		return fmt.Errorf("create database directory: %w", err)
 	}
 
@@ -140,7 +140,7 @@ func (bm *BackupManager) RestoreBackup(backupPath string) error {
 	}
 	defer src.Close()
 
-	dst, err := os.Create(bm.dbPath)
+	dst, err := os.OpenFile(bm.dbPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("create database file: %w", err)
 	}
