@@ -3,8 +3,8 @@
 ## Go + GTK4 Implementation (Current)
 
 ### High Severity
-- **BackupManager.CreateBackup uses raw file copy on live SQLite DB** - `internal/lifecycle/backup_manager.go:61-75` opens `dbPath` and `io.Copy`s it while the app holds the DB connection. If a write is mid-transaction this yields a torn/corrupt backup. Replace with SQLite online-backup API or `VACUUM INTO`. At minimum wrap in `BEGIN IMMEDIATE` + copy + `COMMIT`. [severity: high, found: 2026-04-13 review]
-- **BackupManager.RestoreBackup is non-atomic with no rollback** - `internal/lifecycle/backup_manager.go:121-154` overwrites `dbPath` directly via `io.Copy`. A failed mid-copy leaves the user with a truncated DB and no recovery path. Fix: copy to `dbPath.tmp`, fsync, rename; snapshot the current DB before restoring; verify the app has released its DB connection first. [severity: high, found: 2026-04-13 review]
+- ~~**BackupManager.CreateBackup uses raw file copy on live SQLite DB**~~ - [resolved: 2026-04-15 - Now uses BEGIN IMMEDIATE transaction for atomic backup when DB connection available. See commits b95b8dd and 35c7a07]
+- ~~**BackupManager.RestoreBackup is non-atomic with no rollback**~~ - [resolved: 2026-04-15 - Implemented atomic restore with temp file + fsync + rename pattern, pre-restore snapshot creation, and automatic rollback on failure. See commit 4004a30]
 
 ### Medium Severity
 - **BackupScheduler tick granularity and wake-from-sleep** - `internal/lifecycle/backup_scheduler.go:76` uses a 1-minute ticker with `time.Now().After(nextBackup)`. If the machine sleeps across a scheduled slot the backup fires on wake (OK) but this path has no explicit test coverage. Add test for sleep/skip and consider logging a missed-slot warning. [severity: medium, found: 2026-04-13 review]

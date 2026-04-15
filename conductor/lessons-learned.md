@@ -61,6 +61,10 @@
 - **File Permission Constants:** Use `0700` for directories and `0600` for sensitive files (backups containing user data). Go's `os.FileMode` with `Stat().Mode().Perm()` allows testing permission bits directly.
 - **Windows-Friendly Filenames:** Avoid dots in filename timestamps (e.g., `20060102_150405.000`) as they can be misinterpreted as file extensions. Use underscores: `20060102_150405_000`.
 - **TDD for Permission Fixes:** Writing tests that assert specific permission bits (0700, 0600) ensures the fixes are verified and prevents regression.
+- **SQLite BEGIN IMMEDIATE for Backups:** Use `BEGIN IMMEDIATE` transaction to obtain an exclusive lock during backup. This prevents torn writes by blocking concurrent writers. The transaction ensures a consistent snapshot even with active writes.
+- **Atomic File Replacement Pattern:** For safe file updates, use: (1) write to temp file, (2) `fsync()` to ensure data hits disk, (3) atomic `rename()` to replace target. This ensures readers never see a partially-written file.
+- **Pre-Restore Snapshots:** Before destructive operations like restore, create a snapshot of current state. On failure, roll back to the snapshot. Clean up snapshots only after confirming success to enable recovery from late-stage errors (e.g., post-restore callbacks).
+- **Snapshot Cleanup Strategy:** Don't clean up snapshots until ALL operations succeed, including post-restore callbacks. If a callback fails, the snapshot should remain available for retry or debugging.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

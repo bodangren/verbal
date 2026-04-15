@@ -112,16 +112,16 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
 
 **Objective:** Fix `RestoreBackup()` to be atomic with pre-restore snapshot.
 
-### Task 3.1: Design restore safety mechanism [~]
+### Task 3.1: Design restore safety mechanism [x]
 
-- [~] Define restore options:
+- [x] Define restore options:
   ```go
   type RestoreOptions struct {
       CreateSnapshot bool      // Whether to create pre-restore backup
       SnapshotDir    string    // Where to store snapshot (default: backupDir)
   }
   ```
-- [~] Define callback interface for DB connection management:
+- [x] Define callback interface for DB connection management:
   ```go
   type RestoreCallbacks struct {
       BeforeRestore func() error  // Called before restore (should close DB)
@@ -129,66 +129,66 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
   }
   ```
 
-### Task 3.2: Write tests for atomic restore [ ]
+### Task 3.2: Write tests for atomic restore [x]
 
 **TDD Approach:**
-- [ ] Write test: `TestRestoreBackup_CreatesPreRestoreSnapshot`
+- [x] Write test: `TestRestoreBackup_CreatesPreRestoreSnapshot`
   - Verify snapshot is created before any destructive operation
   - Snapshot filename should include `.pre-restore` suffix
-- [ ] Write test: `TestRestoreBackup_UsesAtomicFileReplacement`
+- [x] Write test: `TestRestoreBackup_UsesAtomicFileReplacement`
   - Verify temp file + rename pattern is used
   - Verify original DB is not modified until rename
-- [ ] Write test: `TestRestoreBackup_FsyncBeforeRename`
+- [x] Write test: `TestRestoreBackup_FsyncBeforeRename`
   - Verify `fsync` is called on temp file before rename
   - Mock or verify file descriptor sync
-- [ ] Write test: `TestRestoreBackup_LeavesOriginalOnCopyFailure`
+- [x] Write test: `TestRestoreBackup_LeavesOriginalOnCopyFailure`
   - Simulate disk-full during copy
   - Verify original DB is unchanged
   - Verify temp file is cleaned up
-- [ ] Run tests - should FAIL (current implementation overwrites directly)
+- [x] Run tests - should FAIL (current implementation overwrites directly)
 
-### Task 3.3: Implement atomic restore with temp file pattern [ ]
+### Task 3.3: Implement atomic restore with temp file pattern [x]
 
-- [ ] Modify `RestoreBackup()` signature to accept `RestoreOptions` and `RestoreCallbacks`
-- [ ] Implement pre-restore snapshot creation:
+- [x] Modify `RestoreBackup()` signature to accept `RestoreOptions` and `RestoreCallbacks`
+- [x] Implement pre-restore snapshot creation:
   ```go
   snapshotPath := fmt.Sprintf("%s.pre-restore.%s", bm.dbPath, timestamp)
   // Copy current DB to snapshot
   ```
-- [ ] Implement atomic replacement:
+- [x] Implement atomic replacement:
   1. Call `BeforeRestore` callback to release DB connection
   2. Copy backup to `dbPath.tmp`
   3. Call `fsync` on the temp file
   4. Rename `dbPath.tmp` to `dbPath` (atomic)
   5. Call `AfterRestore` callback to reopen DB
-- [ ] Add cleanup of temp file on error
-- [ ] Run tests - should PASS
-- [ ] Commit: `git commit -m "fix(backup): implement atomic restore with temp file + fsync + rename"`
+- [x] Add cleanup of temp file on error
+- [x] Run tests - should PASS
+- [x] Commit: `git commit -m "fix(backup): implement atomic restore with temp file + fsync + rename"`
 
-### Task 3.4: Implement automatic rollback on failure [ ]
+### Task 3.4: Implement automatic rollback on failure [x]
 
-- [ ] Add rollback logic in error path:
+- [x] Add rollback logic in error path:
   ```go
   if err != nil {
       // Restore from snapshot
       os.Rename(snapshotPath, bm.dbPath)
   }
   ```
-- [ ] Write test: `TestRestoreBackup_RollsBackOnFailure`
+- [x] Write test: `TestRestoreBackup_RollsBackOnFailure`
   - Simulate failure mid-restore
   - Verify snapshot is restored to original location
   - Verify error is returned to caller
-- [ ] Write test: `TestRestoreBackup_CleansUpSnapshotOnSuccess`
+- [x] Write test: `TestRestoreBackup_CleansUpSnapshotOnSuccess`
   - Verify `.pre-restore` file is deleted after successful restore
-- [ ] Run tests - should PASS
-- [ ] Commit: `git commit -m "feat(backup): add automatic rollback from snapshot on restore failure"`
+- [x] Run tests - should PASS
+- [x] Commit: `git commit -m "feat(backup): add automatic rollback from snapshot on restore failure"`
 
-### Task 3.5: Add DB connection verification [ ]
+### Task 3.5: Add DB connection verification [x]
 
-- [ ] Write test: `TestRestoreBackup_VerifiesDBConnectionReleased`
+- [x] Write test: `TestRestoreBackup_VerifiesDBConnectionReleased`
   - Verify restore fails gracefully if DB connection is still held
-- [ ] Implement connection check in `BeforeRestore` callback handling
-- [ ] Run tests - should PASS
+- [x] Implement connection check in `BeforeRestore` callback handling
+- [x] Run tests - should PASS
 
 ---
 

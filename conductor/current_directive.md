@@ -1,9 +1,50 @@
-# Current Directive: Recording Data Lifecycle Enhancements
+# Current Directive: Backup Atomicity and Safety
 
 ## Active Track
-**Track:** Feature - Recording Data Lifecycle Enhancements  
-**Started:** 2026-04-10  
-**Phase:** Phase 4 Complete (Integration with Library View and Main Application)
+**Track:** Bugfix - Backup Atomicity and Safety  
+**Started:** 2026-04-14  
+**Phase:** Phase 3 Complete (Atomic Restore with Rollback)
+
+## Completed Work
+
+### Phase 1: Permission and Timestamp Fixes (2026-04-14)
+- [x] Directory permissions: 0700, file permissions: 0600
+- [x] Underscore timestamp format for Windows compatibility
+
+### Phase 2: Atomic Backup Creation (2026-04-15)
+- [x] NewBackupManagerWithDB() constructor with *sql.DB
+- [x] BEGIN IMMEDIATE transaction for exclusive lock during backup
+- [x] Error handling for concurrent backups and database locked scenarios
+
+### Phase 3: Atomic Restore with Rollback (2026-04-15)
+- [x] RestoreOptions and RestoreCallbacks types
+- [x] Atomic file replacement (temp file + fsync + rename)
+- [x] Pre-restore snapshot creation
+- [x] Automatic rollback on restore failure
+- [x] Comprehensive test coverage for all scenarios
+
+## Remaining Work
+
+### Phase 4: Integration and Refactoring
+- [ ] Update all call sites to use NewBackupManagerWithDB
+- [ ] Update BackupSettingsDialog with restore callbacks
+- [ ] Extract file permission constants
+- [ ] Refactor common backup file listing logic (DRY)
+
+### Phase 5: Test Coverage and QA
+- [ ] Expand test coverage to >80%
+- [ ] Add stress tests for concurrent operations
+- [ ] Run race detector
+- [ ] Manual UI verification
+
+### Phase 6: Documentation
+- [ ] Package-level documentation
+- [ ] Update tech-debt.md
+- [ ] Finalize track completion
+
+## High Severity Issues Resolved
+- [x] **BackupManager.CreateBackup** - Now uses BEGIN IMMEDIATE transaction for atomic backup
+- [x] **BackupManager.RestoreBackup** - Now uses atomic file replacement with snapshot/rollback
 
 ## Completed Work (Phase 4)
 - [x] Menu items and keyboard shortcuts
