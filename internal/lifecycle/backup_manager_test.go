@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -692,5 +693,154 @@ func TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites(t *testing.T
 	// Count should match maxID for a consistent snapshot
 	if count != maxID {
 		t.Errorf("Backup inconsistent: count=%d, maxID=%d (possible torn writes)", count, maxID)
+	}
+}
+
+// TestCreateBackup_HandlesDatabaseLocked verifies graceful handling when DB is locked
+func TestCreateBackup_HandlesDatabaseLocked(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// Start a transaction that holds a lock
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("Failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback()
+
+	// Insert within transaction to hold lock
+	_, err = tx.Exec("INSERT INTO test (data) VALUES ('locked row')")
+	if err != nil {
+		t.Fatalf("Failed to insert: %v", err)
+	}
+
+	// Create backup manager with same database
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+
+	// Attempt backup while transaction holds lock
+	// Should handle gracefully (either wait or fail cleanly)
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		// Error is acceptable if it's handled gracefully
+		t.Logf("Backup failed gracefully with lock held: %v", err)
+		return
+	}
+
+	// If backup succeeded, verify it's valid
+	if _, statErr := os.Stat(backup); os.IsNotExist(statErr) {
+		t.Errorf("Backup file does not exist: %s", backup)
+	}
+}
+
+// TestCreateBackup_HandlesConcurrentBackups verifies two simultaneous backups
+func TestCreateBackup_HandlesConcurrentBackups(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table with data
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	for i := 0; i < 100; i++ {
+		_, err = db.Exec("INSERT INTO test (data) VALUES (?)", fmt.Sprintf("row %d", i))
+		if err != nil {
+			t.Fatalf("Failed to insert data: %v", err)
+		}
+	}
+
+	// Create two backup managers sharing the same DB connection
+	bm1 := NewBackupManagerWithDB(dbPath, backupDir, db)
+
+	// Run two backups concurrently using goroutines
+	var wg sync.WaitGroup
+	results := make(chan string, 2)
+	errors := make(chan error, 2)
+
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			backup, err := bm1.CreateBackup()
+			if err != nil {
+				errors <- fmt.Errorf("backup %d: %w", id, err)
+				return
+			}
+			results <- backup
+		}(i)
+	}
+
+	wg.Wait()
+	close(results)
+	close(errors)
+
+	// Collect results
+	var backups []string
+	for backup := range results {
+		backups = append(backups, backup)
+	}
+
+	var errs []error
+	for e := range errors {
+		errs = append(errs, e)
+	}
+
+	// At least one backup should succeed
+	if len(backups) == 0 {
+		t.Fatalf("All backups failed: %v", errs)
+	}
+
+	// Verify all successful backups are valid
+	for _, backup := range backups {
+		if _, statErr := os.Stat(backup); os.IsNotExist(statErr) {
+			t.Errorf("Backup file does not exist: %s", backup)
+			continue
+		}
+
+		// Verify backup is a valid SQLite database
+		backupDB, err := sql.Open("sqlite", backup)
+		if err != nil {
+			t.Errorf("Failed to open backup %s: %v", backup, err)
+			continue
+		}
+
+		var count int
+		err = backupDB.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+		backupDB.Close()
+
+		if err != nil {
+			t.Errorf("Backup %s corrupted: %v", backup, err)
+		} else if count != 100 {
+			t.Errorf("Backup %s has %d rows, expected 100", backup, count)
+		}
 	}
 }

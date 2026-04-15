@@ -83,27 +83,28 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
   - Use row count and max ID verification for consistency check
 - [x] Run tests - should FAIL (current implementation doesn't use transactions)
 
-### Task 2.3: Implement atomic backup with BEGIN IMMEDIATE [~]
+### Task 2.3: Implement atomic backup with BEGIN IMMEDIATE [x]
 
-- [~] Add `database/sql` import to backup_manager.go
-- [~] Add `db *sql.DB` field to `BackupManager` struct
-- [~] Add `NewBackupManagerWithDB()` constructor to accept `*sql.DB` parameter
-- [~] Update `CreateBackup()` to:
+- [x] Add `database/sql` import to backup_manager.go
+- [x] Add `db *sql.DB` field to `BackupManager` struct
+- [x] Add `NewBackupManagerWithDB()` constructor to accept `*sql.DB` parameter
+- [x] Update `CreateBackup()` to:
   1. Start `BEGIN IMMEDIATE` transaction (obtains exclusive lock) if db connection available
   2. Perform file copy while holding transaction
   3. Commit transaction
   4. Handle timeout and cancellation
-- [~] Add `defer` for transaction rollback on error
-- [ ] Run tests - should PASS
-- [ ] Commit: `git commit -m "fix(backup): use BEGIN IMMEDIATE transaction for atomic backup creation"`
+- [x] Add `defer` for transaction rollback on error
+- [x] Run tests - should PASS
+- [x] Commit: `git commit -m "fix(backup): use BEGIN IMMEDIATE transaction for atomic backup creation"`
 
-### Task 2.4: Add error handling and edge case tests [ ]
+### Task 2.4: Add error handling and edge case tests [~]
 
-- [ ] Write test: `TestCreateBackup_HandlesDatabaseLocked`
+- [~] Write test: `TestCreateBackup_HandlesDatabaseLocked`
   - Verify graceful error when DB is locked beyond timeout
-- [ ] Write test: `TestCreateBackup_HandlesConcurrentBackups`
+- [~] Write test: `TestCreateBackup_HandlesConcurrentBackups`
   - Verify two simultaneous backups don't corrupt each other
 - [ ] Run all new tests - should PASS
+- [ ] Commit: `git commit -m "test(backup): add error handling and edge case tests for backup"`
 
 ---
 
