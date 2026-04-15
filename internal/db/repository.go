@@ -79,6 +79,11 @@ func (d *Database) GetDBPath() string {
 	return d.path
 }
 
+// GetDB returns the underlying sql.DB connection for atomic backup operations.
+func (d *Database) GetDB() *sql.DB {
+	return d.db
+}
+
 // RecordingRepo returns a RecordingRepository for CRUD operations.
 func (d *Database) RecordingRepo() *RecordingRepository {
 	return &RecordingRepository{db: d.db}

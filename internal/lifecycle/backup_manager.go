@@ -1,3 +1,49 @@
+// Package lifecycle provides database lifecycle management including backup, restore,
+// import/export, and repair functionality for the Verbal application.
+//
+// Backup Safety Guarantees:
+//
+// The BackupManager provides atomic backup and restore operations to ensure data
+// integrity even in the presence of concurrent writes or system failures.
+//
+// Backup Creation:
+//   - When initialized with a database connection (via NewBackupManagerWithDB),
+//     CreateBackup uses SQLite's BEGIN IMMEDIATE transaction to obtain an exclusive
+//     lock during the backup operation. This prevents torn writes and ensures a
+//     consistent snapshot.
+//   - Backups are created with restrictive permissions (0600) and stored in
+//     directories with 0700 permissions (owner-only access).
+//   - Backup filenames use millisecond-precision timestamps with underscore
+//     separators for Windows compatibility (format: verbal_backup_20060102_150405_000.db).
+//
+// Restore Operations:
+//   - RestoreBackupAtomic performs atomic file replacement using a temp file pattern:
+//     write to temp, fsync to disk, then atomic rename.
+//   - Pre-restore snapshots can be created (enabled via RestoreOptions) to allow
+//     rollback if the restore fails.
+//   - Callbacks (BeforeRestore/AfterRestore) allow proper database connection
+//     management during the restore process.
+//
+// Thread Safety:
+//   - All public methods are safe for concurrent use.
+//   - Internal state is protected by a sync.RWMutex.
+//
+// Example Usage:
+//
+//	// Create manager with database connection for atomic backups
+//	db, _ := sql.Open("sqlite", "/path/to/db.db")
+//	bm := lifecycle.NewBackupManagerWithDB("/path/to/db.db", "/backups", db)
+//
+//	// Create a backup
+//	backupPath, err := bm.CreateBackup()
+//
+//	// Restore with snapshot and callbacks
+//	opts := lifecycle.RestoreOptions{CreateSnapshot: true}
+//	callbacks := lifecycle.RestoreCallbacks{
+//	    BeforeRestore: func() error { /* close DB connections */ return nil },
+//	    AfterRestore:  func() error { /* reopen DB connections */ return nil },
+//	}
+//	err = bm.RestoreBackupAtomic(backupPath, opts, callbacks)
 package lifecycle
 
 import (
@@ -12,6 +58,26 @@ import (
 	"sync"
 	"time"
 )
+
+// File permission constants for backup security
+const (
+	backupDirPerm  = os.FileMode(0700) // rwx------ (owner only)
+	backupFilePerm = os.FileMode(0600) // rw------- (owner only)
+)
+
+// Timestamp format constants for backup filenames
+const (
+	backupTimestampFormat = "20060102_150405" // base format without milliseconds
+	backupFilePrefix      = "verbal_backup_"
+	backupFileSuffix      = ".db"
+)
+
+// generateBackupTimestamp creates a timestamp string for backup filenames.
+// Uses underscore format (20060102_150405_000) for Windows compatibility.
+func generateBackupTimestamp() string {
+	now := time.Now()
+	return now.Format(backupTimestampFormat) + fmt.Sprintf("_%03d", now.Nanosecond()/1e6)
+}
 
 // BackupInfo contains metadata about a backup file.
 type BackupInfo struct {
@@ -42,7 +108,9 @@ type BackupManager struct {
 	mu             sync.RWMutex
 }
 
-// NewBackupManager creates a new BackupManager instance.
+// NewBackupManager creates a new BackupManager instance without database connection.
+// This provides basic file copy backup functionality without atomic guarantees.
+// For atomic backups with BEGIN IMMEDIATE transactions, use NewBackupManagerWithDB.
 func NewBackupManager(dbPath, backupDir string) *BackupManager {
 	return &BackupManager{
 		dbPath:         dbPath,
@@ -77,15 +145,14 @@ func (bm *BackupManager) CreateBackup() (string, error) {
 	}
 
 	// Ensure backup directory exists with restricted permissions
-	if err := os.MkdirAll(bm.backupDir, 0700); err != nil {
+	if err := os.MkdirAll(bm.backupDir, backupDirPerm); err != nil {
 		return "", fmt.Errorf("create backup directory: %w", err)
 	}
 
 	// Generate backup filename with timestamp (including milliseconds for uniqueness)
 	// Use underscore instead of dot for Windows compatibility
-	now := time.Now()
-	timestamp := now.Format("20060102_150405") + fmt.Sprintf("_%03d", now.Nanosecond()/1e6)
-	backupName := fmt.Sprintf("verbal_backup_%s.db", timestamp)
+	timestamp := generateBackupTimestamp()
+	backupName := backupFilePrefix + timestamp + backupFileSuffix
 	backupPath := filepath.Join(bm.backupDir, backupName)
 
 	// If we have a database connection, use BEGIN IMMEDIATE for atomic backup
@@ -154,7 +221,7 @@ func (bm *BackupManager) copyDatabaseFile(backupPath string) error {
 	}
 	defer src.Close()
 
-	dst, err := os.OpenFile(backupPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	dst, err := os.OpenFile(backupPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("create backup file: %w", err)
 	}
@@ -172,40 +239,7 @@ func (bm *BackupManager) copyDatabaseFile(backupPath string) error {
 func (bm *BackupManager) ListBackups() ([]string, error) {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
-
-	// Check if backup directory exists
-	if _, err := os.Stat(bm.backupDir); os.IsNotExist(err) {
-		return []string{}, nil
-	}
-
-	entries, err := os.ReadDir(bm.backupDir)
-	if err != nil {
-		return nil, fmt.Errorf("read backup directory: %w", err)
-	}
-
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if strings.HasPrefix(name, "verbal_backup_") && strings.HasSuffix(name, ".db") {
-			backupPath := filepath.Join(bm.backupDir, name)
-			backups = append(backups, backupPath)
-		}
-	}
-
-	// Sort by modification time (newest first)
-	sort.Slice(backups, func(i, j int) bool {
-		infoI, _ := os.Stat(backups[i])
-		infoJ, _ := os.Stat(backups[j])
-		if infoI == nil || infoJ == nil {
-			return false
-		}
-		return infoI.ModTime().After(infoJ.ModTime())
-	})
-
-	return backups, nil
+	return bm.listBackupsUnlocked()
 }
 
 // RestoreBackup restores the database from a backup file.
@@ -242,14 +276,13 @@ func (bm *BackupManager) RestoreBackupAtomic(backupPath string, opts RestoreOpti
 		}
 
 		// Ensure snapshot directory exists
-		if err := os.MkdirAll(snapshotDir, 0700); err != nil {
+		if err := os.MkdirAll(snapshotDir, backupDirPerm); err != nil {
 			return fmt.Errorf("create snapshot directory: %w", err)
 		}
 
 		// Generate snapshot filename
-		now := time.Now()
-		timestamp := now.Format("20060102_150405") + fmt.Sprintf("_%03d", now.Nanosecond()/1e6)
-		snapshotPath = filepath.Join(snapshotDir, fmt.Sprintf("pre-restore_%s.db", timestamp))
+		timestamp := generateBackupTimestamp()
+		snapshotPath = filepath.Join(snapshotDir, "pre-restore_"+timestamp+backupFileSuffix)
 
 		// Copy current DB to snapshot (if it exists)
 		if _, err := os.Stat(bm.dbPath); err == nil {
@@ -297,7 +330,7 @@ func (bm *BackupManager) RestoreBackupAtomic(backupPath string, opts RestoreOpti
 func (bm *BackupManager) atomicFileReplace(srcPath, dstPath string) error {
 	// Ensure destination directory exists with restricted permissions
 	dstDir := filepath.Dir(dstPath)
-	if err := os.MkdirAll(dstDir, 0700); err != nil {
+	if err := os.MkdirAll(dstDir, backupDirPerm); err != nil {
 		return fmt.Errorf("create destination directory: %w", err)
 	}
 
@@ -312,7 +345,7 @@ func (bm *BackupManager) atomicFileReplace(srcPath, dstPath string) error {
 	defer src.Close()
 
 	// Create temp file with restricted permissions
-	dst, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	dst, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, backupFilePerm)
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
@@ -397,7 +430,7 @@ func (bm *BackupManager) listBackupsUnlocked() ([]string, error) {
 			continue
 		}
 		name := entry.Name()
-		if strings.HasPrefix(name, "verbal_backup_") && strings.HasSuffix(name, ".db") {
+		if strings.HasPrefix(name, backupFilePrefix) && strings.HasSuffix(name, backupFileSuffix) {
 			backupPath := filepath.Join(bm.backupDir, name)
 			backups = append(backups, backupPath)
 		}
