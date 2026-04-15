@@ -52,9 +52,9 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
 
 **Objective:** Fix `CreateBackup()` to safely backup live SQLite database.
 
-### Task 2.1: Design backup safety interface [ ]
+### Task 2.1: Design backup safety interface [x]
 
-- [ ] Define `DBConnectionManager` interface:
+- [x] Define `DBConnectionManager` interface:
   ```go
   type DBConnectionManager interface {
       GetDB() *sql.DB
@@ -62,39 +62,38 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
       IsConnected() bool
   }
   ```
-- [ ] Define backup options struct:
+- [x] Define backup options struct:
   ```go
   type BackupOptions struct {
       Timeout time.Duration  // Max time to wait for exclusive lock
   }
   ```
 
-### Task 2.2: Write tests for atomic backup creation [ ]
+### Task 2.2: Write tests for atomic backup creation [x]
 
 **TDD Approach:**
-- [ ] Write test: `TestCreateBackup_WaitsForTransactionCompletion`
-  - Simulate concurrent write transaction
-  - Verify backup waits for transaction to complete
-  - Use goroutines and channels for synchronization
-- [ ] Write test: `TestCreateBackup_BeginImmediateBlocksWriters`
-  - Verify `BEGIN IMMEDIATE` is executed before copy
-  - Mock `database/sql` to verify transaction start
-- [ ] Write test: `TestCreateBackup_CreatesConsistentSnapshot`
+- [x] Write test: `TestCreateBackup_UsesBeginImmediateTransaction`
+  - Verify backup uses BEGIN IMMEDIATE with actual SQLite database
+  - Test that backup contains consistent data snapshot
+- [x] Write test: `TestCreateBackup_BeginImmediateBlocksWriters`
+  - Verify BEGIN IMMEDIATE blocks concurrent writes during backup
+  - Use goroutines to simulate concurrent access
+- [x] Write test: `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites`
   - Write data during backup, verify backup has consistent state
-  - Use checksum or row count verification
-- [ ] Run tests - should FAIL (current implementation doesn't use transactions)
+  - Use row count and max ID verification for consistency check
+- [x] Run tests - should FAIL (current implementation doesn't use transactions)
 
-### Task 2.3: Implement atomic backup with BEGIN IMMEDIATE [ ]
+### Task 2.3: Implement atomic backup with BEGIN IMMEDIATE [~]
 
-- [ ] Add `database/sql` import to backup_manager.go
-- [ ] Add `db *sql.DB` field to `BackupManager` struct
-- [ ] Modify `NewBackupManager()` to accept `*sql.DB` parameter
-- [ ] Update `CreateBackup()` to:
-  1. Start `BEGIN IMMEDIATE` transaction (obtains exclusive lock)
+- [~] Add `database/sql` import to backup_manager.go
+- [~] Add `db *sql.DB` field to `BackupManager` struct
+- [~] Add `NewBackupManagerWithDB()` constructor to accept `*sql.DB` parameter
+- [~] Update `CreateBackup()` to:
+  1. Start `BEGIN IMMEDIATE` transaction (obtains exclusive lock) if db connection available
   2. Perform file copy while holding transaction
   3. Commit transaction
   4. Handle timeout and cancellation
-- [ ] Add `defer` for transaction rollback on error
+- [~] Add `defer` for transaction rollback on error
 - [ ] Run tests - should PASS
 - [ ] Commit: `git commit -m "fix(backup): use BEGIN IMMEDIATE transaction for atomic backup creation"`
 

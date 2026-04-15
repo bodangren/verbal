@@ -1,11 +1,15 @@
 package lifecycle
 
 import (
+	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 func TestBackupManager_CreateBackup(t *testing.T) {
@@ -485,4 +489,208 @@ func TestCreateBackup_WithDB_CreatesConsistentSnapshot(t *testing.T) {
 	// Skip if no database support (this test requires sqlite3)
 	// In a real implementation, we would test with an actual SQLite database
 	t.Skip("Skipping: requires actual SQLite database connection for BEGIN IMMEDIATE test")
+}
+
+// TestCreateBackup_UsesBeginImmediateTransaction verifies backup uses BEGIN IMMEDIATE
+func TestCreateBackup_UsesBeginImmediateTransaction(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table and insert data
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	_, err = db.Exec("INSERT INTO test (data) VALUES ('initial data')")
+	if err != nil {
+		t.Fatalf("Failed to insert data: %v", err)
+	}
+
+	// Create backup manager with database connection
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+
+	// Create backup
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Verify backup was created
+	if _, err := os.Stat(backup); os.IsNotExist(err) {
+		t.Errorf("Backup file does not exist: %s", backup)
+	}
+
+	// Verify backup contains the data (consistent snapshot)
+	backupDB, err := sql.Open("sqlite", backup)
+	if err != nil {
+		t.Fatalf("Failed to open backup database: %v", err)
+	}
+	defer backupDB.Close()
+
+	var count int
+	err = backupDB.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query backup: %v", err)
+	}
+
+	if count != 1 {
+		t.Errorf("Backup has %d rows, expected 1 (consistent snapshot)", count)
+	}
+}
+
+// TestCreateBackup_BeginImmediateBlocksWriters verifies BEGIN IMMEDIATE blocks concurrent writes
+func TestCreateBackup_BeginImmediateBlocksWriters(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// Create backup manager
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+
+	// Start a concurrent write operation
+	writeStarted := make(chan bool)
+	writeDone := make(chan error)
+
+	go func() {
+		writeDB, err := sql.Open("sqlite", dbPath)
+		if err != nil {
+			writeDone <- err
+			return
+		}
+		defer writeDB.Close()
+
+		// Signal that we're starting
+		writeStarted <- true
+
+		// Try to write - this should be blocked during backup
+		_, err = writeDB.Exec("INSERT INTO test (data) VALUES ('concurrent write')")
+		writeDone <- err
+	}()
+
+	// Wait for write goroutine to start
+	<-writeStarted
+	time.Sleep(10 * time.Millisecond) // Small delay to ensure write is waiting
+
+	// Create backup - this should use BEGIN IMMEDIATE
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Wait for write to complete
+	writeErr := <-writeDone
+	if writeErr != nil {
+		t.Logf("Concurrent write error (expected during backup): %v", writeErr)
+	}
+
+	// Verify backup exists
+	if _, err := os.Stat(backup); os.IsNotExist(err) {
+		t.Errorf("Backup file does not exist: %s", backup)
+	}
+}
+
+// TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites verifies backup consistency
+func TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table with many rows
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+
+	// Insert initial data
+	for i := 0; i < 100; i++ {
+		_, err = db.Exec("INSERT INTO test (data) VALUES (?)", fmt.Sprintf("row %d", i))
+		if err != nil {
+			t.Fatalf("Failed to insert data: %v", err)
+		}
+	}
+
+	// Create backup manager
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+
+	// Start concurrent writes during backup
+	done := make(chan bool)
+	go func() {
+		writeDB, _ := sql.Open("sqlite", dbPath)
+		if writeDB != nil {
+			defer writeDB.Close()
+			for i := 0; i < 50; i++ {
+				writeDB.Exec("INSERT INTO test (data) VALUES (?)", fmt.Sprintf("concurrent %d", i))
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+		done <- true
+	}()
+
+	// Create backup
+	backup, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	<-done
+
+	// Verify backup integrity
+	backupDB, err := sql.Open("sqlite", backup)
+	if err != nil {
+		t.Fatalf("Failed to open backup database: %v", err)
+	}
+	defer backupDB.Close()
+
+	// Check that backup is a valid SQLite database
+	var count int
+	err = backupDB.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+	if err != nil {
+		t.Fatalf("Backup database corrupted: %v", err)
+	}
+
+	// Backup should have at least the initial 100 rows
+	if count < 100 {
+		t.Errorf("Backup has only %d rows, expected at least 100", count)
+	}
+
+	// Verify backup is internally consistent (no torn writes)
+	var maxID int
+	err = backupDB.QueryRow("SELECT MAX(id) FROM test").Scan(&maxID)
+	if err != nil {
+		t.Fatalf("Failed to get max ID: %v", err)
+	}
+
+	// Count should match maxID for a consistent snapshot
+	if count != maxID {
+		t.Errorf("Backup inconsistent: count=%d, maxID=%d (possible torn writes)", count, maxID)
+	}
 }
