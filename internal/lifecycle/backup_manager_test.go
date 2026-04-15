@@ -1224,3 +1224,76 @@ func TestRestoreBackupAtomic_DefaultSnapshotDir(t *testing.T) {
 		t.Error("Database was not restored")
 	}
 }
+
+// TestGetBackupDir verifies the GetBackupDir method returns the correct path
+func TestGetBackupDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	got := bm.GetBackupDir()
+	if got != backupDir {
+		t.Errorf("GetBackupDir() = %v, want %v", got, backupDir)
+	}
+}
+
+// TestGetDBPath verifies the GetDBPath method returns the correct path
+func TestGetDBPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	got := bm.GetDBPath()
+	if got != dbPath {
+		t.Errorf("GetDBPath() = %v, want %v", got, dbPath)
+	}
+}
+
+// TestAtomicFileReplace_SourceNotFound verifies error handling when source doesn't exist
+func TestAtomicFileReplace_SourceNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	// Try to replace with non-existent source
+	srcPath := filepath.Join(tmpDir, "nonexistent.db")
+	dstPath := filepath.Join(tmpDir, "destination.db")
+
+	err := bm.atomicFileReplace(srcPath, dstPath)
+	if err == nil {
+		t.Error("Expected error when source file doesn't exist")
+	}
+}
+
+// TestSetRetentionCount_Boundary verifies boundary handling for retention count
+func TestSetRetentionCount_Boundary(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	bm := NewBackupManager(dbPath, backupDir)
+
+	// Test setting to 0 (should clamp to 1)
+	bm.SetRetentionCount(0)
+	if got := bm.GetRetentionCount(); got != 1 {
+		t.Errorf("SetRetentionCount(0) should clamp to 1, got %d", got)
+	}
+
+	// Test setting to negative (should clamp to 1)
+	bm.SetRetentionCount(-5)
+	if got := bm.GetRetentionCount(); got != 1 {
+		t.Errorf("SetRetentionCount(-5) should clamp to 1, got %d", got)
+	}
+
+	// Test setting valid value
+	bm.SetRetentionCount(5)
+	if got := bm.GetRetentionCount(); got != 5 {
+		t.Errorf("SetRetentionCount(5) = %d, want 5", got)
+	}
+}
