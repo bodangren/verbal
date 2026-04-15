@@ -97,14 +97,14 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
 - [x] Run tests - should PASS
 - [x] Commit: `git commit -m "fix(backup): use BEGIN IMMEDIATE transaction for atomic backup creation"`
 
-### Task 2.4: Add error handling and edge case tests [~]
+### Task 2.4: Add error handling and edge case tests [x]
 
-- [~] Write test: `TestCreateBackup_HandlesDatabaseLocked`
+- [x] Write test: `TestCreateBackup_HandlesDatabaseLocked`
   - Verify graceful error when DB is locked beyond timeout
-- [~] Write test: `TestCreateBackup_HandlesConcurrentBackups`
+- [x] Write test: `TestCreateBackup_HandlesConcurrentBackups`
   - Verify two simultaneous backups don't corrupt each other
-- [ ] Run all new tests - should PASS
-- [ ] Commit: `git commit -m "test(backup): add error handling and edge case tests for backup"`
+- [x] Run all new tests - should PASS
+- [x] Commit: `git commit -m "test(backup): add error handling and edge case tests for backup"`
 
 ---
 
@@ -112,16 +112,16 @@ This plan implements fixes for high-severity backup safety issues in `BackupMana
 
 **Objective:** Fix `RestoreBackup()` to be atomic with pre-restore snapshot.
 
-### Task 3.1: Design restore safety mechanism [ ]
+### Task 3.1: Design restore safety mechanism [~]
 
-- [ ] Define restore options:
+- [~] Define restore options:
   ```go
   type RestoreOptions struct {
       CreateSnapshot bool      // Whether to create pre-restore backup
       SnapshotDir    string    // Where to store snapshot (default: backupDir)
   }
   ```
-- [ ] Define callback interface for DB connection management:
+- [~] Define callback interface for DB connection management:
   ```go
   type RestoreCallbacks struct {
       BeforeRestore func() error  // Called before restore (should close DB)

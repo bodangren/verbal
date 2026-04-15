@@ -20,6 +20,18 @@ type BackupInfo struct {
 	CreatedAt time.Time
 }
 
+// RestoreOptions configures the restore operation.
+type RestoreOptions struct {
+	CreateSnapshot bool   // Whether to create pre-restore backup
+	SnapshotDir    string // Where to store snapshot (default: backupDir)
+}
+
+// RestoreCallbacks provides hooks for DB connection management during restore.
+type RestoreCallbacks struct {
+	BeforeRestore func() error // Called before restore (should close DB)
+	AfterRestore  func() error // Called after restore (should reopen DB)
+}
+
 // BackupManager provides database backup and restore functionality.
 type BackupManager struct {
 	dbPath         string
@@ -197,7 +209,15 @@ func (bm *BackupManager) ListBackups() ([]string, error) {
 }
 
 // RestoreBackup restores the database from a backup file.
+// Note: This is the simple version. For atomic restore with rollback, use RestoreBackupAtomic.
 func (bm *BackupManager) RestoreBackup(backupPath string) error {
+	return bm.RestoreBackupAtomic(backupPath, RestoreOptions{}, RestoreCallbacks{})
+}
+
+// RestoreBackupAtomic restores the database from a backup file with atomic replacement.
+// It creates a pre-restore snapshot (if enabled), performs atomic file replacement
+// (temp file + fsync + rename), and supports rollback on failure.
+func (bm *BackupManager) RestoreBackupAtomic(backupPath string, opts RestoreOptions, callbacks RestoreCallbacks) error {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
 
@@ -206,30 +226,129 @@ func (bm *BackupManager) RestoreBackup(backupPath string) error {
 		return fmt.Errorf("backup file does not exist: %s", backupPath)
 	}
 
-	// Ensure destination directory exists with restricted permissions
-	dbDir := filepath.Dir(bm.dbPath)
-	if err := os.MkdirAll(dbDir, 0700); err != nil {
-		return fmt.Errorf("create database directory: %w", err)
+	// Call BeforeRestore callback to release DB connection
+	if callbacks.BeforeRestore != nil {
+		if err := callbacks.BeforeRestore(); err != nil {
+			return fmt.Errorf("before restore callback: %w", err)
+		}
 	}
 
-	// Copy backup to database location
-	src, err := os.Open(backupPath)
+	// Create pre-restore snapshot if enabled
+	var snapshotPath string
+	if opts.CreateSnapshot {
+		snapshotDir := opts.SnapshotDir
+		if snapshotDir == "" {
+			snapshotDir = bm.backupDir
+		}
+
+		// Ensure snapshot directory exists
+		if err := os.MkdirAll(snapshotDir, 0700); err != nil {
+			return fmt.Errorf("create snapshot directory: %w", err)
+		}
+
+		// Generate snapshot filename
+		now := time.Now()
+		timestamp := now.Format("20060102_150405") + fmt.Sprintf("_%03d", now.Nanosecond()/1e6)
+		snapshotPath = filepath.Join(snapshotDir, fmt.Sprintf("pre-restore_%s.db", timestamp))
+
+		// Copy current DB to snapshot (if it exists)
+		if _, err := os.Stat(bm.dbPath); err == nil {
+			if err := bm.copyFileAtomic(bm.dbPath, snapshotPath); err != nil {
+				return fmt.Errorf("create pre-restore snapshot: %w", err)
+			}
+		}
+	}
+
+	// Perform atomic restore
+	err := bm.atomicFileReplace(backupPath, bm.dbPath)
+
+	// Handle error and rollback if needed
 	if err != nil {
-		return fmt.Errorf("open backup file: %w", err)
+		// Try to rollback from snapshot if we created one
+		if snapshotPath != "" {
+			if _, statErr := os.Stat(snapshotPath); statErr == nil {
+				rollbackErr := os.Rename(snapshotPath, bm.dbPath)
+				if rollbackErr != nil {
+					return fmt.Errorf("restore failed (%v) and rollback failed (%v)", err, rollbackErr)
+				}
+				return fmt.Errorf("restore failed (%v); rolled back from snapshot", err)
+			}
+		}
+		return err
 	}
-	defer src.Close()
 
-	dst, err := os.OpenFile(bm.dbPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
-	if err != nil {
-		return fmt.Errorf("create database file: %w", err)
+	// Call AfterRestore callback to reopen DB connection
+	if callbacks.AfterRestore != nil {
+		if err := callbacks.AfterRestore(); err != nil {
+			// Don't clean up snapshot on callback error - allows for retry/debugging
+			return fmt.Errorf("after restore callback: %w", err)
+		}
 	}
-	defer dst.Close()
 
-	if _, err := io.Copy(dst, src); err != nil {
-		return fmt.Errorf("restore database: %w", err)
+	// Clean up snapshot only after everything succeeds
+	if snapshotPath != "" {
+		os.Remove(snapshotPath) // Best effort cleanup
 	}
 
 	return nil
+}
+
+// atomicFileReplace performs atomic file replacement using temp file + fsync + rename.
+func (bm *BackupManager) atomicFileReplace(srcPath, dstPath string) error {
+	// Ensure destination directory exists with restricted permissions
+	dstDir := filepath.Dir(dstPath)
+	if err := os.MkdirAll(dstDir, 0700); err != nil {
+		return fmt.Errorf("create destination directory: %w", err)
+	}
+
+	// Create temp file in same directory for atomic rename
+	tempPath := dstPath + ".tmp"
+
+	// Open source file
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("open source file: %w", err)
+	}
+	defer src.Close()
+
+	// Create temp file with restricted permissions
+	dst, err := os.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+
+	// Copy data
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		os.Remove(tempPath) // Clean up temp file
+		return fmt.Errorf("copy file: %w", err)
+	}
+
+	// Sync to disk for durability
+	if err := dst.Sync(); err != nil {
+		dst.Close()
+		os.Remove(tempPath)
+		return fmt.Errorf("sync temp file: %w", err)
+	}
+
+	// Close file before rename
+	if err := dst.Close(); err != nil {
+		os.Remove(tempPath)
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	// Atomic rename
+	if err := os.Rename(tempPath, dstPath); err != nil {
+		os.Remove(tempPath)
+		return fmt.Errorf("rename temp file: %w", err)
+	}
+
+	return nil
+}
+
+// copyFileAtomic copies a file atomically using the same temp file pattern.
+func (bm *BackupManager) copyFileAtomic(srcPath, dstPath string) error {
+	return bm.atomicFileReplace(srcPath, dstPath)
 }
 
 // RotateBackups removes old backups, keeping only the specified number of most recent ones.

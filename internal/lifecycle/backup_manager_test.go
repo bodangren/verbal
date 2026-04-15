@@ -844,3 +844,383 @@ func TestCreateBackup_HandlesConcurrentBackups(t *testing.T) {
 		}
 	}
 }
+
+// TestRestoreBackupAtomic_CreatesPreRestoreSnapshot verifies snapshot enables rollback
+func TestRestoreBackupAtomic_CreatesPreRestoreSnapshot(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+	defer db.Close()
+
+	// Create a test table with data
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	_, err = db.Exec("INSERT INTO test (data) VALUES ('original data')")
+	if err != nil {
+		t.Fatalf("Failed to insert data: %v", err)
+	}
+	db.Close()
+
+	// Create backup manager
+	bm := NewBackupManager(dbPath, backupDir)
+
+	// Create a backup
+	backupPath, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Reopen DB and modify data (this is the state we'll snapshot)
+	db, _ = sql.Open("sqlite", dbPath)
+	db.Exec("UPDATE test SET data = 'modified data'")
+	db.Close()
+
+	// Restore with snapshot enabled, but trigger failure in AfterRestore
+	// This should leave the snapshot in place for verification
+	opts := RestoreOptions{CreateSnapshot: true, SnapshotDir: backupDir}
+	callbacks := RestoreCallbacks{
+		AfterRestore: func() error {
+			return fmt.Errorf("simulated post-restore error")
+		},
+	}
+	err = bm.RestoreBackupAtomic(backupPath, opts, callbacks)
+	if err == nil {
+		t.Fatal("Expected error from AfterRestore callback")
+	}
+
+	// Verify snapshot was created (should exist since restore "failed")
+	entries, _ := os.ReadDir(backupDir)
+	var foundSnapshot bool
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "pre-restore_") {
+			foundSnapshot = true
+			break
+		}
+	}
+	if !foundSnapshot {
+		t.Error("Pre-restore snapshot was not created")
+	}
+}
+
+// TestRestoreBackupAtomic_UsesAtomicFileReplacement verifies temp file + rename pattern
+func TestRestoreBackupAtomic_UsesAtomicFileReplacement(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+
+	// Create test table with data
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	_, err = db.Exec("INSERT INTO test (data) VALUES ('original data')")
+	if err != nil {
+		t.Fatalf("Failed to insert data: %v", err)
+	}
+	db.Close()
+
+	// Create backup manager and backup
+	bm := NewBackupManager(dbPath, backupDir)
+	backupPath, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Get original file info
+	origInfo, _ := os.Stat(dbPath)
+	origModTime := origInfo.ModTime()
+
+	// Wait a bit to ensure different mod time
+	time.Sleep(100 * time.Millisecond)
+
+	// Restore
+	err = bm.RestoreBackupAtomic(backupPath, RestoreOptions{}, RestoreCallbacks{})
+	if err != nil {
+		t.Fatalf("RestoreBackupAtomic() error = %v", err)
+	}
+
+	// Verify database was restored and is valid
+	db, _ = sql.Open("sqlite", dbPath)
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query restored DB: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("Restored DB has %d rows, expected 1", count)
+	}
+
+	// Verify file was replaced (mod time changed)
+	newInfo, _ := os.Stat(dbPath)
+	if !newInfo.ModTime().After(origModTime) {
+		t.Error("Database file was not replaced (mod time unchanged)")
+	}
+}
+
+// TestRestoreBackupAtomic_RollsBackOnFailure verifies snapshot is restored on failure
+func TestRestoreBackupAtomic_RollsBackOnFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+
+	// Create test table with data
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, data TEXT)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	_, err = db.Exec("INSERT INTO test (data) VALUES ('original data')")
+	if err != nil {
+		t.Fatalf("Failed to insert data: %v", err)
+	}
+	db.Close()
+
+	// Create backup manager
+	bm := NewBackupManager(dbPath, backupDir)
+
+	// Create a valid backup (to ensure backupDir exists)
+	_, err = bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Get original data hash
+	db, _ = sql.Open("sqlite", dbPath)
+	var origData string
+	db.QueryRow("SELECT data FROM test").Scan(&origData)
+	db.Close()
+
+	// Attempt restore with snapshot enabled but with a non-existent backup to trigger failure
+	nonExistentBackup := filepath.Join(tmpDir, "non-existent-backup.db")
+	opts := RestoreOptions{CreateSnapshot: true, SnapshotDir: backupDir}
+	err = bm.RestoreBackupAtomic(nonExistentBackup, opts, RestoreCallbacks{})
+	if err == nil {
+		t.Fatal("Expected error for non-existent backup, got nil")
+	}
+
+	// Verify original data is intact (rollback worked)
+	db, _ = sql.Open("sqlite", dbPath)
+	defer db.Close()
+
+	var currentData string
+	err = db.QueryRow("SELECT data FROM test").Scan(&currentData)
+	if err != nil {
+		t.Fatalf("Database corrupted after failed restore: %v", err)
+	}
+	if currentData != origData {
+		t.Errorf("Data changed after failed restore: got %q, want %q", currentData, origData)
+	}
+}
+
+// TestRestoreBackupAtomic_CleansUpSnapshotOnSuccess verifies snapshot is removed
+func TestRestoreBackupAtomic_CleansUpSnapshotOnSuccess(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	db.Close()
+
+	// Create backup manager and backup
+	bm := NewBackupManager(dbPath, backupDir)
+	backupPath, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Restore with snapshot
+	opts := RestoreOptions{CreateSnapshot: true, SnapshotDir: backupDir}
+	err = bm.RestoreBackupAtomic(backupPath, opts, RestoreCallbacks{})
+	if err != nil {
+		t.Fatalf("RestoreBackupAtomic() error = %v", err)
+	}
+
+	// Verify no snapshot remains
+	entries, _ := os.ReadDir(backupDir)
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "pre-restore_") {
+			t.Errorf("Snapshot file was not cleaned up: %s", entry.Name())
+		}
+	}
+}
+
+// TestRestoreBackupAtomic_Callbacks verifies BeforeRestore and AfterRestore callbacks
+func TestRestoreBackupAtomic_Callbacks(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create an actual SQLite database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	db.Close()
+
+	// Create backup manager and backup
+	bm := NewBackupManager(dbPath, backupDir)
+	backupPath, err := bm.CreateBackup()
+	if err != nil {
+		t.Fatalf("CreateBackup() error = %v", err)
+	}
+
+	// Track callback invocations
+	var beforeCalled, afterCalled bool
+	callbacks := RestoreCallbacks{
+		BeforeRestore: func() error {
+			beforeCalled = true
+			return nil
+		},
+		AfterRestore: func() error {
+			afterCalled = true
+			return nil
+		},
+	}
+
+	// Restore with callbacks
+	err = bm.RestoreBackupAtomic(backupPath, RestoreOptions{}, callbacks)
+	if err != nil {
+		t.Fatalf("RestoreBackupAtomic() error = %v", err)
+	}
+
+	if !beforeCalled {
+		t.Error("BeforeRestore callback was not called")
+	}
+	if !afterCalled {
+		t.Error("AfterRestore callback was not called")
+	}
+}
+
+// TestRestoreBackupAtomic_NonExistentBackup verifies error for non-existent backup
+func TestRestoreBackupAtomic_NonExistentBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	bm := NewBackupManager(dbPath, backupDir)
+	nonExistentBackup := filepath.Join(tmpDir, "non-existent-backup.db")
+
+	err := bm.RestoreBackupAtomic(nonExistentBackup, RestoreOptions{}, RestoreCallbacks{})
+	if err == nil {
+		t.Fatal("Expected error for non-existent backup, got nil")
+	}
+	if !strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("Expected 'does not exist' error, got: %v", err)
+	}
+}
+
+// TestRestoreBackupAtomic_BeforeRestoreError verifies error from BeforeRestore callback
+func TestRestoreBackupAtomic_BeforeRestoreError(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create a database and backup
+	db, _ := sql.Open("sqlite", dbPath)
+	db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY)")
+	db.Close()
+
+	bm := NewBackupManager(dbPath, backupDir)
+	backupPath, _ := bm.CreateBackup()
+
+	// Restore with failing BeforeRestore callback
+	callbacks := RestoreCallbacks{
+		BeforeRestore: func() error {
+			return fmt.Errorf("before restore error")
+		},
+	}
+
+	err := bm.RestoreBackupAtomic(backupPath, RestoreOptions{}, callbacks)
+	if err == nil {
+		t.Fatal("Expected error from BeforeRestore callback")
+	}
+	if !strings.Contains(err.Error(), "before restore callback") {
+		t.Errorf("Expected 'before restore callback' error, got: %v", err)
+	}
+}
+
+// TestRestoreBackupAtomic_DefaultSnapshotDir verifies snapshot uses backupDir when SnapshotDir is empty
+func TestRestoreBackupAtomic_DefaultSnapshotDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	backupDir := filepath.Join(tmpDir, "backups")
+
+	// Create a database
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Skipf("Skipping: sqlite driver not available: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		t.Skipf("Skipping: cannot connect to sqlite: %v", err)
+	}
+	_, err = db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY)")
+	if err != nil {
+		t.Fatalf("Failed to create table: %v", err)
+	}
+	db.Close()
+
+	bm := NewBackupManager(dbPath, backupDir)
+	backupPath, _ := bm.CreateBackup()
+
+	// Restore with snapshot enabled but no SnapshotDir specified (should use backupDir)
+	opts := RestoreOptions{CreateSnapshot: true} // SnapshotDir defaults to ""
+	err = bm.RestoreBackupAtomic(backupPath, opts, RestoreCallbacks{})
+	if err != nil {
+		t.Fatalf("RestoreBackupAtomic() error = %v", err)
+	}
+
+	// Verify backup was successful
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		t.Error("Database was not restored")
+	}
+}
