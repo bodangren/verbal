@@ -425,3 +425,73 @@ func createTestWAV(t *testing.T, duration time.Duration) []byte {
 
 	return wav
 }
+
+func TestQuoteLocation(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected string // expected to be contained in result
+	}{
+		{
+			name:     "simple path",
+			path:     "/home/user/video.mp4",
+			expected: `"/home/user/video.mp4"`,
+		},
+		{
+			name:     "path with spaces",
+			path:     "/home/user/my video file.mp4",
+			expected: `"/home/user/my video file.mp4"`,
+		},
+		{
+			name:     "path with quotes",
+			path:     `/home/user/"quoted".mp4`,
+			expected: `"/home/user/`,
+		},
+		{
+			name:     "path with newline",
+			path:     "/home/user/video\n.mp4",
+			expected: `"/home/user/video.mp4"`,
+		},
+		{
+			name:     "path with carriage return",
+			path:     "/home/user/video\r.mp4",
+			expected: `"/home/user/video.mp4"`,
+		},
+		{
+			name:     "path with both newlines",
+			path:     "/home/user\n/video\r.mp4",
+			expected: `"/home/user/video.mp4"`,
+		},
+		{
+			name:     "empty path",
+			path:     "",
+			expected: `""`,
+		},
+		{
+			name:     "path with special chars",
+			path:     `/home/user/file!@#$%^&*().mp4`,
+			expected: `"/home/user/file!@#$%^&*()`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := quoteLocation(tt.path)
+
+			// Verify the result is properly quoted (starts and ends with double quote)
+			if len(result) < 2 || result[0] != '"' || result[len(result)-1] != '"' {
+				t.Errorf("quoteLocation(%q) = %q, expected quoted string", tt.path, result)
+			}
+
+			// Verify the expected content is present
+			if !contains(result, tt.expected) {
+				t.Errorf("quoteLocation(%q) = %q, expected to contain %q", tt.path, result, tt.expected)
+			}
+
+			// Verify newlines are removed
+			if contains(result, "\n") || contains(result, "\r") {
+				t.Errorf("quoteLocation(%q) = %q, should not contain newlines", tt.path, result)
+			}
+		})
+	}
+}

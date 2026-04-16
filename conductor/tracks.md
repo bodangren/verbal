@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Bugfix - Waveform GStreamer Path Sanitization** [created: 2026-04-16, started: 2026-04-16, completed: 2026-04-16]
+  *Focus: Fix security vulnerability where file paths are interpolated into GStreamer pipelines without sanitization.*
+  *Status: Complete. Added quoteLocation() function, applied sanitization to generator.go and gstreamer_extractor.go, added comprehensive unit tests.*
+  *Link: [./tracks/bugfix_waveform_path_sanitization_20260416/](./tracks/bugfix_waveform_path_sanitization_20260416/)*
+
 - [x] **Track: Bugfix - Backup Atomicity and Safety** [created: 2026-04-14, started: 2026-04-14, completed: 2026-04-16]
   *Focus: Fix high severity backup safety issues: atomic backup/restore, proper file permissions, and safe SQLite operations.*
   *Status: Complete. All 6 phases finished: Permission fixes (0700/0600), timestamp format, BEGIN IMMEDIATE transaction for atomic backup, atomic restore with snapshot/rollback, integration/refactoring, test coverage >80%, and documentation.*  

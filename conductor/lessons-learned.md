@@ -65,6 +65,7 @@
 - **Atomic File Replacement Pattern:** For safe file updates, use: (1) write to temp file, (2) `fsync()` to ensure data hits disk, (3) atomic `rename()` to replace target. This ensures readers never see a partially-written file.
 - **Pre-Restore Snapshots:** Before destructive operations like restore, create a snapshot of current state. On failure, roll back to the snapshot. Clean up snapshots only after confirming success to enable recovery from late-stage errors (e.g., post-restore callbacks).
 - **Snapshot Cleanup Strategy:** Don't clean up snapshots until ALL operations succeed, including post-restore callbacks. If a callback fails, the snapshot should remain available for retry or debugging.
+- **GStreamer Pipeline Path Sanitization:** Always sanitize file paths before interpolating into GStreamer pipeline strings. Use a `quoteLocation()` function that strips newlines (`\n`, `\r`) and applies `strconv.Quote()` to prevent injection attacks.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

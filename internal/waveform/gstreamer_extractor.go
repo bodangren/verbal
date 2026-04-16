@@ -66,9 +66,9 @@ func (e *GStreamerExtractor) runExtractionPipeline(inputPath, outputPath string)
 	pipeline := fmt.Sprintf(
 		"filesrc location=%s ! decodebin ! audioconvert ! audioresample ! "+
 			"audio/x-raw,format=S16LE,channels=1,rate=%d ! filesink location=%s",
-		inputPath,
+		quoteLocation(inputPath),
 		e.config.TargetSampleRate,
-		outputPath,
+		quoteLocation(outputPath),
 	)
 
 	cmd := exec.Command("gst-launch-1.0", pipeline)
