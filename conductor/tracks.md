@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Bugfix - BackupScheduler Robustness Improvements** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
+  *Focus: Fix medium-severity backup scheduler issues: panic recovery, logger integration, and error handling.*
+  *Status: Complete. Added Logger interface, safeCallback() with panic recovery, replaced stderr writes with logger calls, updated all call sites.*
+  *Link: [./tracks/bugfix_backup_scheduler_robustness_20260417/](./tracks/bugfix_backup_scheduler_robustness_20260417/)*
+
 - [x] **Track: Bugfix - Waveform GStreamer Path Sanitization** [created: 2026-04-16, started: 2026-04-16, completed: 2026-04-16]
   *Focus: Fix security vulnerability where file paths are interpolated into GStreamer pipelines without sanitization.*
   *Status: Complete. Added quoteLocation() function, applied sanitization to generator.go and gstreamer_extractor.go, added comprehensive unit tests.*

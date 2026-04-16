@@ -105,30 +105,41 @@ type BackupManager struct {
 	autoBackup     bool
 	retentionCount int
 	db             *sql.DB
+	logger         Logger
 	mu             sync.RWMutex
 }
 
 // NewBackupManager creates a new BackupManager instance without database connection.
 // This provides basic file copy backup functionality without atomic guarantees.
 // For atomic backups with BEGIN IMMEDIATE transactions, use NewBackupManagerWithDB.
-func NewBackupManager(dbPath, backupDir string) *BackupManager {
+// The logger parameter can be nil to use a no-op logger.
+func NewBackupManager(dbPath, backupDir string, logger Logger) *BackupManager {
+	if logger == nil {
+		logger = &noopLogger{}
+	}
 	return &BackupManager{
 		dbPath:         dbPath,
 		backupDir:      backupDir,
 		autoBackup:     false,
 		retentionCount: 10, // Default: keep 10 backups
+		logger:         logger,
 	}
 }
 
 // NewBackupManagerWithDB creates a new BackupManager instance with database connection.
 // The db connection is used for atomic backup operations using BEGIN IMMEDIATE transactions.
-func NewBackupManagerWithDB(dbPath, backupDir string, db *sql.DB) *BackupManager {
+// The logger parameter can be nil to use a no-op logger.
+func NewBackupManagerWithDB(dbPath, backupDir string, db *sql.DB, logger Logger) *BackupManager {
+	if logger == nil {
+		logger = &noopLogger{}
+	}
 	return &BackupManager{
 		dbPath:         dbPath,
 		backupDir:      backupDir,
 		autoBackup:     false,
 		retentionCount: 10, // Default: keep 10 backups
 		db:             db,
+		logger:         logger,
 	}
 }
 
@@ -405,7 +416,9 @@ func (bm *BackupManager) RotateBackups(keep int) error {
 		for _, backup := range toDelete {
 			if err := os.Remove(backup); err != nil {
 				// Log but don't fail - continue deleting others
-				fmt.Fprintf(os.Stderr, "Warning: failed to delete old backup %s: %v\n", backup, err)
+				if bm.logger != nil {
+					bm.logger.Warn(fmt.Sprintf("failed to delete old backup %s: %v", backup, err))
+				}
 			}
 		}
 	}

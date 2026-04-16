@@ -1,9 +1,50 @@
 package lifecycle
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
+
+// Logger provides a minimal logging interface for the lifecycle package.
+// This allows the package to log errors and warnings without depending
+// on a specific logging implementation.
+type Logger interface {
+	Info(msg string)
+	Warn(msg string)
+	Error(msg string)
+}
+
+// noopLogger is a no-op Logger implementation used when no logger is provided.
+type noopLogger struct{}
+
+func (n *noopLogger) Info(msg string)  {}
+func (n *noopLogger) Warn(msg string)  {}
+func (n *noopLogger) Error(msg string) {}
+
+// safeCallback invokes the callback with panic recovery to prevent the scheduler
+// goroutine from crashing due to panics in user-provided callbacks.
+func (bs *BackupScheduler) safeCallback(path string, err error) {
+	bs.mu.RLock()
+	callback := bs.onBackupComplete
+	logger := bs.logger
+	bs.mu.RUnlock()
+
+	if callback == nil {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprintf("panic in onBackupComplete callback: %v", r)
+			if logger != nil {
+				logger.Error(msg)
+			}
+		}
+	}()
+
+	callback(path, err)
+}
 
 // BackupFrequency represents the frequency of automatic backups.
 type BackupFrequency string
@@ -24,17 +65,23 @@ type BackupScheduler struct {
 	lastBackup       time.Time
 	nextBackup       time.Time
 	onBackupComplete func(string, error)
+	logger           Logger
 	mu               sync.RWMutex
 }
 
 // NewBackupScheduler creates a new BackupScheduler instance.
-func NewBackupScheduler(manager *BackupManager) *BackupScheduler {
+// The logger parameter can be nil to use a no-op logger.
+func NewBackupScheduler(manager *BackupManager, logger Logger) *BackupScheduler {
+	if logger == nil {
+		logger = &noopLogger{}
+	}
 	return &BackupScheduler{
 		manager:          manager,
 		frequency:        Daily,
 		running:          false,
 		stopCh:           make(chan struct{}),
 		onBackupComplete: nil,
+		logger:           logger,
 	}
 }
 
@@ -103,30 +150,37 @@ func (bs *BackupScheduler) run() {
 func (bs *BackupScheduler) performScheduledBackup() {
 	backupPath, err := bs.manager.CreateBackup()
 	if err != nil {
-		// Notify callback of failure
+		// Log the error
 		bs.mu.RLock()
-		callback := bs.onBackupComplete
+		logger := bs.logger
 		bs.mu.RUnlock()
-		if callback != nil {
-			callback("", err)
+		if logger != nil {
+			logger.Error(fmt.Sprintf("scheduled backup failed: %v", err))
 		}
+		// Notify callback of failure (with panic recovery)
+		bs.safeCallback("", err)
 		return
 	}
 
 	// Update last backup time
 	bs.mu.Lock()
 	bs.lastBackup = time.Now()
-	callback := bs.onBackupComplete
 	bs.mu.Unlock()
 
 	// Perform rotation
 	retentionCount := bs.manager.GetRetentionCount()
-	_ = bs.manager.RotateBackups(retentionCount)
-
-	// Notify callback of success
-	if callback != nil {
-		callback(backupPath, nil)
+	if rotErr := bs.manager.RotateBackups(retentionCount); rotErr != nil {
+		// Log rotation errors as warnings (non-fatal)
+		bs.mu.RLock()
+		logger := bs.logger
+		bs.mu.RUnlock()
+		if logger != nil {
+			logger.Warn(fmt.Sprintf("backup rotation warning: %v", rotErr))
+		}
 	}
+
+	// Notify callback of success (with panic recovery)
+	bs.safeCallback(backupPath, nil)
 }
 
 // TriggerBackup manually triggers a backup immediately.
@@ -138,17 +192,22 @@ func (bs *BackupScheduler) TriggerBackup() (string, error) {
 
 	bs.mu.Lock()
 	bs.lastBackup = time.Now()
-	callback := bs.onBackupComplete
 	bs.mu.Unlock()
 
 	// Perform rotation
 	retentionCount := bs.manager.GetRetentionCount()
-	_ = bs.manager.RotateBackups(retentionCount)
-
-	// Notify callback
-	if callback != nil {
-		callback(backupPath, nil)
+	if rotErr := bs.manager.RotateBackups(retentionCount); rotErr != nil {
+		// Log rotation errors as warnings (non-fatal)
+		bs.mu.RLock()
+		logger := bs.logger
+		bs.mu.RUnlock()
+		if logger != nil {
+			logger.Warn(fmt.Sprintf("backup rotation warning: %v", rotErr))
+		}
 	}
+
+	// Notify callback (with panic recovery)
+	bs.safeCallback(backupPath, nil)
 
 	return backupPath, nil
 }

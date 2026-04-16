@@ -192,8 +192,8 @@ func activate(app *gtk.Application, database *db.Database) {
 		backupHomeDir, _ := os.UserHomeDir()
 		backupDir := filepath.Join(backupHomeDir, ".config", "verbal", "backups")
 		// Use NewBackupManagerWithDB for atomic backup operations with BEGIN IMMEDIATE
-		state.backupManager = lifecycle.NewBackupManagerWithDB(dbPath, backupDir, database.GetDB())
-		state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager)
+		state.backupManager = lifecycle.NewBackupManagerWithDB(dbPath, backupDir, database.GetDB(), nil)
+		state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager, nil)
 	}
 
 	window.ConnectCloseRequest(func() (ok bool) {
@@ -1146,8 +1146,8 @@ func showBackupSettingsDialog(window *gtk.ApplicationWindow, state *appState) {
 			if state.db != nil {
 				dbConn = state.db.GetDB()
 			}
-			state.backupManager = lifecycle.NewBackupManagerWithDB(dbPath, backupDir, dbConn)
-			state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager)
+			state.backupManager = lifecycle.NewBackupManagerWithDB(dbPath, backupDir, dbConn, nil)
+			state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager, nil)
 			if enabled {
 				state.backupScheduler.Start()
 			}

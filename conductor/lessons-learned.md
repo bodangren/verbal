@@ -66,6 +66,9 @@
 - **Pre-Restore Snapshots:** Before destructive operations like restore, create a snapshot of current state. On failure, roll back to the snapshot. Clean up snapshots only after confirming success to enable recovery from late-stage errors (e.g., post-restore callbacks).
 - **Snapshot Cleanup Strategy:** Don't clean up snapshots until ALL operations succeed, including post-restore callbacks. If a callback fails, the snapshot should remain available for retry or debugging.
 - **GStreamer Pipeline Path Sanitization:** Always sanitize file paths before interpolating into GStreamer pipeline strings. Use a `quoteLocation()` function that strips newlines (`\n`, `\r`) and applies `strconv.Quote()` to prevent injection attacks.
+- **Callback Panic Recovery:** Always wrap user-provided callbacks with `defer recover()` in long-running goroutines. A panic in user code should not crash the background scheduler. Log the panic and continue operation.
+- **Logger Interface Pattern:** Define minimal logger interfaces at the package level to avoid tight coupling to specific logging implementations. This allows tests to use mock loggers and the main app to use its preferred logging framework.
+- **Constructor Logger Parameters:** Add optional logger parameters to constructors (accepting nil for backward compatibility). Use a no-op logger internally when nil is passed to avoid nil checks at every log site.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

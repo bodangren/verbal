@@ -23,7 +23,7 @@ func TestBackupManager_CreateBackup(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	backup, err := bm.CreateBackup()
 	if err != nil {
@@ -60,7 +60,7 @@ func TestBackupManager_CreateBackup_NonExistentDB(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "nonexistent.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	_, err := bm.CreateBackup()
 	if err == nil {
@@ -83,7 +83,7 @@ func TestBackupManager_ListBackups(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create multiple backups
 	backup1, _ := bm.CreateBackup()
@@ -115,7 +115,7 @@ func TestBackupManager_ListBackups_Empty(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	backups, err := bm.ListBackups()
 	if err != nil {
@@ -137,7 +137,7 @@ func TestBackupManager_RestoreBackup(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create a backup
 	backup, err := bm.CreateBackup()
@@ -171,7 +171,7 @@ func TestBackupManager_RestoreBackup_NonExistent(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	err := bm.RestoreBackup("/nonexistent/backup.db")
 	if err == nil {
@@ -189,7 +189,7 @@ func TestBackupManager_RotateBackups(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create 5 backups
 	for i := 0; i < 5; i++ {
@@ -227,7 +227,7 @@ func TestBackupManager_RotateBackups_KeepMoreThanExist(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create 2 backups
 	for i := 0; i < 2; i++ {
@@ -255,7 +255,7 @@ func TestBackupManager_GetBackupInfo(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	backup, err := bm.CreateBackup()
 	if err != nil {
@@ -289,7 +289,7 @@ func TestBackupManager_AutoBackupEnabled(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Initially disabled
 	if bm.IsAutoBackupEnabled() {
@@ -320,7 +320,7 @@ func TestCreateBackup_CreatesDirectoryWithRestrictedPermissions(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	_, err := bm.CreateBackup()
 	if err != nil {
@@ -352,7 +352,7 @@ func TestCreateBackup_CreatesFileWithRestrictedPermissions(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	backup, err := bm.CreateBackup()
 	if err != nil {
@@ -384,7 +384,7 @@ func TestCreateBackup_UsesUnderscoreTimestampFormat(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	backup, err := bm.CreateBackup()
 	if err != nil {
@@ -440,7 +440,7 @@ func TestListBackups_HandlesBothTimestampFormats(t *testing.T) {
 		t.Fatalf("Failed to create test db: %v", err)
 	}
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create a backup with new format (will use underscore)
 	backup1, err := bm.CreateBackup()
@@ -517,7 +517,7 @@ func TestCreateBackup_UsesBeginImmediateTransaction(t *testing.T) {
 	}
 
 	// Create backup manager with database connection
-	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db, nil)
 
 	// Create backup
 	backup, err := bm.CreateBackup()
@@ -568,7 +568,7 @@ func TestCreateBackup_BeginImmediateBlocksWriters(t *testing.T) {
 	}
 
 	// Create backup manager
-	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db, nil)
 
 	// Start a concurrent write operation
 	writeStarted := make(chan bool)
@@ -640,7 +640,7 @@ func TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites(t *testing.T
 	}
 
 	// Create backup manager
-	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db, nil)
 
 	// Start concurrent writes during backup
 	done := make(chan bool)
@@ -732,7 +732,7 @@ func TestCreateBackup_HandlesDatabaseLocked(t *testing.T) {
 	}
 
 	// Create backup manager with same database
-	bm := NewBackupManagerWithDB(dbPath, backupDir, db)
+	bm := NewBackupManagerWithDB(dbPath, backupDir, db, nil)
 
 	// Attempt backup while transaction holds lock
 	// Should handle gracefully (either wait or fail cleanly)
@@ -779,7 +779,7 @@ func TestCreateBackup_HandlesConcurrentBackups(t *testing.T) {
 	}
 
 	// Create two backup managers sharing the same DB connection
-	bm1 := NewBackupManagerWithDB(dbPath, backupDir, db)
+	bm1 := NewBackupManagerWithDB(dbPath, backupDir, db, nil)
 
 	// Run two backups concurrently using goroutines
 	var wg sync.WaitGroup
@@ -873,7 +873,7 @@ func TestRestoreBackupAtomic_CreatesPreRestoreSnapshot(t *testing.T) {
 	db.Close()
 
 	// Create backup manager
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create a backup
 	backupPath, err := bm.CreateBackup()
@@ -940,7 +940,7 @@ func TestRestoreBackupAtomic_UsesAtomicFileReplacement(t *testing.T) {
 	db.Close()
 
 	// Create backup manager and backup
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	backupPath, err := bm.CreateBackup()
 	if err != nil {
 		t.Fatalf("CreateBackup() error = %v", err)
@@ -1006,7 +1006,7 @@ func TestRestoreBackupAtomic_RollsBackOnFailure(t *testing.T) {
 	db.Close()
 
 	// Create backup manager
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Create a valid backup (to ensure backupDir exists)
 	_, err = bm.CreateBackup()
@@ -1064,7 +1064,7 @@ func TestRestoreBackupAtomic_CleansUpSnapshotOnSuccess(t *testing.T) {
 	db.Close()
 
 	// Create backup manager and backup
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	backupPath, err := bm.CreateBackup()
 	if err != nil {
 		t.Fatalf("CreateBackup() error = %v", err)
@@ -1108,7 +1108,7 @@ func TestRestoreBackupAtomic_Callbacks(t *testing.T) {
 	db.Close()
 
 	// Create backup manager and backup
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	backupPath, err := bm.CreateBackup()
 	if err != nil {
 		t.Fatalf("CreateBackup() error = %v", err)
@@ -1147,7 +1147,7 @@ func TestRestoreBackupAtomic_NonExistentBackup(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	nonExistentBackup := filepath.Join(tmpDir, "non-existent-backup.db")
 
 	err := bm.RestoreBackupAtomic(nonExistentBackup, RestoreOptions{}, RestoreCallbacks{})
@@ -1170,7 +1170,7 @@ func TestRestoreBackupAtomic_BeforeRestoreError(t *testing.T) {
 	db.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY)")
 	db.Close()
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	backupPath, _ := bm.CreateBackup()
 
 	// Restore with failing BeforeRestore callback
@@ -1209,7 +1209,7 @@ func TestRestoreBackupAtomic_DefaultSnapshotDir(t *testing.T) {
 	}
 	db.Close()
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 	backupPath, _ := bm.CreateBackup()
 
 	// Restore with snapshot enabled but no SnapshotDir specified (should use backupDir)
@@ -1231,7 +1231,7 @@ func TestGetBackupDir(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	got := bm.GetBackupDir()
 	if got != backupDir {
@@ -1245,7 +1245,7 @@ func TestGetDBPath(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	got := bm.GetDBPath()
 	if got != dbPath {
@@ -1259,7 +1259,7 @@ func TestAtomicFileReplace_SourceNotFound(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Try to replace with non-existent source
 	srcPath := filepath.Join(tmpDir, "nonexistent.db")
@@ -1277,7 +1277,7 @@ func TestSetRetentionCount_Boundary(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "test.db")
 	backupDir := filepath.Join(tmpDir, "backups")
 
-	bm := NewBackupManager(dbPath, backupDir)
+	bm := NewBackupManager(dbPath, backupDir, nil)
 
 	// Test setting to 0 (should clamp to 1)
 	bm.SetRetentionCount(0)
