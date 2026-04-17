@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Chore - RecordingRepository Query/Scan Refactoring** [created: 2026-04-17, started: 2026-04-17]
+  *Focus: Reduce ~200 lines of duplication in internal/db/repository.go by extracting common query/scan patterns.*
+  *Status: In Progress - Phase 1: Analysis and Design*
+  *Link: [./tracks/chore_recording_repository_refactor_20260417/](./tracks/chore_recording_repository_refactor_20260417/)*
+
 - [x] **Track: Bugfix - BackupScheduler Robustness Improvements** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
   *Focus: Fix medium-severity backup scheduler issues: panic recovery, logger integration, and error handling.*
   *Status: Complete. Added Logger interface, safeCallback() with panic recovery, replaced stderr writes with logger calls, updated all call sites.*
