@@ -101,7 +101,7 @@ func (e *SegmentExporter) exportSingleSegment(seg Segment, outputPath string) er
 		"filesrc location=%s ! decodebin name=dec "+
 			"dec. ! queue ! videoconvert ! x264enc ! queue ! "+
 			"matroskamux name=mux ! filesink location=%s "+
-			"dec. ! queue ! audioconvert ! voaacenc ! queue ! mux.",
+			"dec. ! queue ! audioconvert ! avenc_aac ! queue ! mux.",
 		escapedPath,
 		escapedOutput,
 	)

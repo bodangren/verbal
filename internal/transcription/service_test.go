@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +22,83 @@ func (m *mockProvider) Name() string { return m.name }
 
 func (m *mockProvider) Transcribe(_ context.Context, _ string) (*ai.TranscriptionResult, error) {
 	return m.result, m.err
+}
+
+func TestAudioExtractionSpecForProvider(t *testing.T) {
+	tests := []struct {
+		name      string
+		provider  ai.Provider
+		wantExt   string
+		wantEnc   string
+		wantLabel string
+	}{
+		{
+			name:      "OpenAI uses FLAC",
+			provider:  &mockProvider{name: "OpenAI"},
+			wantExt:   ".flac",
+			wantEnc:   "flacenc",
+			wantLabel: "compressed FLAC",
+		},
+		{
+			name:      "Google keeps WAV",
+			provider:  &mockProvider{name: "Google"},
+			wantExt:   ".wav",
+			wantEnc:   "wavenc",
+			wantLabel: "WAV",
+		},
+		{
+			name:      "custom provider keeps WAV",
+			provider:  &mockProvider{name: "Mock"},
+			wantExt:   ".wav",
+			wantEnc:   "wavenc",
+			wantLabel: "WAV",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := audioExtractionSpecForProvider(tt.provider)
+			if got.extension != tt.wantExt {
+				t.Fatalf("extension = %q, want %q", got.extension, tt.wantExt)
+			}
+			if got.encoder != tt.wantEnc {
+				t.Fatalf("encoder = %q, want %q", got.encoder, tt.wantEnc)
+			}
+			if got.description != tt.wantLabel {
+				t.Fatalf("description = %q, want %q", got.description, tt.wantLabel)
+			}
+		})
+	}
+}
+
+func TestBuildAudioExtractionCommandUsesGStreamer(t *testing.T) {
+	spec := audioExtractionSpec{extension: ".flac", encoder: "flacenc", description: "compressed FLAC"}
+	cmd := buildAudioExtractionCommand("/tmp/in put\r\n.mp4", "/tmp/out put.flac", spec)
+
+	if filepath.Base(cmd.Path) != "gst-launch-1.0" {
+		t.Fatalf("command = %q, want gst-launch-1.0", cmd.Path)
+	}
+
+	joined := strings.Join(cmd.Args, " ")
+	required := []string{
+		"filesrc",
+		"location=/tmp/in put.mp4",
+		"decodebin",
+		"audioconvert",
+		"audioresample",
+		"audio/x-raw,format=S16LE,channels=1,rate=16000",
+		"flacenc",
+		"filesink",
+		"location=/tmp/out put.flac",
+	}
+	for _, token := range required {
+		if !strings.Contains(joined, token) {
+			t.Fatalf("expected command args to include %q, got %v", token, cmd.Args)
+		}
+	}
+	if strings.Contains(joined, "\n") || strings.Contains(joined, "\r") {
+		t.Fatalf("command args should remove newlines: %v", cmd.Args)
+	}
 }
 
 func TestServiceTranscribeFile_Success(t *testing.T) {

@@ -41,6 +41,31 @@ func TestLibraryView_SetRecordings(t *testing.T) {
 	}
 }
 
+func TestLibraryView_SetRecordings_ReplacesExistingRows(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
+	view := NewLibraryView()
+
+	view.SetRecordings([]*db.Recording{
+		{ID: 1, FilePath: "/path/to/video1.mp4", Duration: 60 * time.Second},
+		{ID: 2, FilePath: "/path/to/video2.mp4", Duration: 120 * time.Second},
+	})
+	view.SetRecordings([]*db.Recording{
+		{ID: 3, FilePath: "/path/to/video3.mp4", Duration: 180 * time.Second},
+	})
+
+	if len(view.items) != 1 {
+		t.Fatalf("Expected 1 item after replacement, got %d", len(view.items))
+	}
+	if _, ok := view.itemsByRecording[1]; ok {
+		t.Fatal("Old recording ID 1 should not remain indexed")
+	}
+	if _, ok := view.itemsByRecording[3]; !ok {
+		t.Fatal("New recording ID 3 should be indexed")
+	}
+}
+
 func TestLibraryView_SetRecordings_Empty(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 		t.Skip("No display available")

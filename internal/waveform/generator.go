@@ -258,6 +258,12 @@ func quoteLocation(path string) string {
 	return strconv.Quote(sanitized)
 }
 
+// sanitizeLocationArg removes control characters before passing a location as a direct argv value.
+func sanitizeLocationArg(path string) string {
+	sanitized := strings.ReplaceAll(path, "\n", "")
+	return strings.ReplaceAll(sanitized, "\r", "")
+}
+
 func init() {
 	gst.Init()
 }

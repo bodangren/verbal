@@ -6,6 +6,26 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Bugfix - Transcription Result Usability and Persistence** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
+  *Focus: Make completed transcription timing data discoverable, keep the playback window usable on laptop screens, and reload saved transcription results.*
+  *Status: Complete. Timed words use a labeled scrolled view, the main window defaults to resizable 1000x640, and saved `.meta.json` transcriptions reload on reopen.*
+  *Link: [./tracks/bugfix_transcription_timing_view_20260417/](./tracks/bugfix_transcription_timing_view_20260417/)*
+
+- [x] **Track: Bugfix - Transcription Max Retries Diagnostic Failure** [created: 2026-04-17, started: 2026-04-17, reopened: 2026-04-17, completed: 2026-04-17]
+  *Focus: Fix transcription failures surfacing only as generic `max retries exceeded`, and make provider/network/API failures diagnosable from the UI and metadata.*
+  *Status: Complete. OpenAI video transcription now uses GStreamer-extracted compressed FLAC plus local 25 MB upload preflight; provider errors remain copyable with retry context.*
+  *Link: [./tracks/bugfix_transcription_retry_diagnostics_20260417/](./tracks/bugfix_transcription_retry_diagnostics_20260417/)*
+
+- [x] **Track: Bugfix - MP4 File Open Does Not Load Playback** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
+  *Focus: Fix the manual QA blocker where selecting an MP4 in the open file dialog returns but does not load anything into the app.*
+  *Status: Complete. Open-file dialog now switches to playback, shows a loaded-file fallback widget, and playback pipeline paths are quoted for GStreamer.*
+  *Link: [./tracks/bugfix_mp4_open_load_20260417/](./tracks/bugfix_mp4_open_load_20260417/)*
+
+- [x] **Track: Chore - Manual Test Readiness and Project Status Audit** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
+  *Focus: Reconcile current project status, run automated verification, and produce a manual QA checklist for the Linux/GNOME app surface.*
+  *Status: Complete. Full tests, build, vet, smoke check, and bounded GTK launch pass; manual QA checklist documented in plan.md.*
+  *Link: [./tracks/chore_manual_test_readiness_20260417/](./tracks/chore_manual_test_readiness_20260417/)*
+
 - [x] **Track: Chore - RecordingRepository Query/Scan Refactoring** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
   *Focus: Reduce ~200 lines of duplication in internal/db/repository.go by extracting common query/scan patterns.*
   *Status: Complete. Extracted scanRecording() helper and recordingColumns constant. Reduced 531 lines to 422 lines (-109 lines). All 43 tests pass.*

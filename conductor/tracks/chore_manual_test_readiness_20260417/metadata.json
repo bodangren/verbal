@@ -1,0 +1,10 @@
+{
+  "id": "chore_manual_test_readiness_20260417",
+  "title": "Manual Test Readiness and Project Status Audit",
+  "type": "chore",
+  "status": "complete",
+  "created": "2026-04-17",
+  "started": "2026-04-17",
+  "completed": "2026-04-17",
+  "focus": "Reconcile current project status, run automated verification, and produce a manual QA checklist for the Linux/GNOME app surface."
+}

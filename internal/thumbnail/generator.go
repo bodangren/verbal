@@ -110,7 +110,20 @@ func (g *Generator) Generate(filePath string) (*Image, error) {
 		g.config.Height,
 		g.config.JPEGQuality,
 	); err != nil {
-		return nil, fmt.Errorf("extract thumbnail frame: %w", err)
+		if !errors.Is(err, ErrSeekFailed) || seekPosition == 0 {
+			return nil, fmt.Errorf("extract thumbnail frame: %w", err)
+		}
+
+		if retryErr := g.extractor.ExtractFrameToFile(
+			filePath,
+			0,
+			tmpPath,
+			g.config.Width,
+			g.config.Height,
+			g.config.JPEGQuality,
+		); retryErr != nil {
+			return nil, fmt.Errorf("extract thumbnail frame: %w (fallback to first frame failed: %v)", err, retryErr)
+		}
 	}
 
 	imageBytes, err := os.ReadFile(tmpPath)

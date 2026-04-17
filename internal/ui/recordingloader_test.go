@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"verbal/internal/ai"
+	"verbal/internal/transcription"
 )
 
 func TestRecordingLoader_LoadRecording(t *testing.T) {
@@ -29,7 +30,7 @@ func TestRecordingLoader_LoadRecordingWithTranscription(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := t.TempDir()
 	videoPath := filepath.Join(tempDir, "test_video.mkv")
-	metaPath := filepath.Join(tempDir, "test_video.json")
+	metaPath := videoPath + ".meta.json"
 
 	// Create a dummy video file
 	err := os.WriteFile(videoPath, []byte("dummy video content"), 0644)
@@ -37,20 +38,16 @@ func TestRecordingLoader_LoadRecordingWithTranscription(t *testing.T) {
 		t.Fatalf("Failed to create test video file: %v", err)
 	}
 
-	// Create a metadata file with transcription
-	metaContent := `{
-		"video_file": "test_video.mkv",
-		"duration_ms": 5000,
-		"transcription": {
-			"text": "Hello world",
-			"words": [
-				{"text": "Hello", "start": 0.0, "end": 0.5},
-				{"text": "world", "start": 0.6, "end": 1.0}
-			]
-		}
-	}`
-	err = os.WriteFile(metaPath, []byte(metaContent), 0644)
-	if err != nil {
+	meta := transcription.NewRecordingMetadata(videoPath)
+	meta.SetTranscription(&ai.TranscriptionResult{
+		Text:     "Hello world",
+		Duration: 5,
+		Words: []ai.Word{
+			{Text: "Hello", Start: 0.0, End: 0.5},
+			{Text: "world", Start: 0.6, End: 1.0},
+		},
+	})
+	if err := meta.Save(); err != nil {
 		t.Fatalf("Failed to create test metadata file: %v", err)
 	}
 
@@ -74,6 +71,9 @@ func TestRecordingLoader_LoadRecordingWithTranscription(t *testing.T) {
 	}
 	if result.Transcription == nil {
 		t.Error("Expected Transcription to be loaded")
+	}
+	if result.Transcription.Text != "Hello world" {
+		t.Fatalf("Expected transcription text to reload, got %q", result.Transcription.Text)
 	}
 }
 
@@ -150,15 +150,15 @@ func TestRecordingLoader_GetMetadataPath(t *testing.T) {
 	}{
 		{
 			videoPath: "/path/to/video.mkv",
-			expected:  "/path/to/video.json",
+			expected:  "/path/to/video.mkv.meta.json",
 		},
 		{
 			videoPath: "video.mp4",
-			expected:  "video.json",
+			expected:  "video.mp4.meta.json",
 		},
 		{
 			videoPath: "/my/recording.webm",
-			expected:  "/my/recording.json",
+			expected:  "/my/recording.webm.meta.json",
 		},
 	}
 
@@ -170,11 +170,48 @@ func TestRecordingLoader_GetMetadataPath(t *testing.T) {
 	}
 }
 
+func TestRecordingLoader_LoadRecordingWithLegacyTranscription(t *testing.T) {
+	tempDir := t.TempDir()
+	videoPath := filepath.Join(tempDir, "legacy_video.mkv")
+	metaPath := filepath.Join(tempDir, "legacy_video.json")
+
+	if err := os.WriteFile(videoPath, []byte("dummy video content"), 0644); err != nil {
+		t.Fatalf("Failed to create test video file: %v", err)
+	}
+
+	metaContent := `{
+		"video_file": "legacy_video.mkv",
+		"duration_ms": 5000,
+		"transcription": {
+			"text": "Legacy text",
+			"words": [
+				{"text": "Legacy", "start": 0.0, "end": 0.5},
+				{"text": "text", "start": 0.6, "end": 1.0}
+			]
+		}
+	}`
+	if err := os.WriteFile(metaPath, []byte(metaContent), 0644); err != nil {
+		t.Fatalf("Failed to create legacy metadata file: %v", err)
+	}
+
+	loader := NewRecordingLoader()
+	result := loader.LoadRecording(videoPath)
+
+	if !result.HasTranscription {
+		t.Fatal("Expected legacy metadata to load transcription")
+	}
+	if result.MetadataPath != metaPath {
+		t.Fatalf("MetadataPath = %q, want %q", result.MetadataPath, metaPath)
+	}
+	if result.Transcription.Text != "Legacy text" {
+		t.Fatalf("Text = %q, want Legacy text", result.Transcription.Text)
+	}
+}
+
 func TestRecordingLoader_LoadRecordingResult_HasWordData(t *testing.T) {
 	// Create a temporary directory for test files
 	tempDir := t.TempDir()
 	videoPath := filepath.Join(tempDir, "test_video.mkv")
-	metaPath := filepath.Join(tempDir, "test_video.json")
 
 	// Create a dummy video file
 	err := os.WriteFile(videoPath, []byte("dummy"), 0644)
@@ -182,21 +219,17 @@ func TestRecordingLoader_LoadRecordingResult_HasWordData(t *testing.T) {
 		t.Fatalf("Failed to create test video file: %v", err)
 	}
 
-	// Create metadata with word-level transcription
-	metaContent := `{
-		"video_file": "test_video.mkv",
-		"duration_ms": 5000,
-		"transcription": {
-			"text": "Hello world test",
-			"words": [
-				{"text": "Hello", "start": 0.0, "end": 0.5},
-				{"text": "world", "start": 0.6, "end": 1.0},
-				{"text": "test", "start": 1.1, "end": 1.5}
-			]
-		}
-	}`
-	err = os.WriteFile(metaPath, []byte(metaContent), 0644)
-	if err != nil {
+	meta := transcription.NewRecordingMetadata(videoPath)
+	meta.SetTranscription(&ai.TranscriptionResult{
+		Text:     "Hello world test",
+		Duration: 5,
+		Words: []ai.Word{
+			{Text: "Hello", Start: 0.0, End: 0.5},
+			{Text: "world", Start: 0.6, End: 1.0},
+			{Text: "test", Start: 1.1, End: 1.5},
+		},
+	})
+	if err := meta.Save(); err != nil {
 		t.Fatalf("Failed to create test metadata file: %v", err)
 	}
 
@@ -220,6 +253,9 @@ func TestRecordingLoader_LoadRecordingResult_HasWordData(t *testing.T) {
 		}
 		if word.StartTime != 0.0 {
 			t.Errorf("Expected first word start 0.0, got %f", word.StartTime)
+		}
+		if word.EndTime != 0.5 {
+			t.Errorf("Expected first word end 0.5, got %f", word.EndTime)
 		}
 	}
 }

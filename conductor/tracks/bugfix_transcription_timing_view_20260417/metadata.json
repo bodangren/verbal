@@ -1,0 +1,10 @@
+{
+  "id": "bugfix_transcription_timing_view_20260417",
+  "title": "Transcription Result Usability and Persistence",
+  "type": "bugfix",
+  "status": "complete",
+  "created": "2026-04-17",
+  "started": "2026-04-17",
+  "completed": "2026-04-17",
+  "focus": "Make completed transcription timing data discoverable, keep the playback window usable on laptop screens, and reload saved transcription results."
+}

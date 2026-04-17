@@ -13,7 +13,10 @@ type fakeExtractor struct {
 	duration         time.Duration
 	probeErr         error
 	extractErr       error
+	extractErrs      []error
+	extractCalls     int
 	lastSeekPosition time.Duration
+	seekPositions    []time.Duration
 	lastWidth        int
 	lastHeight       int
 	lastJPEGQuality  int
@@ -29,6 +32,15 @@ func (f *fakeExtractor) ProbeDuration(string) (time.Duration, error) {
 }
 
 func (f *fakeExtractor) ExtractFrameToFile(_ string, seekPosition time.Duration, outputPath string, width, height, jpegQuality int) error {
+	f.extractCalls++
+	f.seekPositions = append(f.seekPositions, seekPosition)
+	if len(f.extractErrs) > 0 {
+		err := f.extractErrs[0]
+		f.extractErrs = f.extractErrs[1:]
+		if err != nil {
+			return err
+		}
+	}
 	if f.extractErr != nil {
 		return f.extractErr
 	}
@@ -93,6 +105,40 @@ func TestGenerator_Generate_ErrorPropagation(t *testing.T) {
 	_, err := gen.Generate(videoPath)
 	if err == nil {
 		t.Fatal("Expected Generate() to fail when duration probing fails")
+	}
+}
+
+func TestGenerator_Generate_FallsBackToFirstFrameWhenSeekFails(t *testing.T) {
+	tmpDir := t.TempDir()
+	videoPath := filepath.Join(tmpDir, "video.mp4")
+	if err := os.WriteFile(videoPath, []byte("dummy"), 0o644); err != nil {
+		t.Fatalf("write video fixture: %v", err)
+	}
+
+	extractor := &fakeExtractor{
+		duration:    2 * time.Second,
+		extractErrs: []error{ErrSeekFailed, nil},
+	}
+	gen := NewGeneratorWithExtractor(DefaultGeneratorConfig(), extractor)
+
+	image, err := gen.Generate(videoPath)
+	if err != nil {
+		t.Fatalf("Generate() should fall back to first frame after seek failure: %v", err)
+	}
+	if image == nil {
+		t.Fatal("Generate() returned nil image")
+	}
+	if extractor.extractCalls != 2 {
+		t.Fatalf("Expected 2 extraction attempts, got %d", extractor.extractCalls)
+	}
+	if len(extractor.seekPositions) != 2 {
+		t.Fatalf("Expected 2 seek positions, got %d", len(extractor.seekPositions))
+	}
+	if extractor.seekPositions[0] != time.Second {
+		t.Fatalf("Expected first attempt at 1s, got %v", extractor.seekPositions[0])
+	}
+	if extractor.seekPositions[1] != 0 {
+		t.Fatalf("Expected fallback attempt at first frame, got %v", extractor.seekPositions[1])
 	}
 }
 

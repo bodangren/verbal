@@ -43,6 +43,10 @@ func NewEditableTranscriptionView() *EditableTranscriptionView {
 
 	titleLabel := gtk.NewLabel("Transcription Result")
 	titleLabel.AddCSSClass("title-label")
+	titleLabel.SetWrap(true)
+	titleLabel.SetSelectable(true)
+	titleLabel.SetMaxWidthChars(72)
+	titleLabel.SetXAlign(0)
 
 	buffer := gtk.NewTextBuffer(nil)
 	textView := gtk.NewTextViewWithBuffer(buffer)
@@ -58,14 +62,19 @@ func NewEditableTranscriptionView() *EditableTranscriptionView {
 
 	stack := gtk.NewStack()
 	stack.AddNamed(scrolled, "text")
-	stack.AddNamed(wordContainer.Widget(), "words")
+
+	wordScrolled := gtk.NewScrolledWindow()
+	wordScrolled.SetChild(wordContainer.Widget())
+	wordScrolled.SetVExpand(true)
+	wordScrolled.SetSizeRequest(-1, 160)
+	stack.AddNamed(wordScrolled, "words")
 	stack.SetVisibleChildName("text")
 
 	toolbar := gtk.NewBox(gtk.OrientationHorizontal, 4)
 	toolbar.AddCSSClass("transcription-toolbar")
 
-	selectButton := gtk.NewButtonFromIconName("edit-select-symbolic")
-	selectButton.SetTooltipText("Select segments for export")
+	selectButton := gtk.NewButtonWithLabel("Word timings")
+	selectButton.SetTooltipText("Show word timings and select ranges for export")
 	selectButton.AddCSSClass("flat")
 
 	clearSelButton := gtk.NewButtonFromIconName("edit-clear-symbolic")
@@ -161,13 +170,7 @@ func (v *EditableTranscriptionView) SetResult(result *ai.TranscriptionResult) {
 			Index:     i,
 		}
 	}
-	v.wordContainer = NewWordContainer(wordData)
-	// Remove old words-view if it exists, then add new one
-	oldChild := v.stack.ChildByName("words-view")
-	if oldChild != nil {
-		v.stack.Remove(oldChild)
-	}
-	v.stack.AddNamed(v.wordContainer.Widget(), "words-view")
+	v.wordContainer.SetWords(wordData)
 }
 
 // SetStatus updates the title with a status message.
@@ -179,7 +182,9 @@ func (v *EditableTranscriptionView) SetStatus(status string) {
 // SetError displays an error message.
 func (v *EditableTranscriptionView) SetError(err error) {
 	v.box.SetVisible(true)
-	v.titleLabel.SetText(fmt.Sprintf("Error: %v", err))
+	v.titleLabel.SetText("Transcription Error")
+	v.buffer.SetText(fmt.Sprintf("%v", err))
+	v.stack.SetVisibleChildName("text")
 }
 
 // Show makes the view visible.
@@ -211,6 +216,11 @@ func (v *EditableTranscriptionView) GetText() string {
 // GetWords returns the word-level transcription data.
 func (v *EditableTranscriptionView) GetWords() []ai.Word {
 	return v.words
+}
+
+// GetWordContainer returns the populated word timing container used by this view.
+func (v *EditableTranscriptionView) GetWordContainer() *WordContainer {
+	return v.wordContainer
 }
 
 // GetSelectedSegments returns the currently selected word segments.

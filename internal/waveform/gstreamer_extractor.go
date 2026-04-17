@@ -61,17 +61,16 @@ func (e *GStreamerExtractor) Extract(filePath string) ([]float64, error) {
 
 // runExtractionPipeline executes a GStreamer pipeline to extract raw audio.
 func (e *GStreamerExtractor) runExtractionPipeline(inputPath, outputPath string) error {
-	// Build gst-launch-1.0 command
-	// Pipeline: filesrc -> decodebin -> audioconvert -> audioresample -> raw audio output
-	pipeline := fmt.Sprintf(
-		"filesrc location=%s ! decodebin ! audioconvert ! audioresample ! "+
-			"audio/x-raw,format=S16LE,channels=1,rate=%d ! filesink location=%s",
-		quoteLocation(inputPath),
-		e.config.TargetSampleRate,
-		quoteLocation(outputPath),
+	// Pass each pipeline token as a separate argv entry so paths are not parsed by a shell.
+	cmd := exec.Command(
+		"gst-launch-1.0",
+		"filesrc", "location="+sanitizeLocationArg(inputPath),
+		"!", "decodebin",
+		"!", "audioconvert",
+		"!", "audioresample",
+		"!", fmt.Sprintf("audio/x-raw,format=S16LE,channels=1,rate=%d", e.config.TargetSampleRate),
+		"!", "filesink", "location="+sanitizeLocationArg(outputPath),
 	)
-
-	cmd := exec.Command("gst-launch-1.0", pipeline)
 
 	// Set timeout for the command
 	done := make(chan error, 1)

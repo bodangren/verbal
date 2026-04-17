@@ -62,7 +62,7 @@ func NewGoogleProvider(apiKey string) *GoogleProvider {
 		apiKey:  apiKey,
 		baseURL: "https://speech.googleapis.com",
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: defaultProviderHTTPTimeout,
 		},
 		maxRetries: 3,
 	}
@@ -139,10 +139,13 @@ func (p *GoogleProvider) Transcribe(ctx context.Context, audioPath string) (*Tra
 		}
 
 		if resp.StatusCode >= 400 {
-			classified := ClassifyHTTPError("Google", resp.StatusCode, string(respBody))
-			if IsRetryable(classified) && attempt < p.maxRetries {
+			classified := ClassifyHTTPErrorWithRequestID("Google", resp.StatusCode, string(respBody), resp.Header.Get("x-request-id"))
+			if IsRetryable(classified) {
 				lastErr = classified
-				continue
+				if attempt < p.maxRetries {
+					continue
+				}
+				return nil, fmt.Errorf("Google request failed after %d attempt(s): %w", p.maxRetries+1, lastErr)
 			}
 			return nil, classified
 		}
@@ -155,7 +158,7 @@ func (p *GoogleProvider) Transcribe(ctx context.Context, audioPath string) (*Tra
 		return convertGoogleResponse(&result), nil
 	}
 
-	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+	return nil, fmt.Errorf("Google request failed after %d attempt(s): %w", p.maxRetries+1, lastErr)
 }
 
 func convertGoogleResponse(resp *googleResponse) *TranscriptionResult {

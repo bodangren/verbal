@@ -3,6 +3,7 @@ package media
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +27,42 @@ func TestNewPlaybackPipeline(t *testing.T) {
 
 	if pipeline.GetState() != StateStopped {
 		t.Errorf("Expected initial state Stopped, got %s", pipeline.GetState())
+	}
+}
+
+func TestNewPlaybackPipeline_PathWithSpaces(t *testing.T) {
+	tmpDir := t.TempDir()
+	spacedDir := filepath.Join(tmpDir, "folder with spaces")
+	if err := os.MkdirAll(spacedDir, 0o755); err != nil {
+		t.Fatalf("Failed to create spaced directory: %v", err)
+	}
+	testFile := filepath.Join(spacedDir, "sample video.mp4")
+
+	if err := os.WriteFile(testFile, []byte{}, 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	pipeline, err := NewPlaybackPipeline(testFile)
+	if err != nil {
+		t.Fatalf("NewPlaybackPipeline failed for path with spaces: %v", err)
+	}
+	defer pipeline.Close()
+
+	if pipeline.FilePath() != testFile {
+		t.Errorf("Expected file path %s, got %s", testFile, pipeline.FilePath())
+	}
+}
+
+func TestQuotePipelineLocation(t *testing.T) {
+	result := quotePipelineLocation("/tmp/a file\nwith\rcontrols.mp4")
+	if !strings.HasPrefix(result, "\"") || !strings.HasSuffix(result, "\"") {
+		t.Fatalf("quotePipelineLocation should return a quoted string, got %q", result)
+	}
+	if strings.Contains(result, "\n") || strings.Contains(result, "\r") {
+		t.Fatalf("quotePipelineLocation should remove control characters, got %q", result)
+	}
+	if !strings.Contains(result, "a filewithcontrols.mp4") {
+		t.Fatalf("quotePipelineLocation sanitized path unexpectedly: %q", result)
 	}
 }
 

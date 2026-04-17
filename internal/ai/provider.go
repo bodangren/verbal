@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 )
+
+const defaultProviderHTTPTimeout = 5 * time.Minute
 
 // Provider defines the interface for AI services (OpenAI, Google, etc.)
 type Provider interface {

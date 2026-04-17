@@ -1,0 +1,10 @@
+{
+  "id": "bugfix_transcription_retry_diagnostics_20260417",
+  "title": "Transcription Max Retries Diagnostic Failure",
+  "type": "bugfix",
+  "status": "complete",
+  "created": "2026-04-17",
+  "started": "2026-04-17",
+  "completed": "2026-04-17",
+  "focus": "Fix transcription failures surfacing only as generic max retries exceeded, and make provider/network/API failures diagnosable from the UI and metadata."
+}

@@ -24,6 +24,10 @@ func NewTranscriptionView() *TranscriptionView {
 
 	label := gtk.NewLabel("Transcription Result")
 	label.AddCSSClass("title-label")
+	label.SetWrap(true)
+	label.SetSelectable(true)
+	label.SetMaxWidthChars(72)
+	label.SetXAlign(0)
 
 	buffer := gtk.NewTextBuffer(nil)
 	text := gtk.NewTextViewWithBuffer(buffer)
@@ -70,7 +74,8 @@ func (v *TranscriptionView) SetStatus(status string) {
 // The error will be shown in the label area.
 func (v *TranscriptionView) SetError(err error) {
 	v.box.SetVisible(true)
-	v.label.SetText(fmt.Sprintf("Error: %v", err))
+	v.label.SetText("Transcription Error")
+	v.buffer.SetText(fmt.Sprintf("%v", err))
 }
 
 // Show makes the transcription view visible.

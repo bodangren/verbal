@@ -1,0 +1,10 @@
+{
+  "id": "bugfix_mp4_open_load_20260417",
+  "title": "MP4 File Open Does Not Load Playback",
+  "type": "bugfix",
+  "status": "complete",
+  "created": "2026-04-17",
+  "started": "2026-04-17",
+  "completed": "2026-04-17",
+  "focus": "Fix the manual QA blocker where selecting an MP4 in the open file dialog returns but does not load anything into the app."
+}

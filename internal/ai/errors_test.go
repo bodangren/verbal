@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -46,6 +47,22 @@ func TestServerError_Type(t *testing.T) {
 	}
 	if err.Error() == "" {
 		t.Error("ServerError.Error() should not be empty")
+	}
+}
+
+func TestServerError_IncludesRequestID(t *testing.T) {
+	err := &ServerError{
+		Provider:   "OpenAI",
+		StatusCode: 500,
+		Message:    "empty response body",
+		RequestID:  "req_test_123",
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "request_id=req_test_123") {
+		t.Fatalf("expected request ID in error, got %q", msg)
+	}
+	if !strings.Contains(msg, "empty response body") {
+		t.Fatalf("expected body placeholder in error, got %q", msg)
 	}
 }
 
@@ -143,6 +160,20 @@ func TestClassifyHTTPError_Unrecognized(t *testing.T) {
 	var server *ServerError
 	if errors.As(err, &auth) || errors.As(err, &rate) || errors.As(err, &server) {
 		t.Error("unrecognized status code should return generic error")
+	}
+}
+
+func TestClassifyHTTPErrorWithRequestID_EmptyBody(t *testing.T) {
+	err := ClassifyHTTPErrorWithRequestID("OpenAI", http.StatusInternalServerError, " \n\t ", "req_empty_body")
+	var serverErr *ServerError
+	if !errors.As(err, &serverErr) {
+		t.Fatalf("expected ServerError, got %T: %v", err, err)
+	}
+	if serverErr.Message != "empty response body" {
+		t.Fatalf("Message = %q, want empty response body", serverErr.Message)
+	}
+	if serverErr.RequestID != "req_empty_body" {
+		t.Fatalf("RequestID = %q, want req_empty_body", serverErr.RequestID)
 	}
 }
 

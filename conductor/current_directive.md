@@ -1,90 +1,38 @@
-# Current Directive: RecordingRepository Query/Scan Refactoring
+# Current Directive: Transcription Result Usability and Persistence
 
-## Status: COMPLETE ✓
+## Status: COMPLETE
 
-**Track:** Chore - RecordingRepository Query/Scan Refactoring  
+**Track:** Bugfix - Transcription Result Usability and Persistence  
 **Started:** 2026-04-17  
 **Completed:** 2026-04-17  
-**Focus:** Reduce duplication in `internal/db/repository.go` by extracting common query/scan patterns.
+**Focus:** Make completed transcription timing data discoverable, keep the playback window usable on laptop screens, and reload saved transcription results.
 
 ---
 
 ## Summary
 
-Successfully refactored `internal/db/repository.go` to eliminate ~109 lines of duplicated code across 6 methods:
-- `GetByID`
-- `GetByPathExact`
-- `List`
-- `ListRecent`
-- `SearchByTranscription`
-- `SearchByPath`
+Manual QA confirmed transcription now completes and text appears, but timings are not clear. The window can be taller than the laptop screen and effectively not resizable. Completed transcriptions also disappear after close/reopen.
 
----
+Code inspection shows `EditableTranscriptionView.SetResult` populates a new stack child named `words-view`, while the toolbar toggles the existing child named `words`, leaving the actual timed words hard to discover or unreachable. The persistence bug is a path/schema mismatch: save writes `<video>.meta.json`, while reload reads `<video-without-ext>.json`.
 
-## Completed Work
+## Resolution
 
-### Phase 1: Analysis and Design
-- [x] Analyzed all 6 methods to identify common patterns
-- [x] Designed helper function signatures
+- Added focused UI/load tests for timing view and metadata reload behavior.
+- Wired completed transcription words into the stack child that the toolbar uses.
+- Replaced the unlabeled icon timing control with `Word timings`.
+- Wrapped the timed words view in a scroller so long transcripts do not force excessive window height.
+- Main window defaults to 1000x640 and is explicitly resizable.
+- `RecordingLoader` now loads saved `<video>.meta.json` transcription metadata, with legacy `<video-without-ext>.json` fallback.
 
-### Phase 2: Extract Scan Helper
-- [x] Created `scanner` interface for abstraction
-- [x] Created `recordingColumns` constant
-- [x] Created `scanRecording()` helper for single rows
-- [x] Created `scanRecordings()` helper for slices
+## Verification
 
-### Phase 3: Refactor Query Methods
-- [x] Refactored all 6 methods to use helpers
-- [x] Verified all existing tests pass
+- `go test ./internal/ui ./cmd/verbal -count=1` - pass.
+- `go test ./... -count=1` - pass.
+- `go build ./...` - pass.
+- `go vet ./...` - pass.
+- `go run ./cmd/verbal --smoke-check` - pass.
+- `timeout 10s go run ./cmd/verbal` - stayed alive until timeout with no warning output.
 
-### Phase 4: Build and Test Verification
-- [x] Full test suite pass (43 tests)
-- [x] Race detector pass
-- [x] Build pass
-- [x] Linter pass
-- [x] **Net reduction: 109 lines** (531 → 422)
+## Manual Retest
 
-### Phase 5: Documentation
-- [x] Updated tech-debt.md
-- [x] Updated tracks.md
-- [x] Updated lessons-learned.md
-
----
-
-## Key Pattern: SQL Scan Helper
-
-```go
-// scanner interface abstracts sql.Row and sql.Rows
-type scanner interface {
-    Scan(dest ...interface{}) error
-}
-
-// Constant for column list
-const recordingColumns = `id, file_path, duration, ...`
-
-// Helper for single row
-func scanRecording(s scanner) (*Recording, error) { ... }
-
-// Helper for multiple rows
-func scanRecordings(rows *sql.Rows) ([]*Recording, error) { ... }
-```
-
----
-
-## Quality Metrics
-- Line reduction: 109 lines (-20.5%)
-- Test coverage: Maintained (43 tests pass)
-- Race detector: Pass
-- Build: Pass
-- Linter: Pass
-
----
-
-## Next Steps
-
-All work for this track is complete. The repository layer now uses:
-- Centralized column list constant
-- Reusable scan helpers
-- DRY query methods
-
-See tech-debt.md for remaining items.
+Complete a transcription, use `Word timings`, close and reopen the same file, and confirm the transcript plus timing data reload. The window should fit better on a laptop and be resizable.

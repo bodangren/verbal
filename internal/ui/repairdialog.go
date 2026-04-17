@@ -386,11 +386,16 @@ func (rd *RepairDialog) UpdateProgress(percent int, message string) {
 
 // SetRepairingState sets the dialog to repairing state (disables controls).
 func (rd *RepairDialog) SetRepairingState(repairing bool) {
+	hasInspectionReport := rd.inspectionReport != nil
+	hasOrphans := hasInspectionReport && len(rd.inspectionReport.OrphanedRecordings) > 0
+	hasMissingThumbnails := hasInspectionReport && len(rd.inspectionReport.MissingThumbnails) > 0
+	hasRepairableIssues := hasInspectionReport && rd.inspectionReport.TotalIssues > 0
+
 	rd.scanButton.SetSensitive(!repairing)
-	rd.orphanCheck.SetSensitive(!repairing && len(rd.inspectionReport.OrphanedRecordings) > 0)
-	rd.thumbnailCheck.SetSensitive(!repairing && len(rd.inspectionReport.MissingThumbnails) > 0)
-	rd.unavailableCheck.SetSensitive(!repairing)
-	rd.repairButton.SetSensitive(!repairing)
+	rd.orphanCheck.SetSensitive(!repairing && hasOrphans)
+	rd.thumbnailCheck.SetSensitive(!repairing && hasMissingThumbnails)
+	rd.unavailableCheck.SetSensitive(!repairing && hasInspectionReport)
+	rd.repairButton.SetSensitive(!repairing && hasRepairableIssues)
 }
 
 // onScanClicked handles the scan button click.

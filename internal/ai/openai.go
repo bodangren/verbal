@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -26,6 +27,8 @@ type openAIResponse struct {
 	Words    []openAIWord `json:"words"`
 }
 
+const maxOpenAIAudioUploadBytes int64 = 25 * 1024 * 1024
+
 type OpenAIProvider struct {
 	apiKey     string
 	baseURL    string
@@ -38,7 +41,7 @@ func NewOpenAIProvider(apiKey string) *OpenAIProvider {
 		apiKey:  apiKey,
 		baseURL: "https://api.openai.com",
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: defaultProviderHTTPTimeout,
 		},
 		maxRetries: 3,
 	}
@@ -56,6 +59,14 @@ func NewOpenAIProviderWithClient(apiKey string, client *http.Client) *OpenAIProv
 func (p *OpenAIProvider) Name() string { return "OpenAI" }
 
 func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
+	info, err := os.Stat(audioPath)
+	if err != nil {
+		return nil, fmt.Errorf("stat audio file: %w", err)
+	}
+	if info.Size() > maxOpenAIAudioUploadBytes {
+		return nil, fmt.Errorf("audio file is %.1f MB, exceeds OpenAI Audio API 25 MB limit; use a shorter recording or compressed audio", float64(info.Size())/(1024*1024))
+	}
+
 	file, err := os.Open(audioPath)
 	if err != nil {
 		return nil, fmt.Errorf("open audio file: %w", err)
@@ -65,7 +76,7 @@ func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*Tra
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 
-	part, err := writer.CreateFormFile("file", audioPath)
+	part, err := writer.CreateFormFile("file", filepath.Base(audioPath))
 	if err != nil {
 		return nil, fmt.Errorf("create form file: %w", err)
 	}
@@ -116,10 +127,13 @@ func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*Tra
 		}
 
 		if resp.StatusCode >= 400 {
-			classified := ClassifyHTTPError("OpenAI", resp.StatusCode, string(respBody))
-			if IsRetryable(classified) && attempt < p.maxRetries {
+			classified := ClassifyHTTPErrorWithRequestID("OpenAI", resp.StatusCode, string(respBody), resp.Header.Get("x-request-id"))
+			if IsRetryable(classified) {
 				lastErr = classified
-				continue
+				if attempt < p.maxRetries {
+					continue
+				}
+				return nil, fmt.Errorf("OpenAI request failed after %d attempt(s): %w", p.maxRetries+1, lastErr)
 			}
 			return nil, classified
 		}
@@ -137,7 +151,7 @@ func (p *OpenAIProvider) Transcribe(ctx context.Context, audioPath string) (*Tra
 		}, nil
 	}
 
-	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+	return nil, fmt.Errorf("OpenAI request failed after %d attempt(s): %w", p.maxRetries+1, lastErr)
 }
 
 func convertOpenAIWords(words []openAIWord) []Word {

@@ -108,7 +108,7 @@ func buildHardwareRecordingPipeline(outputPath string, config RecordingConfig) s
 		"v4l2src device=%s ! video/x-raw,width=640,height=480,framerate=30/1 ! "+
 			"videoconvert ! x264enc tune=zerolatency ! mp4mux name=mux ! "+
 			"filesink location=%s "+
-			"autoaudiosrc ! audioconvert ! audioresample ! voaacenc ! mux.",
+			"autoaudiosrc ! audioconvert ! audioresample ! avenc_aac ! mux.",
 		config.VideoDevice,
 		outputPath,
 	)

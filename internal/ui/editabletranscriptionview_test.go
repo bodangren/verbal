@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"testing"
 
 	"verbal/internal/ai"
@@ -175,6 +176,50 @@ func TestEditableTranscriptionView_SetResult(t *testing.T) {
 	words := view.GetWords()
 	if len(words) != 2 {
 		t.Errorf("Expected 2 words, got %d", len(words))
+	}
+	if view.wordContainer.GetWordCount() != 2 {
+		t.Errorf("Expected populated word timing view to contain 2 words, got %d", view.wordContainer.GetWordCount())
+	}
+	if view.stack.ChildByName("words-view") != nil {
+		t.Fatal("SetResult should not add a detached words-view stack child")
+	}
+	if view.selectButton.Label() != "Word timings" {
+		t.Fatalf("Expected visible timing toggle label, got %q", view.selectButton.Label())
+	}
+	if view.stack.VisibleChildName() != "text" {
+		t.Fatalf("Expected transcript text to remain the default view, got %q", view.stack.VisibleChildName())
+	}
+
+	view.stack.SetVisibleChildName("words")
+	if view.stack.VisibleChildName() != "words" {
+		t.Fatalf("Expected words stack child to be selectable, got %q", view.stack.VisibleChildName())
+	}
+}
+
+func TestEditableTranscriptionView_SetErrorShowsCopyableScrollableText(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+
+	view := NewEditableTranscriptionView()
+	longErr := errors.New("transcription failed: OpenAI request failed after 4 attempt(s): context deadline exceeded (Client.Timeout exceeded while awaiting headers)")
+
+	view.SetError(longErr)
+
+	if view.titleLabel.Text() != "Transcription Error" {
+		t.Fatalf("Expected title to be Transcription Error, got %q", view.titleLabel.Text())
+	}
+	if !view.titleLabel.Wrap() {
+		t.Fatal("Expected error title label to wrap")
+	}
+	if !view.titleLabel.Selectable() {
+		t.Fatal("Expected error title label to be selectable")
+	}
+	if got := view.GetText(); got != longErr.Error() {
+		t.Fatalf("Expected full error in text buffer, got %q", got)
+	}
+	if view.stack.VisibleChildName() != "text" {
+		t.Fatalf("Expected text stack visible for error details, got %q", view.stack.VisibleChildName())
 	}
 }
 

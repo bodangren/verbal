@@ -2,6 +2,8 @@ package media
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
@@ -58,7 +60,7 @@ func NewPlaybackPipeline(filePath string) (*PlaybackPipeline, error) {
 		"filesrc location=%s ! decodebin name=dec "+
 			"dec. ! queue ! videoconvert ! autovideosink "+
 			"dec. ! queue ! audioconvert ! audioresample ! autoaudiosink",
-		filePath,
+		quotePipelineLocation(filePath),
 	)
 
 	element, err := gst.ParseLaunch(pipelineStr)
@@ -80,6 +82,13 @@ func NewPlaybackPipeline(filePath string) (*PlaybackPipeline, error) {
 	p.setupBusWatcher()
 
 	return p, nil
+}
+
+// quotePipelineLocation sanitizes and quotes a file path for GStreamer pipeline strings.
+func quotePipelineLocation(path string) string {
+	sanitized := strings.ReplaceAll(path, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	return strconv.Quote(sanitized)
 }
 
 // setupBusWatcher sets up the message bus watcher for errors and state changes.

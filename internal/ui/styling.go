@@ -167,7 +167,6 @@ const ApplicationCSS = `
 .recording-thumbnail {
 	background-color: rgba(0, 0, 0, 0.10);
 	border-radius: 6px;
-	overflow: hidden;
 }
 
 .recording-thumbnail-placeholder {

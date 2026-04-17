@@ -59,18 +59,51 @@ func (rl *RecordingLoader) LoadRecording(videoPath string) *RecordingLoaderResul
 
 	result.Exists = true
 
-	// Look for metadata file
 	metaPath := rl.GetMetadataPath(videoPath)
 	result.MetadataPath = metaPath
 
-	// Try to load metadata
-	metaData, err := os.ReadFile(metaPath)
-	if err != nil {
-		// No metadata file is not an error - just means no transcription
+	if rl.loadCurrentMetadata(result, metaPath) {
 		return result
 	}
 
-	// Parse metadata
+	legacyPath := rl.GetLegacyMetadataPath(videoPath)
+	result.MetadataPath = legacyPath
+	rl.loadLegacyMetadata(result, legacyPath)
+	return result
+}
+
+func (rl *RecordingLoader) loadCurrentMetadata(result *RecordingLoaderResult, metaPath string) bool {
+	metaData, err := os.ReadFile(metaPath)
+	if err != nil {
+		return false
+	}
+
+	var metadata struct {
+		Result *ai.TranscriptionResult `json:"result"`
+		Error  string                  `json:"error"`
+	}
+
+	if err := json.Unmarshal(metaData, &metadata); err != nil {
+		return true
+	}
+
+	if metadata.Error != "" || metadata.Result == nil {
+		return true
+	}
+
+	result.HasTranscription = true
+	result.Transcription = metadata.Result
+	result.Duration = metadata.Result.Duration
+	result.WordData = wordsToWordData(metadata.Result.Words)
+	return true
+}
+
+func (rl *RecordingLoader) loadLegacyMetadata(result *RecordingLoaderResult, metaPath string) bool {
+	metaData, err := os.ReadFile(metaPath)
+	if err != nil {
+		return false
+	}
+
 	var metadata struct {
 		VideoFile     string `json:"video_file"`
 		DurationMs    int64  `json:"duration_ms"`
@@ -84,22 +117,17 @@ func (rl *RecordingLoader) LoadRecording(videoPath string) *RecordingLoaderResul
 	}
 
 	if err := json.Unmarshal(metaData, &metadata); err != nil {
-		// Corrupted metadata - log but don't fail
-		return result
+		return true
 	}
 
-	// Check if there's a transcription error
 	if metadata.TranscribeError != nil {
-		// Previous transcription failed - still not an error for loading
-		return result
+		return true
 	}
 
-	// Check if transcription data exists
 	if metadata.Transcription == nil {
-		return result
+		return true
 	}
 
-	// Create TranscriptionResult
 	result.HasTranscription = true
 	result.Transcription = &ai.TranscriptionResult{
 		Text:  metadata.Transcription.Text,
@@ -112,12 +140,17 @@ func (rl *RecordingLoader) LoadRecording(videoPath string) *RecordingLoaderResul
 	// Convert to WordData for UI
 	result.WordData = wordsToWordData(metadata.Transcription.Words)
 
-	return result
+	return true
 }
 
 // GetMetadataPath returns the expected metadata file path for a given video file.
-// The metadata file is the video file path with the extension changed to .json.
+// The metadata file is the video file path with ".meta.json" appended.
 func (rl *RecordingLoader) GetMetadataPath(videoPath string) string {
+	return videoPath + ".meta.json"
+}
+
+// GetLegacyMetadataPath returns the pre-database metadata path used by early builds.
+func (rl *RecordingLoader) GetLegacyMetadataPath(videoPath string) string {
 	ext := filepath.Ext(videoPath)
 	base := strings.TrimSuffix(videoPath, ext)
 	return base + ".json"
@@ -130,6 +163,7 @@ func wordsToWordData(words []ai.Word) []WordData {
 		result[i] = WordData{
 			Text:      word.Text,
 			StartTime: word.Start,
+			EndTime:   word.End,
 			Index:     i,
 		}
 	}

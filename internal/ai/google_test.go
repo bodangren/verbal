@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -73,6 +74,13 @@ func TestGoogleTranscribe_Success(t *testing.T) {
 	}
 }
 
+func TestNewGoogleProvider_UsesLongTranscriptionTimeout(t *testing.T) {
+	provider := NewGoogleProvider("key")
+	if provider.client.Timeout != defaultProviderHTTPTimeout {
+		t.Fatalf("Google timeout = %v, want %v", provider.client.Timeout, defaultProviderHTTPTimeout)
+	}
+}
+
 func TestGoogleTranscribe_AuthError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
@@ -125,6 +133,9 @@ func TestGoogleTranscribe_ServerError(t *testing.T) {
 	if !errors.As(err, &serverErr) {
 		t.Errorf("expected ServerError, got %T: %v", err, err)
 	}
+	if !strings.Contains(err.Error(), "Google request failed after 1 attempt") {
+		t.Fatalf("expected final retry context, got %q", err.Error())
+	}
 }
 
 func TestGoogleTranscribe_FileNotFound(t *testing.T) {
@@ -173,6 +184,29 @@ func TestGoogleTranscribe_RetryOn429ThenSuccess(t *testing.T) {
 	}
 	if callCount != 2 {
 		t.Errorf("expected 2 calls, got %d", callCount)
+	}
+}
+
+func TestGoogleTranscribe_SendFailureIncludesUnderlyingCause(t *testing.T) {
+	provider := NewGoogleProviderWithClient("key", &http.Client{
+		Transport: failingRoundTripper{err: errors.New("dial tcp provider blocked")},
+	})
+	provider.maxRetries = 0
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	_, err := provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected send failure")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "Google request failed after 1 attempt") {
+		t.Fatalf("expected provider retry context, got %q", msg)
+	}
+	if !strings.Contains(msg, "dial tcp provider blocked") {
+		t.Fatalf("expected underlying network cause, got %q", msg)
 	}
 }
 

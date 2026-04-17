@@ -160,10 +160,8 @@ func (v *LibraryView) SetRecordings(recordings []*db.Recording) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	// Clear existing items
-	for _, item := range v.items {
-		v.listBox.Remove(item.Widget())
-	}
+	// Clear existing rows directly from GTK to avoid stale item widget references.
+	v.listBox.RemoveAll()
 	v.items = make([]*RecordingListItem, 0, len(recordings))
 	v.itemsByRecording = make(map[int64]*RecordingListItem, len(recordings))
 

@@ -11,6 +11,9 @@ import (
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
 )
 
+// ErrSeekFailed indicates that a thumbnail extraction pipeline could not seek.
+var ErrSeekFailed = errors.New("failed to seek extraction pipeline")
+
 // GStreamerExtractor extracts video frames using GStreamer pipelines.
 type GStreamerExtractor struct {
 	timeout time.Duration
@@ -107,7 +110,7 @@ func (e *GStreamerExtractor) ExtractFrameToFile(
 			gst.SeekFlagFlush|gst.SeekFlagKeyUnit,
 			seekPosition.Nanoseconds(),
 		); !ok {
-			return errors.New("failed to seek extraction pipeline")
+			return ErrSeekFailed
 		}
 	}
 

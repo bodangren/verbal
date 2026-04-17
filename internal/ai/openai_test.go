@@ -9,10 +9,25 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
+type failingRoundTripper struct {
+	err error
+}
+
+func (f failingRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, f.err
+}
+
 func TestOpenAITranscribe_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	if err := os.WriteFile(audioFile, []byte("fake audio data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	responseBody := openAIResponse{
 		Text:     "Hello world this is a test",
 		Language: "en",
@@ -48,11 +63,14 @@ func TestOpenAITranscribe_Success(t *testing.T) {
 			t.Errorf("expected model whisper-1, got %s", r.FormValue("model"))
 		}
 
-		file, _, err := r.FormFile("file")
+		file, header, err := r.FormFile("file")
 		if err != nil {
 			t.Fatalf("expected file in form: %v", err)
 		}
 		defer file.Close()
+		if header.Filename != filepath.Base(audioFile) {
+			t.Errorf("expected multipart filename %q, got %q", filepath.Base(audioFile), header.Filename)
+		}
 		fileContent, _ := io.ReadAll(file)
 		if len(fileContent) == 0 {
 			t.Error("file content should not be empty")
@@ -62,12 +80,6 @@ func TestOpenAITranscribe_Success(t *testing.T) {
 		json.NewEncoder(w).Encode(responseBody)
 	}))
 	defer server.Close()
-
-	tmpDir := t.TempDir()
-	audioFile := filepath.Join(tmpDir, "test.wav")
-	if err := os.WriteFile(audioFile, []byte("fake audio data"), 0644); err != nil {
-		t.Fatal(err)
-	}
 
 	provider := NewOpenAIProviderWithClient("test-api-key", server.Client())
 	provider.baseURL = server.URL
@@ -94,6 +106,13 @@ func TestOpenAITranscribe_Success(t *testing.T) {
 	}
 	if result.Duration != 3.5 {
 		t.Errorf("duration = %f, want 3.5", result.Duration)
+	}
+}
+
+func TestNewOpenAIProvider_UsesLongTranscriptionTimeout(t *testing.T) {
+	provider := NewOpenAIProvider("key")
+	if provider.client.Timeout != defaultProviderHTTPTimeout {
+		t.Fatalf("OpenAI timeout = %v, want %v", provider.client.Timeout, defaultProviderHTTPTimeout)
 	}
 }
 
@@ -184,6 +203,34 @@ func TestOpenAITranscribe_FileNotFound(t *testing.T) {
 	}
 }
 
+func TestOpenAITranscribe_RejectsOversizedUpload(t *testing.T) {
+	provider := NewOpenAIProviderWithClient("key", &http.Client{
+		Transport: failingRoundTripper{err: errors.New("network should not be used")},
+	})
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "too-large.wav")
+	file, err := os.Create(audioFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(maxOpenAIAudioUploadBytes + 1); err != nil {
+		file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected oversize error")
+	}
+	if !strings.Contains(err.Error(), "exceeds OpenAI Audio API 25 MB limit") {
+		t.Fatalf("expected OpenAI size limit error, got %q", err.Error())
+	}
+}
+
 func TestOpenAITranscribe_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -262,6 +309,77 @@ func TestOpenAITranscribe_RetryExhausted(t *testing.T) {
 	var serverErr *ServerError
 	if !errors.As(err, &serverErr) {
 		t.Errorf("expected ServerError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "OpenAI request failed after 3 attempt") {
+		t.Fatalf("expected final retry context, got %q", err.Error())
+	}
+}
+
+func TestOpenAITranscribe_EmptyServerErrorIncludesRequestID(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("x-request-id", "req_openai_empty_500")
+		w.WriteHeader(500)
+	}))
+	defer server.Close()
+
+	provider := NewOpenAIProviderWithClient("key", server.Client())
+	provider.baseURL = server.URL
+	provider.maxRetries = 0
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	_, err := provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected error for empty 500")
+	}
+
+	msg := err.Error()
+	if !strings.Contains(msg, "OpenAI request failed after 1 attempt") {
+		t.Fatalf("expected final retry context, got %q", msg)
+	}
+	if !strings.Contains(msg, "empty response body") {
+		t.Fatalf("expected empty body placeholder, got %q", msg)
+	}
+	if !strings.Contains(msg, "request_id=req_openai_empty_500") {
+		t.Fatalf("expected request ID, got %q", msg)
+	}
+	if callCount != 1 {
+		t.Fatalf("callCount = %d, want 1", callCount)
+	}
+
+	var serverErr *ServerError
+	if !errors.As(err, &serverErr) {
+		t.Fatalf("expected wrapped ServerError, got %T: %v", err, err)
+	}
+	if serverErr.RequestID != "req_openai_empty_500" {
+		t.Fatalf("RequestID = %q, want req_openai_empty_500", serverErr.RequestID)
+	}
+}
+
+func TestOpenAITranscribe_SendFailureIncludesUnderlyingCause(t *testing.T) {
+	provider := NewOpenAIProviderWithClient("key", &http.Client{
+		Transport: failingRoundTripper{err: errors.New("dial tcp provider blocked")},
+	})
+	provider.maxRetries = 0
+
+	tmpDir := t.TempDir()
+	audioFile := filepath.Join(tmpDir, "test.wav")
+	os.WriteFile(audioFile, []byte("fake"), 0644)
+
+	_, err := provider.Transcribe(context.Background(), audioFile)
+	if err == nil {
+		t.Fatal("expected send failure")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "OpenAI request failed after 1 attempt") {
+		t.Fatalf("expected provider retry context, got %q", msg)
+	}
+	if !strings.Contains(msg, "dial tcp provider blocked") {
+		t.Fatalf("expected underlying network cause, got %q", msg)
 	}
 }
 

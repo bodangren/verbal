@@ -151,7 +151,7 @@ func activate(app *gtk.Application, database *db.Database) {
 
 	window := gtk.NewApplicationWindow(app)
 	window.SetTitle("Verbal - Video Transcription Editor")
-	window.SetDefaultSize(1200, 700)
+	configureMainWindowDefaults(&window.Window)
 
 	var recordingSvc *db.RecordingService
 	var thumbnailSvc *thumbnail.Service
@@ -230,6 +230,11 @@ func activate(app *gtk.Application, database *db.Database) {
 	} else {
 		showOpenFileDialog(window, state)
 	}
+}
+
+func configureMainWindowDefaults(window *gtk.Window) {
+	window.SetDefaultSize(1000, 640)
+	window.SetResizable(true)
 }
 
 func showLibraryView(state *appState) {
@@ -345,14 +350,7 @@ func scheduleThumbnailGeneration(state *appState, recordings []*db.Recording) {
 }
 
 func loadRecordingFromLibrary(state *appState, rec *db.Recording) {
-	// Update current path
-	state.currentPath = rec.FilePath
-
-	// Load the recording
-	loadRecording(state, rec.FilePath)
-
-	// Switch to playback view
-	showPlaybackView(state)
+	openRecordingPath(state, rec.FilePath)
 }
 
 func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
@@ -473,21 +471,30 @@ func showOpenFileDialog(window *gtk.ApplicationWindow, state *appState) {
 
 	dialog.ConnectResponse(func(responseID int) {
 		if responseID == int(gtk.ResponseAccept) {
-			path := dialog.File().Path()
-			loadRecording(state, path)
+			file := dialog.File()
+			if file == nil {
+				return
+			}
+			openRecordingPath(state, file.Path())
 		}
 	})
 
 	dialog.Show()
 }
 
-func loadRecording(state *appState, videoPath string) {
+func openRecordingPath(state *appState, videoPath string) bool {
+	loaded := loadRecording(state, videoPath)
+	showPlaybackView(state)
+	return loaded
+}
+
+func loadRecording(state *appState, videoPath string) bool {
 	state.currentPath = videoPath
 
 	result := state.loader.LoadRecording(videoPath)
 	if !result.Exists {
 		state.playbackWindow.ShowError(fmt.Sprintf("File not found: %s", videoPath))
-		return
+		return false
 	}
 
 	state.playbackWindow.ClearError()
@@ -504,18 +511,12 @@ func loadRecording(state *appState, videoPath string) {
 		state.editableView = ui.NewEditableTranscriptionView()
 		state.editableView.SetResult(result.Transcription)
 		state.playbackWindow.SetEditableTranscription(state.editableView)
-
-		wordData := result.WordData
-		state.wordContainer = ui.NewWordContainer(wordData)
+		state.wordContainer = state.editableView.GetWordContainer()
 		state.wordContainer.SetWordClickHandler(func(startTime float64, index int) {
 			if state.syncIntegration != nil {
 				state.syncIntegration.HandleWordClick(startTime, index)
 			}
 		})
-
-		if state.editableView != nil {
-			state.editableView.SetResult(result.Transcription)
-		}
 	} else {
 		state.editableView = ui.NewEditableTranscriptionView()
 		state.editableView.SetStatus("No transcription yet - press Ctrl+T to transcribe")
@@ -524,12 +525,14 @@ func loadRecording(state *appState, videoPath string) {
 
 	if err := setupPlaybackPipeline(state, videoPath); err != nil {
 		state.playbackWindow.ShowError(fmt.Sprintf("Failed to load video: %v", err))
-		return
+		return false
 	}
 
 	if result.HasTranscription && result.Transcription != nil {
 		setupSyncIntegration(state, result.Transcription)
 	}
+
+	return true
 }
 
 func setupPlaybackPipeline(state *appState, videoPath string) error {
@@ -549,8 +552,19 @@ func setupPlaybackPipeline(state *appState, videoPath string) error {
 		if paintable, ok := paintableObj.(*gdk.Paintable); ok {
 			picture := gtk.NewPictureForPaintable(paintable)
 			state.playbackWindow.SetVideoWidget(&picture.Widget)
+			state.monitor = media.NewPositionMonitor(pipeline, 100)
+			return nil
 		}
 	}
+
+	placeholder := gtk.NewLabel(fmt.Sprintf("Video loaded: %s\nPress Play to start playback.", filepath.Base(videoPath)))
+	placeholder.SetWrap(true)
+	placeholder.SetHExpand(true)
+	placeholder.SetVExpand(true)
+	placeholder.SetHAlign(gtk.AlignCenter)
+	placeholder.SetVAlign(gtk.AlignCenter)
+	placeholder.AddCSSClass("dim-label")
+	state.playbackWindow.SetVideoWidget(&placeholder.Widget)
 
 	state.monitor = media.NewPositionMonitor(pipeline, 100)
 
@@ -835,17 +849,7 @@ func runTranscription(state *appState) {
 
 		glib.IdleAdd(func() {
 			state.editableView.SetResult(result)
-
-			wordData := make([]ui.WordData, len(result.Words))
-			for i, w := range result.Words {
-				wordData[i] = ui.WordData{
-					Text:      w.Text,
-					StartTime: w.Start,
-					EndTime:   w.End,
-					Index:     i,
-				}
-			}
-			state.wordContainer = ui.NewWordContainer(wordData)
+			state.wordContainer = state.editableView.GetWordContainer()
 			state.wordContainer.SetWordClickHandler(func(startTime float64, index int) {
 				if state.syncIntegration != nil {
 					state.syncIntegration.HandleWordClick(startTime, index)
