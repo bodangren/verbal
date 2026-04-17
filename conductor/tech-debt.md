@@ -18,7 +18,7 @@
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
 
 ### Low Severity
-- **RecordingRepository query/scan duplication** - `internal/db/repository.go` has near-identical SELECT column lists and Scan blocks across 6 methods (List, SearchByTranscription, SearchByPath, ListRecent, GetByID, GetByPathExact). A helper function or struct-scanning pattern would reduce ~200 lines of duplication and prevent drift bugs. [severity: low, found: 2026-04-15 review]
+- ~~**RecordingRepository query/scan duplication**~~ - [resolved: 2026-04-17 - Extracted `scanRecording()` helper and `recordingColumns` constant. Reduced 531 lines to 422 lines (-109 lines). See commit TBD]
 - ~~**BackupManager ListBackups/listBackupsUnlocked duplication**~~ - [resolved: 2026-04-16 - ListBackups now calls listBackupsUnlocked after acquiring lock for DRY compliance. See commit 1fb546f]
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]

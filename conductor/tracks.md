@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Chore - RecordingRepository Query/Scan Refactoring** [created: 2026-04-17, started: 2026-04-17]
+- [x] **Track: Chore - RecordingRepository Query/Scan Refactoring** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
   *Focus: Reduce ~200 lines of duplication in internal/db/repository.go by extracting common query/scan patterns.*
-  *Status: In Progress - Phase 1: Analysis and Design*
+  *Status: Complete. Extracted scanRecording() helper and recordingColumns constant. Reduced 531 lines to 422 lines (-109 lines). All 43 tests pass.*
   *Link: [./tracks/chore_recording_repository_refactor_20260417/](./tracks/chore_recording_repository_refactor_20260417/)*
 
 - [x] **Track: Bugfix - BackupScheduler Robustness Improvements** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
