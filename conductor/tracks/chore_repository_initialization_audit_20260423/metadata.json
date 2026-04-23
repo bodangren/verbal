@@ -1,0 +1,10 @@
+{
+  "id": "chore_repository_initialization_audit_20260423",
+  "created": "2026-04-23",
+  "started": "2026-04-23",
+  "title": "Chore - Repository Initialization Audit",
+  "status": "in_progress",
+  "focus": "Audit codebase for improper struct{} initialization patterns instead of factory methods",
+  "severity": "medium",
+  "pattern": "Find all `&PackageName{}` struct initializations that should use factory methods"
+}

@@ -70,6 +70,7 @@
 - **Logger Interface Pattern:** Define minimal logger interfaces at the package level to avoid tight coupling to specific logging implementations. This allows tests to use mock loggers and the main app to use its preferred logging framework.
 - **Constructor Logger Parameters:** Add optional logger parameters to constructors (accepting nil for backward compatibility). Use a no-op logger internally when nil is passed to avoid nil checks at every log site.
 - **SQL Scan Helper Pattern:** When dealing with repeated SQL patterns, define a `scanner` interface that abstracts `sql.Row` and `sql.Rows`. Extract column lists as constants, then create `scanXxx()` helpers for single rows and `scanXxxs()` for slices. This eliminated ~109 lines of duplication across 6 methods in the repository.
+- **Repository Initialization Audit Pattern:** When auditing for improper struct{} initialization, search for `&[A-Z][a-zA-Z]*Repository{}` and `&[A-Z][a-zA-Z]*Repo{}` patterns. Verify each repository is initialized via a factory method on `*Database` (e.g., `RecordingRepo()`, `ThumbnailRepo()`, `SettingsRepo()`). Test files with `&MockRepository{}` are intentional and OK.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

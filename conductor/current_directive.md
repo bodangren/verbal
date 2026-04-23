@@ -1,38 +1,25 @@
-# Current Directive: Transcription Result Usability and Persistence
+# Current Directive: Repository Initialization Audit
 
-## Status: COMPLETE
+## Status: IN_PROGRESS
 
-**Track:** Bugfix - Transcription Result Usability and Persistence  
-**Started:** 2026-04-17  
-**Completed:** 2026-04-17  
-**Focus:** Make completed transcription timing data discoverable, keep the playback window usable on laptop screens, and reload saved transcription results.
+**Track:** Chore - Repository Initialization Audit
+**Started:** 2026-04-23
+**Focus:** Audit codebase for improper struct{} initialization patterns instead of factory methods
 
 ---
 
 ## Summary
 
-Manual QA confirmed transcription now completes and text appears, but timings are not clear. The window can be taller than the laptop screen and effectively not resizable. Completed transcriptions also disappear after close/reopen.
-
-Code inspection shows `EditableTranscriptionView.SetResult` populates a new stack child named `words-view`, while the toolbar toggles the existing child named `words`, leaving the actual timed words hard to discover or unreachable. The persistence bug is a path/schema mismatch: save writes `<video>.meta.json`, while reload reads `<video-without-ext>.json`.
+The tech-debt registry notes that `SettingsRepository` was previously created via `&db.SettingsRepository{}` without a DB connection. This was fixed to use `database.SettingsRepo()`. However, the pattern should be audited across all repositories.
 
 ## Resolution
 
-- Added focused UI/load tests for timing view and metadata reload behavior.
-- Wired completed transcription words into the stack child that the toolbar uses.
-- Replaced the unlabeled icon timing control with `Word timings`.
-- Wrapped the timed words view in a scroller so long transcripts do not force excessive window height.
-- Main window defaults to 1000x640 and is explicitly resizable.
-- `RecordingLoader` now loads saved `<video>.meta.json` transcription metadata, with legacy `<video-without-ext>.json` fallback.
+- Audit all `&[A-Z][a-zA-Z]*Repository{}` patterns in the codebase
+- Verify each repository is initialized via factory/constructor with proper dependencies
+- Document findings and fix any issues
 
 ## Verification
 
-- `go test ./internal/ui ./cmd/verbal -count=1` - pass.
 - `go test ./... -count=1` - pass.
 - `go build ./...` - pass.
 - `go vet ./...` - pass.
-- `go run ./cmd/verbal --smoke-check` - pass.
-- `timeout 10s go run ./cmd/verbal` - stayed alive until timeout with no warning output.
-
-## Manual Retest
-
-Complete a transcription, use `Word timings`, close and reopen the same file, and confirm the transcript plus timing data reload. The window should fit better on a laptop and be resizable.
