@@ -38,11 +38,17 @@ func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
 	flowBox.SetHomogeneous(false)
 	flowBox.AddCSSClass("word-container")
 
+	pool := make([]*WordLabel, DefaultPoolSize)
+	for i := range pool {
+		pool[i] = NewWordLabel(WordData{Text: ""})
+		pool[i].SetVisible(false)
+	}
+
 	vwc := &VirtualizedWordContainer{
 		flowBox:        flowBox,
 		words:          words,
 		poolSize:       DefaultPoolSize,
-		pool:           make([]*WordLabel, DefaultPoolSize),
+		pool:           pool,
 		attachedCount:  0,
 		scrollOffset:   0,
 		visibleRatio:   0.1,
@@ -117,9 +123,7 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 	scrollOffset := vwc.scrollOffset
 	visibleRatio := vwc.visibleRatio
 	words := vwc.words
-	pool := vwc.pool
 	poolSize := vwc.poolSize
-	flowBox := vwc.flowBox
 	vwc.mu.Unlock()
 
 	if len(words) == 0 {
@@ -143,33 +147,27 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 	vwc.attachedCount = visibleCount
 	vwc.mu.Unlock()
 
-	for i := 0; i < visibleCount; i++ {
-		wordIdx := startIdx + i
-		if wordIdx < len(words) {
-			wordData := words[wordIdx]
-			wordData.Index = wordIdx
-
-			if pool[i] != nil {
-				pool[i].SetHighlighted(false)
-			}
-		}
-	}
-
-	if visibleCount > 0 && visibleCount <= poolSize && pool[visibleCount-1] != nil {
-		flowBox.Append(pool[visibleCount-1].Widget())
-	}
-
 	glib.IdleAdd(func() bool {
 		vwc.mu.Lock()
 		currentAttached := vwc.attachedCount
 		currentPool := vwc.pool
+		currentFlowBox := vwc.flowBox
+		currentWords := vwc.words
+		currentStartIdx := vwc.firstVisibleWordIndex(vwc.scrollOffset, vwc.visibleRatio)
 		vwc.mu.Unlock()
 
 		for i := 0; i < currentAttached && i < len(currentPool); i++ {
-			if currentPool[i] != nil {
-				flowBox.Append(currentPool[i].Widget())
+			wordIdx := currentStartIdx + i
+			if wordIdx < len(currentWords) {
+				wordData := currentWords[wordIdx]
+				wordData.Index = wordIdx
+				currentPool[i].SetData(wordData)
+				currentPool[i].SetHighlighted(false)
+				currentPool[i].SetVisible(true)
+				currentFlowBox.Append(currentPool[i].Widget())
 			}
 		}
+
 		return false
 	})
 }

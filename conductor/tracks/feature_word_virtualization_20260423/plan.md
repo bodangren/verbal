@@ -17,7 +17,7 @@
 - [x] Support click-to-seek for visible words
 
 ## Phase 4: Integration & Testing
-- [ ] Update WordContainer to use virtualization internally (drop-in)
+- [x] Update WordContainer to use virtualization internally (drop-in)
 - [x] Write unit tests for binary search and visible range calculation
 - [x] Ensure existing tests pass
 - [x] Add tests for widget pool recycling
@@ -28,7 +28,8 @@
 - `go vet ./...` - pass
 
 ## Notes
-- Full drop-in replacement requires completing widget creation in UpdateVisibleWidgets
-- The VirtualizedWordContainer provides the structure for virtualization
-- Binary search and viewport calculation are fully implemented and tested
-- Actual widget attachment in UpdateVisibleWidgets needs actual WordLabel creation per visible word
+- Widget pool pre-allocates 100 WordLabel instances at construction
+- UpdateVisibleWidgets updates pool labels with word data and makes them visible
+- Uses glib.IdleAdd for GTK thread safety
+- Pool indices map to visible words via startIdx offset
+- Selection/highlight state managed via pool index, not word index

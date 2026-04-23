@@ -85,6 +85,14 @@ func (w *WordLabel) Widget() *gtk.Label {
 	return w.label
 }
 
+// SetData updates the word data associated with this label.
+func (w *WordLabel) SetData(data WordData) {
+	w.mu.Lock()
+	w.data = data
+	w.mu.Unlock()
+	w.label.SetText(data.Text + " ")
+}
+
 // GetData returns the word data associated with this label.
 func (w *WordLabel) GetData() WordData {
 	w.mu.RLock()
@@ -172,4 +180,9 @@ func (w *WordLabel) IsSelected() bool {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	return w.selected
+}
+
+// SetVisible sets the visibility of the word label.
+func (w *WordLabel) SetVisible(visible bool) {
+	w.label.SetVisible(visible)
 }
