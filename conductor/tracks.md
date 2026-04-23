@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - Word Virtualization for Long Recordings** [created: 2026-04-23, started: 2026-04-23]
+  *Focus: Replace FlowBox word rendering with virtualized container for recordings 1+ hours with 5000+ words.*
+  *Status: Phase 1 in progress.*
+  *Link: [./tracks/feature_word_virtualization_20260423/](./tracks/feature_word_virtualization_20260423/)*
+
 - [x] **Track: Chore - Repository Initialization Audit** [created: 2026-04-23, started: 2026-04-23, completed: 2026-04-23]
   *Focus: Audit codebase for improper struct{} initialization patterns instead of factory methods that ensure proper DB connection wiring.*
   *Status: Complete. Audited all repository patterns - all properly initialized via factory methods. No issues found.*

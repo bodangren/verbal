@@ -1,0 +1,10 @@
+{
+  "id": "feature_word_virtualization_20260423",
+  "name": "Word Virtualization for Long Recordings",
+  "type": "feature",
+  "created": "2026-04-23",
+  "started": "2026-04-23",
+  "status": "in_progress",
+  "spec": "spec.md",
+  "plan": "plan.md"
+}
