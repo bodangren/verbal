@@ -71,6 +71,8 @@
 - **Constructor Logger Parameters:** Add optional logger parameters to constructors (accepting nil for backward compatibility). Use a no-op logger internally when nil is passed to avoid nil checks at every log site.
 - **SQL Scan Helper Pattern:** When dealing with repeated SQL patterns, define a `scanner` interface that abstracts `sql.Row` and `sql.Rows`. Extract column lists as constants, then create `scanXxx()` helpers for single rows and `scanXxxs()` for slices. This eliminated ~109 lines of duplication across 6 methods in the repository.
 - **Repository Initialization Audit Pattern:** When auditing for improper struct{} initialization, search for `&[A-Z][a-zA-Z]*Repository{}` and `&[A-Z][a-zA-Z]*Repo{}` patterns. Verify each repository is initialized via a factory method on `*Database` (e.g., `RecordingRepo()`, `ThumbnailRepo()`, `SettingsRepo()`). Test files with `&MockRepository{}` are intentional and OK.
+- **Widget Pool Pre-allocation:** For GTK virtualization, pre-allocate widget pools at construction rather than creating widgets on-demand. This avoids GTK object creation overhead during scroll events. Initialize with invisible placeholder widgets and update data/visibility on scroll.
+- **Widget Pool Index Mapping:** In virtualized containers with fixed widget pools, pool indices don't map 1:1 to data indices. Use an offset (startIdx) when assigning data to pool slots to correctly map visible data range to available pool slots.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
