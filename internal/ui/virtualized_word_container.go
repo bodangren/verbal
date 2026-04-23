@@ -18,8 +18,9 @@ type VirtualizedWordContainer struct {
 
 	mu sync.RWMutex
 
-	onWordClick       func(startTime float64, index int)
-	onWordHighlight   func(index int)
+	onWordClick        func(startTime float64, index int)
+	onWordHighlight    func(index int)
+	onSelectionChanged func(start, end int)
 	lastHighlightedIdx int
 
 	selectionStart int
@@ -78,7 +79,7 @@ func (vwc *VirtualizedWordContainer) SetHighlightedWord(index int) {
 		vwc.pool[vwc.lastHighlightedIdx].SetHighlighted(false)
 	}
 
-	if index >= 0 && index < len(vwc.words) {
+	if index >= 0 && index < len(vwc.pool) {
 		vwc.pool[index].SetHighlighted(true)
 		vwc.lastHighlightedIdx = index
 	} else {
@@ -278,7 +279,7 @@ func (vwc *VirtualizedWordContainer) HasSelection() bool {
 func (vwc *VirtualizedWordContainer) SetSelectionChangedHandler(handler func(start, end int)) {
 	vwc.mu.Lock()
 	defer vwc.mu.Unlock()
-	_ = handler
+	vwc.onSelectionChanged = handler
 }
 
 func (vwc *VirtualizedWordContainer) firstVisibleWordIndex(scrollOffset float64, visibleRatio float64) int {
@@ -292,7 +293,6 @@ func (vwc *VirtualizedWordContainer) firstVisibleWordIndex(scrollOffset float64,
 	}
 
 	targetTime := scrollOffset * duration
-	_ = visibleRatio * duration
 
 	low, high := 0, len(vwc.words)-1
 	result := low

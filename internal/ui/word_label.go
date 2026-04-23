@@ -155,10 +155,12 @@ func (w *WordLabel) emitClick() {
 	w.mu.RLock()
 	callbacks := make([]func(startTime float64, index int), len(w.clickCallbacks))
 	copy(callbacks, w.clickCallbacks)
+	startTime := w.data.StartTime
+	idx := w.data.Index
 	w.mu.RUnlock()
 
 	for _, cb := range callbacks {
-		cb(w.data.StartTime, w.data.Index)
+		cb(startTime, idx)
 	}
 }
 
