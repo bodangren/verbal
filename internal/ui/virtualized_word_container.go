@@ -3,6 +3,7 @@ package ui
 import (
 	"sync"
 
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -115,37 +116,91 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 	vwc.mu.Lock()
 	scrollOffset := vwc.scrollOffset
 	visibleRatio := vwc.visibleRatio
+	words := vwc.words
+	pool := vwc.pool
+	poolSize := vwc.poolSize
+	flowBox := vwc.flowBox
 	vwc.mu.Unlock()
+
+	if len(words) == 0 {
+		return
+	}
 
 	startIdx := vwc.firstVisibleWordIndex(scrollOffset, visibleRatio)
 	endIdx := vwc.lastVisibleWordIndex(scrollOffset, visibleRatio)
 
-	vwc.mu.Lock()
-	defer vwc.mu.Unlock()
-
-	if startIdx == endIdx && startIdx == -1 {
+	if startIdx > endIdx {
 		return
 	}
 
 	visibleCount := endIdx - startIdx + 1
-	if visibleCount > vwc.poolSize {
-		visibleCount = vwc.poolSize
+	if visibleCount > poolSize {
+		visibleCount = poolSize
 		endIdx = startIdx + visibleCount - 1
 	}
 
-	for i := 0; i < visibleCount && (startIdx+i) <= endIdx; i++ {
-		poolIdx := startIdx + i
-		if poolIdx < len(vwc.words) {
-			wordData := vwc.words[poolIdx]
-			wordData.Index = poolIdx
+	vwc.mu.Lock()
+	vwc.attachedCount = visibleCount
+	vwc.mu.Unlock()
 
-			if vwc.pool[i] != nil {
-				vwc.pool[i].SetHighlighted(false)
+	for i := 0; i < visibleCount; i++ {
+		wordIdx := startIdx + i
+		if wordIdx < len(words) {
+			wordData := words[wordIdx]
+			wordData.Index = wordIdx
+
+			if pool[i] != nil {
+				pool[i].SetHighlighted(false)
 			}
 		}
 	}
 
-	vwc.attachedCount = visibleCount
+	if visibleCount > 0 && visibleCount <= poolSize && pool[visibleCount-1] != nil {
+		flowBox.Append(pool[visibleCount-1].Widget())
+	}
+
+	glib.IdleAdd(func() bool {
+		vwc.mu.Lock()
+		currentAttached := vwc.attachedCount
+		currentPool := vwc.pool
+		vwc.mu.Unlock()
+
+		for i := 0; i < currentAttached && i < len(currentPool); i++ {
+			if currentPool[i] != nil {
+				flowBox.Append(currentPool[i].Widget())
+			}
+		}
+		return false
+	})
+}
+
+func (vwc *VirtualizedWordContainer) BindScrollEvents(scrolledWindow *gtk.ScrolledWindow) {
+	vscrolled := scrolledWindow.VAdjustment()
+	if vscrolled == nil {
+		return
+	}
+
+	vscrolled.ConnectValueChanged(func() {
+		value := vscrolled.Value()
+		upper := vscrolled.Upper()
+		var scrollOffset float64
+		if upper > 0 {
+			scrollOffset = value / upper
+		} else {
+			scrollOffset = 0
+		}
+
+		pageSize := vscrolled.PageSize()
+		var pageRatio float64
+		if upper > 0 {
+			pageRatio = pageSize / upper
+		} else {
+			pageRatio = 0
+		}
+
+		vwc.UpdateViewport(scrollOffset, pageRatio)
+		vwc.UpdateVisibleWidgets()
+	})
 }
 
 func (vwc *VirtualizedWordContainer) GetPoolSize() int {
