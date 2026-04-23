@@ -13,17 +13,20 @@ type VirtualizedWordContainer struct {
 	words         []WordData
 	poolSize      int
 	pool          []*WordLabel
-	visibleStart  int
-	visibleEnd    int
+	attachedCount int
 
-	mu                sync.RWMutex
+	mu sync.RWMutex
+
 	onWordClick       func(startTime float64, index int)
 	onWordHighlight   func(index int)
 	lastHighlightedIdx int
 
 	selectionStart int
 	selectionEnd   int
-	isSelecting   bool
+	isSelecting    bool
+
+	scrollOffset float64
+	visibleRatio float64
 }
 
 func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
@@ -35,20 +38,16 @@ func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
 	flowBox.AddCSSClass("word-container")
 
 	vwc := &VirtualizedWordContainer{
-		flowBox:            flowBox,
-		words:              words,
-		poolSize:           DefaultPoolSize,
-		pool:               make([]*WordLabel, 0, DefaultPoolSize),
-		visibleStart:       -1,
-		visibleEnd:         -1,
+		flowBox:        flowBox,
+		words:          words,
+		poolSize:       DefaultPoolSize,
+		pool:           make([]*WordLabel, DefaultPoolSize),
+		attachedCount:  0,
+		scrollOffset:   0,
+		visibleRatio:   0.1,
 		lastHighlightedIdx: -1,
-		selectionStart:     -1,
-		selectionEnd:       -1,
-	}
-
-	for i := 0; i < DefaultPoolSize; i++ {
-		label := &WordLabel{}
-		vwc.pool = append(vwc.pool, label)
+		selectionStart: -1,
+		selectionEnd:   -1,
 	}
 
 	return vwc
@@ -96,14 +95,69 @@ func (vwc *VirtualizedWordContainer) Clear() {
 	vwc.mu.Lock()
 	defer vwc.mu.Unlock()
 	vwc.words = vwc.words[:0]
-	vwc.visibleStart = -1
-	vwc.visibleEnd = -1
+	vwc.scrollOffset = 0
 }
 
 func (vwc *VirtualizedWordContainer) GetWords() []WordData {
 	vwc.mu.RLock()
 	defer vwc.mu.RUnlock()
 	return vwc.words
+}
+
+func (vwc *VirtualizedWordContainer) UpdateViewport(scrollOffset, visibleRatio float64) {
+	vwc.mu.Lock()
+	defer vwc.mu.Unlock()
+	vwc.scrollOffset = scrollOffset
+	vwc.visibleRatio = visibleRatio
+}
+
+func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
+	vwc.mu.Lock()
+	scrollOffset := vwc.scrollOffset
+	visibleRatio := vwc.visibleRatio
+	vwc.mu.Unlock()
+
+	startIdx := vwc.firstVisibleWordIndex(scrollOffset, visibleRatio)
+	endIdx := vwc.lastVisibleWordIndex(scrollOffset, visibleRatio)
+
+	vwc.mu.Lock()
+	defer vwc.mu.Unlock()
+
+	if startIdx == endIdx && startIdx == -1 {
+		return
+	}
+
+	visibleCount := endIdx - startIdx + 1
+	if visibleCount > vwc.poolSize {
+		visibleCount = vwc.poolSize
+		endIdx = startIdx + visibleCount - 1
+	}
+
+	for i := 0; i < visibleCount && (startIdx+i) <= endIdx; i++ {
+		poolIdx := startIdx + i
+		if poolIdx < len(vwc.words) {
+			wordData := vwc.words[poolIdx]
+			wordData.Index = poolIdx
+
+			if vwc.pool[i] != nil {
+				vwc.pool[i].SetHighlighted(false)
+			}
+		}
+	}
+
+	vwc.attachedCount = visibleCount
+}
+
+func (vwc *VirtualizedWordContainer) GetPoolSize() int {
+	vwc.mu.RLock()
+	defer vwc.mu.RUnlock()
+	return vwc.poolSize
+}
+
+func (vwc *VirtualizedWordContainer) GetAttachedCount() int {
+	vwc.mu.RLock()
+	defer vwc.mu.RUnlock()
+	return vwc.attachedCount
 }
 
 func (vwc *VirtualizedWordContainer) SetSelectionMode(enabled bool) {

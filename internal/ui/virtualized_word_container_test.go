@@ -236,3 +236,49 @@ func TestVirtualizedWordContainer_GetWords(t *testing.T) {
 		t.Errorf("expected 2 words, got %d", len(got))
 	}
 }
+
+func TestVirtualizedWordContainer_UpdateViewport(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+	vwc := NewVirtualizedWordContainer(nil)
+	vwc.UpdateViewport(0.5, 0.2)
+}
+
+func TestVirtualizedWordContainer_UpdateVisibleWidgets(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+	words := []WordData{
+		{Text: "one", StartTime: 0.0, EndTime: 1.0, Index: 0},
+		{Text: "two", StartTime: 1.0, EndTime: 2.0, Index: 1},
+		{Text: "three", StartTime: 2.0, EndTime: 3.0, Index: 2},
+		{Text: "four", StartTime: 3.0, EndTime: 4.0, Index: 3},
+		{Text: "five", StartTime: 4.0, EndTime: 5.0, Index: 4},
+	}
+	vwc := NewVirtualizedWordContainer(words)
+	vwc.UpdateViewport(0.0, 0.5)
+	vwc.UpdateVisibleWidgets()
+}
+
+func TestVirtualizedWordContainer_GetPoolSize(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+	vwc := NewVirtualizedWordContainer(nil)
+	poolSize := vwc.GetPoolSize()
+	if poolSize != DefaultPoolSize {
+		t.Errorf("expected pool size %d, got %d", DefaultPoolSize, poolSize)
+	}
+}
+
+func TestVirtualizedWordContainer_GetAttachedCount(t *testing.T) {
+	if !hasDisplay() {
+		t.Skip("No display available")
+	}
+	vwc := NewVirtualizedWordContainer(nil)
+	attached := vwc.GetAttachedCount()
+	if attached != 0 {
+		t.Errorf("expected 0 attached initially, got %d", attached)
+	}
+}
