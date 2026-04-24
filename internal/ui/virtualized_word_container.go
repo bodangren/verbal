@@ -22,6 +22,7 @@ type VirtualizedWordContainer struct {
 	onWordHighlight    func(index int)
 	onSelectionChanged func(start, end int)
 	highlightedPoolIdx int
+	highlightedWordIdx int
 
 	selectionStart int
 	selectionEnd   int
@@ -54,6 +55,7 @@ func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
 		scrollOffset:       0,
 		visibleRatio:       0.1,
 		highlightedPoolIdx: -1,
+		highlightedWordIdx: -1,
 		selectionStart:     -1,
 		selectionEnd:       -1,
 	}
@@ -81,6 +83,7 @@ func (vwc *VirtualizedWordContainer) SetHighlightedWord(index int) {
 
 	if index < 0 || index >= len(vwc.words) {
 		vwc.highlightedPoolIdx = -1
+		vwc.highlightedWordIdx = -1
 		return
 	}
 
@@ -96,6 +99,7 @@ func (vwc *VirtualizedWordContainer) SetHighlightedWord(index int) {
 
 	if index < startIdx || index > endIdx {
 		vwc.highlightedPoolIdx = -1
+		vwc.highlightedWordIdx = index
 		return
 	}
 
@@ -103,8 +107,10 @@ func (vwc *VirtualizedWordContainer) SetHighlightedWord(index int) {
 	if poolIdx >= 0 && poolIdx < visibleCount && poolIdx < len(vwc.pool) {
 		vwc.pool[poolIdx].SetHighlighted(true)
 		vwc.highlightedPoolIdx = poolIdx
+		vwc.highlightedWordIdx = index
 	} else {
 		vwc.highlightedPoolIdx = -1
+		vwc.highlightedWordIdx = index
 	}
 }
 
@@ -117,7 +123,7 @@ func (vwc *VirtualizedWordContainer) GetWordCount() int {
 func (vwc *VirtualizedWordContainer) GetHighlightedWord() int {
 	vwc.mu.RLock()
 	defer vwc.mu.RUnlock()
-	return vwc.highlightedPoolIdx
+	return vwc.highlightedWordIdx
 }
 
 func (vwc *VirtualizedWordContainer) SetWords(words []WordData) {
@@ -266,6 +272,7 @@ func (vwc *VirtualizedWordContainer) StartSelection(index int) {
 	}
 	vwc.selectionStart = index
 	vwc.selectionEnd = index
+	vwc.notifySelectionChanged()
 }
 
 func (vwc *VirtualizedWordContainer) ExtendSelection(index int) {
@@ -275,6 +282,7 @@ func (vwc *VirtualizedWordContainer) ExtendSelection(index int) {
 		return
 	}
 	vwc.selectionEnd = index
+	vwc.notifySelectionChanged()
 }
 
 func (vwc *VirtualizedWordContainer) ClearSelection() {
@@ -286,6 +294,18 @@ func (vwc *VirtualizedWordContainer) ClearSelection() {
 func (vwc *VirtualizedWordContainer) clearSelection() {
 	vwc.selectionStart = -1
 	vwc.selectionEnd = -1
+	vwc.notifySelectionChanged()
+}
+
+func (vwc *VirtualizedWordContainer) notifySelectionChanged() {
+	if vwc.onSelectionChanged != nil {
+		start := vwc.selectionStart
+		end := vwc.selectionEnd
+		if start > end {
+			start, end = end, start
+		}
+		vwc.onSelectionChanged(start, end)
+	}
 }
 
 func (vwc *VirtualizedWordContainer) GetSelection() (int, int) {
