@@ -26,7 +26,7 @@
 - No Go tests for cmd/verbal main package (requires display for GTK). [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
 - Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
-- ~~**Word virtualization**~~ - [resolved: 2026-04-24 - VirtualizedWordContainer now pre-allocates WordLabel pool at construction and properly updates visible widgets in UpdateVisibleWidgets. Widget pool recycles labels on scroll via glib.IdleAdd. Full drop-in replacement ready for EditableTranscriptionView integration.]
+- ~~**Word virtualization**~~ - [resolved: 2026-04-25 - Integrated VirtualizedWordContainer into EditableTranscriptionView. Widget pool (100 labels) pre-allocated at construction, viewport-based rendering with UpdateVisibleWidgets, scroll events bound via BindScrollEvents. Memory bounded at ~100 widgets regardless of word count. See commit 9fbbe71.]
 - ~~**Waveform generation uses synthetic data**~~ - [resolved: 2026-04-10] Replaced with GStreamer-based real audio extraction using gst-launch-1.0 subprocess approach.
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. Consider adding tooltip overlay or status bar display. [severity: low]
 - **Export pipeline uses re-encoding** - SegmentExporter decodes and re-encodes (x264enc + avenc_aac) instead of stream copy. This is slower and may reduce quality. Stream copy would be faster but requires matching codec parameters. [severity: low]
