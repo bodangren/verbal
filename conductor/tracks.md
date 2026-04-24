@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Bugfix - VirtualizedWordContainer Fixes** [created: 2026-04-24, started: 2026-04-24, completed: 2026-04-24]
+  *Focus: Fix three bugs: unbounded FlowBox growth (no Remove), incorrect highlight indexing (word vs pool), data race on words slice.*
+  *Status: Complete. All 3 bugs fixed: (1) Added RemoveAll() before append, (2) Replaced lastHighlightedIdx with highlightedPoolIdx tracking pool slot not word index, (3) Changed binary search to take words parameter for snapshot under lock. All tests pass, build passes, vet passes.*
+  *Link: [./archive/bugfix_virtualized_word_container_fixes_20260424](./archive/bugfix_virtualized_word_container_fixes_20260424)*
+
 - [x] **Track: Feature - Word Virtualization for Long Recordings** [created: 2026-04-23, started: 2026-04-23, completed: 2026-04-24]
   *Focus: Replace FlowBox word rendering with virtualized container for recordings 1+ hours with 5000+ words.*
   *Status: Complete. All 4 phases implemented: VirtualizedWordContainer with binary search, widget pool pre-allocation, glib.IdleAdd rendering, scroll event binding, and finalized UpdateVisibleWidgets with proper widget creation. Tests pass, build passes, vet passes.*

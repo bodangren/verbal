@@ -8,7 +8,7 @@ func TestVirtualizedWordContainer_FirstVisibleWordIndex_Empty(t *testing.T) {
 	vwc := &VirtualizedWordContainer{
 		words: []WordData{},
 	}
-	got := vwc.firstVisibleWordIndex(0.0, 0.1)
+	got := vwc.firstVisibleWordIndex(vwc.words, 0.0, 0.1)
 	if got != 0 {
 		t.Errorf("expected 0 for empty words, got %d", got)
 	}
@@ -37,7 +37,7 @@ func TestVirtualizedWordContainer_FirstVisibleWordIndex_BinarySearch(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := vwc.firstVisibleWordIndex(tt.scrollOffset, tt.visibleRatio)
+			got := vwc.firstVisibleWordIndex(words, tt.scrollOffset, tt.visibleRatio)
 			if got != tt.wantStart {
 				t.Errorf("firstVisibleWordIndex(%v, %v) = %v, want %v",
 					tt.scrollOffset, tt.visibleRatio, got, tt.wantStart)
@@ -69,7 +69,7 @@ func TestVirtualizedWordContainer_LastVisibleWordIndex_BinarySearch(t *testing.T
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := vwc.lastVisibleWordIndex(tt.scrollOffset, tt.visibleRatio)
+			got := vwc.lastVisibleWordIndex(words, tt.scrollOffset, tt.visibleRatio)
 			if got != tt.wantEnd {
 				t.Errorf("lastVisibleWordIndex(%v, %v) = %v, want %v",
 					tt.scrollOffset, tt.visibleRatio, got, tt.wantEnd)

@@ -21,7 +21,7 @@ type VirtualizedWordContainer struct {
 	onWordClick        func(startTime float64, index int)
 	onWordHighlight    func(index int)
 	onSelectionChanged func(start, end int)
-	lastHighlightedIdx int
+	highlightedPoolIdx int
 
 	selectionStart int
 	selectionEnd   int
@@ -46,16 +46,16 @@ func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
 	}
 
 	vwc := &VirtualizedWordContainer{
-		flowBox:        flowBox,
-		words:          words,
-		poolSize:       DefaultPoolSize,
-		pool:           pool,
-		attachedCount:  0,
-		scrollOffset:   0,
-		visibleRatio:   0.1,
-		lastHighlightedIdx: -1,
-		selectionStart: -1,
-		selectionEnd:   -1,
+		flowBox:            flowBox,
+		words:              words,
+		poolSize:           DefaultPoolSize,
+		pool:               pool,
+		attachedCount:      0,
+		scrollOffset:       0,
+		visibleRatio:       0.1,
+		highlightedPoolIdx: -1,
+		selectionStart:     -1,
+		selectionEnd:       -1,
 	}
 
 	return vwc
@@ -75,15 +75,36 @@ func (vwc *VirtualizedWordContainer) SetHighlightedWord(index int) {
 	vwc.mu.Lock()
 	defer vwc.mu.Unlock()
 
-	if vwc.lastHighlightedIdx >= 0 && vwc.lastHighlightedIdx < len(vwc.pool) {
-		vwc.pool[vwc.lastHighlightedIdx].SetHighlighted(false)
+	if vwc.highlightedPoolIdx >= 0 && vwc.highlightedPoolIdx < len(vwc.pool) {
+		vwc.pool[vwc.highlightedPoolIdx].SetHighlighted(false)
 	}
 
-	if index >= 0 && index < len(vwc.pool) {
-		vwc.pool[index].SetHighlighted(true)
-		vwc.lastHighlightedIdx = index
+	if index < 0 || index >= len(vwc.words) {
+		vwc.highlightedPoolIdx = -1
+		return
+	}
+
+	scrollOffset := vwc.scrollOffset
+	visibleRatio := vwc.visibleRatio
+	words := vwc.words
+	startIdx := vwc.firstVisibleWordIndex(words, scrollOffset, visibleRatio)
+	endIdx := vwc.lastVisibleWordIndex(words, scrollOffset, visibleRatio)
+	visibleCount := endIdx - startIdx + 1
+	if visibleCount > vwc.poolSize {
+		visibleCount = vwc.poolSize
+	}
+
+	if index < startIdx || index > endIdx {
+		vwc.highlightedPoolIdx = -1
+		return
+	}
+
+	poolIdx := index - startIdx
+	if poolIdx >= 0 && poolIdx < visibleCount && poolIdx < len(vwc.pool) {
+		vwc.pool[poolIdx].SetHighlighted(true)
+		vwc.highlightedPoolIdx = poolIdx
 	} else {
-		vwc.lastHighlightedIdx = -1
+		vwc.highlightedPoolIdx = -1
 	}
 }
 
@@ -131,8 +152,8 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 		return
 	}
 
-	startIdx := vwc.firstVisibleWordIndex(scrollOffset, visibleRatio)
-	endIdx := vwc.lastVisibleWordIndex(scrollOffset, visibleRatio)
+	startIdx := vwc.firstVisibleWordIndex(words, scrollOffset, visibleRatio)
+	endIdx := vwc.lastVisibleWordIndex(words, scrollOffset, visibleRatio)
 
 	if startIdx > endIdx {
 		return
@@ -154,8 +175,10 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 		currentPool := vwc.pool
 		currentFlowBox := vwc.flowBox
 		currentWords := vwc.words
-		currentStartIdx := vwc.firstVisibleWordIndex(vwc.scrollOffset, vwc.visibleRatio)
+		currentStartIdx := vwc.firstVisibleWordIndex(currentWords, vwc.scrollOffset, vwc.visibleRatio)
 		vwc.mu.Unlock()
+
+		currentFlowBox.RemoveAll()
 
 		for i := 0; i < currentAttached && i < len(currentPool); i++ {
 			wordIdx := currentStartIdx + i
@@ -282,24 +305,24 @@ func (vwc *VirtualizedWordContainer) SetSelectionChangedHandler(handler func(sta
 	vwc.onSelectionChanged = handler
 }
 
-func (vwc *VirtualizedWordContainer) firstVisibleWordIndex(scrollOffset float64, visibleRatio float64) int {
-	if len(vwc.words) == 0 {
+func (vwc *VirtualizedWordContainer) firstVisibleWordIndex(words []WordData, scrollOffset float64, visibleRatio float64) int {
+	if len(words) == 0 {
 		return 0
 	}
 
-	duration := vwc.words[len(vwc.words)-1].EndTime
+	duration := words[len(words)-1].EndTime
 	if duration <= 0 {
 		return 0
 	}
 
 	targetTime := scrollOffset * duration
 
-	low, high := 0, len(vwc.words)-1
+	low, high := 0, len(words)-1
 	result := low
 
 	for low <= high {
 		mid := (low + high) / 2
-		wordEnd := vwc.words[mid].EndTime
+		wordEnd := words[mid].EndTime
 		if wordEnd <= targetTime {
 			result = mid + 1
 			low = mid + 1
@@ -311,26 +334,26 @@ func (vwc *VirtualizedWordContainer) firstVisibleWordIndex(scrollOffset float64,
 	return result
 }
 
-func (vwc *VirtualizedWordContainer) lastVisibleWordIndex(scrollOffset float64, visibleRatio float64) int {
-	if len(vwc.words) == 0 {
+func (vwc *VirtualizedWordContainer) lastVisibleWordIndex(words []WordData, scrollOffset float64, visibleRatio float64) int {
+	if len(words) == 0 {
 		return 0
 	}
 
-	duration := vwc.words[len(vwc.words)-1].EndTime
+	duration := words[len(words)-1].EndTime
 	if duration <= 0 {
-		return len(vwc.words) - 1
+		return len(words) - 1
 	}
 
 	targetTime := scrollOffset * duration
 	visibleDuration := visibleRatio * duration
 	maxTime := targetTime + visibleDuration
 
-	low, high := 0, len(vwc.words)-1
+	low, high := 0, len(words)-1
 	result := low
 
 	for low <= high {
 		mid := (low + high) / 2
-		wordStart := vwc.words[mid].StartTime
+		wordStart := words[mid].StartTime
 		if wordStart < maxTime {
 			result = mid
 			low = mid + 1
