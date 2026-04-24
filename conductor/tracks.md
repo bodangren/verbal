@@ -9,7 +9,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*
   *Status: Complete. EditableTranscriptionView now uses *VirtualizedWordContainer with widget pool pre-allocation (100 widgets) and viewport-based rendering. Added GetHighlightedWord() to VirtualizedWordContainer for highlight sync compatibility. All tests pass, build passes, vet passes.*
-  *Link: [./tracks/feature_virtualized_word_container_integration_20260425](./tracks/feature_virtualized_word_container_integration_20260425)*
+  *Link: [./archive/feature_virtualized_word_container_integration_20260425](./archive/feature_virtualized_word_container_integration_20260425)*
 
 - [x] **Track: Chore - Build Optimization** [created: 2026-04-24, completed: 2026-04-24]
   *Focus: Configure Go build cache and add Makefile for faster incremental builds. UI package takes >2min to build due to CGo/GTK dependencies.*
@@ -218,3 +218,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Link: [./archive/buildcore_20260322/](./archive/buildcore_20260322/)*
 - [x] **Track: Fix Webcam Connection Issue (Pipewire → CrabCamera)** [superseded]
   *Link: [./archive/fix_webcam_20260324/](./archive/fix_webcam_20260324/)*
+
+## Upcoming Tracks
+
+- [ ] **Track: Filler Word Detection** *Link: [./tracks/filler_word_detection_20260425/](./tracks/filler_word_detection_20260425/)*
+- [ ] **Track: Export Pipeline Optimization** *Link: [./tracks/export_pipeline_optimize_20260425/](./tracks/export_pipeline_optimize_20260425/)*
+- [ ] **Track: GTK4 Libadwaita Integration** *Link: [./tracks/gtk4_libadwaita_20260425/](./tracks/gtk4_libadwaita_20260425/)*
+- [ ] **Track: Media Package Test Coverage** *Link: [./tracks/media_test_coverage_20260425/](./tracks/media_test_coverage_20260425/)*
