@@ -3,24 +3,24 @@
 ## Phase 1: Write Tests for EditableTranscriptionView with VirtualizedWordContainer
 
 ### Tasks
-- [~] Write test: EditableTranscriptionView returns VirtualizedWordContainer via GetWordContainer
-- [ ] Write test: SetResult populates VirtualizedWordContainer with word data
-- [ ] Write test: Selection mode delegates to VirtualizedWordContainer
-- [ ] Write test: GetSelectedSegments works with VirtualizedWordContainer selection
+- [x] Write test: EditableTranscriptionView returns VirtualizedWordContainer via GetWordContainer
+- [x] Write test: SetResult populates VirtualizedWordContainer with word data
+- [x] Write test: Selection mode delegates to VirtualizedWordContainer
+- [x] Write test: GetSelectedSegments works with VirtualizedWordContainer selection
 
 ## Phase 2: Implement Integration
 
 ### Tasks
-- [ ] Modify EditableTranscriptionView to use *VirtualizedWordContainer instead of *WordContainer
-- [ ] Update SetResult to call VirtualizedWordContainer.SetWords and UpdateVisibleWidgets
-- [ ] Update selection methods (SetSelectionMode, ClearSelection, GetSelection, HasSelection) to delegate
-- [ ] Update export button handler to work with VirtualizedWordContainer
-- [ ] Update GetWordContainer to return *VirtualizedWordContainer
+- [x] Modify EditableTranscriptionView to use *VirtualizedWordContainer instead of *WordContainer
+- [x] Update SetResult to call VirtualizedWordContainer.SetWords and UpdateVisibleWidgets
+- [x] Update selection methods (SetSelectionMode, ClearSelection, GetSelection, HasSelection) to delegate
+- [x] Update export button handler to work with VirtualizedWordContainer
+- [x] Update GetWordContainer to return *VirtualizedWordContainer
 
 ## Phase 3: Verify and Checkpoint
 
 ### Tasks
-- [ ] Run full test suite (make go-check)
-- [ ] Verify EditableTranscriptionView tests pass
-- [ ] Verify VirtualizedWordContainer tests pass
-- [ ] Update tracks.md with new track
+- [x] Run full test suite (make go-check)
+- [x] Verify EditableTranscriptionView tests pass
+- [x] Verify VirtualizedWordContainer tests pass
+- [x] Update tracks.md with new track
