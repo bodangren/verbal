@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25]
+  *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*
+  *Link: [./tracks/feature_virtualized_word_container_integration_20260425](./tracks/feature_virtualized_word_container_integration_20260425)*
+
 - [x] **Track: Chore - Build Optimization** [created: 2026-04-24, completed: 2026-04-24]
   *Focus: Configure Go build cache and add Makefile for faster incremental builds. UI package takes >2min to build due to CGo/GTK dependencies.*
   *Status: Complete. Created Makefile with go-build, go-vet, go-test, go-check targets. Configured GOCACHE for persistent caching. Incremental builds now complete in ~6s vs >2min cold. All tests pass.*

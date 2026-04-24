@@ -35,7 +35,7 @@ type appState struct {
 	playback        *media.PlaybackPipeline
 	monitor         *media.PositionMonitor
 	syncIntegration *sync.Integration
-	wordContainer   *ui.WordContainer
+	wordContainer   *ui.VirtualizedWordContainer
 	editableView    *ui.EditableTranscriptionView
 	loader          *ui.RecordingLoader
 	currentPath     string

@@ -114,6 +114,12 @@ func (vwc *VirtualizedWordContainer) GetWordCount() int {
 	return len(vwc.words)
 }
 
+func (vwc *VirtualizedWordContainer) GetHighlightedWord() int {
+	vwc.mu.RLock()
+	defer vwc.mu.RUnlock()
+	return vwc.highlightedPoolIdx
+}
+
 func (vwc *VirtualizedWordContainer) SetWords(words []WordData) {
 	vwc.mu.Lock()
 	defer vwc.mu.Unlock()

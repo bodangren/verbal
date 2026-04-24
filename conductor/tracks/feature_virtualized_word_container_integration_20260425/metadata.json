@@ -1,0 +1,11 @@
+{
+  "track_id": "feature_virtualized_word_container_integration_20260425",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-04-25T00:00:00Z",
+  "updated_at": "2026-04-25T00:00:00Z",
+  "description": "Integrate VirtualizedWordContainer into EditableTranscriptionView for efficient rendering of 5000+ word recordings",
+  "estimated_tasks": 8,
+  "actual_tasks": null,
+  "deviation_notes": ""
+}

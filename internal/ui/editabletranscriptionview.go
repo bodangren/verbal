@@ -11,15 +11,15 @@ import (
 // EditableTranscriptionView provides a GTK widget for viewing and editing
 // transcription results with word-level selection support for segment export.
 type EditableTranscriptionView struct {
-	box            *gtk.Box
-	titleLabel     *gtk.Label
-	textView       *gtk.TextView
-	buffer         *gtk.TextBuffer
-	wordContainer  *WordContainer
-	stack          *gtk.Stack
-	selectButton   *gtk.Button
-	exportButton   *gtk.Button
-	clearSelButton *gtk.Button
+	box                  *gtk.Box
+	titleLabel           *gtk.Label
+	textView             *gtk.TextView
+	buffer               *gtk.TextBuffer
+	wordContainer        *VirtualizedWordContainer
+	stack                *gtk.Stack
+	selectButton         *gtk.Button
+	exportButton         *gtk.Button
+	clearSelButton       *gtk.Button
 
 	words             []ai.Word
 	onTextChanged     func(newText string)
@@ -58,7 +58,7 @@ func NewEditableTranscriptionView() *EditableTranscriptionView {
 	scrolled.SetChild(textView)
 	scrolled.SetVExpand(true)
 
-	wordContainer := NewWordContainer(nil)
+	wordContainer := NewVirtualizedWordContainer(nil)
 
 	stack := gtk.NewStack()
 	stack.AddNamed(scrolled, "text")
@@ -69,6 +69,8 @@ func NewEditableTranscriptionView() *EditableTranscriptionView {
 	wordScrolled.SetSizeRequest(-1, 160)
 	stack.AddNamed(wordScrolled, "words")
 	stack.SetVisibleChildName("text")
+
+	wordContainer.BindScrollEvents(wordScrolled)
 
 	toolbar := gtk.NewBox(gtk.OrientationHorizontal, 4)
 	toolbar.AddCSSClass("transcription-toolbar")
@@ -171,6 +173,7 @@ func (v *EditableTranscriptionView) SetResult(result *ai.TranscriptionResult) {
 		}
 	}
 	v.wordContainer.SetWords(wordData)
+	v.wordContainer.UpdateVisibleWidgets()
 }
 
 // SetStatus updates the title with a status message.
@@ -219,7 +222,7 @@ func (v *EditableTranscriptionView) GetWords() []ai.Word {
 }
 
 // GetWordContainer returns the populated word timing container used by this view.
-func (v *EditableTranscriptionView) GetWordContainer() *WordContainer {
+func (v *EditableTranscriptionView) GetWordContainer() *VirtualizedWordContainer {
 	return v.wordContainer
 }
 
