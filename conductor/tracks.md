@@ -6,6 +6,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [x] **Track: Chore - Build Optimization** [created: 2026-04-24, completed: 2026-04-24]
+  *Focus: Configure Go build cache and add Makefile for faster incremental builds. UI package takes >2min to build due to CGo/GTK dependencies.*
+  *Status: Complete. Created Makefile with go-build, go-vet, go-test, go-check targets. Configured GOCACHE for persistent caching. Incremental builds now complete in ~6s vs >2min cold. All tests pass.*
+  *Link: [./tracks/chore_build_optimization_20260424](./tracks/chore_build_optimization_20260424)*
+  *Focus: Configure Go build cache and add Makefile for faster incremental builds. UI package takes >2min to build due to CGo/GTK dependencies.*
+  *Link: [./tracks/chore_build_optimization_20260424](./tracks/chore_build_optimization_20260424)*
+
 - [x] **Track: Bugfix - VirtualizedWordContainer Fixes** [created: 2026-04-24, started: 2026-04-24, completed: 2026-04-24]
   *Focus: Fix three bugs: unbounded FlowBox growth (no Remove), incorrect highlight indexing (word vs pool), data race on words slice.*
   *Status: Complete. All 3 bugs fixed: (1) Added RemoveAll() before append, (2) Replaced lastHighlightedIdx with highlightedPoolIdx tracking pool slot not word index, (3) Changed binary search to take words parameter for snapshot under lock. All tests pass, build passes, vet passes.*

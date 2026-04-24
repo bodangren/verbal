@@ -11,3 +11,19 @@
 - **Performance:** UI updates for transcription/sync MUST be efficient to prevent blocking the GTK main loop. Use Go routines for async tasks.
 - **Linux Focus:** Optimize for Ubuntu/GNOME environment. Ensure compatibility with both Wayland and X11.
 - **Project Structure:** Maintain a clean Go project structure (e.g., `cmd/`, `internal/`, `pkg/`).
+
+## Build System
+
+Use `make check` for CI validation. Configure GOCACHE for faster incremental builds:
+```bash
+export GOCACHE=~/.cache/go-build
+```
+
+Make targets:
+- `make go-build` - Build all packages
+- `make go-vet` - Run go vet
+- `make go-test` - Run all tests
+- `make go-check` - Run vet, build, and tests (optimal for CI)
+- `make clean` - Remove artifacts and cache
+
+First build may take >2 minutes due to CGo/GTK4 dependencies. Subsequent builds use cached objects and complete in <10s.
