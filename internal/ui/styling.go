@@ -5,9 +5,20 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
-// ApplicationCSS contains the CSS stylesheet for the application.
-// It defines styles for labels, buttons, and the transcription view.
 const ApplicationCSS = `
+/* === VERBAL DESIGN SYSTEM - Professional Precision Studio === */
+
+/* --- Base Surfaces --- */
+window {
+	background-color: #1E1E1E;
+	color: #F5F5F5;
+}
+
+box, paned, grid, list-box {
+	background-color: #1E1E1E;
+}
+
+/* --- Typography --- */
 .title-label {
 	font-weight: bold;
 	margin-bottom: 12px;
@@ -18,96 +29,123 @@ const ApplicationCSS = `
 	margin-top: 8px;
 }
 
+.body-lg {
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.body-md {
+	font-size: 13px;
+	font-weight: 400;
+}
+
+.mono {
+	font-family: "JetBrains Mono", "Fira Code", monospace;
+	font-size: 12px;
+}
+
+/* --- Buttons & Actions --- */
 .action-button {
 	margin: 4px;
 	padding: 8px;
 }
 
-.dim-label {
-	opacity: 0.7;
-}
-
+/* --- Transcription View (Core Feature) --- */
 .transcription-view {
-	background: rgba(0, 0, 0, 0.05);
+	background-color: #252525;
+	border: 1px solid #3D3D3D;
 	border-radius: 8px;
 	padding: 12px;
 	margin-top: 16px;
 }
 
+/* Word Labels - monospace for precision */
 .word-label {
+	font-family: "JetBrains Mono", "Fira Code", monospace;
+	font-size: 12px;
 	padding: 2px 4px;
-	border-radius: 3px;
-	transition: background-color 0.15s ease;
+	border-radius: 4px;
+	transition: background-color 100ms ease;
 }
 
 .word-label:hover {
-	background-color: rgba(100, 100, 100, 0.15);
+	background-color: rgba(99, 102, 241, 0.15);
 }
 
 .word-highlighted {
-	background-color: #3584E4;
+	background-color: #6366F1;
 	color: #FFFFFF;
-	font-weight: bold;
+	font-weight: 600;
 }
 
 .word-highlighted:hover {
-	background-color: #1C71D8;
+	background-color: #818CF8;
 	color: #FFFFFF;
 }
 
 .word-highlighted:focus {
-	outline: 2px solid #1A5FB4;
+	outline: 2px solid #4F46E5;
 	outline-offset: 2px;
 }
 
 .word-hover {
-	background-color: rgba(100, 100, 100, 0.2);
+	background-color: rgba(99, 102, 241, 0.2);
 }
 
 .word-container {
 	padding: 4px;
 }
 
-.playback-toolbar {
-	background-color: rgba(0, 0, 0, 0.03);
-}
-
-.error-label {
-	color: #C01C28;
-	font-weight: bold;
-	margin: 8px 12px;
-	padding: 8px 12px;
-	background-color: rgba(192, 28, 40, 0.1);
-	border-radius: 6px;
-}
-
 .word-selected {
-	background-color: rgba(53, 132, 228, 0.3);
-	outline: 1px solid #3584E4;
-	outline-offset: 1px;
+	background-color: rgba(99, 102, 241, 0.25);
+	border: 1px solid #6366F1;
 }
 
 .word-selected:hover {
-	background-color: rgba(53, 132, 228, 0.4);
+	background-color: rgba(99, 102, 241, 0.35);
 }
 
-/* Library View Styles */
+/* --- Playback Toolbar --- */
+.playback-toolbar {
+	background-color: #2A2A2A;
+	border-bottom: 1px solid #3D3D3D;
+}
 
+/* --- Error States --- */
+.error-label {
+	color: #EF4444;
+	font-weight: 500;
+	margin: 8px 12px;
+	padding: 8px 12px;
+	background-color: #2D1B1B;
+	border-left: 3px solid #EF4444;
+	border-radius: 0 4px 4px 0;
+}
+
+/* --- Library View --- */
 .library-view {
-	background-color: @window_bg_color;
+	background-color: #1E1E1E;
 }
 
 .library-title {
-	font-size: 18pt;
-	font-weight: bold;
+	font-size: 18px;
+	font-weight: 700;
 }
 
 .library-search {
 	min-width: 300px;
+	background-color: #2A2A2A;
+	border: 1px solid #3D3D3D;
+	border-radius: 6px;
+	color: #F5F5F5;
+}
+
+.library-search:focus {
+	border-color: #6366F1;
 }
 
 .library-scrolled {
-	border-top: 1px solid rgba(0, 0, 0, 0.1);
+	border-top: 1px solid #2F2F2F;
 }
 
 .library-list {
@@ -119,35 +157,33 @@ const ApplicationCSS = `
 	background-color: transparent;
 }
 
-/* Recording List Item Styles */
-
+/* --- Recording List Item --- */
 .recording-list-item {
-	background-color: @card_bg_color;
-	border-radius: 8px;
-	border: 1px solid rgba(0, 0, 0, 0.08);
-	transition: all 0.15s ease;
+	background-color: #252525;
+	border: 1px solid #3D3D3D;
+	border-radius: 6px;
+	transition: all 150ms ease;
 }
 
 .recording-list-item:hover,
 .recording-item-hover {
-	background-color: @card_bg_color;
-	border-color: rgba(0, 0, 0, 0.15);
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+	background-color: #2A2A2A;
+	border-color: #505050;
 }
 
 .recording-item-selected {
-	background-color: rgba(53, 132, 228, 0.1);
-	border-color: #3584E4;
-	box-shadow: 0 0 0 1px #3584E4;
+	background-color: rgba(99, 102, 241, 0.1);
+	border-color: #6366F1;
+	box-shadow: 0 0 0 1px #6366F1;
 }
 
 .recording-unavailable {
 	opacity: 0.6;
-	background-color: rgba(0, 0, 0, 0.03);
+	background-color: rgba(0, 0, 0, 0.15);
 }
 
 .recording-unavailable .recording-filename {
-	color: @insensitive_fg_color;
+	color: #707070;
 }
 
 .recording-unavailable .recording-thumbnail {
@@ -156,133 +192,204 @@ const ApplicationCSS = `
 }
 
 .recording-icon {
-	background-color: rgba(0, 0, 0, 0.05);
+	background-color: #2A2A2A;
 	border-radius: 6px;
 }
 
 .recording-icon-label {
 	font-size: 24px;
+	color: #A0A0A0;
 }
 
 .recording-thumbnail {
-	background-color: rgba(0, 0, 0, 0.10);
+	background-color: #333333;
 	border-radius: 6px;
 }
 
 .recording-thumbnail-placeholder {
 	font-size: 20px;
-	opacity: 0.85;
+	color: #707070;
 }
 
 .recording-thumbnail-duration {
-	background-color: rgba(0, 0, 0, 0.65);
-	color: #FFFFFF;
-	font-size: 8.5pt;
-	padding: 1px 6px;
-	border-radius: 8px;
+	background-color: rgba(0, 0, 0, 0.75);
+	color: #F5F5F5;
+	font-family: "JetBrains Mono", monospace;
+	font-size: 10px;
+	padding: 2px 6px;
+	border-radius: 4px;
 }
 
 .recording-filename {
 	font-weight: 600;
-	font-size: 11pt;
+	font-size: 13px;
+	color: #F5F5F5;
 }
 
 .recording-duration {
-	font-size: 9pt;
-	opacity: 0.7;
+	font-family: "JetBrains Mono", monospace;
+	font-size: 11px;
+	color: #A0A0A0;
 }
 
 .recording-status {
-	font-size: 8pt;
-	padding: 2px 8px;
-	border-radius: 12px;
+	font-family: "JetBrains Mono", monospace;
+	font-size: 10px;
 	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	padding: 2px 8px;
+	border-radius: 0 4px 4px 0;
+	border-left: 3px solid;
 }
 
 .recording-status-completed {
-	background-color: rgba(46, 160, 67, 0.15);
-	color: #1A7F37;
+	border-left-color: #22C55E;
+	color: #22C55E;
 }
 
 .recording-status-pending {
-	background-color: rgba(120, 120, 120, 0.15);
-	color: #656D76;
+	border-left-color: #A0A0A0;
+	color: #A0A0A0;
 }
 
 .recording-status-error {
-	background-color: rgba(192, 28, 40, 0.15);
-	color: #C01C28;
+	border-left-color: #EF4444;
+	color: #EF4444;
 }
 
 .recording-date {
-	font-size: 9pt;
-	opacity: 0.6;
+	font-size: 11px;
+	color: #707070;
 }
 
 .recording-delete-btn {
-	opacity: 0.6;
-	transition: opacity 0.15s ease;
+	opacity: 0.5;
+	transition: opacity 150ms ease;
 }
 
 .recording-delete-btn:hover {
 	opacity: 1;
-	color: #C01C28;
+	color: #EF4444;
 }
 
-/* Empty State Styles */
-
+/* --- Empty States --- */
 .library-empty {
 	opacity: 0.8;
 }
 
 .library-empty-icon {
 	font-size: 48px;
+	color: #707070;
 	margin-bottom: 12px;
 }
 
 .library-empty-title {
-	font-size: 14pt;
-	font-weight: bold;
+	font-size: 15px;
+	font-weight: 600;
+	color: #F5F5F5;
 	margin-bottom: 4px;
 }
 
 .library-empty-subtitle {
-	font-size: 10pt;
-	opacity: 0.7;
+	font-size: 12px;
+	color: #707070;
 	margin-bottom: 16px;
 }
 
 .library-empty-btn {
 	padding: 8px 24px;
+	background-color: #6366F1;
+	color: #FFFFFF;
+	border-radius: 6px;
 }
 
-/* Settings Window Styles */
+.library-empty-btn:hover {
+	background-color: #818CF8;
+}
 
+/* --- Settings Window --- */
 .settings-title {
-	font-size: 16pt;
-	font-weight: bold;
+	font-size: 16px;
+	font-weight: 700;
 }
 
 .setting-label {
 	font-weight: 600;
-	font-size: 10pt;
+	font-size: 12px;
+	color: #F5F5F5;
 }
 
 .success-label {
-	color: #1A7F37;
+	color: #22C55E;
 	font-weight: 500;
 }
 
 .settings-panel {
-	background-color: @card_bg_color;
+	background-color: #252525;
+	border: 1px solid #3D3D3D;
 	border-radius: 8px;
-	border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* --- Waveform Widget --- */
+.waveform-widget {
+	background-color: #252525;
+	border-radius: 6px;
+}
+
+.waveform-sample {
+	background-color: #707070;
+}
+
+.waveform-sample-played {
+	background-color: #6366F1;
+}
+
+.waveform-playhead {
+	background-color: #6366F1;
+	width: 2px;
+}
+
+/* --- Dialogs --- */
+.dialog {
+	background-color: #2A2A2A;
+	border: 1px solid #3D3D3D;
+	border-radius: 8px;
+}
+
+.dialog-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: #F5F5F5;
+}
+
+/* --- Scale/Slider --- */
+scale {
+	background-color: #3D3D3D;
+}
+
+scale slider {
+	background-color: #6366F1;
+}
+
+scale trough {
+	background-color: #333333;
+}
+
+/* --- Labels --- */
+.dim-label {
+	color: #707070;
+}
+
+.text-secondary {
+	color: #A0A0A0;
+}
+
+.text-tertiary {
+	color: #707070;
 }
 `
 
-// LoadApplicationCSS loads the application CSS stylesheet into GTK.
-// This should be called once during application initialization.
-// If no display is available (e.g., in headless tests), this function does nothing.
 func LoadApplicationCSS() {
 	display := gdk.DisplayGetDefault()
 	if display == nil {

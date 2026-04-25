@@ -2,113 +2,190 @@
 version: 1.0.0
 name: Verbal Design System
 colors:
-  primary: "#3584E4"
-  primary-hover: "#1C71D8"
-  primary-focus: "#1A5FB4"
-  error: "#C01C28"
-  error-light: "#F8E8E9"
-  success: "#1A7F37"
-  success-light: "#E8F5E9"
-  pending: "#656D76"
-  pending-light: "#F5F5F5"
-  on-primary: "#FFFFFF"
-  surface: "#F6F6F6"
-  card: "#FFFFFF"
-  border: "#EAEAEA"
+  # Core palette - Deep charcoal with warm undertone
+  surface: "#1E1E1E"
+  surface-elevated: "#2A2A2A"
+  surface-overlay: "#333333"
+  card: "#252525"
+
+  # Borders and dividers
+  border: "#3D3D3D"
+  border-subtle: "#2F2F2F"
+
+  # Text hierarchy
+  text-primary: "#F5F5F5"
+  text-secondary: "#A0A0A0"
+  text-tertiary: "#707070"
+
+  # Accent - "Electric Indigo" - Distinctive but professional
+  primary: "#6366F1"
+  primary-hover: "#818CF8"
+  primary-focus: "#4F46E5"
+
+  # Semantic colors - muted with colored borders
+  error: "#EF4444"
+  error-surface: "#2D1B1B"
+  success: "#22C55E"
+  success-surface: "#1A2D1F"
+  pending: "#A0A0A0"
+  pending-surface: "#2A2A2A"
+
+  # Highlight - used for word-level transcription sync
+  highlight: "#6366F1"
+  highlight-text: "#FFFFFF"
+  highlight-hover: "#818CF8"
+
+  # Selection - indigo tint for selection backgrounds
+  selection: "#6366F1"
+  focus-ring: "#6366F1"
+
 typography:
+  # Display - clean sans-serif for titles
   display-lg:
-    fontSize: 24px
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 22px
     fontWeight: 700
     lineHeight: 1.2
   display-md:
-    fontSize: 21px
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 18px
     fontWeight: 700
     lineHeight: 1.2
+
+  # UI Text - compact and readable
   title-md:
-    fontSize: 19px
-    fontWeight: 700
-    lineHeight: 1.3
-  body-lg:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 15px
     fontWeight: 600
+    lineHeight: 1.3
+  body-lg:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 14px
+    fontWeight: 500
     lineHeight: 1.4
   body-md:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 13px
     fontWeight: 400
     lineHeight: 1.5
-  body-sm:
+
+  # Monospace - for timestamps, word indices, technical data
+  mono:
+    fontFamily: "JetBrains Mono, Fira Code, monospace"
     fontSize: 12px
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: 1.4
   label-sm:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 11px
     fontWeight: 500
     lineHeight: 1.0
+
 spacing:
   xs: 4px
   sm: 8px
   md: 12px
   lg: 16px
   xl: 24px
+  xxl: 32px
+
 rounded:
-  sm: 3px
+  sm: 4px
   md: 6px
   lg: 8px
-  full: 12px
+  full: 9999px
+
+motion:
+  fast: 100ms
+  normal: 200ms
+  slow: 300ms
+  easing: cubic-bezier(0.4, 0, 0.2, 1)
 ---
 
 # Verbal Design System
 
-## Overview
-Verbal is a local-first media analysis tool built with Go, GTK4, and Libadwaita. The design system adheres to the GNOME Human Interface Guidelines (HIG) while providing specific tokens for transcription and media management.
+## Identity: Professional Precision Studio
+
+Verbal is a precision tool for transcription and media analysis. The design language reflects this: **dark, focused, technically precise**. No decorative flourishes. Every visual element serves the workflow.
+
+The aesthetic is inspired by professional audio/video editing suites (DaVinci Resolve, Ableton) and terminal-based workflows - tools built for extended sessions and exacting precision.
 
 ## Colors
-The color palette is derived from the GNOME color palette and Libadwaita defaults.
 
-- **Primary (#3584E4):** Used for highlights, selections, and primary actions.
-- **Error (#C01C28):** Used for error states and destructive actions.
-- **Success (#1A7F37):** Used for completed transcriptions and positive feedback.
-- **Pending (#656D76):** Used for neutral states and background tasks.
+**Dark surfaces with warm undertones.** Not cold gray - the slight warmth reduces visual fatigue during long transcription sessions.
+
+- **Surface (#1E1E1E):** Primary background. The app chrome.
+- **Surface Elevated (#2A2A2A):** Cards, panels, dialogs. Layered on top of surface.
+- **Card (#252525):** List items, recording cards. Slightly distinct from panels.
+- **Border (#3D3D3D):** Subtle dividers. Visible but not distracting.
+
+**Electric Indigo accent (#6366F1).** The one pop of color. Used for:
+- Primary actions
+- Word-level highlighting (transcription sync)
+- Focus states
+- Selected items
+
+NOT used for decorative gradients or backgrounds.
+
+**Text hierarchy:**
+- Primary (#F5F5F5): Headings, filenames, important labels
+- Secondary (#A0A0A0): Metadata, timestamps, supporting text
+- Tertiary (#707070): Disabled states, placeholder text
+
+**Semantic colors:** Muted surfaces with colored left borders. No filled backgrounds - the dark theme doesn't need color blocks.
 
 ## Typography
-The system uses the default system font (usually Cantarell or Inter) with varying sizes and weights for hierarchy. Values are defined in pixels (converted from points for web compatibility).
 
-- **Display Large (24px):** Used for library view titles.
-- **Display Medium (21px):** Used for settings and dialog titles.
-- **Body Large (15px):** Used for recording filenames.
-- **Body Medium (13px):** Standard text and labels.
-- **Label Small (11px):** Used for status badges and metadata.
+**Sans-serif for UI** (Inter or system default): Clean, legible at small sizes, professional.
+
+**Monospace for data** (JetBrains Mono): Timestamps, word indices, duration displays. The precision instrument aesthetic.
+
+Never: Comic Sans,papyrus, or decorative display fonts.
 
 ## Spacing
-Spacing follows a 4px grid system.
 
-- **XS (4px):** Tight spacing for word labels and buttons.
-- **SM (8px):** Standard margin for labels and status indicators.
-- **MD (12px):** Padding for containers and transcription views.
-- **LG (16px):** Spacing between major components.
-- **XL (24px):** Padding for empty states and primary action buttons.
+4px base grid. Tighter than typical "modern" spacing because this is a data-dense tool (word labels, timestamps, waveforms).
 
-## Shapes
-Corners are rounded to provide a modern, approachable feel consistent with Libadwaita.
+## Motion
 
-- **SM (3px):** Used for individual word labels.
-- **MD (6px):** Used for icons and thumbnails.
-- **LG (8px):** Standard rounding for cards, transcription views, and panels.
-- **Full (12px):** Used for status badges and pill-shaped elements.
+Fast and subtle. 100-200ms transitions. No bounces or playful animations. The tool should feel responsive, not whimsical.
 
 ## Components
 
 ### Recording List Item
-A card-based component for displaying recording metadata. Uses `rounded.lg` and `colors.border`.
+- Dark card (#252525) with subtle border (#3D3D3D)
+- Thumbnail or icon on left
+- Filename (primary text), duration + date (secondary), status badge (accent border)
+- Hover: slightly elevated background, border lightens
 
 ### Transcription View
-A specialized container for word labels. Uses `colors.primary` for highlighted words and `rounded.lg` for the container.
+- Monospace word labels in a flowing layout
+- Highlighted word: indigo background (#6366F1), white text, no border
+- Hover: subtle background shift on word labels
+- Selection: indigo tint background, thin indigo border
+
+### Waveform Display
+- Monospace timestamps (word indices or time)
+- Waveform bars in secondary text color
+- Playhead: vertical indigo line, 2px wide
 
 ### Status Badges
-Pill-shaped labels indicating the state of a recording. Uses `rounded.full` and contextual background colors.
+- No filled backgrounds. Left border only (3px, accent color).
+- Monospace text, uppercase, letter-spacing for readability.
 
-## Do's and Don'ts
-- **Do** use `primary` for focus and selection states.
-- **Do** use `rounded.lg` for all major UI containers.
-- **Don't** use hardcoded colors; prefer the defined design tokens.
-- **Don't** mix multiple font families; stick to the system font.
+## Principles
+
+1. **Dark, not gloomy.** Surfaces have enough contrast to feel crisp, not muddy.
+2. **One accent color.** Everything non-neutral uses indigo. No random colors.
+3. **Data is precise.** Timestamps and indices are monospace. This is a tool for exact work.
+4. **Words are prominent.** The transcription view is the core feature - it gets visual prominence.
+5. **No decorative elements.** No gradients on large surfaces, no drop shadows everywhere, no rounded corner excess.
+
+## Anti-patterns
+
+- **Don't** use gradient backgrounds ("modern" purple-to-blue hero sections)
+- **Don't** use filled colored badges with white text
+- **Don't** use serif fonts for UI elements
+- **Don't** use soft pastel colors on dark backgrounds
+- **Don't** use emoji icons or playful iconography
+- **Don't** use excessive border-radius (max 8px, typically 4-6px)
