@@ -75,6 +75,7 @@
 - **Widget Pool Index Mapping:** In virtualized containers with fixed widget pools, pool indices don't map 1:1 to data indices. Use an offset (startIdx) when assigning data to pool slots to correctly map visible data range to available pool slots.
 - **Highlight Pool Slot Tracking:** When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. Only apply highlight if the word is within the visible range.
 - **Words Snapshot for Binary Search:** When binary search methods read vwc.words after releasing a lock, a data race occurs. Pass words as a parameter to the search methods, copying the slice under lock first. This snapshots the data and eliminates the race.
+- **Filler Word Detection Pattern:** For detecting patterns in transcription data (filler words, repetition), use a Detector interface with a Detect method that takes a slice of Word structs and returns FillerWord results. Config structs allow enabling/disabling specific detection types.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

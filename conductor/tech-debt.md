@@ -25,6 +25,7 @@
 - ~~**BackupManager ListBackups/listBackupsUnlocked duplication**~~ - [resolved: 2026-04-16 - ListBackups now calls listBackupsUnlocked after acquiring lock for DRY compliance. See commit 1fb546f]
 - **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. Only apply highlight if the word is within the visible range. [severity: low]
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
+- **Filler Detection Package** - New `internal/filler` package for detecting filler words (um, uh, like, etc.) and repetition patterns in transcription data. [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
 - Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
 - ~~**Word virtualization**~~ - [resolved: 2026-04-25 - Integrated VirtualizedWordContainer into EditableTranscriptionView. Widget pool (100 labels) pre-allocated at construction, viewport-based rendering with UpdateVisibleWidgets, scroll events bound via BindScrollEvents. Memory bounded at ~100 widgets regardless of word count. See commit 9fbbe71.]

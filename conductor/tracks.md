@@ -221,10 +221,14 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 
 ## Upcoming Tracks
 
-- [ ] **Track: Filler Word Detection** *Link: [./tracks/filler_word_detection_20260425/](./tracks/filler_word_detection_20260425/)*
 - [ ] **Track: Export Pipeline Optimization** *Link: [./tracks/export_pipeline_optimize_20260425/](./tracks/export_pipeline_optimize_20260425/)*
 - [ ] **Track: GTK4 Libadwaita Integration** *Link: [./tracks/gtk4_libadwaita_20260425/](./tracks/gtk4_libadwaita_20260425/)*
 - [ ] **Track: Media Package Test Coverage** *Link: [./tracks/media_test_coverage_20260425/](./tracks/media_test_coverage_20260425/)*
+
+- [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
+  *Focus: Implement detection and flagging of filler words in transcription data (um, uh, like, you know, etc.) and repetition patterns.*
+  *Status: Complete. Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation. Supports short fillers, hesitation patterns, and repetition detection with configurable sensitivity. All 17 tests pass, build passes, vet passes.*
+  *Link: [./tracks/filler_word_detection_20260425](./tracks/filler_word_detection_20260425/)
 
 - [x] **Track: Visual Refresh: Define Unique Identity** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Define a unique, opinionated visual identity for the project ("Professional Precision Studio") and update DESIGN.md and styling.go accordingly.*
