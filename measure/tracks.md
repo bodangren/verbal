@@ -226,9 +226,9 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 - [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Implement detection and flagging of filler words in transcription data (um, uh, like, you know, etc.) and repetition patterns.*
   *Status: Complete. Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation. Supports short fillers, hesitation patterns, and repetition detection with configurable sensitivity. All 17 tests pass, build passes, vet passes.*
-  *Link: [./tracks/filler_word_detection_20260425](./tracks/filler_word_detection_20260425/)
+  *Link: [./archive/filler_word_detection_20260425](./archive/filler_word_detection_20260425/)
 
 - [x] **Track: Visual Refresh: Define Unique Identity** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Define a unique, opinionated visual identity for the project ("Professional Precision Studio") and update DESIGN.md and styling.go accordingly.*
   *Status: Complete. Defined dark theme with Electric Indigo (#6366F1) accent, monospace for data elements, and precise spacing. Updated DESIGN.md with full design tokens and passed `npx @google/design.md lint` validation. Updated styling.go with the new Professional Precision Studio theme. All tests pass.*
-  *Link: [./tracks/visual_refresh_20260425](./tracks/visual_refresh_20260425/)
+  *Link: [./archive/visual_refresh_20260425](./archive/visual_refresh_20260425/)
