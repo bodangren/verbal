@@ -1,0 +1,8 @@
+{
+  "id": "feature_text_driven_editing_core_20260502",
+  "title": "Text-Driven Editing Core",
+  "type": "feature",
+  "status": "pending",
+  "created": "2026-05-02",
+  "focus": "Implement the core text-driven media editing operations: delete word, delete sentence, reorder text, insert silence, and split paragraph. This is the central value proposition of Verbal."
+}

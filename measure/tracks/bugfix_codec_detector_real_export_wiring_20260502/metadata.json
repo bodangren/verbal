@@ -1,0 +1,8 @@
+{
+  "id": "bugfix_codec_detector_real_export_wiring_20260502",
+  "title": "Fix Codec Detector and Wire Real Export Operations",
+  "type": "bugfix",
+  "status": "pending",
+  "created": "2026-05-02",
+  "focus": "Fix the non-functional GstCodecDetector.Detect method so stream-copy exports work, consolidate duplicated path sanitization, and replace simulation stubs in Export/Import/Repair dialogs with real lifecycle calls."
+}
