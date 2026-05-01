@@ -4,14 +4,20 @@ go 1.25.0
 
 require (
 	github.com/OmegaRogue/gotk4-gstreamer/pkg v0.0.0-20230407231541-ccbbe8a0a4b7
-	github.com/diamondburned/gotk4/pkg v0.3.1
+	github.com/diamondburned/gotk4/pkg v0.3.2-0.20250703063411-16654385f59a
 	modernc.org/sqlite v1.48.1
 )
 
 require (
 	github.com/KarpelesLab/weak v0.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/diamondburned/gotk4 v0.3.2-0.20250703071127-d44ab4b5b24e // indirect
+	github.com/diamondburned/gotk4-adwaita v0.0.0-20250703085337-e94555b846b6 // indirect
+	github.com/diamondburned/gotk4-adwaita/pkg v0.0.0-20250703085337-e94555b846b6 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/fatih/color v1.10.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

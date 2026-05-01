@@ -1,7 +1,8 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
-- **GStreamer Stream-Copy for Export:** Use `qtdemux ! identity ! matroskamux` pipeline for stream-copy export when source codec supports it (H264/H265/VP8/VP9). Fall back to re-encode (`decodebin ! x264enc ! avenc_aac`) for incompatible codecs. Multi-segment stream-copy requires timestamp rewriting - keep re-encode for multi-segment for reliability.
+- **gotk4-adwaita Bindings:** Go bindings for Libadwaita are available at `github.com/diamondburned/gotk4-adwaita`. The `pkg/adw` sub-package contains the main Adwaita widget bindings. Requires `adw.Init()` call after `gtk.Init()`. Version is built against Libadwaita 1.2.0, but system has 1.5.0 - compatible via GObject introspection.
+- **Libadwaita Components:** Key components include `adw.Application`, `adw.ApplicationWindow` (with breakpoint support for responsive layouts), `adw.Clamp` for content width limiting, and row types like `adw.ActionRow`, `adw.EntryRow`, `adw.ComboRow` for forms.
 - **GStreamer Real Audio Extraction:** When gotk4-gstreamer bindings don't expose appsink, use gst-launch-1.0 subprocess with `filesrc ! decodebin ! audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=1,rate=16000 ! filesink` pattern. Extract to temp file, then read/convert.
 - **S16LE to Float64 Conversion:** Little-endian: `value := int16(data[offset]) | int16(data[offset+1])<<8`. Normalize to [0.0, 1.0] by taking absolute value and dividing by 32768.
 - **AudioExtractor Interface Pattern:** Create interface for audio extraction to enable testing with mocks and future backend flexibility (FFmpeg, etc.).
