@@ -16,7 +16,7 @@
 - [x] Verify full suite passes
 
 ## Phase 3: Polish
-- [ ] Update tech-debt.md
-- [ ] Update lessons-learned.md
-- [ ] Final verification
-- [ ] Commit and push
+- [x] Update tech-debt.md
+- [x] Update lessons-learned.md
+- [x] Final verification
+- [x] Commit and push

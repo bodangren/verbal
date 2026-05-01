@@ -19,7 +19,7 @@
 - ~~**VirtualizedWordContainer.UpdateVisibleWidgets never removes old widgets from FlowBox**~~ - [resolved: 2026-04-24 - Added `flowBox.RemoveAll()` before appending new widgets in IdleAdd callback. FlowBox now stays bounded at pool size.]
 - ~~**VirtualizedWordContainer.SetHighlightedWord indexes pool by word index**~~ - [resolved: 2026-04-24 - Replaced `lastHighlightedIdx` with `highlightedPoolIdx`. Now calculates pool slot based on scroll position: `poolIdx = wordIndex - startIdx`. Only highlights if word is in visible range.]
 - ~~**VirtualizedWordContainer.UpdateVisibleWidgets has data race on words slice**~~ - [resolved: 2026-04-24 - Changed `firstVisibleWordIndex` and `lastVisibleWordIndex` to take `words []WordData` parameter. Snapshots words under lock before binary search calls, eliminating the data race.]
-- **Libadwaita integration in progress** - gotk4-adwaita bindings added (adw package). Phase 1 complete. Full integration requires replacing gtk.ApplicationWindow with adw.ApplicationWindow and adding adw.Init(). [severity: medium]
+- **Libadwaita integration in progress** - gotk4-adwaita bindings added (adw package). Phase 1-2 complete. main.go now uses adw.Application and adw.ApplicationWindow with adw.Init() called. [severity: medium]
 
 ### Low Severity
 - ~~**RecordingRepository query/scan duplication**~~ - [resolved: 2026-04-17 - Extracted `scanRecording()` helper and `recordingColumns` constant. Reduced 531 lines to 422 lines (-109 lines). See commit TBD]
