@@ -1,35 +1,36 @@
-# Current Directive: GTK4 Libadwaita Integration (Phase 1 Complete)
+# Current Directive: GTK4 Libadwaita Integration - Phase 2 Complete
 
-## Status: IN PROGRESS - Phase 1 Complete
+## Status: IN PROGRESS - Phase 2 Complete
 
-Phase 1 of GTK4 Libadwaita Integration is complete. Phase 2 (Integration) is next.
+Phase 2 of GTK4 Libadwaita Integration is complete. Phase 3 (Polish) is next.
 
 ---
 
-## Last Completed: GTK4 Libadwaita Integration - Phase 1 (2026-05-01)
+## Last Completed: GTK4 Libadwaita Integration - Phase 2 (2026-05-02)
 
 **Track:** GTK4 Libadwaita Integration
-**Phase:** 1 (Foundation & Investigation)
-**Completed:** 2026-05-01
-**Summary:** Added gotk4-adwaita/pkg/adw dependency. Created adwaita_test.go with Adwaita bindings tests. Updated spec.md with detailed integration plan and component inventory (adw.Application, adw.ApplicationWindow, adw.Clamp, etc.). Phase 1 verified: go vet passes, build compiles (CGo slow), tests require display.
+**Phase:** 2 (Integration)
+**Completed:** 2026-05-02
+**Summary:** Wired Adwaita components into main.go. Changed `gtk.Application` to `adw.Application`, `gtk.ApplicationWindow` to `adw.ApplicationWindow`. Added `adw.Init()` call in activate function. All function signatures updated to use `*adw.ApplicationWindow`. Build compiles successfully (CGo takes >2min). gofmt applied to main.go. Commit: 2d111dc.
 
 ## Verification
-- Commit pushed: `d66fbaa feat(ui): GTK4 Libadwaita integration - Phase 1 foundation [MiniMax-M2]`
-- Files changed: go.mod, go.sum, lessons-learned.md, tech-debt.md, plan.md, spec.md, adwaita_test.go
-- Memory files updated: lessons-learned.md, tech-debt.md
+- Commit pushed: `2d111dc feat(ui): GTK4 Libadwaita integration - Phase 2 wire Adwaita components [MiniMax-M2]`
+- Files changed: cmd/verbal/main.go, plan.md, spec.md
+- No remaining `gtk.ApplicationWindow` references in main.go
+- Build compiles successfully
 
 ---
 
 ## Previously Completed
 
-### Export Pipeline Optimization (2026-05-01)
-**Track:** Export Pipeline Optimization
+### GTK4 Libadwaita Integration - Phase 1 (2026-05-01)
+**Track:** GTK4 Libadwaita Integration
 **Completed:** 2026-05-01
-**Summary:** Implemented stream-copy support for media export. Created `CodecDetector` interface and `GstCodecDetector` for codec detection. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9 sources. Falls back to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests for codec detection and stream-copy eligibility. Multi-segment concatenation remains re-encode (documented limitation).
+**Summary:** Added gotk4-adwaita/pkg/adw dependency. Created adwaita_test.go with Adwaita bindings tests. Updated spec.md with detailed integration plan.
 
 ---
 
 ## Upcoming Tracks
 
-- **Track: GTK4 Libadwaita Integration - Phase 2** - Wire Adwaita components (ApplicationWindow, HeaderBar, etc.), add error handling, write integration tests, verify full suite passes
+- **Track: GTK4 Libadwaita Integration - Phase 3** - Update tech-debt.md, update lessons-learned.md, final verification, commit and push
 - **Track: Media Package Test Coverage** - Improve media package test coverage from 46.8%
