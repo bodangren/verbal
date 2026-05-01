@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -20,13 +21,13 @@ type Segment struct {
 // SegmentExporter handles exporting selected transcription segments as video clips.
 // It uses GStreamer to trim and concatenate video segments.
 type SegmentExporter struct {
-	sourcePath   string
-	codecInfo    CodecInfo
+	sourcePath    string
+	codecInfo     CodecInfo
 	codecDetected bool
-	mu           sync.Mutex
-	onProgress   func(percent float64)
-	onComplete   func(outputPath string)
-	onError      func(error)
+	mu            sync.Mutex
+	onProgress    func(percent float64)
+	onComplete    func(outputPath string)
+	onError       func(error)
 }
 
 // NewSegmentExporter creates a new exporter for the given source video file.
@@ -386,12 +387,10 @@ func (e *SegmentExporter) reportProgress(percent float64) {
 	}
 }
 
-// escapeFilePath escapes a file path for use in GStreamer pipeline strings.
+// escapeFilePath sanitizes a file path for safe use in GStreamer pipeline strings.
+// It removes control characters and properly quotes the path to prevent injection attacks.
 func escapeFilePath(path string) string {
-	// GStreamer requires file paths to be escaped for special characters
-	// Simple approach: wrap in quotes if path contains spaces
-	if strings.Contains(path, " ") {
-		return fmt.Sprintf("\"%s\"", path)
-	}
-	return path
+	sanitized := strings.ReplaceAll(path, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	return strconv.Quote(sanitized)
 }

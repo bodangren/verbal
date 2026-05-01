@@ -10,11 +10,11 @@ import (
 type VideoCodec string
 
 const (
-	VideoCodecH264  VideoCodec = "h264"
-	VideoCodecH265  VideoCodec = "h265"
-	VideoCodecVP8   VideoCodec = "vp8"
-	VideoCodecVP9   VideoCodec = "vp9"
-	VideoCodecAV1   VideoCodec = "av1"
+	VideoCodecH264    VideoCodec = "h264"
+	VideoCodecH265    VideoCodec = "h265"
+	VideoCodecVP8     VideoCodec = "vp8"
+	VideoCodecVP9     VideoCodec = "vp9"
+	VideoCodecAV1     VideoCodec = "av1"
 	VideoCodecUnknown VideoCodec = "unknown"
 )
 
@@ -22,10 +22,10 @@ const (
 type AudioCodec string
 
 const (
-	AudioCodecAAC   AudioCodec = "aac"
-	AudioCodecMP3   AudioCodec = "mp3"
-	AudioCodecOpus  AudioCodec = "opus"
-	AudioCodecVorbis AudioCodec = "vorbis"
+	AudioCodecAAC     AudioCodec = "aac"
+	AudioCodecMP3     AudioCodec = "mp3"
+	AudioCodecOpus    AudioCodec = "opus"
+	AudioCodecVorbis  AudioCodec = "vorbis"
 	AudioCodecUnknown AudioCodec = "unknown"
 )
 
@@ -33,16 +33,16 @@ const (
 type ContainerFormat string
 
 const (
-	ContainerMKV    ContainerFormat = "mkv"
-	ContainerMP4    ContainerFormat = "mp4"
-	ContainerWebM   ContainerFormat = "webm"
+	ContainerMKV     ContainerFormat = "mkv"
+	ContainerMP4     ContainerFormat = "mp4"
+	ContainerWebM    ContainerFormat = "webm"
 	ContainerUnknown ContainerFormat = "unknown"
 )
 
 // CodecInfo holds codec parameters detected from a media file.
 type CodecInfo struct {
-	Video    VideoCodec
-	Audio    AudioCodec
+	Video     VideoCodec
+	Audio     AudioCodec
 	Container ContainerFormat
 }
 
@@ -97,18 +97,26 @@ func (d *GstCodecDetector) Detect(filePath string) (CodecInfo, error) {
 	resultCh := make(chan CodecInfo, 1)
 	errorCh := make(chan error, 1)
 
+	// TODO: Implement actual codec detection via decodebin pad-added signals
+	// Currently falls back to EOS error since pad caps inspection is not implemented
 	bus.AddSignalWatch()
 	bus.Connect("message", func(bus *gst.Bus, msg *gst.Message) {
 		switch msg.Type() {
 		case gst.MessageError:
 			err, _ := msg.ParseError()
-			errorCh <- err
+			select {
+			case errorCh <- err:
+			default:
+			}
 		case gst.MessageEos:
 			// EOS without codec info means we couldn't detect
 			select {
 			case <-resultCh:
 			default:
-				errorCh <- fmt.Errorf("failed to detect codec: EOS received")
+				select {
+				case errorCh <- fmt.Errorf("failed to detect codec: EOS received"):
+				default:
+				}
 			}
 		}
 	})

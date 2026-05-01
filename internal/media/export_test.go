@@ -66,7 +66,7 @@ func TestEscapeFilePath(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"/path/to/video.mp4", "/path/to/video.mp4"},
+		{"/path/to/video.mp4", `"/path/to/video.mp4"`},
 		{"/path/to/my video.mp4", `"/path/to/my video.mp4"`},
 		{"/path/with spaces/and/more.mp4", `"/path/with spaces/and/more.mp4"`},
 	}

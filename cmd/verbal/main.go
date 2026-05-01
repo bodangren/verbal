@@ -509,10 +509,11 @@ func loadRecording(state *appState, videoPath string) bool {
 		}
 	}
 
+	state.editableView = ui.NewEditableTranscriptionView()
+	state.playbackWindow.SetEditableTranscription(state.editableView)
+
 	if result.HasTranscription && result.Transcription != nil {
-		state.editableView = ui.NewEditableTranscriptionView()
 		state.editableView.SetResult(result.Transcription)
-		state.playbackWindow.SetEditableTranscription(state.editableView)
 		state.wordContainer = state.editableView.GetWordContainer()
 		state.wordContainer.SetWordClickHandler(func(startTime float64, index int) {
 			if state.syncIntegration != nil {
@@ -520,9 +521,7 @@ func loadRecording(state *appState, videoPath string) bool {
 			}
 		})
 	} else {
-		state.editableView = ui.NewEditableTranscriptionView()
 		state.editableView.SetStatus("No transcription yet - press Ctrl+T to transcribe")
-		state.playbackWindow.SetEditableTranscription(state.editableView)
 	}
 
 	if err := setupPlaybackPipeline(state, videoPath); err != nil {

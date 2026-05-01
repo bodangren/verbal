@@ -58,9 +58,9 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		EnableShortFillers: true,
-		EnableHesitation:  true,
-		EnableRepetition:  true,
-		RepetitionWindow:  2.0,
+		EnableHesitation:   true,
+		EnableRepetition:   true,
+		RepetitionWindow:   2.0,
 	}
 }
 
@@ -138,7 +138,7 @@ func (d *DefaultDetector) isShortFiller(text string) bool {
 	return ok
 }
 
-func (d *DefaultDetector) isHesitation(words []Word, idx int, text string) bool {
+func (d *DefaultDetector) isHesitation(words []Word, idx int, _ string) bool {
 	for _, phrase := range hesitationPhrases {
 		if d.matchesPhrase(words, idx, phrase) {
 			return true
