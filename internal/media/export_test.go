@@ -79,8 +79,49 @@ func TestEscapeFilePath(t *testing.T) {
 	}
 }
 
+func TestSegmentExporter_SetCodecInfo(t *testing.T) {
+	exporter := NewSegmentExporter("/path/to/video.mp4")
+
+	if exporter.codecDetected {
+		t.Error("codecDetected should be false before SetCodecInfo")
+	}
+
+	info := CodecInfo{Video: VideoCodecH264, Audio: AudioCodecAAC, Container: ContainerMKV}
+	exporter.SetCodecInfo(info)
+
+	exporter.mu.Lock()
+	defer exporter.mu.Unlock()
+	if !exporter.codecDetected {
+		t.Error("codecDetected should be true after SetCodecInfo")
+	}
+	if exporter.codecInfo != info {
+		t.Errorf("codecInfo = %v, want %v", exporter.codecInfo, info)
+	}
+}
+
+func TestSegmentExporter_canStreamCopy(t *testing.T) {
+	exporter := NewSegmentExporter("/path/to/video.mp4")
+
+	if exporter.canStreamCopy() {
+		t.Error("canStreamCopy should return false when codec not detected")
+	}
+
+	info := CodecInfo{Video: VideoCodecH264, Audio: AudioCodecAAC, Container: ContainerMKV}
+	exporter.SetCodecInfo(info)
+
+	if !exporter.canStreamCopy() {
+		t.Error("canStreamCopy should return true for H264 codec")
+	}
+
+	info = CodecInfo{Video: VideoCodecAV1, Audio: AudioCodecAAC, Container: ContainerMP4}
+	exporter.SetCodecInfo(info)
+
+	if exporter.canStreamCopy() {
+		t.Error("canStreamCopy should return false for AV1 codec")
+	}
+}
+
 func TestSegmentExporter_ExportWithTempDir(t *testing.T) {
-	// Test that temp directory creation works
 	tempDir, err := os.MkdirTemp("", "verbal-export-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)

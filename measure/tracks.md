@@ -219,7 +219,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 
 ## Upcoming Tracks
 
-- [ ] **Track: Export Pipeline Optimization** *Link: [./tracks/export_pipeline_optimize_20260425/](./tracks/export_pipeline_optimize_20260425/)*
+- [x] **Track: Export Pipeline Optimization** [created: 2026-04-25, completed: 2026-05-01]
+  *Focus: Replace re-encoding (x264enc + avenc_aac) with stream-copy for faster, lossless export when codec parameters match.*
+  *Status: Complete. Created `CodecDetector` interface and `GstCodecDetector` implementation. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9. Fallback to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests: `TestSegmentExporter_SetCodecInfo`, `TestSegmentExporter_canStreamCopy`. Multi-segment concatenation remains re-encode due to timestamp handling complexity (documented in tech-debt.md).*
+  *Link: [./archive/export_pipeline_optimize_20260425](./archive/export_pipeline_optimize_20260425/)*
 - [ ] **Track: GTK4 Libadwaita Integration** *Link: [./tracks/gtk4_libadwaita_20260425/](./tracks/gtk4_libadwaita_20260425/)*
 - [ ] **Track: Media Package Test Coverage** *Link: [./tracks/media_test_coverage_20260425/](./tracks/media_test_coverage_20260425/)*
 

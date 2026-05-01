@@ -20,11 +20,13 @@ type Segment struct {
 // SegmentExporter handles exporting selected transcription segments as video clips.
 // It uses GStreamer to trim and concatenate video segments.
 type SegmentExporter struct {
-	sourcePath string
-	mu         sync.Mutex
-	onProgress func(percent float64)
-	onComplete func(outputPath string)
-	onError    func(error)
+	sourcePath   string
+	codecInfo    CodecInfo
+	codecDetected bool
+	mu           sync.Mutex
+	onProgress   func(percent float64)
+	onComplete   func(outputPath string)
+	onError      func(error)
 }
 
 // NewSegmentExporter creates a new exporter for the given source video file.
@@ -53,6 +55,49 @@ func (e *SegmentExporter) SetErrorHandler(handler func(error)) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.onError = handler
+}
+
+// DetectCodec probes the source file to detect codec parameters for stream-copy eligibility.
+func (e *SegmentExporter) DetectCodec() error {
+	detector := NewGstCodecDetector()
+	codecInfo, err := detector.Detect(e.sourcePath)
+	if err != nil {
+		return err
+	}
+	e.mu.Lock()
+	e.codecInfo = codecInfo
+	e.codecDetected = true
+	e.mu.Unlock()
+	return nil
+}
+
+// SetCodecInfo allows manual setting of codec info (for testing or pre-detected sources).
+func (e *SegmentExporter) SetCodecInfo(info CodecInfo) {
+	e.mu.Lock()
+	e.codecInfo = info
+	e.codecDetected = true
+	e.mu.Unlock()
+}
+
+// canStreamCopy returns true if the detected codec supports stream-copy.
+func (e *SegmentExporter) canStreamCopy() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.codecDetected {
+		return false
+	}
+	return e.codecInfo.CanStreamCopy()
+}
+
+// ExportWithCodecDetection exports segments after automatically detecting codec parameters.
+// This is a convenience method that combines DetectCodec and ExportSegments.
+// Note: This runs synchronously and returns an error if codec detection fails.
+// For async export with auto-detection, call DetectCodec() first, then ExportSegments().
+func (e *SegmentExporter) ExportWithCodecDetection(segments []Segment, outputPath string) error {
+	if err := e.DetectCodec(); err != nil {
+		return fmt.Errorf("codec detection failed: %w", err)
+	}
+	return e.export(segments, outputPath)
 }
 
 // ExportSegments exports the given segments to a new video file.
@@ -94,9 +139,87 @@ func (e *SegmentExporter) export(segments []Segment, outputPath string) error {
 }
 
 func (e *SegmentExporter) exportSingleSegment(seg Segment, outputPath string) error {
+	if e.canStreamCopy() {
+		return e.exportSingleSegmentStreamCopy(seg, outputPath)
+	}
+	return e.exportSingleSegmentReencode(seg, outputPath)
+}
+
+func (e *SegmentExporter) exportSingleSegmentStreamCopy(seg Segment, outputPath string) error {
 	escapedPath := escapeFilePath(e.sourcePath)
 	escapedOutput := escapeFilePath(outputPath)
 
+	// Stream-copy pipeline: use qtdemux/matroskamux for seeking and identity for passthrough
+	// This avoids re-encoding when source codec supports it
+	pipelineStr := fmt.Sprintf(
+		"filesrc location=%s ! qtdemux name=demux "+
+			"demux. ! queue ! identity ! queue ! matroskamux name=mux ! filesink location=%s "+
+			"demux. ! queue ! identity ! queue ! mux.",
+		escapedPath,
+		escapedOutput,
+	)
+
+	element, err := gst.ParseLaunch(pipelineStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse stream-copy pipeline: %w", err)
+	}
+
+	pipeline, ok := element.(*gst.Pipeline)
+	if !ok {
+		return fmt.Errorf("element is not a pipeline")
+	}
+
+	// Seek to start position
+	const nanosecondsPerSecond = 1_000_000_000
+	startNs := int64(seg.StartTime * nanosecondsPerSecond)
+	stopNs := int64(seg.EndTime * nanosecondsPerSecond)
+
+	// Set to paused to allow seeking
+	pipeline.SetState(gst.StatePaused)
+	pipeline.SeekSimple(gst.FormatTime, gst.SeekFlagFlush, startNs)
+
+	// Set up bus watcher
+	bus := pipeline.Bus()
+	if bus == nil {
+		return fmt.Errorf("failed to get bus")
+	}
+	bus.AddSignalWatch()
+
+	done := make(chan error, 1)
+
+	bus.Connect("message", func(bus *gst.Bus, msg *gst.Message) {
+		switch msg.Type() {
+		case gst.MessageEos:
+			e.reportProgress(1.0)
+			done <- nil
+		case gst.MessageError:
+			err, debug := msg.ParseError()
+			done <- fmt.Errorf("GStreamer error: %s (debug: %s)", err, debug)
+		case gst.MessageAsyncDone:
+			pos, ok := pipeline.QueryPosition(gst.FormatTime)
+			if ok && pos >= stopNs {
+				pipeline.SetState(gst.StateNull)
+				e.reportProgress(1.0)
+				done <- nil
+			}
+		}
+	})
+
+	ret := pipeline.SetState(gst.StatePlaying)
+	if ret == gst.StateChangeFailure {
+		return fmt.Errorf("failed to start stream-copy export pipeline")
+	}
+
+	err = <-done
+	pipeline.SetState(gst.StateNull)
+	return err
+}
+
+func (e *SegmentExporter) exportSingleSegmentReencode(seg Segment, outputPath string) error {
+	escapedPath := escapeFilePath(e.sourcePath)
+	escapedOutput := escapeFilePath(outputPath)
+
+	// Re-encode pipeline: decode -> convert -> encode -> mux
 	pipelineStr := fmt.Sprintf(
 		"filesrc location=%s ! decodebin name=dec "+
 			"dec. ! queue ! videoconvert ! x264enc ! queue ! "+
