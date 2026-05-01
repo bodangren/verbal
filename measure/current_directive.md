@@ -1,39 +1,35 @@
-# Current Directive: COMPLETE
+# Current Directive: GTK4 Libadwaita Integration (Phase 1 Complete)
 
-## Status: COMPLETE
+## Status: IN PROGRESS - Phase 1 Complete
 
-All tracks complete. No active directive.
+Phase 1 of GTK4 Libadwaita Integration is complete. Phase 2 (Integration) is next.
 
 ---
 
-## Last Completed: Export Pipeline Optimization (2026-05-01)
+## Last Completed: GTK4 Libadwaita Integration - Phase 1 (2026-05-01)
 
-**Track:** Export Pipeline Optimization
+**Track:** GTK4 Libadwaita Integration
+**Phase:** 1 (Foundation & Investigation)
 **Completed:** 2026-05-01
-**Summary:** Implemented stream-copy support for media export. Created `CodecDetector` interface and `GstCodecDetector` for codec detection. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9 sources. Falls back to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests for codec detection and stream-copy eligibility. Multi-segment concatenation remains re-encode (documented limitation).
+**Summary:** Added gotk4-adwaita/pkg/adw dependency. Created adwaita_test.go with Adwaita bindings tests. Updated spec.md with detailed integration plan and component inventory (adw.Application, adw.ApplicationWindow, adw.Clamp, etc.). Phase 1 verified: go vet passes, build compiles (CGo slow), tests require display.
 
 ## Verification
-- Commit pushed: `efc9df3 feat(media): Export Pipeline Optimization - stream-copy support [MiniMax-M2]`
-- Files changed: codec.go, codec_test.go, export.go, export_test.go
-- Memory files updated: lessons-learned.md (53 lines), tech-debt.md (70 lines)
+- Commit pushed: `d66fbaa feat(ui): GTK4 Libadwaita integration - Phase 1 foundation [MiniMax-M2]`
+- Files changed: go.mod, go.sum, lessons-learned.md, tech-debt.md, plan.md, spec.md, adwaita_test.go
+- Memory files updated: lessons-learned.md, tech-debt.md
 
 ---
 
 ## Previously Completed
 
-### Filler Word Detection (2026-04-25)
-**Track:** Filler Word Detection
-**Completed:** 2026-04-25
-**Summary:** Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation.
-
-### Visual Refresh (2026-04-25)
-**Track:** Visual Refresh: Define Unique Identity
-**Completed:** 2026-04-25
-**Summary:** Defined "Professional Precision Studio" dark theme identity with Electric Indigo (#6366F1) accent.
+### Export Pipeline Optimization (2026-05-01)
+**Track:** Export Pipeline Optimization
+**Completed:** 2026-05-01
+**Summary:** Implemented stream-copy support for media export. Created `CodecDetector` interface and `GstCodecDetector` for codec detection. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9 sources. Falls back to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests for codec detection and stream-copy eligibility. Multi-segment concatenation remains re-encode (documented limitation).
 
 ---
 
-## Upcoming Tracks (Pending)
+## Upcoming Tracks
 
-- **Track: GTK4 Libadwaita Integration** - Full Libadwaita integration for native GNOME look
+- **Track: GTK4 Libadwaita Integration - Phase 2** - Wire Adwaita components (ApplicationWindow, HeaderBar, etc.), add error handling, write integration tests, verify full suite passes
 - **Track: Media Package Test Coverage** - Improve media package test coverage from 46.8%
