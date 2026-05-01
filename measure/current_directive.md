@@ -1,4 +1,4 @@
-# Current Directive: Filler Word Detection - COMPLETE
+# Current Directive: COMPLETE
 
 ## Status: COMPLETE
 
@@ -6,34 +6,34 @@ All tracks complete. No active directive.
 
 ---
 
-## Last Completed: Filler Word Detection (2026-04-25)
+## Last Completed: Export Pipeline Optimization (2026-05-01)
 
-**Track:** Filler Word Detection
-**Completed:** 2026-04-25
-**Summary:** Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation. Built-in patterns: short fillers (um, uh, hm, mm, ah, er), hesitation phrases (like, you know, I mean, basically, actually, so, etc.), and repetition detection within 2-second time window. Configurable via Config struct. All 17 tests pass, build passes, vet passes.
+**Track:** Export Pipeline Optimization
+**Completed:** 2026-05-01
+**Summary:** Implemented stream-copy support for media export. Created `CodecDetector` interface and `GstCodecDetector` for codec detection. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9 sources. Falls back to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests for codec detection and stream-copy eligibility. Multi-segment concatenation remains re-encode (documented limitation).
 
 ## Verification
-- `make go-check` - pass.
-- All 12 packages: cmd/verbal, internal/ai, internal/db, internal/filler, internal/lifecycle, internal/media, internal/settings, internal/sync, internal/thumbnail, internal/transcription, internal/ui, internal/waveform - all pass.
+- Commit pushed: `efc9df3 feat(media): Export Pipeline Optimization - stream-copy support [MiniMax-M2]`
+- Files changed: codec.go, codec_test.go, export.go, export_test.go
+- Memory files updated: lessons-learned.md (53 lines), tech-debt.md (70 lines)
 
 ---
 
 ## Previously Completed
 
+### Filler Word Detection (2026-04-25)
+**Track:** Filler Word Detection
+**Completed:** 2026-04-25
+**Summary:** Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation.
+
 ### Visual Refresh (2026-04-25)
 **Track:** Visual Refresh: Define Unique Identity
 **Completed:** 2026-04-25
-**Summary:** Defined "Professional Precision Studio" dark theme identity with Electric Indigo (#6366F1) accent. Updated DESIGN.md with full design tokens (23 colors, 7 typography scales, 4 rounding levels, 6 spacing tokens) and passed `npx @google/design.md lint` validation. Updated styling.go to match. All 11 packages pass.
-
-### Build Optimization (2026-04-24)
-**Track:** Chore - Build Optimization
-**Completed:** 2026-04-24
-**Summary:** Created Makefile with incremental build targets (go-build, go-vet, go-test, go-check, clean). Configured GOCACHE for persistent caching in ~/.cache/go-build. Incremental builds now complete in ~6s vs >2min cold build. All tests pass, build passes, vet passes.
+**Summary:** Defined "Professional Precision Studio" dark theme identity with Electric Indigo (#6366F1) accent.
 
 ---
 
 ## Upcoming Tracks (Pending)
 
-- **Track: Export Pipeline Optimization** - Optimize export pipeline to use stream copy instead of re-encoding
 - **Track: GTK4 Libadwaita Integration** - Full Libadwaita integration for native GNOME look
 - **Track: Media Package Test Coverage** - Improve media package test coverage from 46.8%
