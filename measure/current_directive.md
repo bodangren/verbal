@@ -1,36 +1,24 @@
-# Current Directive: GTK4 Libadwaita Integration - Phase 2 Complete
+# Current Directive: Media Package Test Coverage
 
-## Status: IN PROGRESS - Phase 2 Complete
+## Status: READY - Next track available
 
-Phase 2 of GTK4 Libadwaita Integration is complete. Phase 3 (Polish) is next.
+GTK4 Libadwaita Integration track is complete. Media Package Test Coverage is next.
 
 ---
 
-## Last Completed: GTK4 Libadwaita Integration - Phase 2 (2026-05-02)
+## Last Completed: GTK4 Libadwaita Integration (2026-05-02)
 
 **Track:** GTK4 Libadwaita Integration
-**Phase:** 2 (Integration)
 **Completed:** 2026-05-02
-**Summary:** Wired Adwaita components into main.go. Changed `gtk.Application` to `adw.Application`, `gtk.ApplicationWindow` to `adw.ApplicationWindow`. Added `adw.Init()` call in activate function. All function signatures updated to use `*adw.ApplicationWindow`. Build compiles successfully (CGo takes >2min). gofmt applied to main.go. Commit: 2d111dc.
+**Summary:** All 3 phases complete. Phase 1 added gotk4-adwaita dependency and tests. Phase 2 wired adw.Application and adw.ApplicationWindow into main.go with adw.Init() call. Phase 3 updated tech-debt.md and lessons-learned.md with Adwaita integration patterns. Track archived.
 
 ## Verification
-- Commit pushed: `2d111dc feat(ui): GTK4 Libadwaita integration - Phase 2 wire Adwaita components [MiniMax-M2]`
-- Files changed: cmd/verbal/main.go, plan.md, spec.md
-- No remaining `gtk.ApplicationWindow` references in main.go
-- Build compiles successfully
-
----
-
-## Previously Completed
-
-### GTK4 Libadwaita Integration - Phase 1 (2026-05-01)
-**Track:** GTK4 Libadwaita Integration
-**Completed:** 2026-05-01
-**Summary:** Added gotk4-adwaita/pkg/adw dependency. Created adwaita_test.go with Adwaita bindings tests. Updated spec.md with detailed integration plan.
+- Commit: `6404af2 chore: GTK4 Libadwaita Phase 3 complete - memory files updated, track complete [MiniMax-M2]`
+- Files changed: plan.md, spec.md, tech-debt.md, lessons-learned.md
+- All acceptance criteria met
 
 ---
 
 ## Upcoming Tracks
 
-- **Track: GTK4 Libadwaita Integration - Phase 3** - Update tech-debt.md, update lessons-learned.md, final verification, commit and push
 - **Track: Media Package Test Coverage** - Improve media package test coverage from 46.8%

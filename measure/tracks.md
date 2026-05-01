@@ -223,7 +223,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Focus: Replace re-encoding (x264enc + avenc_aac) with stream-copy for faster, lossless export when codec parameters match.*
   *Status: Complete. Created `CodecDetector` interface and `GstCodecDetector` implementation. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9. Fallback to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests: `TestSegmentExporter_SetCodecInfo`, `TestSegmentExporter_canStreamCopy`. Multi-segment concatenation remains re-encode due to timestamp handling complexity (documented in tech-debt.md).*
   *Link: [./archive/export_pipeline_optimize_20260425](./archive/export_pipeline_optimize_20260425/)*
-- [ ] **Track: GTK4 Libadwaita Integration** *Link: [./tracks/gtk4_libadwaita_20260425/](./tracks/gtk4_libadwaita_20260425/)*
+- [x] **Track: GTK4 Libadwaita Integration** [created: 2026-04-25, completed: 2026-05-02]
+  *Focus: Integrate Libadwaita for modern GNOME HIG compliance via gotk4-adwaita bindings.*
+  *Status: Complete. All 3 phases complete: Phase 1 added gotk4-adwaita dependency and tests, Phase 2 wired adw.Application and adw.ApplicationWindow into main.go with adw.Init(), Phase 3 updated memory files (tech-debt.md, lessons-learned.md). Build compiles, gofmt applied, all acceptance criteria met.*
+  *Link: [./archive/gtk4_libadwaita_20260425](./archive/gtk4_libadwaita_20260425/)
 - [ ] **Track: Media Package Test Coverage** *Link: [./tracks/media_test_coverage_20260425/](./tracks/media_test_coverage_20260425/)*
 
 - [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
