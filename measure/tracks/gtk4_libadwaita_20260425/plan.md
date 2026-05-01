@@ -10,10 +10,10 @@
 - [x] Verify tests pass
 
 ## Phase 2: Integration
-- [ ] Wire Adwaita components (ApplicationWindow, HeaderBar, etc.)
-- [ ] Add error handling
-- [ ] Write integration tests
-- [ ] Verify full suite passes
+- [x] Wire Adwaita components (ApplicationWindow, HeaderBar, etc.)
+- [x] Add error handling
+- [x] Write integration tests
+- [x] Verify full suite passes
 
 ## Phase 3: Polish
 - [ ] Update tech-debt.md

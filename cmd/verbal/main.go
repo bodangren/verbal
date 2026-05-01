@@ -21,6 +21,7 @@ import (
 	"verbal/internal/ui"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
+	"github.com/diamondburned/gotk4-adwaita/pkg/adw"
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
@@ -28,7 +29,7 @@ import (
 )
 
 type appState struct {
-	window          *gtk.ApplicationWindow
+	window          *adw.ApplicationWindow
 	stack           *gtk.Stack
 	playbackWindow  *ui.PlaybackWindow
 	libraryView     *ui.LibraryView
@@ -82,7 +83,7 @@ func main() {
 		defer database.Close()
 	}
 
-	app := gtk.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
+	app := adw.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
 	app.ConnectActivate(func() {
 		activate(app, database)
 	})
@@ -146,10 +147,11 @@ func runStartupSmoke(homeDir string) error {
 	return nil
 }
 
-func activate(app *gtk.Application, database *db.Database) {
+func activate(app *adw.Application, database *db.Database) {
 	ui.LoadApplicationCSS()
+	adw.Init()
 
-	window := gtk.NewApplicationWindow(app)
+	window := adw.NewApplicationWindow(app)
 	window.SetTitle("Verbal - Video Transcription Editor")
 	configureMainWindowDefaults(&window.Window)
 
@@ -353,7 +355,7 @@ func loadRecordingFromLibrary(state *appState, rec *db.Recording) {
 	openRecordingPath(state, rec.FilePath)
 }
 
-func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
+func setupFileMenu(app *gtk.Application, window *adw.ApplicationWindow, state *appState) {
 	openAction := gio.NewSimpleAction("open", nil)
 	openAction.ConnectActivate(func(_ *glib.Variant) {
 		showOpenFileDialog(window, state)
@@ -411,7 +413,7 @@ func setupFileMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *a
 }
 
 // setupToolsMenu sets up the Tools menu actions
-func setupToolsMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *appState) {
+func setupToolsMenu(app *gtk.Application, window *adw.ApplicationWindow, state *appState) {
 	// Repair action - only works if database is available
 	repairAction := gio.NewSimpleAction("repair", nil)
 	repairAction.ConnectActivate(func(_ *glib.Variant) {
@@ -421,7 +423,7 @@ func setupToolsMenu(app *gtk.Application, window *gtk.ApplicationWindow, state *
 	app.SetAccelsForAction("app.repair", []string{"<Ctrl><Shift>r"})
 }
 
-func showSettingsWindow(parent *gtk.ApplicationWindow, state *appState) {
+func showSettingsWindow(parent *adw.ApplicationWindow, state *appState) {
 	if state.settingsSvc == nil {
 		return
 	}
@@ -452,7 +454,7 @@ func showSettingsWindow(parent *gtk.ApplicationWindow, state *appState) {
 	settingsWindow.Show()
 }
 
-func showOpenFileDialog(window *gtk.ApplicationWindow, state *appState) {
+func showOpenFileDialog(window *adw.ApplicationWindow, state *appState) {
 	dialog := gtk.NewFileChooserNative("Open Video File", &window.Window, gtk.FileChooserActionOpen, "Open", "Cancel")
 
 	filter := gtk.NewFileFilter()
@@ -571,7 +573,7 @@ func setupPlaybackPipeline(state *appState, videoPath string) error {
 	return nil
 }
 
-func showExportFileDialog(window *gtk.ApplicationWindow, state *appState, segments []ui.Segment) {
+func showExportFileDialog(window *adw.ApplicationWindow, state *appState, segments []ui.Segment) {
 	dialog := gtk.NewFileChooserNative("Export Video", &window.Window, gtk.FileChooserActionSave, "Export", "Cancel")
 	dialog.SetCurrentName("export_" + filepath.Base(state.currentPath))
 
@@ -632,7 +634,7 @@ func convertToMediaSegments(segments []ui.Segment, outputPath string) []media.Se
 	return result
 }
 
-func setupPlaybackControls(window *gtk.ApplicationWindow, state *appState) {
+func setupPlaybackControls(window *adw.ApplicationWindow, state *appState) {
 	state.playbackWindow.SetPlayCallback(func() {
 		if state.playback == nil {
 			return
@@ -927,7 +929,7 @@ func (a *waveformSyncAdapter) UpdatePosition(position float64) {
 }
 
 // showExportDialog shows the export dialog for exporting recordings
-func showExportDialog(window *gtk.ApplicationWindow, state *appState) {
+func showExportDialog(window *adw.ApplicationWindow, state *appState) {
 	if state.recordingSvc == nil {
 		return
 	}
@@ -961,7 +963,7 @@ func showExportDialog(window *gtk.ApplicationWindow, state *appState) {
 }
 
 // showExportDialogForRecording shows the export dialog for a specific recording
-func showExportDialogForRecording(window *gtk.ApplicationWindow, state *appState, rec *db.Recording) {
+func showExportDialogForRecording(window *adw.ApplicationWindow, state *appState, rec *db.Recording) {
 	if state.recordingSvc == nil || rec == nil {
 		return
 	}
@@ -996,7 +998,7 @@ func showExportDialogForRecording(window *gtk.ApplicationWindow, state *appState
 }
 
 // showImportDialog shows the import dialog for importing recordings
-func showImportDialog(window *gtk.ApplicationWindow, state *appState) {
+func showImportDialog(window *adw.ApplicationWindow, state *appState) {
 	if state.recordingSvc == nil {
 		return
 	}
@@ -1039,7 +1041,7 @@ func showImportDialog(window *gtk.ApplicationWindow, state *appState) {
 }
 
 // showRepairDialog shows the repair dialog for database maintenance
-func showRepairDialog(window *gtk.ApplicationWindow, state *appState) {
+func showRepairDialog(window *adw.ApplicationWindow, state *appState) {
 	if state.recordingSvc == nil {
 		return
 	}
@@ -1104,7 +1106,7 @@ func showRepairDialog(window *gtk.ApplicationWindow, state *appState) {
 }
 
 // showBackupSettingsDialog shows the backup settings dialog
-func showBackupSettingsDialog(window *gtk.ApplicationWindow, state *appState) {
+func showBackupSettingsDialog(window *adw.ApplicationWindow, state *appState) {
 	if state.backupManager == nil {
 		return
 	}

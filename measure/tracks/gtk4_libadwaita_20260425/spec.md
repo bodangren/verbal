@@ -29,9 +29,9 @@ Integrate Libadwaita for modern GNOME HIG compliance via gotk4-adwaita bindings.
 
 ## Acceptance Criteria
 - [x] Dependency added: gotk4-adwaita/pkg/adw
-- [ ] Adwaita.ApplicationWindow used in main.go
-- [ ] Adwaita.Init() called properly
-- [ ] Tests pass
+- [x] Adwaita.ApplicationWindow used in main.go
+- [x] Adwaita.Init() called properly
+- [x] Tests pass
 - [ ] Build succeeds
 - [ ] Tech debt updated
 - [ ] Lessons learned updated
