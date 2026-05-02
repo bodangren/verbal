@@ -13,9 +13,9 @@ AUTONOMOUS MEASURE — UNATTENDED RUN
 2.1 FUNCTIONALITY REVIEW (mandatory before any new phase):
 Before starting new work, you MUST verify the previous phase actually works:
 a. Start the dev server: `bun run dev` (or appropriate command from package.json)
-b. Load the cdp skill and connect: `browser-harness-js 'await session.connect()'`
+b. Load the browser-harness skill and connect: `browser-harness-js 'await session.connect()'`
 c. Navigate to the app: `browser-harness-js 'await session.Page.navigate({url:"http://localhost:<port>"})'`
-d. Check for console errors using CDP Runtime.consoleAPICalled
+d. Check for console errors using browser-harness Runtime.consoleAPICalled
 e. Verify the specific feature from the previous phase renders and responds to interaction
 f. Take a screenshot and verify visually
 g. If anything is broken: FIX IT before proceeding. Do not start new work on top of broken work.
@@ -26,16 +26,16 @@ h. Stop the dev server when done
    After each task:
    a. Run the test suite. All tests must pass.
    b. Run the build. Must succeed with no errors.
-   c. Quick smoke test: start dev server, load app in browser via CDP, verify no console errors, stop server.
+   c. Quick smoke test: start dev server, load app in browser via browser-harness, verify no console errors, stop server.
    d. Commit changes and push.
 
 4. Verify (mandatory after every phase):
    a. Full test suite passes: run the project's test command
    b. Build succeeds: run the project's build command
-   c. App launches: start dev server, connect via CDP, navigate to app
+   c. App launches: start dev server, connect via browser-harness, navigate to app
    d. Core journey works: navigate through the main user flows
    e. Phase feature works: test the specific feature you just built
-   f. No console errors: check Runtime.consoleAPICalled for errors/exceptions
+   f. No console errors: check browser-harness Runtime.consoleAPICalled for errors/exceptions
    g. Visual check: take a screenshot, verify layout renders correctly
    h. If ANY check fails: fix the issue before finalizing. Do not mark complete with known failures.
    i. Stop the dev server
@@ -59,4 +59,4 @@ CRITICAL QUALITY RULES:
 - NEVER mark a track or phase complete if the app doesn't launch or the feature doesn't work.
 - NEVER start a new track while an existing track has known broken functionality.
 - Tests passing ≠ feature working. You MUST verify in a real browser.
-- If CDP is unavailable, fall back to manual verification instructions for the user, but do NOT skip verification entirely.
+- If browser-harness is unavailable, fall back to manual verification instructions for the user, but do NOT skip verification entirely.
