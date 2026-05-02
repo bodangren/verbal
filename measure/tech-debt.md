@@ -28,7 +28,7 @@
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
 - **Filler Detection Package** - New `internal/filler` package for detecting filler words (um, uh, like, etc.) and repetition patterns in transcription data. [severity: low]
 - Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
-- Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low]
+- Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low] - Phase 1-2 complete (devices + export tests added); coverage at 41%. Pipeline tests skipped - require hardware. [severity: low]
 - ~~**Word virtualization**~~ - [resolved: 2026-04-25 - Integrated VirtualizedWordContainer into EditableTranscriptionView. Widget pool (100 labels) pre-allocated at construction, viewport-based rendering with UpdateVisibleWidgets, scroll events bound via BindScrollEvents. Memory bounded at ~100 widgets regardless of word count. See commit 9fbbe71.]
 - ~~**Waveform generation uses synthetic data**~~ - [resolved: 2026-04-10] Replaced with GStreamer-based real audio extraction using gst-launch-1.0 subprocess approach.
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. Consider adding tooltip overlay or status bar display. [severity: low]
