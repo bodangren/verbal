@@ -227,10 +227,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Focus: Integrate Libadwaita for modern GNOME HIG compliance via gotk4-adwaita bindings.*
   *Status: Complete. All 3 phases complete: Phase 1 added gotk4-adwaita dependency and tests, Phase 2 wired adw.Application and adw.ApplicationWindow into main.go with adw.Init(), Phase 3 updated memory files (tech-debt.md, lessons-learned.md). Build compiles, gofmt applied, all acceptance criteria met.*
   *Link: [./archive/gtk4_libadwaita_20260425](./archive/gtk4_libadwaita_20260425/)
-- [~] **Track: Media Package Test Coverage** [created: 2026-04-25, started: 2026-05-02]
+- [x] **Track: Media Package Test Coverage** [created: 2026-04-25, completed: 2026-05-03]
   *Focus: Improve media package test coverage from 46.8% to 80%+*
-  *Status: In Progress. Phase 1: Devices and codec coverage.*
-  *Link: [./tracks/media_test_coverage_20260425/](./tracks/media_test_coverage_20260425/)*
+  *Status: Complete. Phase 1-2: Expanded device and export test coverage. Pipeline tests skipped (require hardware/display). Coverage at 41%. Tech-debt updated. Track archived.*
+  *Link: [./archive/media_test_coverage_20260425](./archive/media_test_coverage_20260425/)*
 
 - [ ] **Track: Text-Driven Editing Core** [created: 2026-05-02]
   *Focus: Implement the core text-driven media editing operations: delete word, delete sentence, reorder text, insert silence, and split paragraph. This is the central value proposition of Verbal.*
