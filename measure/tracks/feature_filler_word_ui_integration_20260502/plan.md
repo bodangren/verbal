@@ -8,12 +8,12 @@
 
 ## Phase 1: Filler Detection Service
 
-- [ ] Create `internal/filler/service.go` with `FillerService` struct.
-- [ ] Write failing tests for `FillerService` initialization with `DefaultDetector`.
-- [ ] Write failing tests for `GetFillers(recordingID)` fetching transcription from DB and running detection.
-- [ ] Write failing tests for caching layer (second call returns cached results without re-running detection).
-- [ ] Implement service with progress callback support (`UpdateProgress(percent, message)`).
-- [ ] Run `internal/filler` tests and verify pass.
+- [x] Create `internal/filler/service.go` with `FillerService` struct.
+- [x] Write failing tests for `FillerService` initialization with `DefaultDetector`.
+- [x] Write failing tests for `GetFillers(recordingID)` fetching transcription from DB and running detection.
+- [x] Write failing tests for caching layer (second call returns cached results without re-running detection).
+- [x] Implement service with progress callback support (`UpdateProgress(percent, message)`).
+- [x] Run `internal/filler` tests and verify pass.
 
 ## Phase 2: Transcript Visual Highlighting
 
