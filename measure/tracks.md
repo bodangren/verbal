@@ -237,10 +237,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Status: Complete. All 5 phases implemented: Operation interface (Delete, Reorder, InsertSilence, Split), TranscriptMapper with binary search O(log n) lookup, GstSegmentEditor for media operations, context menu UI integration, EditTimeline for export. All tests pass.*
   *Link: [./archive/feature_text_driven_editing_core_20260502](./archive/feature_text_driven_editing_core_20260502/)*
 
-- [x] **Track: Fix Codec Detector and Wire Real Export Operations** [created: 2026-05-02, in-progress]
+- [x] **Track: Fix Codec Detector and Wire Real Export Operations** [created: 2026-05-02, completed: 2026-05-03]
   *Focus: Fix the non-functional GstCodecDetector.Detect method so stream-copy exports work, consolidate duplicated path sanitization, and replace simulation stubs in Export/Import/Repair dialogs with real lifecycle calls.*
-  *Status: Phase 1-2 complete. GstCodecDetector now implements pad-added signal handler with correct CodecInfo detection. Path sanitization consolidated into internal/media/sanitize.go. Phase 3-5 (lifecycle wiring) pending. All tests pass, build passes.*
-  *Link: [./tracks/bugfix_codec_detector_real_export_wiring_20260502/](./tracks/bugfix_codec_detector_real_export_wiring_20260502/)*
+  *Status: Complete. Phase 1-2: GstCodecDetector implements pad-added signal handler with correct CodecInfo detection. Path sanitization consolidated into internal/media/sanitize.go. Phase 3-5: Replaced sleep-loop simulations with real lifecycle calls - showExportDialog uses archiveExporter.Export/ExportAll, showImportDialog uses archiveImporter.Import, showRepairDialog uses databaseInspector.RunAllChecks and databaseRepairer.RepairAll. All tests pass.*
+  *Link: [./archive/bugfix_codec_detector_real_export_wiring_20260502/](./archive/bugfix_codec_detector_real_export_wiring_20260502/)*
 
 - [ ] **Track: Filler Word Detection UI Integration** [created: 2026-05-02]
   *Focus: Integrate the existing internal/filler package into the transcript UI: highlight filler words, display a summary panel with counts, and implement one-click removal of individual or all filler words.*
