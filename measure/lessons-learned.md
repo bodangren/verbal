@@ -47,7 +47,8 @@
 - **Viewport-Based Rendering:** For large datasets (waveforms with 100k+ samples), only render visible samples based on scroll/zoom offset. This keeps rendering O(visible) instead of O(total).
 - **Codec Detection for Stream-Copy:** Create a CodecDetector interface to probe media files for codec parameters. Stream-copy works when source and output use the same codec family (H264/H265/VP8/VP9).
 - **CodecInfo CanStreamCopy:** Define `CanStreamCopy()` method on codec info struct to determine if passthrough is possible. AV1 and unknown codecs require re-encoding.
-- **adw.Application for GTK4:** Use `adw.NewApplication` and `adw.NewApplicationWindow` directly - they're compatible with GTK4 apps and provide native GNOME look and feel. Call `adw.Init()` after `gtk.Init()` in the activate function.
+- **GStreamer pad-added Signal:** Use `ConnectPadAdded(func(newPad *gst.Pad))` on Element to receive pads as they're created by decodebin. Get caps via `newPad.CurrentCaps()`. Cast bin to *gst.Bin and use `ByName()` to find named elements.
+- **Consolidated Path Sanitization:** Create `QuoteLocation()` in `internal/media/sanitize.go` to unify path escaping for GStreamer pipelines. Use `strconv.Quote()` after stripping newlines.
 - **Edit Operation Pattern:** For text-driven editing, define an Operation interface with Apply/Undo/MarshalJSON. Concrete operations (Delete, Reorder, InsertSilence, Split) implement the interface. Use EditTimeline to track edit history for export.
 - **TranscriptMapper Binary Search:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use sort.Search with custom comparison for word boundary detection.
 
