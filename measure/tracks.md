@@ -232,10 +232,10 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Status: Complete. Phase 1-2: Expanded device and export test coverage. Pipeline tests skipped (require hardware/display). Coverage at 41%. Tech-debt updated. Track archived.*
   *Link: [./archive/media_test_coverage_20260425](./archive/media_test_coverage_20260425/)*
 
-- [ ] **Track: Text-Driven Editing Core** [created: 2026-05-02]
+- [x] **Track: Text-Driven Editing Core** [created: 2026-05-02, completed: 2026-05-03]
   *Focus: Implement the core text-driven media editing operations: delete word, delete sentence, reorder text, insert silence, and split paragraph. This is the central value proposition of Verbal.*
-  *Status: Pending. Spec and plan created. Awaiting implementation.*
-  *Link: [./tracks/feature_text_driven_editing_core_20260502/](./tracks/feature_text_driven_editing_core_20260502/)*
+  *Status: Complete. All 5 phases implemented: Operation interface (Delete, Reorder, InsertSilence, Split), TranscriptMapper with binary search O(log n) lookup, GstSegmentEditor for media operations, context menu UI integration, EditTimeline for export. All tests pass.*
+  *Link: [./archive/feature_text_driven_editing_core_20260502](./archive/feature_text_driven_editing_core_20260502/)*
 
 - [ ] **Track: Fix Codec Detector and Wire Real Export Operations** [created: 2026-05-02]
   *Focus: Fix the non-functional GstCodecDetector.Detect method so stream-copy exports work, consolidate duplicated path sanitization, and replace simulation stubs in Export/Import/Repair dialogs with real lifecycle calls.*

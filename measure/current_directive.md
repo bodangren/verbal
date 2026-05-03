@@ -1,29 +1,25 @@
-# Current Directive: Text-Driven Editing Core
+# Current Directive: Fix Codec Detector and Wire Real Export Operations
 
 ## Status: READY - Next track available
 
-Media Package Test Coverage track is complete. Text-Driven Editing Core is next.
+Text-Driven Editing Core is complete. Fix Codec Detector and Wire Real Export Operations is next.
 
 ---
 
-## Last Completed: Media Package Test Coverage (2026-05-03)
+## Last Completed: Text-Driven Editing Core (2026-05-03)
 
-**Track:** Media Package Test Coverage
+**Track:** Text-Driven Editing Core
 **Completed:** 2026-05-03
-**Summary:** Phase 1-2 complete: Expanded device and export test coverage. Pipeline tests skipped (require hardware/display). Coverage at 41%. Tech-debt updated with insight about GstCodecDetector non-functional status. Track archived.
+**Summary:** All 5 phases implemented: Operation interface (Delete, Reorder, InsertSilence, Split), TranscriptMapper with binary search O(log n) lookup, GstSegmentEditor for media operations, context menu UI integration, EditTimeline for export. All tests pass.
 
 **Verification**
-- Commit: `a4c0ec7 chore(measure): complete Media Package Test Coverage track [MiniMax-M2]`
-- All tests pass, go vet clean
+- Commit: `137355c feat(edit): implement Text-Driven Editing Core [MiniMax-M2]`
+- All edit package tests pass
 - Track archived
 
 ---
 
 ## Upcoming Tracks
-
-- **Track: Text-Driven Editing Core** - Implement core text-driven media editing operations: delete word, delete sentence, reorder text, insert silence, and split paragraph. This is the central value proposition of Verbal.
-  *Status: Pending. Spec and plan created. Awaiting implementation.*
-  *Link: [./tracks/feature_text_driven_editing_core_20260502/](./tracks/feature_text_driven_editing_core_20260502/)*
 
 - **Track: Fix Codec Detector and Wire Real Export Operations** - Fix the non-functional GstCodecDetector.Detect method so stream-copy exports work, consolidate duplicated path sanitization, and replace simulation stubs in Export/Import/Repair dialogs with real lifecycle calls.
   *Status: Pending. Spec and plan created. Awaiting implementation.*
