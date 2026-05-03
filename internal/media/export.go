@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
@@ -147,8 +145,8 @@ func (e *SegmentExporter) exportSingleSegment(seg Segment, outputPath string) er
 }
 
 func (e *SegmentExporter) exportSingleSegmentStreamCopy(seg Segment, outputPath string) error {
-	escapedPath := escapeFilePath(e.sourcePath)
-	escapedOutput := escapeFilePath(outputPath)
+	escapedPath := QuoteLocation(e.sourcePath)
+	escapedOutput := QuoteLocation(outputPath)
 
 	// Stream-copy pipeline: use qtdemux/matroskamux for seeking and identity for passthrough
 	// This avoids re-encoding when source codec supports it
@@ -217,8 +215,8 @@ func (e *SegmentExporter) exportSingleSegmentStreamCopy(seg Segment, outputPath 
 }
 
 func (e *SegmentExporter) exportSingleSegmentReencode(seg Segment, outputPath string) error {
-	escapedPath := escapeFilePath(e.sourcePath)
-	escapedOutput := escapeFilePath(outputPath)
+	escapedPath := QuoteLocation(e.sourcePath)
+	escapedOutput := QuoteLocation(outputPath)
 
 	// Re-encode pipeline: decode -> convert -> encode -> mux
 	pipelineStr := fmt.Sprintf(
@@ -327,13 +325,13 @@ func (e *SegmentExporter) concatFiles(inputFiles []string, outputPath string) er
 	// Build concat pipeline using matroskamux
 	var inputs []string
 	for _, f := range inputFiles {
-		inputs = append(inputs, fmt.Sprintf("filesrc location=%s ! matroskademux name=demux%d demux%d. ! queue ! mux.", escapeFilePath(f), len(inputs), len(inputs)))
+		inputs = append(inputs, fmt.Sprintf("filesrc location=%s ! matroskademux name=demux%d demux%d. ! queue ! mux.", QuoteLocation(f), len(inputs), len(inputs)))
 	}
 
 	concatStr := fmt.Sprintf(
 		"matroskamux name=mux ! filesink location=%s %s",
-		escapeFilePath(outputPath),
-		strings.Join(inputs, " "),
+		QuoteLocation(outputPath),
+		Join(inputs),
 	)
 
 	return e.runPipeline(concatStr)
@@ -385,12 +383,4 @@ func (e *SegmentExporter) reportProgress(percent float64) {
 	if handler != nil {
 		handler(percent)
 	}
-}
-
-// escapeFilePath sanitizes a file path for safe use in GStreamer pipeline strings.
-// It removes control characters and properly quotes the path to prevent injection attacks.
-func escapeFilePath(path string) string {
-	sanitized := strings.ReplaceAll(path, "\n", "")
-	sanitized = strings.ReplaceAll(sanitized, "\r", "")
-	return strconv.Quote(sanitized)
 }

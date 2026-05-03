@@ -4,11 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
+	"verbal/internal/media"
 )
 
 // ErrSeekFailed indicates that a thumbnail extraction pipeline could not seek.
@@ -31,7 +30,7 @@ func NewGStreamerExtractor(timeout time.Duration) *GStreamerExtractor {
 func (e *GStreamerExtractor) ProbeDuration(filePath string) (time.Duration, error) {
 	pipelineStr := fmt.Sprintf(
 		"filesrc location=%s ! decodebin ! fakesink",
-		quoteLocation(filePath),
+		media.QuoteLocation(filePath),
 	)
 
 	element, err := gst.ParseLaunch(pipelineStr)
@@ -82,11 +81,11 @@ func (e *GStreamerExtractor) ExtractFrameToFile(
 			"dec. ! queue ! videoconvert ! videoscale ! "+
 			"video/x-raw,width=%d,height=%d,pixel-aspect-ratio=1/1 ! "+
 			"jpegenc quality=%d snapshot=true ! filesink location=%s",
-		quoteLocation(filePath),
+		media.QuoteLocation(filePath),
 		width,
 		height,
 		jpegQuality,
-		quoteLocation(outputPath),
+		media.QuoteLocation(outputPath),
 	)
 
 	element, err := gst.ParseLaunch(pipelineStr)
@@ -142,12 +141,6 @@ func (e *GStreamerExtractor) ExtractFrameToFile(
 	}
 
 	return nil
-}
-
-func quoteLocation(path string) string {
-	sanitized := strings.ReplaceAll(path, "\n", "")
-	sanitized = strings.ReplaceAll(sanitized, "\r", "")
-	return strconv.Quote(sanitized)
 }
 
 func init() {

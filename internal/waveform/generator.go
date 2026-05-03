@@ -3,11 +3,11 @@ package waveform
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
+	"verbal/internal/media"
 )
 
 // NewGenerator creates a new waveform generator with the given configuration.
@@ -123,7 +123,7 @@ func (g *Generator) getDuration(filePath string) (time.Duration, error) {
 	// Create a discoverer pipeline to get duration without full playback
 	pipelineStr := fmt.Sprintf(
 		"filesrc location=%s ! decodebin ! fakesink",
-		quoteLocation(filePath),
+		media.QuoteLocation(filePath),
 	)
 
 	element, err := gst.ParseLaunch(pipelineStr)
@@ -248,14 +248,6 @@ func downsample(samples []float64, targetCount int) []float64 {
 	}
 
 	return result
-}
-
-// quoteLocation sanitizes a file path for safe use in GStreamer pipeline strings.
-// It removes newlines and properly quotes the path to prevent injection attacks.
-func quoteLocation(path string) string {
-	sanitized := strings.ReplaceAll(path, "\n", "")
-	sanitized = strings.ReplaceAll(sanitized, "\r", "")
-	return strconv.Quote(sanitized)
 }
 
 // sanitizeLocationArg removes control characters before passing a location as a direct argv value.

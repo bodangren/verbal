@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"verbal/internal/media"
 )
 
 // hasDisplay returns true if a display is available for GTK/GStreamer tests.
@@ -476,21 +478,21 @@ func TestQuoteLocation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := quoteLocation(tt.path)
+			result := media.QuoteLocation(tt.path)
 
 			// Verify the result is properly quoted (starts and ends with double quote)
 			if len(result) < 2 || result[0] != '"' || result[len(result)-1] != '"' {
-				t.Errorf("quoteLocation(%q) = %q, expected quoted string", tt.path, result)
+				t.Errorf("QuoteLocation(%q) = %q, expected quoted string", tt.path, result)
 			}
 
 			// Verify the expected content is present
 			if !contains(result, tt.expected) {
-				t.Errorf("quoteLocation(%q) = %q, expected to contain %q", tt.path, result, tt.expected)
+				t.Errorf("QuoteLocation(%q) = %q, expected to contain %q", tt.path, result, tt.expected)
 			}
 
 			// Verify newlines are removed
 			if contains(result, "\n") || contains(result, "\r") {
-				t.Errorf("quoteLocation(%q) = %q, should not contain newlines", tt.path, result)
+				t.Errorf("QuoteLocation(%q) = %q, should not contain newlines", tt.path, result)
 			}
 		})
 	}

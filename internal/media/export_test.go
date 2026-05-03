@@ -96,9 +96,9 @@ func TestEscapeFilePath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := escapeFilePath(tt.input)
+		got := QuoteLocation(tt.input)
 		if got != tt.expected {
-			t.Errorf("escapeFilePath(%q) = %q, want %q", tt.input, got, tt.expected)
+			t.Errorf("QuoteLocation(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
 	}
 }

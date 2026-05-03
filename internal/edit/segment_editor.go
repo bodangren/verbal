@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
+
+	"verbal/internal/media"
 )
 
 type SegmentEditor interface {
@@ -79,8 +79,8 @@ func (e *GstSegmentEditor) ApplyEdits(segments []MediaSegment, outputPath string
 }
 
 func (e *GstSegmentEditor) exportSegment(seg MediaSegment, outputPath string) error {
-	escapedPath := escapeFilePath(seg.SourcePath)
-	escapedOutput := escapeFilePath(outputPath)
+	escapedPath := media.QuoteLocation(seg.SourcePath)
+	escapedOutput := media.QuoteLocation(outputPath)
 
 	startNs := int64(seg.StartTime * float64(time.Second))
 	endNs := int64(seg.EndTime * float64(time.Second))
@@ -111,13 +111,13 @@ func (e *GstSegmentEditor) exportSegment(seg MediaSegment, outputPath string) er
 func (e *GstSegmentEditor) concatFiles(inputFiles []string, outputPath string) error {
 	var inputs []string
 	for i, f := range inputFiles {
-		inputs = append(inputs, fmt.Sprintf("filesrc location=%s ! matroskademux name=demux%d demux%d. ! queue ! mux.", escapeFilePath(f), i, i))
+		inputs = append(inputs, fmt.Sprintf("filesrc location=%s ! matroskademux name=demux%d demux%d. ! queue ! mux.", media.QuoteLocation(f), i, i))
 	}
 
 	concatStr := fmt.Sprintf(
 		"matroskamux name=mux ! filesink location=%s %s",
-		escapeFilePath(outputPath),
-		strings.Join(inputs, " "),
+		media.QuoteLocation(outputPath),
+		media.Join(inputs),
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Second)
@@ -131,12 +131,6 @@ func (e *GstSegmentEditor) concatFiles(inputFiles []string, outputPath string) e
 	}
 
 	return nil
-}
-
-func escapeFilePath(path string) string {
-	sanitized := strings.ReplaceAll(path, "\n", "")
-	sanitized = strings.ReplaceAll(sanitized, "\r", "")
-	return strconv.Quote(sanitized)
 }
 
 var _ SegmentEditor = (*GstSegmentEditor)(nil)

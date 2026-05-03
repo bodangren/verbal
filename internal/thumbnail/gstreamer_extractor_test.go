@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"verbal/internal/media"
 )
 
 func TestNewGStreamerExtractor_DefaultTimeout(t *testing.T) {
@@ -48,7 +50,7 @@ func TestGStreamerExtractor_ExtractFrameToFile_MissingFile(t *testing.T) {
 }
 
 func TestQuoteLocation_SanitizesNewlines(t *testing.T) {
-	quoted := quoteLocation("/tmp/a\n\r.mp4")
+	quoted := media.QuoteLocation("/tmp/a\n\r.mp4")
 	if strings.Contains(quoted, "\n") || strings.Contains(quoted, "\r") {
 		t.Fatalf("Expected quoted location to strip newlines, got %q", quoted)
 	}
