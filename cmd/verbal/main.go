@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"verbal/internal/ai"
@@ -54,6 +55,12 @@ type appState struct {
 	exportDialog *ui.ExportDialog
 	importDialog *ui.ImportDialog
 	repairDialog *ui.RepairDialog
+
+	// Lifecycle exporters/importers/repair
+	archiveExporter   *lifecycle.ArchiveExporter
+	archiveImporter   *lifecycle.ArchiveImporter
+	databaseInspector *lifecycle.DatabaseInspector
+	databaseRepairer  *lifecycle.DatabaseRepairer
 }
 
 const smokeCheckArg = "--smoke-check"
@@ -196,6 +203,17 @@ func activate(app *adw.Application, database *db.Database) {
 		// Use NewBackupManagerWithDB for atomic backup operations with BEGIN IMMEDIATE
 		state.backupManager = lifecycle.NewBackupManagerWithDB(dbPath, backupDir, database.GetDB(), nil)
 		state.backupScheduler = lifecycle.NewBackupScheduler(state.backupManager, nil)
+
+		// Initialize archive exporter and importer for import/export lifecycle
+		exporterAdapter := &recordingProviderAdapter{svc: recordingSvc}
+		state.archiveExporter = lifecycle.NewArchiveExporter(exporterAdapter, &fileProviderAdapter{})
+
+		importerStore := &importerRecordingStore{svc: recordingSvc}
+		state.archiveImporter = lifecycle.NewArchiveImporter(importerStore, &realFileWriter{homeDir: backupHomeDir})
+
+		// Initialize database inspector and repairer for repair lifecycle
+		state.databaseInspector = lifecycle.NewDatabaseInspector(database.RecordingRepo())
+		state.databaseRepairer = lifecycle.NewDatabaseRepairer(database.RecordingRepo(), nil)
 	}
 
 	window.ConnectCloseRequest(func() (ok bool) {
@@ -936,19 +954,32 @@ func showExportDialog(window *adw.ApplicationWindow, state *appState) {
 	dialog := ui.NewExportDialog(&window.Window)
 
 	dialog.SetOnExport(func(recordingID, destPath string) {
+		if state.archiveExporter == nil {
+			dialog.UpdateProgress(0, "Export not available")
+			return
+		}
 		go func() {
-			// Simulate export progress
-			for i := 0; i <= 100; i += 10 {
-				glib.IdleAdd(func(percent int) func() {
-					return func() {
-						dialog.UpdateProgress(percent, fmt.Sprintf("Exporting... %d%%", percent))
-					}
-				}(i))
-				time.Sleep(100 * time.Millisecond)
+			ctx := context.Background()
+			var err error
+			if recordingID == "all" {
+				err = state.archiveExporter.ExportAll(ctx, destPath, func(percent int, msg string) {
+					glib.IdleAdd(func() {
+						dialog.UpdateProgress(percent, msg)
+					})
+				})
+			} else {
+				err = state.archiveExporter.Export(ctx, recordingID, destPath, func(percent int, msg string) {
+					glib.IdleAdd(func() {
+						dialog.UpdateProgress(percent, msg)
+					})
+				})
 			}
-
 			glib.IdleAdd(func() {
-				dialog.UpdateProgress(100, "Export complete!")
+				if err != nil {
+					dialog.UpdateProgress(0, fmt.Sprintf("Export failed: %v", err))
+				} else {
+					dialog.UpdateProgress(100, "Export complete!")
+				}
 				dialog.SetExportingState(false)
 			})
 		}()
@@ -971,19 +1002,23 @@ func showExportDialogForRecording(window *adw.ApplicationWindow, state *appState
 	dialog.SetRecording(rec)
 
 	dialog.SetOnExport(func(recordingID, destPath string) {
+		if state.archiveExporter == nil {
+			dialog.UpdateProgress(0, "Export not available")
+			return
+		}
 		go func() {
-			// Simulate export progress
-			for i := 0; i <= 100; i += 10 {
-				glib.IdleAdd(func(percent int) func() {
-					return func() {
-						dialog.UpdateProgress(percent, fmt.Sprintf("Exporting... %d%%", percent))
-					}
-				}(i))
-				time.Sleep(100 * time.Millisecond)
-			}
-
+			ctx := context.Background()
+			err := state.archiveExporter.Export(ctx, recordingID, destPath, func(percent int, msg string) {
+				glib.IdleAdd(func() {
+					dialog.UpdateProgress(percent, msg)
+				})
+			})
 			glib.IdleAdd(func() {
-				dialog.UpdateProgress(100, "Export complete!")
+				if err != nil {
+					dialog.UpdateProgress(0, fmt.Sprintf("Export failed: %v", err))
+				} else {
+					dialog.UpdateProgress(100, "Export complete!")
+				}
 				dialog.SetExportingState(false)
 			})
 		}()
@@ -1005,28 +1040,23 @@ func showImportDialog(window *adw.ApplicationWindow, state *appState) {
 	dialog := ui.NewImportDialog(&window.Window)
 
 	dialog.SetOnImport(func(archivePath string, handling lifecycle.DuplicateHandling) {
+		if state.archiveImporter == nil {
+			dialog.UpdateProgress(0, "Import not available")
+			return
+		}
 		go func() {
-			// Simulate import progress
-			for i := 0; i <= 100; i += 10 {
-				glib.IdleAdd(func(percent int) func() {
-					return func() {
-						dialog.UpdateProgress(percent, fmt.Sprintf("Importing... %d%%", percent))
-					}
-				}(i))
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			// Create a mock result
-			result := &lifecycle.ImportResult{
-				ImportedCount: 1,
-				SkippedCount:  0,
-				ReplacedCount: 0,
-				Errors:        []error{},
-				ImportedIDs:   []string{"imported-1"},
-			}
-
+			ctx := context.Background()
+			result, err := state.archiveImporter.Import(ctx, archivePath, handling, func(percent int, msg string) {
+				glib.IdleAdd(func() {
+					dialog.UpdateProgress(percent, msg)
+				})
+			})
 			glib.IdleAdd(func() {
-				dialog.SetResult(result)
+				if err != nil {
+					dialog.UpdateProgress(0, fmt.Sprintf("Import failed: %v", err))
+				} else {
+					dialog.SetResult(result)
+				}
 				dialog.SetImportingState(false)
 			})
 		}()
@@ -1048,50 +1078,39 @@ func showRepairDialog(window *adw.ApplicationWindow, state *appState) {
 	dialog := ui.NewRepairDialog(&window.Window)
 
 	dialog.SetOnScan(func() {
+		if state.databaseInspector == nil {
+			return
+		}
 		go func() {
-			// Simulate scan progress
 			glib.IdleAdd(func() {
 				dialog.UpdateProgress(50, "Scanning database...")
 			})
-			time.Sleep(500 * time.Millisecond)
 
-			// Create a mock inspection report (no issues found)
-			report := &lifecycle.InspectionReport{
-				TotalIssues:           0,
-				OrphanedRecordings:    []*db.Recording{},
-				MissingThumbnails:     []*db.Recording{},
-				InvalidTranscriptions: []*db.Recording{},
-			}
+			report, err := state.databaseInspector.RunAllChecks()
 
 			glib.IdleAdd(func() {
-				dialog.SetInspectionReport(report)
+				if err != nil {
+					dialog.UpdateProgress(0, fmt.Sprintf("Scan failed: %v", err))
+				} else {
+					dialog.SetInspectionReport(report)
+				}
 			})
 		}()
 	})
 
 	dialog.SetOnRepair(func(options ui.RepairOptions) {
+		if state.databaseRepairer == nil {
+			return
+		}
 		go func() {
-			// Simulate repair progress
-			for i := 0; i <= 100; i += 20 {
-				glib.IdleAdd(func(percent int) func() {
-					return func() {
-						dialog.UpdateProgress(percent, fmt.Sprintf("Repairing... %d%%", percent))
-					}
-				}(i))
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			// Create a mock repair report
-			report := &lifecycle.RepairReport{
-				TotalRepairs:          0,
-				RemovedOrphans:        []int64{},
-				MarkedUnavailable:     []int64{},
-				RegeneratedThumbnails: []int64{},
-				Errors:                []string{},
-			}
+			report, err := state.databaseRepairer.RepairAll(dialog.inspectionReport)
 
 			glib.IdleAdd(func() {
-				dialog.SetRepairReport(report)
+				if err != nil {
+					dialog.UpdateProgress(0, fmt.Sprintf("Repair failed: %v", err))
+				} else {
+					dialog.SetRepairReport(report)
+				}
 			})
 		}()
 	})
@@ -1165,4 +1184,122 @@ func showBackupSettingsDialog(window *adw.ApplicationWindow, state *appState) {
 	})
 
 	dialog.Show()
+}
+
+type recordingProviderAdapter struct {
+	svc *db.RecordingService
+}
+
+func (a *recordingProviderAdapter) GetByID(ctx context.Context, id string) (*lifecycle.ExportableRecording, error) {
+	recID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid recording ID: %w", err)
+	}
+	rec, err := a.svc.GetByID(recID)
+	if err != nil {
+		return nil, err
+	}
+	return &lifecycle.ExportableRecording{
+		ID:                strconv.FormatInt(rec.ID, 10),
+		Title:             filepath.Base(rec.FilePath),
+		Description:       "",
+		CreatedAt:         rec.CreatedAt.Unix() * 1000,
+		Duration:          int64(rec.Duration.Seconds() * 1000),
+		MediaPath:         rec.FilePath,
+		TranscriptionPath: "",
+		ThumbnailPath:     "",
+	}, nil
+}
+
+func (a *recordingProviderAdapter) GetAll(ctx context.Context) ([]*lifecycle.ExportableRecording, error) {
+	recs, err := a.svc.GetLibrary()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*lifecycle.ExportableRecording, len(recs))
+	for i, rec := range recs {
+		result[i] = &lifecycle.ExportableRecording{
+			ID:                strconv.FormatInt(rec.ID, 10),
+			Title:             filepath.Base(rec.FilePath),
+			Description:       "",
+			CreatedAt:         rec.CreatedAt.Unix() * 1000,
+			Duration:          int64(rec.Duration.Seconds() * 1000),
+			MediaPath:         rec.FilePath,
+			TranscriptionPath: "",
+			ThumbnailPath:     "",
+		}
+	}
+	return result, nil
+}
+
+type fileProviderAdapter struct{}
+
+func (a *fileProviderAdapter) ReadFile(path string) ([]byte, error) { return os.ReadFile(path) }
+func (a *fileProviderAdapter) FileSize(path string) (int64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
+type importerRecordingStore struct {
+	svc *db.RecordingService
+}
+
+func (s *importerRecordingStore) Exists(ctx context.Context, id string) (bool, error) {
+	recID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return false, nil
+	}
+	_, err = s.svc.GetByID(recID)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (s *importerRecordingStore) Save(ctx context.Context, recording *lifecycle.ImportableRecording) (string, error) {
+	homeDir, _ := os.UserHomeDir()
+	recordingsDir := filepath.Join(homeDir, ".local", "share", "verbal", "recordings")
+	_ = os.MkdirAll(recordingsDir, 0755)
+
+	mediaPath := filepath.Join(recordingsDir, recording.MediaFilename)
+	if err := os.WriteFile(mediaPath, recording.MediaData, 0644); err != nil {
+		return "", fmt.Errorf("write media file: %w", err)
+	}
+
+	rec := &db.Recording{
+		FilePath:            mediaPath,
+		Duration:            time.Duration(recording.Duration) * time.Millisecond,
+		TranscriptionStatus: "pending",
+	}
+	if err := s.svc.AddRecording(mediaPath, time.Duration(recording.Duration)*time.Millisecond); err != nil {
+		return "", fmt.Errorf("add recording: %w", err)
+	}
+	return strconv.FormatInt(rec.ID, 10), nil
+}
+
+func (s *importerRecordingStore) Update(ctx context.Context, id string, recording *lifecycle.ImportableRecording) error {
+	return nil
+}
+
+func (s *importerRecordingStore) GenerateNewID(ctx context.Context, originalID string) string {
+	return originalID + "-copy"
+}
+
+type realFileWriter struct {
+	homeDir string
+}
+
+func (w *realFileWriter) WriteFile(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+func (w *realFileWriter) EnsureDir(path string) error {
+	return os.MkdirAll(path, 0755)
 }

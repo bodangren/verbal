@@ -51,6 +51,7 @@
 - **Consolidated Path Sanitization:** Create `QuoteLocation()` in `internal/media/sanitize.go` to unify path escaping for GStreamer pipelines. Use `strconv.Quote()` after stripping newlines.
 - **Edit Operation Pattern:** For text-driven editing, define an Operation interface with Apply/Undo/MarshalJSON. Concrete operations (Delete, Reorder, InsertSilence, Split) implement the interface. Use EditTimeline to track edit history for export.
 - **TranscriptMapper Binary Search:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use sort.Search with custom comparison for word boundary detection.
+- **Lifecycle Adapter Pattern:** When wiring lifecycle services (ArchiveExporter, ArchiveImporter, DatabaseInspector) to UI dialogs, create adapter types that satisfy the lifecycle interfaces using app services (RecordingService). For example, `recordingProviderAdapter` implements `RecordingProvider` by delegating to `RecordingService.GetByID/GetAll`.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
