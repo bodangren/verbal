@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/diamondburned/gotk4/pkg/gio/v2"
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/ai"
 )
@@ -24,6 +26,7 @@ type EditableTranscriptionView struct {
 	words             []ai.Word
 	onTextChanged     func(newText string)
 	onExportRequested func(segments []Segment)
+	onWordEdit        func(wordIndex int, operation string)
 }
 
 // Segment represents a selected range of words for export.
@@ -254,4 +257,25 @@ func (v *EditableTranscriptionView) buildSegments(start, end int) []Segment {
 			Text:       strings.Join(textParts, " "),
 		},
 	}
+}
+
+func (v *EditableTranscriptionView) SetWordEditHandler(handler func(wordIndex int, operation string)) {
+	v.onWordEdit = handler
+}
+
+func (v *EditableTranscriptionView) ShowContextMenu(wordIndex int, wordText string) {
+	menu := gio.NewMenu()
+
+	deleteWordItem := gio.NewMenuItem("Delete Word", "win.delete_word")
+	deleteSentenceItem := gio.NewMenuItem("Delete Sentence", "win.delete_sentence")
+	splitItem := gio.NewMenuItem("Split Here", "win.split_at_cursor")
+
+	menu.AppendItem(deleteWordItem)
+	menu.AppendItem(deleteSentenceItem)
+	menu.AppendItem(splitItem)
+
+	popover := gtk.NewPopover()
+	popover.SetMenuModel(menu)
+	popover.SetHasArrow(true)
+	popover.Popup()
 }
