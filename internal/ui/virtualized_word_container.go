@@ -30,6 +30,8 @@ type VirtualizedWordContainer struct {
 
 	scrollOffset float64
 	visibleRatio float64
+
+	fillerIndices map[int]bool
 }
 
 func NewVirtualizedWordContainer(words []WordData) *VirtualizedWordContainer {
@@ -132,6 +134,12 @@ func (vwc *VirtualizedWordContainer) SetWords(words []WordData) {
 	vwc.words = words
 }
 
+func (vwc *VirtualizedWordContainer) SetFillerIndices(indices map[int]bool) {
+	vwc.mu.Lock()
+	defer vwc.mu.Unlock()
+	vwc.fillerIndices = indices
+}
+
 func (vwc *VirtualizedWordContainer) Clear() {
 	vwc.mu.Lock()
 	defer vwc.mu.Unlock()
@@ -199,6 +207,7 @@ func (vwc *VirtualizedWordContainer) UpdateVisibleWidgets() {
 				wordData.Index = wordIdx
 				currentPool[i].SetData(wordData)
 				currentPool[i].SetHighlighted(false)
+				currentPool[i].SetFiller(vwc.fillerIndices[wordIdx])
 				currentPool[i].SetVisible(true)
 				currentFlowBox.Append(currentPool[i].Widget())
 			}

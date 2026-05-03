@@ -25,6 +25,7 @@ type WordLabel struct {
 	highlighted bool
 	hovered     bool
 	selected    bool
+	isFiller    bool
 	mu          sync.RWMutex
 
 	// clickCallbacks stores functions to call when the word is clicked
@@ -112,6 +113,24 @@ func (w *WordLabel) SetHighlighted(highlighted bool) {
 	} else {
 		w.label.RemoveCSSClass("word-highlighted")
 	}
+}
+
+func (w *WordLabel) SetFiller(isFiller bool) {
+	w.mu.Lock()
+	w.isFiller = isFiller
+	w.mu.Unlock()
+
+	if isFiller {
+		w.label.AddCSSClass("word-filler")
+	} else {
+		w.label.RemoveCSSClass("word-filler")
+	}
+}
+
+func (w *WordLabel) IsFiller() bool {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.isFiller
 }
 
 // IsHighlighted returns true if the word is currently highlighted.

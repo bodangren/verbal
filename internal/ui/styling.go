@@ -96,6 +96,22 @@ box, paned, grid, list-box {
 	padding: 4px;
 }
 
+.word-filler {
+	background-color: #F59E0B;
+	color: #1E1E1E;
+	font-weight: 600;
+}
+
+.word-filler:hover {
+	background-color: #D97706;
+	color: #FFFFFF;
+}
+
+.word-filler.word-highlighted {
+	background-color: #6366F1;
+	color: #FFFFFF;
+}
+
 .word-selected {
 	background-color: rgba(99, 102, 241, 0.25);
 	border: 1px solid #6366F1;
