@@ -35,13 +35,15 @@
 
 ## Phase 4: One-Click Removal
 
-- [ ] Write failing tests for `RemoveFiller(recordingID, fillerWord)` computing correct time range.
-- [ ] Implement removal using `SegmentExporter` to cut the filler time range and rebuild media.
-- [ ] Write failing tests for batch "Remove All" flattening multiple time ranges.
+- [x] Write failing tests for `RemoveFiller(recordingID, fillerWord)` computing correct time range.
+- [x] Implement removal using `SegmentExporter` to cut the filler time range and rebuild media.
+- [x] Write failing tests for batch "Remove All" flattening multiple time ranges.
 - [ ] Implement batch removal with progress dialog (`SetExportingState`-style disable + progress bar).
 - [ ] Update transcript data in SQLite after removal (delete filler words, shift subsequent timestamps).
 - [ ] Refresh `EditableTranscriptionView` and `FillerSummaryWidget` after removal.
 - [ ] Run media + UI integration tests and verify pass.
+
+Note: Core FillerRemovalService implemented. Full integration (progress dialog, SQLite updates, UI refresh) requires additional work.
 
 ## Phase 5: Menu Integration and Polish
 
