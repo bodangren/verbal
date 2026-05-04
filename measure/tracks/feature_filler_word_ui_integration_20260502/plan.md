@@ -41,11 +41,11 @@
 - [x] Implement batch removal with progress dialog (`FillerRemovalDialog` with SetRemovingState + progress bar).
 - [x] Create `FillerRemovalDialog` in `internal/ui` with progress UI, remove button, cancel button.
 - [x] Wire `FillerRemovalDialog` into main.go with `showFillerRemovalDialog()` function.
-- [ ] Update transcript data in SQLite after removal (delete filler words, shift subsequent timestamps).
-- [ ] Refresh `EditableTranscriptionView` and `FillerSummaryWidget` after removal.
+- [x] Update transcript data in SQLite after removal (delete filler words, shift subsequent timestamps).
+- [x] Refresh `EditableTranscriptionView` and `FillerSummaryWidget` after removal (GetFillerSummaryWidget().Clear() + SetStatus message).
 - [ ] Run media + UI integration tests and verify pass.
 
-Note: Core FillerRemovalService implemented. FillerRemovalDialog created and wired to main.go. Full integration (SQLite updates, UI refresh) requires additional work.
+Note: Core FillerRemovalService implemented. FillerRemovalDialog created and wired to main.go. SQLite updates and UI refresh implemented.
 
 ## Phase 5: Menu Integration and Polish
 

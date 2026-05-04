@@ -1200,6 +1200,11 @@ func showFillerRemovalDialog(window *adw.ApplicationWindow, state *appState) {
 
 		if updatedJSON != "" {
 			_ = state.recordingSvc.UpdateTranscription(state.currentRecordingID, updatedJSON)
+
+			if summary := state.playbackWindow.GetFillerSummaryWidget(); summary != nil {
+				summary.Clear()
+			}
+			state.editableView.SetStatus("Transcription updated - reload recording to see changes")
 		}
 	})
 
