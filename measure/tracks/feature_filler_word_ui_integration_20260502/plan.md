@@ -38,17 +38,19 @@
 - [x] Write failing tests for `RemoveFiller(recordingID, fillerWord)` computing correct time range.
 - [x] Implement removal using `SegmentExporter` to cut the filler time range and rebuild media.
 - [x] Write failing tests for batch "Remove All" flattening multiple time ranges.
-- [ ] Implement batch removal with progress dialog (`SetExportingState`-style disable + progress bar).
+- [x] Implement batch removal with progress dialog (`FillerRemovalDialog` with SetRemovingState + progress bar).
+- [x] Create `FillerRemovalDialog` in `internal/ui` with progress UI, remove button, cancel button.
+- [x] Wire `FillerRemovalDialog` into main.go with `showFillerRemovalDialog()` function.
 - [ ] Update transcript data in SQLite after removal (delete filler words, shift subsequent timestamps).
 - [ ] Refresh `EditableTranscriptionView` and `FillerSummaryWidget` after removal.
 - [ ] Run media + UI integration tests and verify pass.
 
-Note: Core FillerRemovalService implemented. Full integration (progress dialog, SQLite updates, UI refresh) requires additional work.
+Note: Core FillerRemovalService implemented. FillerRemovalDialog created and wired to main.go. Full integration (SQLite updates, UI refresh) requires additional work.
 
 ## Phase 5: Menu Integration and Polish
 
-- [ ] Add "Detect Fillers" menu item to Tools menu in `cmd/verbal/main.go`.
-- [ ] Assign keyboard shortcut `Ctrl+Shift+F`.
+- [x] Add "Detect Fillers" menu item to Tools menu in `cmd/verbal/main.go`.
+- [x] Assign keyboard shortcut `Ctrl+Shift+F`.
 - [ ] Write integration test for full workflow: detect → highlight → remove → verify export.
 - [ ] Update user-facing labels and tooltips.
 - [ ] Run full test suite: `make go-check`.

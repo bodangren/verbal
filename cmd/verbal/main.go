@@ -13,6 +13,8 @@ import (
 
 	"verbal/internal/ai"
 	"verbal/internal/db"
+	"verbal/internal/edit"
+	"verbal/internal/filler"
 	"verbal/internal/lifecycle"
 	"verbal/internal/media"
 	"verbal/internal/settings"
@@ -30,31 +32,33 @@ import (
 )
 
 type appState struct {
-	window          *adw.ApplicationWindow
-	stack           *gtk.Stack
-	playbackWindow  *ui.PlaybackWindow
-	libraryView     *ui.LibraryView
-	playback        *media.PlaybackPipeline
-	monitor         *media.PositionMonitor
-	syncIntegration *sync.Integration
-	wordContainer   *ui.VirtualizedWordContainer
-	editableView    *ui.EditableTranscriptionView
-	loader          *ui.RecordingLoader
-	currentPath     string
-	db              *db.Database
-	recordingSvc    *db.RecordingService
-	thumbnailSvc    *thumbnail.Service
-	settingsSvc     *settings.Service
-	aiFactory       *ai.Factory
+	window             *adw.ApplicationWindow
+	stack              *gtk.Stack
+	playbackWindow     *ui.PlaybackWindow
+	libraryView        *ui.LibraryView
+	playback           *media.PlaybackPipeline
+	monitor            *media.PositionMonitor
+	syncIntegration    *sync.Integration
+	wordContainer      *ui.VirtualizedWordContainer
+	editableView       *ui.EditableTranscriptionView
+	loader             *ui.RecordingLoader
+	currentPath        string
+	currentRecordingID int64
+	db                 *db.Database
+	recordingSvc       *db.RecordingService
+	thumbnailSvc       *thumbnail.Service
+	settingsSvc        *settings.Service
+	aiFactory          *ai.Factory
 
 	// Backup system
 	backupManager   *lifecycle.BackupManager
 	backupScheduler *lifecycle.BackupScheduler
 
 	// Dialogs
-	exportDialog *ui.ExportDialog
-	importDialog *ui.ImportDialog
-	repairDialog *ui.RepairDialog
+	exportDialog        *ui.ExportDialog
+	importDialog        *ui.ImportDialog
+	repairDialog        *ui.RepairDialog
+	fillerRemovalDialog *ui.FillerRemovalDialog
 
 	// Lifecycle exporters/importers/repair
 	archiveExporter   *lifecycle.ArchiveExporter
@@ -432,6 +436,14 @@ func setupFileMenu(app *gtk.Application, window *adw.ApplicationWindow, state *a
 
 // setupToolsMenu sets up the Tools menu actions
 func setupToolsMenu(app *gtk.Application, window *adw.ApplicationWindow, state *appState) {
+	// Detect fillers action
+	detectFillersAction := gio.NewSimpleAction("detect-fillers", nil)
+	detectFillersAction.ConnectActivate(func(_ *glib.Variant) {
+		showFillerRemovalDialog(window, state)
+	})
+	app.AddAction(detectFillersAction)
+	app.SetAccelsForAction("app.detect-fillers", []string{"<Ctrl><Shift>F"})
+
 	// Repair action - only works if database is available
 	repairAction := gio.NewSimpleAction("repair", nil)
 	repairAction.ConnectActivate(func(_ *glib.Variant) {
@@ -521,9 +533,11 @@ func loadRecording(state *appState, videoPath string) bool {
 
 	// Add/update recording in database
 	if state.recordingSvc != nil {
-		_, err := state.recordingSvc.AddRecording(videoPath, time.Duration(result.Duration*float64(time.Second)))
+		rec, err := state.recordingSvc.AddRecording(videoPath, time.Duration(result.Duration*float64(time.Second)))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to add recording to library: %v\n", err)
+		} else {
+			state.currentRecordingID = rec.ID
 		}
 	}
 
@@ -1121,6 +1135,91 @@ func showRepairDialog(window *adw.ApplicationWindow, state *appState) {
 	})
 
 	dialog.Show()
+}
+
+// showFillerRemovalDialog shows the filler removal dialog
+func showFillerRemovalDialog(window *adw.ApplicationWindow, state *appState) {
+	if state.recordingSvc == nil || state.currentRecordingID == 0 {
+		return
+	}
+
+	dialog := ui.NewFillerRemovalDialog(&window.Window)
+
+	detector := filler.NewDefaultDetector(filler.DefaultConfig())
+	fillerSvc := filler.NewFillerService(detector)
+	segmentEditor := edit.NewGstSegmentEditor()
+
+	recordingProvider := &fillerRecordingAdapter{svc: state.recordingSvc}
+	removalSvc := filler.NewFillerRemovalService(recordingProvider, segmentEditor)
+
+	dialog.SetRecording(state.currentRecordingID, state.currentPath)
+	dialog.SetFillerService(fillerSvc)
+	dialog.SetRemovalService(removalSvc)
+
+	dialog.SetOnRemove(func() {
+		recording, err := state.recordingSvc.GetByID(state.currentRecordingID)
+		if err != nil || recording == nil {
+			dialog.ShowError("Failed to get recording info")
+			return
+		}
+
+		fillers, err := fillerSvc.DetectFromCache(state.currentRecordingID, recording.TranscriptionJSON)
+		if err != nil {
+			dialog.ShowError(fmt.Sprintf("Failed to detect fillers: %v", err))
+			return
+		}
+
+		if len(fillers) == 0 {
+			dialog.ShowError("No fillers detected")
+			return
+		}
+
+		dialog.SetRemovingState(true)
+		dialog.UpdateProgress(0, "Removing fillers...")
+
+		go func() {
+			result, err := removalSvc.RemoveAllFillers(state.currentRecordingID)
+
+			glib.IdleAdd(func() {
+				dialog.SetRemovingState(false)
+
+				if err != nil {
+					dialog.UpdateProgress(0, "")
+					dialog.ShowError(fmt.Sprintf("Failed to remove fillers: %v", err))
+					return
+				}
+
+				dialog.UpdateProgress(100, "Complete")
+				dialog.ShowResult(result.OutputPath, result.RemovedFillers)
+			})
+		}()
+	})
+
+	dialog.SetOnComplete(func(outputPath string, removedCount int) {
+		state.playbackWindow.ShowError(fmt.Sprintf("Removed %d fillers. Output: %s", removedCount, outputPath))
+	})
+
+	dialog.SetOnCancel(func() {
+	})
+
+	dialog.Show()
+}
+
+// fillerRecordingAdapter adapts RecordingService to filler.RecordingProvider
+type fillerRecordingAdapter struct {
+	svc *db.RecordingService
+}
+
+func (a *fillerRecordingAdapter) GetByID(id int64) (filler.Recording, error) {
+	rec, err := a.svc.GetByID(id)
+	if err != nil {
+		return filler.Recording{}, err
+	}
+	return filler.Recording{
+		ID:                rec.ID,
+		FilePath:          rec.FilePath,
+		TranscriptionJSON: rec.TranscriptionJSON,
+	}, nil
 }
 
 // showBackupSettingsDialog shows the backup settings dialog
