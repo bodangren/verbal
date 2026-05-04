@@ -200,6 +200,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+- [ ] **Track: Advanced Media Processing & Editing** [created: 2026-05-04]
+  *Focus: Enhance GStreamer-based local editing capabilities with multi-track support, improved segment handling, and timestamp-accurate concatenation.*
+  *Status: Pending. Awaiting implementation.*
+  *Link: [./tracks/feature_advanced_media_processing_20260504/](./tracks/feature_advanced_media_processing_20260504/)
+
 ## Superseded (Tauri/Rust Implementation)
 
 The following tracks were part of the initial Tauri/Rust prototype and have been superseded by the pivot to Go and GTK4.
@@ -245,7 +250,7 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 - [x] **Track: Filler Word Detection UI Integration** [created: 2026-05-02, completed: 2026-05-04]
   *Focus: Integrate the existing internal/filler package into the transcript UI: highlight filler words, display a summary panel with counts, and implement one-click removal of individual or all filler words.*
   *Status: Complete. All 5 phases implemented: FillerService with caching, filler CSS highlighting in VirtualizedWordContainer, FillerSummaryWidget with counts/navigation, FillerRemovalService with segment computation, FillerRemovalDialog with progress UI, SQLite updates and UI refresh. Menu integration with Ctrl+Shift+F shortcut. All tests pass.*
-  *Link: [./tracks/feature_filler_word_ui_integration_20260502/](./tracks/feature_filler_word_ui_integration_20260502/)*
+  *Link: [./archive/feature_filler_word_ui_integration_20260502/](./archive/feature_filler_word_ui_integration_20260502/)*
 
 - [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Implement detection and flagging of filler words in transcription data (um, uh, like, you know, etc.) and repetition patterns.*
