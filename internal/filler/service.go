@@ -36,8 +36,8 @@ func (c *FillerCache) Clear(recordingID int64) {
 }
 
 type FillerService struct {
-	detector  Detector
-	cache     *FillerCache
+	detector   Detector
+	cache      *FillerCache
 	onProgress func(percent int, message string)
 }
 
@@ -65,9 +65,9 @@ func (s *FillerService) SetProgressCallback(cb func(int, string)) {
 }
 
 type TranscriptionData struct {
-	Text     string `json:"text"`
-	Words    []Word `json:"words"`
-	Language string `json:"language"`
+	Text     string  `json:"text"`
+	Words    []Word  `json:"words"`
+	Language string  `json:"language"`
 	Duration float64 `json:"duration"`
 }
 

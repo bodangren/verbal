@@ -5,10 +5,10 @@ import (
 )
 
 type SegmentConcatBuilder struct {
-	tm           *TimestampMapper
-	sourcePath   string
-	codecInfo    CodecInfo
-	canCopy      bool
+	tm         *TimestampMapper
+	sourcePath string
+	codecInfo  CodecInfo
+	canCopy    bool
 }
 
 func NewSegmentConcatBuilder(sourcePath string, segments []Segment, canStreamCopy bool) *SegmentConcatBuilder {

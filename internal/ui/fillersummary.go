@@ -17,14 +17,14 @@ type FillerSummaryWidget struct {
 
 	fillerList *gtk.ListBox
 
-	navPrevButton *gtk.Button
-	navNextButton *gtk.Button
+	navPrevButton   *gtk.Button
+	navNextButton   *gtk.Button
 	removeAllButton *gtk.Button
 
-	fillers []*filler.FillerWord
+	fillers      []*filler.FillerWord
 	currentIndex int
 
-	onNavigate func(index int)
+	onNavigate  func(index int)
 	onRemoveAll func()
 	onRemoveOne func(index int)
 }
@@ -115,17 +115,17 @@ func NewFillerSummaryWidget() *FillerSummaryWidget {
 	box.Append(removeAllButton)
 
 	widget := &FillerSummaryWidget{
-		box:               box,
-		shortFillerCount:  shortFillerCount,
-		hesitationCount:   hesitationCount,
-		repetitionCount:   repetitionCount,
-		totalCount:        totalCount,
-		fillerList:        fillerList,
-		navPrevButton:     navPrevButton,
-		navNextButton:     navNextButton,
-		removeAllButton:   removeAllButton,
-		fillers:           nil,
-		currentIndex:      -1,
+		box:              box,
+		shortFillerCount: shortFillerCount,
+		hesitationCount:  hesitationCount,
+		repetitionCount:  repetitionCount,
+		totalCount:       totalCount,
+		fillerList:       fillerList,
+		navPrevButton:    navPrevButton,
+		navNextButton:    navNextButton,
+		removeAllButton:  removeAllButton,
+		fillers:          nil,
+		currentIndex:     -1,
 	}
 
 	navPrevButton.ConnectClicked(func() {
