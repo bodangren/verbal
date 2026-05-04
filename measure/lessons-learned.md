@@ -1,57 +1,34 @@
 # Lessons Learned
 
 ## Go + GTK4 (Current)
-- **gotk4-adwaita Bindings:** Go bindings for Libadwaita are available at `github.com/diamondburned/gotk4-adwaita`. The `pkg/adw` sub-package contains the main Adwaita widget bindings. Requires `adw.Init()` call after `gtk.Init()`. Version is built against Libadwaita 1.2.0, but system has 1.5.0 - compatible via GObject introspection.
-- **Libadwaita Components:** Key components include `adw.Application`, `adw.ApplicationWindow` (with breakpoint support for responsive layouts), `adw.Clamp` for content width limiting, and row types like `adw.ActionRow`, `adw.EntryRow`, `adw.ComboRow` for forms.
-- **GStreamer Real Audio Extraction:** When gotk4-gstreamer bindings don't expose appsink, use gst-launch-1.0 subprocess with `filesrc ! decodebin ! audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=1,rate=16000 ! filesink` pattern. Extract to temp file, then read/convert.
-- **S16LE to Float64 Conversion:** Little-endian: `value := int16(data[offset]) | int16(data[offset+1])<<8`. Normalize to [0.0, 1.0] by taking absolute value and dividing by 32768.
-- **AudioExtractor Interface Pattern:** Create interface for audio extraction to enable testing with mocks and future backend flexibility (FFmpeg, etc.).
-- **Waveform Cache Schema:** Use SQLite with JSON columns for flexible sample storage. `INSERT OR REPLACE` with `ON CONFLICT` handles upserts cleanly.
-- **Async Generation Pattern:** Use goroutines with progress/completion callbacks for long-running operations like waveform generation. Always call completion callback even on errors.
-- **Display Detection:** Use `os.Getenv("DISPLAY")` or `os.Getenv("WAYLAND_DISPLAY")` to detect if GTK/GStreamer tests can run. Skip tests gracefully when no display available.
-- **Settings Singleton Pattern:** SQLite singleton table with `CHECK (id = 1)` constraint ensures exactly one settings row. Use `INSERT OR REPLACE` for upsert behavior.
-- **Exact vs Fuzzy DB Lookup:** Use exact `file_path = ?` lookup for mutation targets (transcription status/data updates). Keep LIKE search only for user-facing discovery/filtering.
+- **gotk4-adwaita Bindings:** Go bindings for Libadwaita at `github.com/diamondburned/gotk4-adwaita`. Requires `adw.Init()` call after `gtk.Init()`.
+- **GStreamer Real Audio Extraction:** Use gst-launch-1.0 subprocess with `filesrc ! decodebin ! audioconvert ! audioresample ! audio/x-raw,format=S16LE,channels=1,rate=16000 ! filesink` pattern.
 - **Async UI Updates:** Use `glib.IdleAdd()` to update UI from goroutines. This prevents GTK threading issues.
-- **GStreamer GTK4:** `gtk4paintablesink` (from gst-plugins-bad) is required for embedded video in GTK4; `gtksink`/`gtkglsink` are GTK3 only.
-- **Pipeline State:** Use `sync.RWMutex` for thread-safe state tracking in GStreamer pipelines accessed from UI callbacks.
-- **Avoid Package-Level Test Bypass:** Do not `os.Exit(0)` in `TestMain` for headless environments; it creates false-green package results by skipping all tests silently. Gate only display-required tests with `t.Skip`.
-- **Startup Smoke Gate:** Add a non-UI startup mode (for example `--smoke-check`) so CI can validate binary build plus database/service wiring without launching GTK event loop.
-- **AI Provider Pattern:** Use REST APIs instead of native SDKs to avoid heavy dependencies. Factory pattern with environment-based config keeps provider selection flexible.
+- **Display Detection:** Use `os.Getenv("DISPLAY")` or `os.Getenv("WAYLAND_DISPLAY")` to detect if GTK/GStreamer tests can run. Skip tests gracefully with `t.Skip`.
 - **Binary Search for Timestamps:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use binary search, not linear scan.
-- **WCAG Contrast:** Semi-transparent gold (`rgba(255, 215, 0, 0.5)`) fails WCAG AA contrast. Use GNOME accent blue (`#3584E4`) with white text for reliable 4.5:1+ contrast.
-- **O(1) Highlight Updates:** Track `lastHighlightedIndex` to clear only the previous word instead of iterating all words on every 10fps position update.
-- **Seek Boundary Validation:** Always validate seek positions against duration before calling GStreamer's `SeekSimple`. Negative seeks cause silent failures.
-- **SetState Return Values:** GStreamer's `SetState()` returns `gst.StateChangeReturn`, not an error. Check for `gst.StateChangeFailure` to detect failed transitions.
-- **Widget Pool Pre-allocation:** For GTK virtualization, pre-allocate widget pools at construction rather than creating widgets on-demand. This avoids GTK object creation overhead during scroll events.
+- **Widget Pool Pre-allocation:** For GTK virtualization, pre-allocate widget pools at construction rather than creating widgets on-demand.
 - **Widget Pool Index Mapping:** In virtualized containers with fixed widget pools, pool indices don't map 1:1 to data indices. Use an offset (startIdx) when assigning data to pool slots.
-- **Highlight Pool Slot Tracking:** When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position.
-- **Words Snapshot for Binary Search:** When binary search methods read vwc.words after releasing a lock, a data race occurs. Pass words as a parameter to the search methods, copying the slice under lock first.
-- **Filler Word Detection Pattern:** For detecting patterns in transcription data (filler words, repetition), use a Detector interface with a Detect method that takes a slice of Word structs and returns FillerWord results.
-- **GStreamer Pipeline Path Sanitization:** Always sanitize file paths before interpolating into GStreamer pipeline strings. Use a `quoteLocation()` function that strips newlines (`\n`, `\r`) and applies `strconv.Quote()` to prevent injection attacks.
-- **Callback Panic Recovery:** Always wrap user-provided callbacks with `defer recover()` in long-running goroutines. A panic in user code should not crash the background scheduler.
+- **Words Snapshot for Binary Search:** Pass words as a parameter to search methods, copying the slice under lock first to avoid data races.
+- **Filler Word Detection Pattern:** Use a Detector interface with a Detect method that takes a slice of Word structs and returns FillerWord results.
+- **GStreamer Pipeline Path Sanitization:** Always sanitize file paths before interpolating into GStreamer pipeline strings. Use `quoteLocation()` function that strips newlines and applies `strconv.Quote()`.
+- **Callback Panic Recovery:** Always wrap user-provided callbacks with `defer recover()` in long-running goroutines.
 - **Logger Interface Pattern:** Define minimal logger interfaces at the package level to avoid tight coupling to specific logging implementations.
-- **SQL Scan Helper Pattern:** When dealing with repeated SQL patterns, define a `scanner` interface that abstracts `sql.Row` and `sql.Rows`. Extract column lists as constants.
-- **Repository Initialization Audit Pattern:** When auditing for improper struct{} initialization, search for `&[A-Z][a-zA-Z]*Repository{}` patterns. Verify each repository is initialized via a factory method on `*Database`.
-- **SQLite BEGIN IMMEDIATE for Backups:** Use `BEGIN IMMEDIATE` transaction to obtain an exclusive lock during backup. This prevents torn writes by blocking concurrent writers.
-- **Atomic File Replacement Pattern:** For safe file updates, use: (1) write to temp file, (2) `fsync()` to ensure data hits disk, (3) atomic `rename()` to replace target.
-- **Pre-Restore Snapshots:** Before destructive operations like restore, create a snapshot of current state. On failure, roll back to the snapshot.
+- **SQLite BEGIN IMMEDIATE for Backups:** Use `BEGIN IMMEDIATE` transaction to obtain an exclusive lock during backup.
+- **Atomic File Replacement Pattern:** For safe file updates: (1) write to temp file, (2) `fsync()` to ensure data hits disk, (3) atomic `rename()` to replace target.
 - **File Permission Constants:** Use `0700` for directories and `0600` for sensitive files (backups containing user data).
-- **Windows-Friendly Filenames:** Avoid dots in filename timestamps (e.g., `20060102_150405.000`) as they can be misinterpreted as file extensions. Use underscores: `20060102_150405_000`.
 - **Import/Export Manifest Pattern:** Use a versioned JSON manifest in ZIP archives for import/export. Include SHA-256 checksums for all files to verify integrity during import.
-- **Enum-based Duplicate Handling:** Use typed constants (`DuplicateSkip`, `DuplicateReplace`, `DuplicateRename`) for import conflict resolution, giving users clear control over behavior.
 - **Resource Cleanup Pattern:** Always add resource cleanup (like `scheduler.Stop()`) to the window's `ConnectCloseRequest` handler to ensure graceful shutdown of background goroutines.
-- **Dialog Reuse:** Create dialog instances on-demand in response to user actions rather than keeping them in app state. This simplifies state management.
+- **Dialog Reuse:** Create dialog instances on-demand in response to user actions rather than keeping them in app state.
 - **Progress Callback Pattern:** Use `UpdateProgress(percent int, message string)` method for async operations. Store progress state internally for testing in headless environments.
 - **Export/Import UI State Management:** Disable controls during operations (`SetExportingState`, `SetImportingState`, `SetRepairingState`) to prevent user interaction while async work is in progress.
-- **TDD for Permission Fixes:** Writing tests that assert specific permission bits (0700, 0600) ensures the fixes are verified and prevents regression.
-- **Viewport-Based Rendering:** For large datasets (waveforms with 100k+ samples), only render visible samples based on scroll/zoom offset. This keeps rendering O(visible) instead of O(total).
+- **Viewport-Based Rendering:** For large datasets (waveforms with 100k+ samples), only render visible samples based on scroll/zoom offset.
 - **Codec Detection for Stream-Copy:** Create a CodecDetector interface to probe media files for codec parameters. Stream-copy works when source and output use the same codec family (H264/H265/VP8/VP9).
-- **CodecInfo CanStreamCopy:** Define `CanStreamCopy()` method on codec info struct to determine if passthrough is possible. AV1 and unknown codecs require re-encoding.
-- **GStreamer pad-added Signal:** Use `ConnectPadAdded(func(newPad *gst.Pad))` on Element to receive pads as they're created by decodebin. Get caps via `newPad.CurrentCaps()`. Cast bin to *gst.Bin and use `ByName()` to find named elements.
-- **Consolidated Path Sanitization:** Create `QuoteLocation()` in `internal/media/sanitize.go` to unify path escaping for GStreamer pipelines. Use `strconv.Quote()` after stripping newlines.
-- **Edit Operation Pattern:** For text-driven editing, define an Operation interface with Apply/Undo/MarshalJSON. Concrete operations (Delete, Reorder, InsertSilence, Split) implement the interface. Use EditTimeline to track edit history for export.
-- **TranscriptMapper Binary Search:** O(log n) word lookup by timestamp is essential for smooth sync at 10fps. Use sort.Search with custom comparison for word boundary detection.
-- **Lifecycle Adapter Pattern:** When wiring lifecycle services (ArchiveExporter, ArchiveImporter, DatabaseInspector) to UI dialogs, create adapter types that satisfy the lifecycle interfaces using app services (RecordingService). For example, `recordingProviderAdapter` implements `RecordingProvider` by delegating to `RecordingService.GetByID/GetAll`.
+- **GStreamer pad-added Signal:** Use `ConnectPadAdded(func(newPad *gst.Pad))` on Element to receive pads as they're created by decodebin.
+- **Consolidated Path Sanitization:** Create `QuoteLocation()` in `internal/media/sanitize.go` to unify path escaping for GStreamer pipelines.
+- **Edit Operation Pattern:** Define an Operation interface with Apply/Undo/MarshalJSON. Concrete operations (Delete, Reorder, InsertSilence, Split) implement the interface.
+- **Lifecycle Adapter Pattern:** When wiring lifecycle services to UI dialogs, create adapter types that satisfy the lifecycle interfaces using app services.
+- **Filler Removal Service Pattern:** Use `RecordingProvider` interface for testability. Match filler targets by value (Start, End, Text) not pointer equality.
+- **Segment Computation for Filler Removal:** Compute non-filler segments by sorting fillers by start time, then creating segments between consecutive filler boundaries.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

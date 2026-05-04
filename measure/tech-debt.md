@@ -3,73 +3,49 @@
 ## Go + GTK4 Implementation (Current)
 
 ### High Severity
-- ~~**BackupManager.CreateBackup uses raw file copy on live SQLite DB**~~ - [resolved: 2026-04-15 - Now uses BEGIN IMMEDIATE transaction for atomic backup when DB connection available. See commits b95b8dd and 35c7a07]
-- ~~**BackupManager.RestoreBackup is non-atomic with no rollback**~~ - [resolved: 2026-04-15 - Implemented atomic restore with temp file + fsync + rename pattern, pre-restore snapshot creation, and automatic rollback on failure. See commit 4004a30]
+- ~~**BackupManager.CreateBackup uses raw file copy on live SQLite DB**~~ - [resolved: 2026-04-15 - Now uses BEGIN IMMEDIATE transaction for atomic backup when DB connection available]
+- ~~**BackupManager.RestoreBackup is non-atomic with no rollback**~~ - [resolved: 2026-04-15 - Implemented atomic restore with temp file + fsync + rename pattern, pre-restore snapshot creation, and automatic rollback on failure]
 
 ### Medium Severity
-- ~~**BackupScheduler tick granularity and wake-from-sleep**~~ - [resolved: 2026-04-17 - Current implementation correctly handles wake-from-sleep (backup fires on wake). The 1-minute ticker with `time.Now().After(nextBackup)` is the standard pattern for this. Added comprehensive tests for scheduler robustness including panic recovery. See commit TBD]
-- ~~**BackupScheduler errors logged to stderr, not app logger**~~ - [resolved: 2026-04-17 - Added Logger interface to lifecycle package. Replaced fmt.Fprintf(os.Stderr, ...) with logger.Warn() in RotateBackups. Added logger.Error() calls for backup failures in performScheduledBackup. See commit TBD]
-- ~~**Backup file/directory permissions too permissive**~~ - [resolved: 2026-04-14 - Changed from 0755/0666 to 0700/0600. See commit 3178748]
-- ~~**Backup timestamp filename contains a dot**~~ - [resolved: 2026-04-14 - Changed format from `20060102_150405.000` to `20060102_150405_000` for Windows compatibility. See commit 161ab8f]
-- ~~**Panicking onBackupComplete callback kills scheduler goroutine**~~ - [resolved: 2026-04-17 - Added safeCallback() method with defer recover() and logging. Callback panics are now caught and logged without crashing the scheduler goroutine. See commit TBD]
-- ~~**GStreamer pipeline path injection in waveform package**~~ - [resolved: 2026-04-16 - Added quoteLocation() function to sanitize paths before interpolation. Both generator.go and gstreamer_extractor.go now properly quote file paths for GStreamer pipelines.]
-- ~~**Settings created without DB connection in main.go**~~ - [resolved: 2026-04-23 - Audited all repository initialization patterns. All repositories (`RecordingRepository`, `ThumbnailRepository`, `SettingsRepository`) are now properly initialized via factory methods (`RecordingRepo()`, `ThumbnailRepo()`, `SettingsRepo()`). Test files use intentional mock patterns. No similar issues found.]
 - **`go vet` and `go build` timeout on full project** - The UI package takes >2 minutes to vet/build due to CGo/GTK dependencies. Consider splitting build targets or caching. [severity: medium]
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - The code supports embedded preview via gtk4paintablesink, but users must install `gstreamer1.0-plugins-bad`. Falls back to external window if plugin not available. [severity: medium]
-- ~~**VirtualizedWordContainer.UpdateVisibleWidgets never removes old widgets from FlowBox**~~ - [resolved: 2026-04-24 - Added `flowBox.RemoveAll()` before appending new widgets in IdleAdd callback. FlowBox now stays bounded at pool size.]
-- ~~**VirtualizedWordContainer.SetHighlightedWord indexes pool by word index**~~ - [resolved: 2026-04-24 - Replaced `lastHighlightedIdx` with `highlightedPoolIdx`. Now calculates pool slot based on scroll position: `poolIdx = wordIndex - startIdx`. Only highlights if word is in visible range.]
-- ~~**VirtualizedWordContainer.UpdateVisibleWidgets has data race on words slice**~~ - [resolved: 2026-04-24 - Changed `firstVisibleWordIndex` and `lastVisibleWordIndex` to take `words []WordData` parameter. Snapshots words under lock before binary search calls, eliminating the data race.]
 - **Libadwaita integration in progress** - gotk4-adwaita bindings added (adw package). Phase 1-2 complete. main.go now uses adw.Application and adw.ApplicationWindow with adw.Init() called. [severity: medium]
+- ~~**VirtualizedWordContainer.UpdateVisibleWidgets never removes old widgets from FlowBox**~~ - [resolved: 2026-04-24 - Added `flowBox.RemoveAll()` before appending new widgets in IdleAdd callback]
+- ~~**VirtualizedWordContainer.SetHighlightedWord indexes pool by word index**~~ - [resolved: 2026-04-24 - Replaced `lastHighlightedIdx` with `highlightedPoolIdx` tracking pool slot]
+- ~~**VirtualizedWordContainer.UpdateVisibleWidgets has data race on words slice**~~ - [resolved: 2026-04-24 - Changed binary search to take words parameter for snapshot under lock]
 
 ### Low Severity
-- ~~**RecordingRepository query/scan duplication**~~ - [resolved: 2026-04-17 - Extracted `scanRecording()` helper and `recordingColumns` constant. Reduced 531 lines to 422 lines (-109 lines). See commit TBD]
-- ~~**BackupManager ListBackups/listBackupsUnlocked duplication**~~ - [resolved: 2026-04-16 - ListBackups now calls listBackupsUnlocked after acquiring lock for DRY compliance. See commit 1fb546f]
-- **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. Only apply highlight if the word is within the visible range. [severity: low]
+- **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. [severity: low]
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
 - **Filler Detection Package** - New `internal/filler` package for detecting filler words (um, uh, like, etc.) and repetition patterns in transcription data. [severity: low]
-- Libadwaita integration skipped due to Go 1.24 requirement. [severity: low]
-- Media package test coverage at 46.8% - GStreamer pipeline tests require display/video files. [severity: low] - Phase 1-2 complete (devices + export tests added); coverage at 41%. Pipeline tests skipped - require hardware. [severity: low]
-- ~~**Word virtualization**~~ - [resolved: 2026-04-25 - Integrated VirtualizedWordContainer into EditableTranscriptionView. Widget pool (100 labels) pre-allocated at construction, viewport-based rendering with UpdateVisibleWidgets, scroll events bound via BindScrollEvents. Memory bounded at ~100 widgets regardless of word count. See commit 9fbbe71.]
-- ~~**Waveform generation uses synthetic data**~~ - [resolved: 2026-04-10] Replaced with GStreamer-based real audio extraction using gst-launch-1.0 subprocess approach.
-- **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. Consider adding tooltip overlay or status bar display. [severity: low]
-- ~~**Export pipeline uses re-encoding**~~ - [resolved: 2026-05-01 - Implemented stream-copy support via CodecDetector interface. Single-segment export now uses `qtdemux ! identity ! matroskamux` pipeline when source codec supports it (H264/H265/VP8/VP9). Fallback to re-encode for incompatible codecs. Multi-segment concatenation still uses re-encode due to timestamp handling complexity. See `internal/media/codec.go` and `internal/media/export.go`.]
-- **Export multi-segment stream-copy** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Current implementation uses re-encode for all multi-segment exports. Future work could use GStreamer `funnel` or custom timestamp adjustment. [severity: low]
-- ~~**GstCodecDetector.Detect is non-functional**~~ - [resolved: 2026-05-03 - Implemented pad-added signal handler on decodebin to receive CodecInfo. Extract video/audio codec from GstCaps string (H264/H265/VP8/VP9/AV1 detection). Use bin.ByName() to get decodebin element from parsed pipeline. See `internal/media/codec.go`.]
-- ~~**Inconsistent path sanitization functions**~~ - [resolved: 2026-05-03 - Created `internal/media/sanitize.go` with unified `QuoteLocation()` and `Join()`. Replaced all escapeFilePath/quoteLocation variants across export.go, generator.go, gstreamer_extractor.go, and segment_editor.go.]
-- ~~**Export/Import/Repair dialogs use simulation stubs**~~ - [resolved: 2026-05-03 - Replaced sleep-loop simulations with real lifecycle operations. ArchiveExporter and ArchiveImporter initialized in activate(), adapters (recordingProviderAdapter, importerRecordingStore, realFileWriter) provide DB integration. Export calls ArchiveExporter.Export/ExportAll, Import calls ArchiveImporter.Import, Repair calls DatabaseInspector.RunAllChecks and DatabaseRepairer.RepairAll.]
-- **Text-Driven Editing Core implemented** - New `internal/edit` package with Operation interface, DeleteOperation, ReorderOperation, InsertSilenceOperation, SplitOperation, TranscriptMapper, EditTimeline. All tests pass. [severity: low]
-- ~~**DatabaseRepairer needs real ThumbnailGenerator integration**~~ - [resolved: 2026-05-03 - DatabaseRepairer and DatabaseInspector initialized in activate(). Repair calls RepairAll() with inspection report from inspector. Note: ThumbnailGenerator is still nil for repairer as actual thumbnail.GstreamerExtractor integration is pending.]
-- ~~Repair UI not yet implemented~~ - [resolved: 2026-04-11] ExportDialog, ImportDialog, and RepairDialog implemented with progress tracking, file choosers, and callback patterns.
-- ~~Import/Export/ Repair menu integration~~ - [resolved: 2026-04-12] Menu actions added to File (Import/Export) and Tools (Repair) menus with keyboard shortcuts (Ctrl+Shift+I/E/R). Dialogs wired in main.go with simulation for actual operations.
-- ~~**Backup system needs menu integration**~~ - [resolved: 2026-04-14] Backup system integrated into main.go: BackupManager and BackupScheduler initialized with database, menu action added to File menu (Ctrl+Shift+B), BackupSettingsDialog wired with full functionality including manual backup, scheduler start/stop, and settings persistence.
+- **Libadwaita integration skipped due to Go 1.24 requirement** - [severity: low]
+- **Media package test coverage** - GStreamer pipeline tests require display/video files. Pipeline tests skipped - require hardware. [severity: low]
+- **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [severity: low]
+- **Export multi-segment stream-copy** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Current implementation uses re-encode for all multi-segment exports. [severity: low]
+- **Text-Driven Editing Core implemented** - New `internal/edit` package with Operation interface, DeleteOperation, ReorderOperation, InsertSilenceOperation, SplitOperation, TranscriptMapper, EditTimeline. [severity: low]
+- **Filler Summary Widget** - New `internal/ui/fillersummary.go` displays filler counts by type, navigation buttons, and Remove All Fillers button. Integration with PlaybackWindow complete. [severity: low]
+- **FillerRemovalService** - New `internal/filler/removal.go` computes non-filler segments and uses SegmentExporter for removal. Core service implemented, full UI integration (progress dialog, SQLite updates, UI refresh) pending. [severity: low]
 
-## Resolved
+## Resolved (Recent)
 
-- ~~GStreamer error propagation~~ - Replaced `fmt.Printf` in bus watchers with callback pattern (`onError`, `onWarning`). UI can now surface pipeline errors to users. [resolved: 2026-04-05]
-- ~~SetState return values ignored~~ - `Play()`, `Pause()`, `Stop()`, and `Close()` now return errors for failed state transitions. All callers updated. [resolved: 2026-04-05]
-- ~~Transcription workflow regression~~ - Wired transcription into main.go with Transcribe button, TranscriptionView, progress callback, and metadata save. AI provider stubs are intentional (REST API pattern). [resolved: 2026-03-28]
-- ~~GStreamer video sink uses separate window~~ - Implemented embedded preview using gtk4paintablesink with fallback to autovideosink. [resolved: 2026-03-26]
-- ~~Recording pipeline uses test sources~~ - Now uses real hardware (v4l2src + pulsesrc) with graceful fallback to test sources. [resolved: 2026-03-26]
-- ~~Google Speech API uses LINEAR16/16kHz — may need format conversion for non-WAV recordings.~~ [resolved: 2026-03-30 - Added FFmpeg audio extraction in transcription service]
-- ~~Backoff jitter not implemented; uses simple exponential backoff.~~ [resolved: 2026-03-30 - Added ±25% jitter to prevent thundering herd]
-- ~~Video sync core implementation~~ [resolved: 2026-04-02 - Phase 3 complete: PositionMonitor, PlaybackPipeline, SyncIntegration all implemented with tests]
-- ~~Main window split-pane layout~~ [resolved: 2026-04-03 - PlaybackWindow component with gtk.Paned, toolbar controls, and RecordingLoader]
-- ~~PlaybackWindow integration into main.go~~ [resolved: 2026-04-05 - Full integration with PlaybackPipeline, sync.Integration, EditableTranscriptionView, and file open dialog]
-- ~~WCAG AA contrast for highlighted words~~ [resolved: 2026-04-04 - Replaced gold highlight with GNOME blue #3584E4]
-- ~~O(n) highlight clearing on every position update~~ [resolved: 2026-04-04 - SetHighlightedWord now tracks last highlighted index for O(1) updates]
-- ~~No seek boundary validation~~ [resolved: 2026-04-04 - SeekTo validates negative positions and checks against duration]
-- ~~SeekTo return value ignored in HandleWordClick~~ [resolved: 2026-04-04 - Failed seeks now skip highlight update to avoid desync]
-- ~~Missing CSS classes and keyboard navigation~~ [resolved: 2026-04-04 - Added .word-hover, .word-container, focus styles, Enter/Space activation]
-- ~~Export callback stub~~ [resolved: 2026-04-05 - Wired save dialog, SegmentExporter, progress/error callbacks]
-- ~~Settings UI implementation~~ [resolved: 2026-04-08 - All 4 phases complete: database layer, GTK4 UI components, main.go integration, integration tests with 92.2% coverage]
-- ~~Transcription search by file path is imprecise~~ [resolved: 2026-04-10 - Added exact path lookup (`GetByPathExact`/`GetByPath`) and replaced `runTranscription` LIKE-search update path; added status-aware update method for error vs completed]
-
-## Superseded (Tauri/Rust Implementation)
-
-The following items are from the Tauri/Rust prototype and are preserved for reference:
-
-- ~~No central state management for the video player yet~~
-- ~~AppImage bundling fails on Linux~~
-- ~~TranscriptEditor doesn't yet support real-time word highlighting~~
-- ~~FFmpeg commands blocking~~ [FIXED]
-- ~~Various Tauri-specific bugs~~ [FIXED]
+- ~~GStreamer error propagation~~ - [resolved: 2026-04-05]
+- ~~SetState return values ignored~~ - [resolved: 2026-04-05]
+- ~~Transcription workflow regression~~ - [resolved: 2026-03-28]
+- ~~GStreamer video sink uses separate window~~ - [resolved: 2026-03-26]
+- ~~Recording pipeline uses test sources~~ - [resolved: 2026-03-26]
+- ~~Google Speech API format conversion~~ - [resolved: 2026-03-30]
+- ~~Backoff jitter not implemented~~ - [resolved: 2026-03-30]
+- ~~Video sync core implementation~~ - [resolved: 2026-04-02]
+- ~~Main window split-pane layout~~ - [resolved: 2026-04-03]
+- ~~PlaybackWindow integration into main.go~~ - [resolved: 2026-04-05]
+- ~~WCAG AA contrast for highlighted words~~ - [resolved: 2026-04-04]
+- ~~O(n) highlight clearing on every position update~~ - [resolved: 2026-04-04]
+- ~~No seek boundary validation~~ - [resolved: 2026-04-04]
+- ~~Settings UI implementation~~ - [resolved: 2026-04-08]
+- ~~Transcription search by file path is imprecise~~ - [resolved: 2026-04-10]
+- ~~Word virtualization~~ - [resolved: 2026-04-25]
+- ~~Export pipeline uses re-encoding~~ - [resolved: 2026-05-01]
+- ~~GstCodecDetector.Detect is non-functional~~ - [resolved: 2026-05-03]
+- ~~Inconsistent path sanitization functions~~ - [resolved: 2026-05-03]
+- ~~Export/Import/Repair dialogs use simulation stubs~~ - [resolved: 2026-05-03]
+- ~~DatabaseRepairer needs real ThumbnailGenerator integration~~ - [resolved: 2026-05-03]
