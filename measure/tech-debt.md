@@ -19,7 +19,7 @@
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
 - **Media package test coverage** - GStreamer pipeline tests require display/video files. Pipeline tests skipped - require hardware. [severity: low]
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [severity: low]
-- **Multi-segment stream-copy timestamp rewriting** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Phase 1-4 complete with TimestampMapper. UI integration deferred (CGo build timeout). [severity: low]
+- **Multi-segment stream-copy UI integration** - Core timestamp rewriting infrastructure complete. Timeline zoom/scroll, multi-track toggle, and EditTimeline UI wiring deferred due to CGo build timeout. [severity: low]
 
 ## Resolved (Recent)
 
