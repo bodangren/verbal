@@ -25,13 +25,13 @@
 
 ## Phase 3: Filler Summary Panel
 
-- [ ] Create `FillerSummaryWidget` in `internal/ui` using GTK4 (e.g., `gtk.Box` or `adw.StatusPage`).
-- [ ] Write failing tests for widget update with a slice of `FillerWord` results.
-- [ ] Display counts by `FillerType`: short fillers, discourse markers, repetition, dead air.
-- [ ] Add "Jump to Next Filler" and "Jump to Previous Filler" buttons.
-- [ ] Add "Remove All Fillers" button (disabled during active removal).
-- [ ] Integrate panel into `PlaybackWindow` as a bottom or side panel.
-- [ ] Run UI tests and verify pass.
+- [x] Create `FillerSummaryWidget` in `internal/ui` using GTK4 (e.g., `gtk.Box` or `adw.StatusPage`).
+- [x] Write failing tests for widget update with a slice of `FillerWord` results.
+- [x] Display counts by `FillerType`: short fillers, discourse markers, repetition, dead air.
+- [x] Add "Jump to Next Filler" and "Jump to Previous Filler" buttons.
+- [x] Add "Remove All Fillers" button (disabled during active removal).
+- [x] Integrate panel into `PlaybackWindow` as a bottom or side panel.
+- [x] Run UI tests and verify pass.
 
 ## Phase 4: One-Click Removal
 
