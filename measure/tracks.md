@@ -244,7 +244,7 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 
 - [ ] **Track: Filler Word Detection UI Integration** [created: 2026-05-02]
   *Focus: Integrate the existing internal/filler package into the transcript UI: highlight filler words, display a summary panel with counts, and implement one-click removal of individual or all filler words.*
-  *Status: Pending. Spec and plan created. Awaiting implementation.*
+  *Status: In Progress. Phase 1-2 complete (FillerService, filler highlighting). Phase 3 complete (FillerSummaryWidget with counts, navigation, Remove All button). Phase 4 core complete (FillerRemovalService with segment computation). Phase 5 pending (menu integration).*
   *Link: [./tracks/feature_filler_word_ui_integration_20260502/](./tracks/feature_filler_word_ui_integration_20260502/)*
 
 - [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
