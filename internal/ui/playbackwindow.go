@@ -37,6 +37,9 @@ type PlaybackWindow struct {
 	transcriptionWidget   *gtk.Widget
 	editableTranscription *EditableTranscriptionView
 
+	// Filler summary panel (collapsible)
+	fillerSummaryWidget *FillerSummaryWidget
+
 	// Playback controls
 	playButton  *gtk.Button
 	pauseButton *gtk.Button
@@ -405,4 +408,22 @@ func (pw *PlaybackWindow) GenerateWaveform(filePath string, generator interface 
 			onComplete(nil, err)
 		}
 	}
+}
+
+// SetFillerSummaryWidget sets the filler summary widget for the right pane.
+// The widget is added at the bottom of the right pane, below the transcription.
+func (pw *PlaybackWindow) SetFillerSummaryWidget(widget *FillerSummaryWidget) {
+	if pw.fillerSummaryWidget != nil {
+		pw.rightPane.Remove(pw.fillerSummaryWidget)
+	}
+
+	pw.fillerSummaryWidget = widget
+	if widget != nil {
+		pw.rightPane.Append(widget)
+	}
+}
+
+// GetFillerSummaryWidget returns the current filler summary widget.
+func (pw *PlaybackWindow) GetFillerSummaryWidget() *FillerSummaryWidget {
+	return pw.fillerSummaryWidget
 }
