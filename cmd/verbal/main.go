@@ -1195,8 +1195,12 @@ func showFillerRemovalDialog(window *adw.ApplicationWindow, state *appState) {
 		}()
 	})
 
-	dialog.SetOnComplete(func(outputPath string, removedCount int) {
+	dialog.SetOnComplete(func(outputPath string, removedCount int, updatedJSON string) {
 		state.playbackWindow.ShowError(fmt.Sprintf("Removed %d fillers. Output: %s", removedCount, outputPath))
+
+		if updatedJSON != "" {
+			_ = state.recordingSvc.UpdateTranscription(state.currentRecordingID, updatedJSON)
+		}
 	})
 
 	dialog.SetOnCancel(func() {

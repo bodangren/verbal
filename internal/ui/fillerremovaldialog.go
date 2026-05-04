@@ -28,7 +28,7 @@ type FillerRemovalDialog struct {
 	result          *filler.RemovalResult
 
 	onRemove   func()
-	onComplete func(outputPath string, removedCount int)
+	onComplete func(outputPath string, removedCount int, updatedTranscriptionJSON string)
 	onCancel   func()
 }
 
@@ -151,6 +151,7 @@ func (d *FillerRemovalDialog) onRemove() {
 
 	go func() {
 		result, err := d.removalService.RemoveAllFillers(d.recordingID)
+		d.result = result
 
 		glib.IdleAdd(func() {
 			d.SetRemovingState(false)
@@ -165,7 +166,7 @@ func (d *FillerRemovalDialog) onRemove() {
 			d.ShowResult(result.OutputPath, result.RemovedFillers)
 
 			if d.onComplete != nil {
-				d.onComplete(result.OutputPath, result.RemovedFillers)
+				d.onComplete(result.OutputPath, result.RemovedFillers, result.UpdatedTranscriptionJSON)
 			}
 		})
 	}()
@@ -229,7 +230,7 @@ func (d *FillerRemovalDialog) SetOnRemove(cb func()) {
 	d.onRemove = cb
 }
 
-func (d *FillerRemovalDialog) SetOnComplete(cb func(outputPath string, removedCount int)) {
+func (d *FillerRemovalDialog) SetOnComplete(cb func(outputPath string, removedCount int, updatedTranscriptionJSON string)) {
 	d.onComplete = cb
 }
 
@@ -248,4 +249,8 @@ func (d *FillerRemovalDialog) Show() {
 
 func (d *FillerRemovalDialog) Close() {
 	d.dialog.Close()
+}
+
+func (d *FillerRemovalDialog) GetResult() *filler.RemovalResult {
+	return d.result
 }

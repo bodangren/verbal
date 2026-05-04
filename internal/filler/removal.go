@@ -40,11 +40,12 @@ func NewFillerRemovalService(recordingRepo RecordingProvider, editor SegmentEdit
 }
 
 type RemovalResult struct {
-	Success         bool
-	OutputPath      string
-	RemovedFillers  int
-	RemainingFillers int
-	Error           error
+	Success                  bool
+	OutputPath               string
+	RemovedFillers           int
+	RemainingFillers         int
+	UpdatedTranscriptionJSON string
+	Error                    error
 }
 
 func (s *FillerRemovalService) RemoveFiller(recordingID int64, filler *FillerWord) (*RemovalResult, error) {
@@ -72,9 +73,9 @@ func (s *FillerRemovalService) RemoveFiller(recordingID int64, filler *FillerWor
 	updatedFillers := s.filterOutFiller(fillers, filler)
 
 	return &RemovalResult{
-		Success:         true,
-		OutputPath:      tempOutput,
-		RemovedFillers: 1,
+		Success:          true,
+		OutputPath:       tempOutput,
+		RemovedFillers:   1,
 		RemainingFillers: len(updatedFillers),
 	}, nil
 }
@@ -108,11 +109,14 @@ func (s *FillerRemovalService) RemoveAllFillers(recordingID int64) (*RemovalResu
 		}, err
 	}
 
+	updatedTranscription, _ := s.computeUpdatedTranscription(recording.TranscriptionJSON, fillers)
+
 	return &RemovalResult{
-		Success:         true,
-		OutputPath:      tempOutput,
-		RemovedFillers:  len(fillers),
-		RemainingFillers: 0,
+		Success:                  true,
+		OutputPath:               tempOutput,
+		RemovedFillers:           len(fillers),
+		RemainingFillers:         0,
+		UpdatedTranscriptionJSON: updatedTranscription,
 	}, nil
 }
 
@@ -235,4 +239,40 @@ func (s *FillerRemovalService) filterOutFiller(fillers []*FillerWord, target *Fi
 		}
 	}
 	return result
+}
+
+func (s *FillerRemovalService) computeUpdatedTranscription(originalJSON string, removedFillers []*FillerWord) (string, error) {
+	if originalJSON == "" {
+		return "", nil
+	}
+
+	var data TranscriptionData
+	if err := json.Unmarshal([]byte(originalJSON), &data); err != nil {
+		return "", err
+	}
+
+	fillerSet := make(map[float64]bool)
+	for _, f := range removedFillers {
+		for _, w := range data.Words {
+			if w.Start >= f.Start && w.End <= f.End && w.Text == f.Text {
+				fillerSet[w.Start] = true
+			}
+		}
+	}
+
+	var newWords []Word
+	for _, w := range data.Words {
+		if !fillerSet[w.Start] {
+			newWords = append(newWords, w)
+		}
+	}
+
+	data.Words = newWords
+
+	updatedJSON, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	return string(updatedJSON), nil
 }
