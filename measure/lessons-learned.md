@@ -9,7 +9,6 @@
 - **Widget Pool Pre-allocation:** For GTK virtualization, pre-allocate widget pools at construction rather than creating widgets on-demand.
 - **Widget Pool Index Mapping:** In virtualized containers with fixed widget pools, pool indices don't map 1:1 to data indices. Use an offset (startIdx) when assigning data to pool slots.
 - **Words Snapshot for Binary Search:** Pass words as a parameter to search methods, copying the slice under lock first to avoid data races.
-- **Filler Word Detection Pattern:** Use a Detector interface with a Detect method that takes a slice of Word structs and returns FillerWord results.
 - **GStreamer Pipeline Path Sanitization:** Always sanitize file paths before interpolating into GStreamer pipeline strings. Use `quoteLocation()` function that strips newlines and applies `strconv.Quote()`.
 - **Callback Panic Recovery:** Always wrap user-provided callbacks with `defer recover()` in long-running goroutines.
 - **Logger Interface Pattern:** Define minimal logger interfaces at the package level to avoid tight coupling to specific logging implementations.
@@ -31,6 +30,7 @@
 - **Segment Computation for Filler Removal:** Compute non-filler segments by sorting fillers by start time, then creating segments between consecutive filler boundaries.
 - **FillerRemovalDialog Pattern:** Create GTK dialogs with SetOnXxx callback setters. Use glib.IdleAdd for async completion callbacks to update UI safely. Store result internally for retrieval after async operation.
 - **UpdatedTranscriptionJSON Pattern:** After filler removal, compute filtered transcription by removing filler words from the word list, then marshal back to JSON for SQLite update.
+- **TimestampMapper for Multi-Segment Exports:** Use cumulative offset tracking to map between local segment time and global timeline time. Essential for gapless multi-segment concatenation. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

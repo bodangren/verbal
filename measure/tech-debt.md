@@ -17,15 +17,9 @@
 ### Low Severity
 - **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. [severity: low]
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
-- **Filler Detection Package** - New `internal/filler` package for detecting filler words (um, uh, like, etc.) and repetition patterns in transcription data. [severity: low]
-- **Libadwaita integration skipped due to Go 1.24 requirement** - [severity: low]
 - **Media package test coverage** - GStreamer pipeline tests require display/video files. Pipeline tests skipped - require hardware. [severity: low]
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [severity: low]
-- **Export multi-segment stream-copy** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Current implementation uses re-encode for all multi-segment exports. [severity: low]
-- **Text-Driven Editing Core implemented** - New `internal/edit` package with Operation interface, DeleteOperation, ReorderOperation, InsertSilenceOperation, SplitOperation, TranscriptMapper, EditTimeline. [severity: low]
-- **Filler Summary Widget** - New `internal/ui/fillersummary.go` displays filler counts by type, navigation buttons, and Remove All Fillers button. Integration with PlaybackWindow complete. [severity: low]
-- **FillerRemovalService** - New `internal/filler/removal.go` computes non-filler segments and uses SegmentExporter for removal. FillerRemovalDialog implemented in `internal/ui/fillerremovaldialog.go`. SQLite updates and UI refresh wired. [severity: low]
-- **FillerRemovalDialog** - New `internal/ui/fillerremovaldialog.go` provides modal dialog for batch filler removal with progress bar, status display, and remove/cancel buttons. Menu integration with Ctrl+Shift+F shortcut. [severity: low]
+- **Multi-segment stream-copy timestamp rewriting** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Phase 1-4 complete with TimestampMapper. UI integration deferred (CGo build timeout). [severity: low]
 
 ## Resolved (Recent)
 
