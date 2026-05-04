@@ -17,11 +17,11 @@
 
 ## Phase 2: Transcript Visual Highlighting
 
-- [ ] Add `filler-word` CSS class to `styling.go` with a distinct color (e.g., amber `#F59E0B`) and ensure WCAG AA contrast against dark background.
-- [ ] Write failing tests for `VirtualizedWordContainer` applying filler CSS class to specific pool indices.
-- [ ] Modify `EditableTranscriptionView` to accept a `[]int` of filler word indices and apply `filler-word` class.
-- [ ] Ensure filler highlight does not conflict with playback highlight (both can coexist or filler takes precedence).
-- [ ] Run UI tests and verify pass.
+- [x] Add `filler-word` CSS class to `styling.go` with a distinct color (e.g., amber `#F59E0B`) and ensure WCAG AA contrast against dark background.
+- [x] Write failing tests for `VirtualizedWordContainer` applying filler CSS class to specific pool indices.
+- [x] Modify `EditableTranscriptionView` to accept a `[]int` of filler word indices and apply `filler-word` class.
+- [x] Ensure filler highlight does not conflict with playback highlight (both can coexist or filler takes precedence).
+- [x] Run UI tests and verify pass.
 
 ## Phase 3: Filler Summary Panel
 
