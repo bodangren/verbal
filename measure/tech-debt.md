@@ -24,7 +24,8 @@
 - **Export multi-segment stream-copy** - Multi-segment stream-copy concatenation requires precise timestamp rewriting at segment boundaries. Current implementation uses re-encode for all multi-segment exports. [severity: low]
 - **Text-Driven Editing Core implemented** - New `internal/edit` package with Operation interface, DeleteOperation, ReorderOperation, InsertSilenceOperation, SplitOperation, TranscriptMapper, EditTimeline. [severity: low]
 - **Filler Summary Widget** - New `internal/ui/fillersummary.go` displays filler counts by type, navigation buttons, and Remove All Fillers button. Integration with PlaybackWindow complete. [severity: low]
-- **FillerRemovalService** - New `internal/filler/removal.go` computes non-filler segments and uses SegmentExporter for removal. Core service implemented, full UI integration (progress dialog, SQLite updates, UI refresh) pending. [severity: low]
+- **FillerRemovalService** - New `internal/filler/removal.go` computes non-filler segments and uses SegmentExporter for removal. FillerRemovalDialog implemented in `internal/ui/fillerremovaldialog.go`. SQLite updates and UI refresh wired. [severity: low]
+- **FillerRemovalDialog** - New `internal/ui/fillerremovaldialog.go` provides modal dialog for batch filler removal with progress bar, status display, and remove/cancel buttons. Menu integration with Ctrl+Shift+F shortcut. [severity: low]
 
 ## Resolved (Recent)
 

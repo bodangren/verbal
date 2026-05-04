@@ -29,6 +29,8 @@
 - **Lifecycle Adapter Pattern:** When wiring lifecycle services to UI dialogs, create adapter types that satisfy the lifecycle interfaces using app services.
 - **Filler Removal Service Pattern:** Use `RecordingProvider` interface for testability. Match filler targets by value (Start, End, Text) not pointer equality.
 - **Segment Computation for Filler Removal:** Compute non-filler segments by sorting fillers by start time, then creating segments between consecutive filler boundaries.
+- **FillerRemovalDialog Pattern:** Create GTK dialogs with SetOnXxx callback setters. Use glib.IdleAdd for async completion callbacks to update UI safely. Store result internally for retrieval after async operation.
+- **UpdatedTranscriptionJSON Pattern:** After filler removal, compute filtered transcription by removing filler words from the word list, then marshal back to JSON for SQLite update.
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

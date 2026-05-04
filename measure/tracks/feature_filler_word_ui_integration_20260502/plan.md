@@ -51,8 +51,10 @@ Note: Core FillerRemovalService implemented. FillerRemovalDialog created and wir
 
 - [x] Add "Detect Fillers" menu item to Tools menu in `cmd/verbal/main.go`.
 - [x] Assign keyboard shortcut `Ctrl+Shift+F`.
-- [ ] Write integration test for full workflow: detect → highlight → remove → verify export.
-- [ ] Update user-facing labels and tooltips.
-- [ ] Run full test suite: `make go-check`.
-- [ ] Update `tech-debt.md` and `lessons-learned.md`.
-- [ ] Update this plan and `measure/tracks.md` with results.
+- [x] Write integration test for full workflow: detect → highlight → remove → verify export.
+- [x] Update user-facing labels and tooltips.
+- [x] Run full test suite: `make go-check`.
+- [x] Update `tech-debt.md` and `lessons-learned.md`.
+- [x] Update this plan and `measure/tracks.md` with results.
+
+**Track Status: COMPLETED**

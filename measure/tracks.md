@@ -242,9 +242,9 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
   *Status: Complete. Phase 1-2: GstCodecDetector implements pad-added signal handler with correct CodecInfo detection. Path sanitization consolidated into internal/media/sanitize.go. Phase 3-5: Replaced sleep-loop simulations with real lifecycle calls - showExportDialog uses archiveExporter.Export/ExportAll, showImportDialog uses archiveImporter.Import, showRepairDialog uses databaseInspector.RunAllChecks and databaseRepairer.RepairAll. All tests pass.*
   *Link: [./archive/bugfix_codec_detector_real_export_wiring_20260502/](./archive/bugfix_codec_detector_real_export_wiring_20260502/)*
 
-- [ ] **Track: Filler Word Detection UI Integration** [created: 2026-05-02]
+- [x] **Track: Filler Word Detection UI Integration** [created: 2026-05-02, completed: 2026-05-04]
   *Focus: Integrate the existing internal/filler package into the transcript UI: highlight filler words, display a summary panel with counts, and implement one-click removal of individual or all filler words.*
-  *Status: In Progress. Phase 1-2 complete (FillerService, filler highlighting). Phase 3 complete (FillerSummaryWidget with counts, navigation, Remove All button). Phase 4 core complete (FillerRemovalService with segment computation). Phase 5 pending (menu integration).*
+  *Status: Complete. All 5 phases implemented: FillerService with caching, filler CSS highlighting in VirtualizedWordContainer, FillerSummaryWidget with counts/navigation, FillerRemovalService with segment computation, FillerRemovalDialog with progress UI, SQLite updates and UI refresh. Menu integration with Ctrl+Shift+F shortcut. All tests pass.*
   *Link: [./tracks/feature_filler_word_ui_integration_20260502/](./tracks/feature_filler_word_ui_integration_20260502/)*
 
 - [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
