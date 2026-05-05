@@ -1,9 +1,0 @@
-{
-  "track_id": "feature_advanced_media_processing_20260504",
-  "title": "Advanced Media Processing & Editing",
-  "type": "feature",
-  "status": "pending",
-  "created": "2026-05-04",
-  "completed": null,
-  "focus": "Enhance GStreamer-based local editing capabilities with multi-track support, improved segment handling, and timestamp-accurate concatenation."
-}
