@@ -32,6 +32,7 @@
 - **UpdatedTranscriptionJSON Pattern:** After filler removal, compute filtered transcription by removing filler words from the word list, then marshal back to JSON for SQLite update.
 - **TimestampMapper for Multi-Segment Exports:** Use cumulative offset tracking to map between local segment time and global timeline time. Essential for gapless multi-segment concatenation.
 - **SegmentMarker for Waveform Visualization:** Add segment boundaries as markers on WaveformWidget using a SegmentMarker struct with Time, Label, and IsActive fields. Draw active segments in orange, inactive in gray. [NEW]
+- **Multi-Track Toggle Must Wire to Visibility:** Phase completion must verify actual functionality, not just code existence. The multi-track toggle button existed but wasn't wired to control WaveformWidget segment visibility. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
