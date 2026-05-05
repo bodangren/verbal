@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Timeline Visualization Integration** [created: 2026-05-05, in_progress]
+- [x] **Track: Timeline Visualization Integration** [created: 2026-05-05, completed: 2026-05-05]
   *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
-  *Status: Phases 1-4 complete: Segment markers, zoom/multi-track controls, and EditTimeline wiring done. Phase 5 (keyboard shortcuts + E2E) remaining.*
+  *Status: Complete. All 5 phases implemented: SegmentMarker struct with Time/Label/IsActive, drawSegments on WaveformWidget, zoom buttons + multi-track toggle on PlaybackWindow toolbar, SetWordEditCallback wiring, UpdateWaveformSegments for segment visualization.*
   *Link: [./tracks/feature_timeline_visualization_20260505](./tracks/feature_timeline_visualization_20260505/)*
 
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
