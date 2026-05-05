@@ -68,6 +68,9 @@ type PlaybackWindow struct {
 	// Multi-track toggle
 	multiTrackEnabled  bool
 	onMultiTrackToggle func(enabled bool)
+
+	// Word edit handler (from EditableTranscriptionView)
+	onWordEdit func(wordIndex int, operation string)
 }
 
 // NewPlaybackWindow creates a new playback window with split-pane layout.
@@ -344,6 +347,11 @@ func (pw *PlaybackWindow) IsMultiTrackEnabled() bool {
 	return pw.multiTrackEnabled
 }
 
+// SetWordEditCallback sets the callback for word edit operations from the transcription view.
+func (pw *PlaybackWindow) SetWordEditCallback(callback func(wordIndex int, operation string)) {
+	pw.onWordEdit = callback
+}
+
 // UpdateTimeDisplay updates the time label with current and total time.
 // Times are formatted as MM:SS.
 func (pw *PlaybackWindow) UpdateTimeDisplay(current, total float64) {
@@ -393,6 +401,12 @@ func (pw *PlaybackWindow) SetEditableTranscription(view *EditableTranscriptionVi
 			pw.onExportSegments(segments)
 		}
 	})
+
+	view.SetWordEditHandler(func(wordIndex int, operation string) {
+		if pw.onWordEdit != nil {
+			pw.onWordEdit(wordIndex, operation)
+		}
+	})
 }
 
 // GetEditableTranscription returns the editable transcription view.
@@ -422,6 +436,25 @@ func (pw *PlaybackWindow) SetWaveformWidget(widget *WaveformWidget) {
 // GetWaveformWidget returns the current waveform widget.
 func (pw *PlaybackWindow) GetWaveformWidget() *WaveformWidget {
 	return pw.waveformWidget
+}
+
+// UpdateWaveformSegments updates the segment markers on the waveform widget.
+// This is called when EditTimeline operations change the segment boundaries.
+// segmentTimes are the start times (in seconds) of each segment.
+func (pw *PlaybackWindow) UpdateWaveformSegments(segmentTimes []float64, activeIndex int) {
+	if pw.waveformWidget == nil {
+		return
+	}
+
+	markers := make([]SegmentMarker, len(segmentTimes))
+	for i, t := range segmentTimes {
+		markers[i] = SegmentMarker{
+			Time:     time.Duration(t * float64(time.Second)),
+			Label:    fmt.Sprintf("Segment %d", i+1),
+			IsActive: i == activeIndex,
+		}
+	}
+	pw.waveformWidget.SetSegments(markers)
 }
 
 // ShowLoading displays the loading label with the given message.
