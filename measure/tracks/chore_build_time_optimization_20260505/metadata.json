@@ -1,0 +1,11 @@
+{
+  "track_id": "chore_build_time_optimization_20260505",
+  "type": "chore",
+  "status": "new",
+  "created_at": "2026-05-05T21:35:00Z",
+  "updated_at": "2026-05-05T21:35:00Z",
+  "description": "Reduce go vet and go build timeout on full project from >2 minutes to <30 seconds",
+  "estimated_tasks": null,
+  "actual_tasks": null,
+  "deviation_notes": ""
+}
