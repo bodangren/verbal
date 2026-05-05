@@ -457,6 +457,13 @@ func (pw *PlaybackWindow) UpdateWaveformSegments(segmentTimes []float64, activeI
 	pw.waveformWidget.SetSegments(markers)
 }
 
+// SetMultiTrackVisibility controls whether track/segment visualization is visible on the waveform.
+func (pw *PlaybackWindow) SetMultiTrackVisibility(visible bool) {
+	if pw.waveformWidget != nil {
+		pw.waveformWidget.SetTrackVisibility(visible)
+	}
+}
+
 // ShowLoading displays the loading label with the given message.
 func (pw *PlaybackWindow) ShowLoading(message string) {
 	pw.loadingLabel.SetText(message)

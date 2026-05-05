@@ -723,6 +723,10 @@ func setupPlaybackControls(window *adw.ApplicationWindow, state *appState) {
 		}
 		showExportFileDialog(window, state, segments)
 	})
+
+	state.playbackWindow.SetMultiTrackToggleCallback(func(enabled bool) {
+		state.playbackWindow.SetMultiTrackVisibility(enabled)
+	})
 }
 
 func setupTranscription(state *appState) {

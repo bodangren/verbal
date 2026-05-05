@@ -41,6 +41,9 @@ type WaveformWidget struct {
 	// Segments for visualization
 	segments []SegmentMarker
 
+	// Track visibility (for multi-track toggle)
+	tracksVisible bool
+
 	// Tooltip
 	hoverPosition    time.Duration
 	motionController *gtk.EventControllerMotion
@@ -60,13 +63,14 @@ func NewWaveformWidget() *WaveformWidget {
 	drawingArea := gtk.NewDrawingArea()
 
 	ww := &WaveformWidget{
-		DrawingArea:  drawingArea,
-		width:        400,
-		height:       100,
-		zoomLevel:    1.0,
-		minZoom:      0.1,
-		maxZoom:      10.0,
-		scrollOffset: 0.0,
+		DrawingArea:   drawingArea,
+		width:         400,
+		height:        100,
+		zoomLevel:     1.0,
+		minZoom:       0.1,
+		maxZoom:       10.0,
+		scrollOffset:  0.0,
+		tracksVisible: true,
 	}
 
 	// Set default size
@@ -244,7 +248,7 @@ func (ww *WaveformWidget) drawPositionIndicator(cr *cairo.Context, width, height
 
 // drawSegments draws segment boundary markers on the waveform.
 func (ww *WaveformWidget) drawSegments(cr *cairo.Context, width, height int) {
-	if ww.data == nil || ww.data.Duration == 0 {
+	if !ww.tracksVisible || ww.data == nil || ww.data.Duration == 0 {
 		return
 	}
 
@@ -557,6 +561,19 @@ func (ww *WaveformWidget) ScrollToPosition(position time.Duration) {
 	visibleRange := 1.0 / ww.zoomLevel
 	scrollOffset := progress - visibleRange/2
 	ww.SetScrollOffset(scrollOffset)
+}
+
+// Track visibility methods (for multi-track toggle)
+
+// SetTrackVisibility sets whether track/segment visualization is visible.
+func (ww *WaveformWidget) SetTrackVisibility(visible bool) {
+	ww.tracksVisible = visible
+	ww.queueDraw()
+}
+
+// IsTrackVisibility returns whether track/segment visualization is visible.
+func (ww *WaveformWidget) IsTrackVisibility() bool {
+	return ww.tracksVisible
 }
 
 // Coordinate conversion methods

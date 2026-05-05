@@ -194,3 +194,33 @@ func TestWaveformWidget_Segments(t *testing.T) {
 		t.Error("second segment should be active")
 	}
 }
+
+func TestWaveformWidget_TrackVisibility(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
+	widget := NewWaveformWidget()
+
+	// Verify default is visible
+	if !widget.IsTrackVisibility() {
+		t.Error("Expected tracksVisible to be true by default")
+	}
+
+	// Test SetTrackVisibility(false)
+	widget.SetTrackVisibility(false)
+	if widget.tracksVisible {
+		t.Error("Expected tracksVisible to be false after SetTrackVisibility(false)")
+	}
+	if widget.IsTrackVisibility() {
+		t.Error("IsTrackVisibility should return false after hiding")
+	}
+
+	// Test SetTrackVisibility(true)
+	widget.SetTrackVisibility(true)
+	if !widget.tracksVisible {
+		t.Error("Expected tracksVisible to be true after SetTrackVisibility(true)")
+	}
+	if !widget.IsTrackVisibility() {
+		t.Error("IsTrackVisibility should return true after showing")
+	}
+}
