@@ -8,8 +8,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Timeline Visualization Integration** [created: 2026-05-05, completed: 2026-05-05]
   *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
-  *Status: Complete. All 5 phases implemented: SegmentMarker struct with Time/Label/IsActive, drawSegments on WaveformWidget, zoom buttons + multi-track toggle on PlaybackWindow toolbar, SetWordEditCallback wiring, UpdateWaveformSegments for segment visualization.*
-  *Link: [./tracks/feature_timeline_visualization_20260505](./tracks/feature_timeline_visualization_20260505/)*
+  *Status: Complete. All 5 phases implemented. Phase 4 (Multi-Track Toggle) properly wired via bugfix track bugfix_multi_track_toggle_20260505.*
+  *Link: [./tracks/feature_timeline_visualization_20260505](./tracks/feature_timeline_visualization_20260505/)
+
+- [x] **Track: Multi-Track Toggle Fix** [created: 2026-05-05, completed: 2026-05-05]
+  *Focus: Fix incomplete multi-track toggle - button existed but didn't control segment visibility in WaveformWidget.*
+  *Status: Complete. Added tracksVisible state to WaveformWidget, SetTrackVisibility/IsTrackVisibility methods, SetMultiTrackVisibility to PlaybackWindow, wired callback in main.go, added TestWaveformWidget_TrackVisibility test.*
+  *Link: [./tracks/bugfix_multi_track_toggle_20260505](./tracks/bugfix_multi_track_toggle_20260505/)*
 
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*

@@ -3,9 +3,9 @@
   "type": "bugfix",
   "title": "Multi-Track Toggle Fix",
   "created": "2026-05-05T10:15:00Z",
-  "status": "in_progress",
+  "status": "completed",
   "parent": "feature_timeline_visualization_20260505",
   "focus": "Fix incomplete multi-track toggle - button exists but doesn't control segment visibility in WaveformWidget.",
-  "completion": "0%",
-  "notes": "Track created to complete Phase 4 of Timeline Visualization Integration which was marked complete prematurely."
+  "completion": "100%",
+  "notes": "Added tracksVisible state to WaveformWidget, SetTrackVisibility/IsTrackVisibility methods, SetMultiTrackVisibility to PlaybackWindow, wired callback in main.go, added TestWaveformWidget_TrackVisibility test."
 }

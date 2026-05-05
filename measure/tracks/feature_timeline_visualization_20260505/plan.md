@@ -29,10 +29,13 @@
 
 ## Phase 4: Multi-Track Toggle
 
-- [ ] Add multi-track toggle button to PlaybackWindow
-- [ ] Implement track visibility toggle in WaveformWidget
-- [ ] Write failing tests for track visibility state
-- [ ] Verify segment ordering display is correct
+- [x] Add multi-track toggle button to PlaybackWindow
+- [x] Implement track visibility toggle in WaveformWidget
+- [x] Wire multi-track callback to control segment visibility
+- [x] Write tests for track visibility state
+- [x] Verify segment ordering display is correct
+
+**Note:** This phase was completed via bugfix track `bugfix_multi_track_toggle_20260505` which wired the toggle button to control WaveformWidget segment visibility.
 
 ## Phase 5: Integration and Polish
 
@@ -42,4 +45,4 @@
 - [x] Run full test suite: `make go-check`
 - [x] Verify build succeeds
 
-**Final Status:** COMPLETE - All phases implemented. Timeline visualization integration complete with segment markers on waveform, zoom controls in toolbar, multi-track toggle, and EditTimeline wiring to PlaybackWindow. All tests pass, build compiles.
+**Final Status:** COMPLETE - All phases implemented. Timeline visualization integration complete with segment markers on waveform, zoom controls in toolbar, multi-track toggle (properly wired via bugfix), and EditTimeline wiring to PlaybackWindow. All tests pass, build compiles.
