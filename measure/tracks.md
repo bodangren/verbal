@@ -8,7 +8,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Timeline Visualization Integration** [created: 2026-05-05, in_progress]
   *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
-  *Status: Phase 1 complete: Segment markers added to WaveformWidget. Phase 1-4 of Advanced Media Processing (2026-05-04) core complete.*
+  *Status: Phases 1-2 complete: Segment markers added to WaveformWidget, zoom/multi-track controls added to PlaybackWindow.*
   *Link: [./tracks/feature_timeline_visualization_20260505](./tracks/feature_timeline_visualization_20260505/)*
 
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]

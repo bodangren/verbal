@@ -15,10 +15,10 @@
 
 ## Phase 2: Timeline Zoom and Scroll Controls
 
-- [ ] Add zoom in/out buttons to PlaybackWindow toolbar
-- [ ] Wire keyboard shortcuts (Ctrl++, Ctrl+-, Ctrl+0)
-- [ ] Write failing tests for zoom level state persistence
-- [ ] Ensure scroll offset is preserved across view switches
+- [x] Add zoom in/out buttons to PlaybackWindow toolbar
+- [x] Wire keyboard shortcuts (Ctrl++, Ctrl+-, Ctrl+0)
+- [x] Write failing tests for zoom level state persistence
+- [x] Ensure scroll offset is preserved across view switches
 
 ## Phase 3: EditTimeline UI Wiring
 

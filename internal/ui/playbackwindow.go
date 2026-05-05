@@ -59,6 +59,15 @@ type PlaybackWindow struct {
 	onStop           func()
 	onSeek           func(position float64)
 	onExportSegments func(segments []Segment)
+
+	// Zoom controls
+	onZoomIn    func()
+	onZoomOut   func()
+	onZoomReset func()
+
+	// Multi-track toggle
+	multiTrackEnabled  bool
+	onMultiTrackToggle func(enabled bool)
 }
 
 // NewPlaybackWindow creates a new playback window with split-pane layout.
@@ -176,6 +185,49 @@ func createPlaybackToolbarWithRefs(pw *PlaybackWindow) *gtk.Box {
 	timeLabel.AddCSSClass("time-label")
 	timeLabel.SetWidthChars(12)
 
+	// Zoom in button
+	zoomInButton := gtk.NewButtonFromIconName("zoom-in-symbolic")
+	zoomInButton.AddCSSClass("playback-button")
+	zoomInButton.SetTooltipText("Zoom In (Ctrl++)")
+	zoomInButton.ConnectClicked(func() {
+		if pw.onZoomIn != nil {
+			pw.onZoomIn()
+		}
+	})
+
+	// Zoom out button
+	zoomOutButton := gtk.NewButtonFromIconName("zoom-out-symbolic")
+	zoomOutButton.AddCSSClass("playback-button")
+	zoomOutButton.SetTooltipText("Zoom Out (Ctrl+-)")
+	zoomOutButton.ConnectClicked(func() {
+		if pw.onZoomOut != nil {
+			pw.onZoomOut()
+		}
+	})
+
+	// Zoom reset button
+	zoomResetButton := gtk.NewButtonFromIconName("zoom-original-symbolic")
+	zoomResetButton.AddCSSClass("playback-button")
+	zoomResetButton.SetTooltipText("Reset Zoom (Ctrl+0)")
+	zoomResetButton.ConnectClicked(func() {
+		if pw.onZoomReset != nil {
+			pw.onZoomReset()
+		}
+	})
+
+	// Multi-track toggle button
+	multiTrackButton := gtk.NewToggleButton()
+	multiTrackButton.SetIconName("media-playlist-consecutive-symbolic")
+	multiTrackButton.AddCSSClass("playback-button")
+	multiTrackButton.SetTooltipText("Toggle Multi-Track View")
+	multiTrackButton.SetActive(false)
+	multiTrackButton.ConnectToggled(func() {
+		pw.multiTrackEnabled = multiTrackButton.Active()
+		if pw.onMultiTrackToggle != nil {
+			pw.onMultiTrackToggle(pw.multiTrackEnabled)
+		}
+	})
+
 	// Store references
 	pw.playButton = playButton
 	pw.pauseButton = pauseButton
@@ -189,6 +241,10 @@ func createPlaybackToolbarWithRefs(pw *PlaybackWindow) *gtk.Box {
 	toolbar.Append(stopButton)
 	toolbar.Append(seekSlider)
 	toolbar.Append(timeLabel)
+	toolbar.Append(zoomInButton)
+	toolbar.Append(zoomOutButton)
+	toolbar.Append(zoomResetButton)
+	toolbar.Append(multiTrackButton)
 
 	return toolbar
 }
@@ -261,6 +317,31 @@ func (pw *PlaybackWindow) SetStopCallback(callback func()) {
 // The callback receives the seek position as a percentage (0-100).
 func (pw *PlaybackWindow) SetSeekCallback(callback func(position float64)) {
 	pw.onSeek = callback
+}
+
+// SetZoomInCallback sets the callback for the zoom in button.
+func (pw *PlaybackWindow) SetZoomInCallback(callback func()) {
+	pw.onZoomIn = callback
+}
+
+// SetZoomOutCallback sets the callback for the zoom out button.
+func (pw *PlaybackWindow) SetZoomOutCallback(callback func()) {
+	pw.onZoomOut = callback
+}
+
+// SetZoomResetCallback sets the callback for the zoom reset button.
+func (pw *PlaybackWindow) SetZoomResetCallback(callback func()) {
+	pw.onZoomReset = callback
+}
+
+// SetMultiTrackToggleCallback sets the callback for the multi-track toggle button.
+func (pw *PlaybackWindow) SetMultiTrackToggleCallback(callback func(enabled bool)) {
+	pw.onMultiTrackToggle = callback
+}
+
+// IsMultiTrackEnabled returns whether multi-track view is enabled.
+func (pw *PlaybackWindow) IsMultiTrackEnabled() bool {
+	return pw.multiTrackEnabled
 }
 
 // UpdateTimeDisplay updates the time label with current and total time.
