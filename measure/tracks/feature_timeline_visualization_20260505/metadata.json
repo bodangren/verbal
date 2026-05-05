@@ -1,0 +1,11 @@
+{
+  "id": "feature_timeline_visualization_20260505",
+  "type": "feature",
+  "title": "Timeline Visualization Integration",
+  "created": "2026-05-05",
+  "status": "in_progress",
+  "parent": null,
+  "focus": "Wire EditTimeline into PlaybackWindow, implement segment visualization, and add timeline zoom/scroll controls for multi-track editing.",
+  "completion": "0%",
+  "notes": "Follows deferred Phase 5 from Advanced Media Processing track."
+}

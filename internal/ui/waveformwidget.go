@@ -38,10 +38,20 @@ type WaveformWidget struct {
 	onPositionChange func(time.Duration)
 	scrollController *gtk.EventControllerScroll
 
+	// Segments for visualization
+	segments []SegmentMarker
+
 	// Tooltip
 	hoverPosition    time.Duration
 	motionController *gtk.EventControllerMotion
 	onHoverCallback  func(time.Duration)
+}
+
+// SegmentMarker represents a segment boundary for visualization.
+type SegmentMarker struct {
+	Time     time.Duration // Start time of the segment
+	Label    string        // Optional label for the segment
+	IsActive bool          // Whether this segment is actively selected for editing
 }
 
 // NewWaveformWidget creates a new waveform visualization widget.
@@ -143,6 +153,11 @@ func (ww *WaveformWidget) draw(da *gtk.DrawingArea, cr *cairo.Context, width, he
 	if ww.data != nil && ww.data.Duration > 0 {
 		ww.drawPositionIndicator(cr, width, height)
 	}
+
+	// Draw segment markers
+	if len(ww.segments) > 0 {
+		ww.drawSegments(cr, width, height)
+	}
 }
 
 // drawWaveform renders the waveform samples as vertical bars.
@@ -225,6 +240,31 @@ func (ww *WaveformWidget) drawPositionIndicator(cr *cairo.Context, width, height
 	cr.MoveTo(x, 0)
 	cr.LineTo(x, float64(height))
 	cr.Stroke()
+}
+
+// drawSegments draws segment boundary markers on the waveform.
+func (ww *WaveformWidget) drawSegments(cr *cairo.Context, width, height int) {
+	if ww.data == nil || ww.data.Duration == 0 {
+		return
+	}
+
+	for _, seg := range ww.segments {
+		x := ww.timeToX(seg.Time, float64(width))
+		if x < 0 || x > float64(width) {
+			continue
+		}
+
+		if seg.IsActive {
+			cr.SetSourceRGB(0.99, 0.68, 0.26) // Orange for active segment
+			cr.SetLineWidth(2)
+		} else {
+			cr.SetSourceRGB(0.4, 0.4, 0.4) // Gray for inactive
+			cr.SetLineWidth(1)
+		}
+		cr.MoveTo(x, 0)
+		cr.LineTo(x, float64(height))
+		cr.Stroke()
+	}
 }
 
 // drawSelection draws the selected time range highlight.
@@ -635,6 +675,17 @@ func (ww *WaveformWidget) ClearSelection() {
 // HasSelection returns true if there is an active selection.
 func (ww *WaveformWidget) HasSelection() bool {
 	return ww.selectStart != ww.selectEnd
+}
+
+// SetSegments sets the segment markers for visualization on the waveform.
+func (ww *WaveformWidget) SetSegments(segments []SegmentMarker) {
+	ww.segments = segments
+	ww.queueDraw()
+}
+
+// GetSegments returns the current segment markers.
+func (ww *WaveformWidget) GetSegments() []SegmentMarker {
+	return ww.segments
 }
 
 // SetSelectionCallback sets the callback for selection changes.

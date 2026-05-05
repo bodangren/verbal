@@ -150,3 +150,47 @@ func TestWaveformWidget_SizeAllocation(t *testing.T) {
 		t.Error("DrawingArea should not be nil")
 	}
 }
+
+func TestWaveformWidget_Segments(t *testing.T) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		t.Skip("No display available")
+	}
+	widget := NewWaveformWidget()
+
+	// Create waveform data
+	data := &waveform.Data{
+		FilePath:   "/test/video.mp4",
+		Duration:   60 * time.Second,
+		SampleRate: 100,
+		Samples:    make([]waveform.Sample, 600),
+	}
+	for i := 0; i < 600; i++ {
+		data.Samples[i] = waveform.Sample{
+			Time:      time.Duration(i) * 100 * time.Millisecond,
+			Amplitude: 0.5,
+		}
+	}
+	widget.SetData(data)
+
+	// Add segment markers
+	segments := []SegmentMarker{
+		{Time: 10 * time.Second, Label: "Intro", IsActive: false},
+		{Time: 30 * time.Second, Label: "Main", IsActive: true},
+		{Time: 50 * time.Second, Label: "Outro", IsActive: false},
+	}
+	widget.SetSegments(segments)
+
+	// Verify segments were set
+	got := widget.GetSegments()
+	if len(got) != len(segments) {
+		t.Errorf("segment count = %d, want %d", len(got), len(segments))
+	}
+
+	// Verify first segment
+	if got[0].Time != 10*time.Second {
+		t.Errorf("first segment time = %v, want 10s", got[0].Time)
+	}
+	if !got[1].IsActive {
+		t.Error("second segment should be active")
+	}
+}

@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Timeline Visualization Integration** [created: 2026-05-05, in_progress]
+  *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
+  *Status: Phase 1 complete: Segment markers added to WaveformWidget. Phase 1-4 of Advanced Media Processing (2026-05-04) core complete.*
+  *Link: [./tracks/feature_timeline_visualization_20260505](./tracks/feature_timeline_visualization_20260505/)*
+
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*
   *Status: Complete. EditableTranscriptionView now uses *VirtualizedWordContainer with widget pool pre-allocation (100 widgets) and viewport-based rendering. Added GetHighlightedWord() to VirtualizedWordContainer for highlight sync compatibility. All tests pass, build passes, vet passes.*
