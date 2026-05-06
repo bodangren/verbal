@@ -6,8 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Feature - Offline Local Transcription** [created: 2026-05-06]
+- [x] **Track: Feature - Offline Local Transcription** [created: 2026-05-06, completed: 2026-05-07]
   *Focus: Implement whisper.cpp-based local transcription to replace cloud AI providers for offline-first capability.*
+  *Status: Complete. Phases 1-4 done (LocalProvider with whisper.cpp subprocess, LocalConfig settings, SettingsWindow integration with LocalConfigPanel, ModelDownloader with progress). Phase 5 (finalization) pending final make go-check.*
   *Link: [./tracks/feature_offline_local_transcription_20260506](./tracks/feature_offline_local_transcription_20260506/)
 
 - [x] **Track: Timeline Visualization Integration** [created: 2026-05-05, completed: 2026-05-05]

@@ -30,10 +30,10 @@
 - **Segment Computation for Filler Removal:** Compute non-filler segments by sorting fillers by start time, then creating segments between consecutive filler boundaries.
 - **FillerRemovalDialog Pattern:** Create GTK dialogs with SetOnXxx callback setters. Use glib.IdleAdd for async completion callbacks to update UI safely. Store result internally for retrieval after async operation.
 - **UpdatedTranscriptionJSON Pattern:** After filler removal, compute filtered transcription by removing filler words from the word list, then marshal back to JSON for SQLite update.
-- **TimestampMapper for Multi-Segment Exports:** Use cumulative offset tracking to map between local segment time and global timeline time. Essential for gapless multi-segment concatenation.
-- **SegmentMarker for Waveform Visualization:** Add segment boundaries as markers on WaveformWidget using a SegmentMarker struct with Time, Label, and IsActive fields. Draw active segments in orange, inactive in gray. [NEW]
-- **Multi-Track Toggle Must Wire to Visibility:** Phase completion must verify actual functionality, not just code existence. The multi-track toggle button existed but wasn't wired to control WaveformWidget segment visibility. [NEW]
-- **CGo Build Caching Required:** `gotk4-gstreamer` CGo compilation is extremely slow (~2min/package). Without ccache, every full rebuild recompiles all CGo code. Install ccache with `sudo apt-get install ccache` and ensure `gcc` is aliased to `ccache` or set `CCACHE_PREFIX=/usr/bin/ccache`. [NEW]
+- **SQLite Schema Migrations** - When adding new columns to SQLite tables, use ALTER TABLE ADD COLUMN in migrations. Older DB files need backfill via migrate() function in repository.go. Add `addSettingsColumnIfMissing` and `addRecordingColumnIfMissing` helpers. [NEW]
+- **Settings UI Panel Pattern** - When adding new provider config panels to SettingsWindow: (1) Add panel struct with Widget() method, (2) Add to stack with stack.AddNamed(), (3) Handle in onProviderChanged for visibility, (4) Add case in onTestClicked for validation, (5) Update GetSettings/SetSettings for the provider config. [NEW]
+- **Local Whisper Integration** - Use whisper-cli binary via exec.CommandContext with JSON output (-oj flag) for structured transcription results. Parse output from temp directory. [NEW]
+- **ModelDownloader Pattern** - HTTP download with progress callback using io.Copy in chunks. Clean up temp file on error with defer os.Remove. Atomic rename on completion. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

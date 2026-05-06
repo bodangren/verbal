@@ -15,7 +15,8 @@
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
 - **Media package test coverage** - GStreamer pipeline tests require display/video files. Pipeline tests skipped - require hardware. [severity: low]
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [severity: low]
-- ~~**Multi-segment stream-copy UI integration**~~ - [resolved: 2026-05-05 - Timeline zoom/scroll, multi-track toggle, and EditTimeline UI wiring complete via PlaybackWindow.SetWordEditCallback and UpdateWaveformSegments]
+- **SQLite Schema Migrations** - When adding new columns to SQLite tables, use ALTER TABLE ADD COLUMN in migrations. Older DB files need backfill via migrate() function in repository.go. [severity: low] [NEW]
+- **Whisper CLI Dependency** - The local transcription requires whisper-cli binary to be installed. Model downloader provides HTTP download with progress. [severity: low] [NEW]
 
 ## Resolved (Recent)
 
