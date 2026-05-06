@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -57,7 +58,7 @@ func TestLocalProvider_Transcribe_ModelNotFound(t *testing.T) {
 		t.Fatal("expected error for missing model file")
 	}
 	expectedPrefix := "model file not found"
-	if err.Error()[:len(expectedPrefix)] != expectedPrefix {
+	if !strings.HasPrefix(err.Error(), expectedPrefix) {
 		t.Errorf("expected error starting with %s, got %s", expectedPrefix, err.Error())
 	}
 }
