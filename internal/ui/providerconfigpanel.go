@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/settings"
 )
@@ -172,4 +173,114 @@ func (p *GoogleConfigPanel) Validate() bool {
 // Clear resets the form to empty values.
 func (p *GoogleConfigPanel) Clear() {
 	p.apiKeyEntry.SetText("")
+}
+
+// LocalConfigPanel provides a form for configuring local Whisper transcription.
+type LocalConfigPanel struct {
+	root        *gtk.Box
+	modelPathEntry *gtk.Entry
+	modelSizeCombo *gtk.ComboBoxText
+}
+
+// NewLocalConfigPanel creates a new local configuration panel.
+func NewLocalConfigPanel() *LocalConfigPanel {
+	root := gtk.NewBox(gtk.OrientationVertical, 12)
+	root.SetMarginStart(18)
+	root.SetMarginEnd(18)
+	root.SetMarginTop(12)
+	root.SetMarginBottom(12)
+
+	// Model Path section
+	pathLabel := gtk.NewLabel("Model Path")
+	pathLabel.SetHAlign(gtk.AlignStart)
+	pathLabel.AddCSSClass("setting-label")
+
+	pathEntry := gtk.NewEntry()
+	pathEntry.SetHExpand(true)
+	pathEntry.SetPlaceholderText("/path/to/ggml-base.bin")
+	pathEntry.SetTooltipText("Path to the whisper.cpp model file (e.g., /path/to/ggml-base.bin)")
+
+	// Model Size section
+	sizeLabel := gtk.NewLabel("Model Size")
+	sizeLabel.SetHAlign(gtk.AlignStart)
+	sizeLabel.AddCSSClass("setting-label")
+	sizeLabel.SetMarginTop(8)
+
+	sizeCombo := gtk.NewComboBoxText()
+	sizeCombo.Append("tiny", "Tiny (39 MB) - Fastest, lowest accuracy")
+	sizeCombo.Append("base", "Base (74 MB) - Good balance")
+	sizeCombo.Append("small", "Small (242 MB) - Better accuracy")
+	sizeCombo.Append("medium", "Medium (742 MB) - High accuracy")
+	sizeCombo.Append("large", "Large (1.5 GB) - Best accuracy")
+	sizeCombo.SetActive(1)
+	sizeCombo.SetHExpand(true)
+
+	// Help text
+	helpLabel := gtk.NewLabel("Download models from huggingface.co/ggerganov/whisper.cpp")
+	helpLabel.AddCSSClass("dim-label")
+	helpLabel.SetHAlign(gtk.AlignStart)
+	helpLabel.SetMarginTop(8)
+	helpLabel.SetWrap(true)
+
+	root.Append(pathLabel)
+	root.Append(pathEntry)
+	root.Append(sizeLabel)
+	root.Append(sizeCombo)
+	root.Append(helpLabel)
+
+	return &LocalConfigPanel{
+		root:          root,
+		modelPathEntry: pathEntry,
+		modelSizeCombo: sizeCombo,
+	}
+}
+
+// Widget returns the root GTK widget.
+func (p *LocalConfigPanel) Widget() *gtk.Box {
+	return p.root
+}
+
+// GetConfig returns the current configuration from the form.
+func (p *LocalConfigPanel) GetConfig() *settings.LocalConfig {
+	return &settings.LocalConfig{
+		ModelPath: p.modelPathEntry.Text(),
+		ModelSize: p.modelSizeCombo.ActiveText(),
+	}
+}
+
+// SetConfig populates the form with the given configuration.
+func (p *LocalConfigPanel) SetConfig(config *settings.LocalConfig) {
+	if config == nil {
+		p.modelPathEntry.SetText("")
+		p.modelSizeCombo.SetActive(1)
+		return
+	}
+	p.modelPathEntry.SetText(config.ModelPath)
+	if config.ModelSize != "" {
+		switch config.ModelSize {
+		case "tiny":
+			p.modelSizeCombo.SetActive(0)
+		case "base":
+			p.modelSizeCombo.SetActive(1)
+		case "small":
+			p.modelSizeCombo.SetActive(2)
+		case "medium":
+			p.modelSizeCombo.SetActive(3)
+		case "large":
+			p.modelSizeCombo.SetActive(4)
+		default:
+			p.modelSizeCombo.SetActive(1)
+		}
+	}
+}
+
+// Validate returns true if the form has valid input.
+func (p *LocalConfigPanel) Validate() bool {
+	return p.modelPathEntry.Text() != ""
+}
+
+// Clear resets the form to empty values.
+func (p *LocalConfigPanel) Clear() {
+	p.modelPathEntry.SetText("")
+	p.modelSizeCombo.SetActive(1)
 }

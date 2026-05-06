@@ -19,6 +19,7 @@ type SettingsWindow struct {
 	stack       *gtk.Stack
 	openaiPanel *OpenAIConfigPanel
 	googlePanel *GoogleConfigPanel
+	localPanel  *LocalConfigPanel
 
 	// Status
 	statusLabel     *gtk.Label
@@ -79,6 +80,7 @@ func NewSettingsWindow(parent *gtk.Window) *SettingsWindow {
 	providerCombo := gtk.NewComboBoxText()
 	providerCombo.Append("openai", "OpenAI Whisper")
 	providerCombo.Append("google", "Google Speech-to-Text")
+	providerCombo.Append("local", "Local Whisper")
 	providerCombo.SetActive(0)
 	providerCombo.SetHExpand(true)
 	providerCombo.SetTooltipText("Select the AI transcription provider to use")
@@ -104,9 +106,11 @@ func NewSettingsWindow(parent *gtk.Window) *SettingsWindow {
 
 	openaiPanel := NewOpenAIConfigPanel()
 	googlePanel := NewGoogleConfigPanel()
+	localPanel := NewLocalConfigPanel()
 
 	stack.AddNamed(openaiPanel.Widget(), "openai")
 	stack.AddNamed(googlePanel.Widget(), "google")
+	stack.AddNamed(localPanel.Widget(), "local")
 
 	mainBox.Append(stack)
 
@@ -157,6 +161,7 @@ func NewSettingsWindow(parent *gtk.Window) *SettingsWindow {
 		stack:           stack,
 		openaiPanel:     openaiPanel,
 		googlePanel:     googlePanel,
+		localPanel:      localPanel,
 		statusLabel:     statusLabel,
 		progressSpinner: progressSpinner,
 		testButton:      testButton,
@@ -225,6 +230,12 @@ func (sw *SettingsWindow) SetSettings(s *settings.Settings) {
 		if s.Google != nil {
 			sw.googlePanel.SetConfig(s.Google)
 		}
+	case settings.ProviderLocal:
+		sw.providerCombo.SetActive(2)
+		sw.stack.SetVisibleChildName("local")
+		if s.Local != nil {
+			sw.localPanel.SetConfig(s.Local)
+		}
 	}
 }
 
@@ -240,6 +251,9 @@ func (sw *SettingsWindow) GetSettings() *settings.Settings {
 	case 1:
 		s.ActiveProvider = settings.ProviderGoogle
 		s.Google = sw.googlePanel.GetConfig()
+	case 2:
+		s.ActiveProvider = settings.ProviderLocal
+		s.Local = sw.localPanel.GetConfig()
 	}
 
 	return s
@@ -262,6 +276,8 @@ func (sw *SettingsWindow) onProviderChanged() {
 		sw.stack.SetVisibleChildName("openai")
 	case 1:
 		sw.stack.SetVisibleChildName("google")
+	case 2:
+		sw.stack.SetVisibleChildName("local")
 	}
 	sw.clearStatus()
 }
@@ -281,6 +297,12 @@ func (sw *SettingsWindow) onTestClicked() {
 		config = sw.googlePanel.GetConfig()
 		if !sw.googlePanel.Validate() {
 			sw.showError("API Key is required")
+			return
+		}
+	case 2:
+		config = sw.localPanel.GetConfig()
+		if !sw.localPanel.Validate() {
+			sw.showError("Model path is required")
 			return
 		}
 	}

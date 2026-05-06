@@ -6,6 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - Offline Local Transcription** [created: 2026-05-06]
+  *Focus: Implement whisper.cpp-based local transcription to replace cloud AI providers for offline-first capability.*
+  *Link: [./tracks/feature_offline_local_transcription_20260506](./tracks/feature_offline_local_transcription_20260506/)
+
 - [x] **Track: Timeline Visualization Integration** [created: 2026-05-05, completed: 2026-05-05]
   *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
   *Status: Complete. All 5 phases implemented. Phase 4 (Multi-Track Toggle) properly wired via bugfix track bugfix_multi_track_toggle_20260505.*

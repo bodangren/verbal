@@ -1,0 +1,9 @@
+{
+  "id": "feature_offline_local_transcription_20260506",
+  "name": "Feature - Offline Local Transcription",
+  "created": "2026-05-06",
+  "status": "pending",
+  "focus": "Implement whisper.cpp-based local transcription to replace cloud AI providers for offline-first capability.",
+  "actual_tasks": 0,
+  "deviation_notes": ""
+}

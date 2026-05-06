@@ -20,6 +20,7 @@ type SettingsRecord struct {
 	ActiveProvider string    `json:"active_provider"`
 	OpenAIConfig   string    `json:"openai_config"`
 	GoogleConfig   string    `json:"google_config"`
+	LocalConfig    string    `json:"local_config"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
@@ -31,6 +32,7 @@ func (r *SettingsRepository) CreateSettingsSchema() error {
 		active_provider TEXT NOT NULL DEFAULT 'openai',
 		openai_config TEXT NOT NULL DEFAULT '{}',
 		google_config TEXT NOT NULL DEFAULT '{}',
+		local_config TEXT NOT NULL DEFAULT '{}',
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	`
@@ -49,18 +51,18 @@ func (r *SettingsRepository) GetSettings() (*settings.Settings, error) {
 	record := &SettingsRecord{}
 
 	err := r.db.QueryRow(`
-		SELECT id, active_provider, openai_config, google_config, updated_at
+		SELECT id, active_provider, openai_config, google_config, local_config, updated_at
 		FROM settings
 		WHERE id = 1
-	`).Scan(&record.ID, &record.ActiveProvider, &record.OpenAIConfig, &record.GoogleConfig, &record.UpdatedAt)
+	`).Scan(&record.ID, &record.ActiveProvider, &record.OpenAIConfig, &record.GoogleConfig, &record.LocalConfig, &record.UpdatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Return default settings
 			return &settings.Settings{
 				ActiveProvider: settings.ProviderOpenAI,
 				OpenAI:         &settings.OpenAIConfig{},
 				Google:         &settings.GoogleConfig{},
+				Local:          &settings.LocalConfig{},
 			}, nil
 		}
 		return nil, fmt.Errorf("get settings: %w", err)
@@ -80,14 +82,15 @@ func (r *SettingsRepository) SaveSettings(s *settings.Settings) error {
 	record.UpdatedAt = time.Now()
 
 	_, err = r.db.Exec(`
-		INSERT INTO settings (id, active_provider, openai_config, google_config, updated_at)
-		VALUES (1, ?, ?, ?, ?)
+		INSERT INTO settings (id, active_provider, openai_config, google_config, local_config, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			active_provider = excluded.active_provider,
 			openai_config = excluded.openai_config,
 			google_config = excluded.google_config,
+			local_config = excluded.local_config,
 			updated_at = excluded.updated_at
-	`, record.ActiveProvider, record.OpenAIConfig, record.GoogleConfig, record.UpdatedAt)
+	`, record.ActiveProvider, record.OpenAIConfig, record.GoogleConfig, record.LocalConfig, record.UpdatedAt)
 
 	if err != nil {
 		return fmt.Errorf("save settings: %w", err)
@@ -143,6 +146,17 @@ func (r *SettingsRepository) recordToSettings(record *SettingsRecord) (*settings
 		s.Google = &settings.GoogleConfig{}
 	}
 
+	// Parse Local config
+	if record.LocalConfig != "" && record.LocalConfig != "{}" {
+		var localConfig settings.LocalConfig
+		if err := json.Unmarshal([]byte(record.LocalConfig), &localConfig); err != nil {
+			return nil, fmt.Errorf("parse local config: %w", err)
+		}
+		s.Local = &localConfig
+	} else {
+		s.Local = &settings.LocalConfig{}
+	}
+
 	return s, nil
 }
 
@@ -172,6 +186,17 @@ func (r *SettingsRepository) settingsToRecord(s *settings.Settings) (*SettingsRe
 		record.GoogleConfig = string(googleJSON)
 	} else {
 		record.GoogleConfig = "{}"
+	}
+
+	// Serialize Local config
+	if s.Local != nil {
+		localJSON, err := json.Marshal(s.Local)
+		if err != nil {
+			return nil, fmt.Errorf("serialize local config: %w", err)
+		}
+		record.LocalConfig = string(localJSON)
+	} else {
+		record.LocalConfig = "{}"
 	}
 
 	return record, nil

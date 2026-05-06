@@ -50,6 +50,42 @@ func TestFactory_CreateProvider_Google(t *testing.T) {
 	}
 }
 
+func TestFactory_CreateProvider_Local(t *testing.T) {
+	factory := NewFactory()
+
+	config := &settings.LocalConfig{
+		ModelPath: "/path/to/model.bin",
+		ModelSize: "base",
+	}
+
+	provider, err := factory.CreateProvider(config)
+	if err != nil {
+		t.Fatalf("CreateProvider failed: %v", err)
+	}
+
+	if provider == nil {
+		t.Error("Expected provider, got nil")
+	}
+
+	if provider.Name() != "Local Whisper (base)" {
+		t.Errorf("Expected Local Whisper (base), got %s", provider.Name())
+	}
+}
+
+func TestFactory_CreateProvider_LocalEmptyPath(t *testing.T) {
+	factory := NewFactory()
+
+	config := &settings.LocalConfig{
+		ModelPath: "",
+		ModelSize: "base",
+	}
+
+	_, err := factory.CreateProvider(config)
+	if err == nil {
+		t.Error("Expected error for empty local model path")
+	}
+}
+
 func TestFactory_CreateProvider_NilConfig(t *testing.T) {
 	factory := NewFactory()
 

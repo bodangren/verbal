@@ -172,6 +172,9 @@ func (d *Database) migrate() error {
 	if err := d.addRecordingColumnIfMissing("thumbnail_generated_at", "DATETIME NULL"); err != nil {
 		return err
 	}
+	if err := d.addSettingsColumnIfMissing("local_config", "TEXT NOT NULL DEFAULT '{}'"); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -186,6 +189,18 @@ func (d *Database) addRecordingColumnIfMissing(columnName, columnDef string) err
 		return nil
 	}
 	return fmt.Errorf("add recordings.%s column: %w", columnName, err)
+}
+
+func (d *Database) addSettingsColumnIfMissing(columnName, columnDef string) error {
+	_, err := d.db.Exec(fmt.Sprintf("ALTER TABLE settings ADD COLUMN %s %s", columnName, columnDef))
+	if err == nil {
+		return nil
+	}
+	// SQLite returns "duplicate column name" if this column already exists.
+	if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+		return nil
+	}
+	return fmt.Errorf("add settings.%s column: %w", columnName, err)
 }
 
 // RecordingRepository provides CRUD operations for recordings.

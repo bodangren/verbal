@@ -4,18 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	"verbal/internal/ai/local"
 	"verbal/internal/settings"
 )
 
-// Factory creates AI providers from settings.
 type Factory struct{}
 
-// NewFactory creates a new AI provider factory.
 func NewFactory() *Factory {
 	return &Factory{}
 }
 
-// CreateProvider creates a Provider from the given configuration.
 func (f *Factory) CreateProvider(config settings.ProviderConfig) (Provider, error) {
 	if config == nil {
 		return nil, fmt.Errorf("provider config is nil")
@@ -34,31 +32,25 @@ func (f *Factory) CreateProvider(config settings.ProviderConfig) (Provider, erro
 		}
 		return NewGoogleProvider(cfg.APIKey), nil
 
+	case *settings.LocalConfig:
+		if cfg.ModelPath == "" {
+			return nil, fmt.Errorf("local model path is required")
+		}
+		return newLocalProviderAdapter(cfg.ModelPath, cfg.ModelSize), nil
+
 	default:
 		return nil, fmt.Errorf("unknown provider config type: %T", config)
 	}
 }
 
-// TestConnection validates the provider configuration by making a lightweight API call.
-// Currently validates by attempting to create the provider - actual API validation
-// would require making a test request which may consume quota.
 func (f *Factory) TestConnection(ctx context.Context, config settings.ProviderConfig) error {
-	// For now, just validate that we can create the provider
-	// A full implementation would make a test API call
 	_, err := f.CreateProvider(config)
 	if err != nil {
 		return fmt.Errorf("create provider: %w", err)
 	}
-
-	// TODO: Implement actual API test calls
-	// This would require adding TestConnection methods to providers
-	// that make lightweight API calls to validate credentials
-
 	return nil
 }
 
-// CreateProviderFromSettings creates a provider from the full settings object.
-// Uses the active provider configuration.
 func (f *Factory) CreateProviderFromSettings(s *settings.Settings) (Provider, error) {
 	if s == nil {
 		return nil, fmt.Errorf("settings is nil")
@@ -72,5 +64,39 @@ func (f *Factory) CreateProviderFromSettings(s *settings.Settings) (Provider, er
 	return f.CreateProvider(config)
 }
 
-// Ensure Factory implements settings.ProviderFactory
 var _ settings.ProviderFactory = (*Factory)(nil)
+
+type localProviderAdapter struct {
+	local *local.LocalProvider
+}
+
+func newLocalProviderAdapter(modelPath, modelSize string) Provider {
+	return &localProviderAdapter{
+		local: local.NewLocalProviderWithSize(modelPath, local.ModelSize(modelSize)),
+	}
+}
+
+func (a *localProviderAdapter) Name() string {
+	return a.local.Name()
+}
+
+func (a *localProviderAdapter) Transcribe(ctx context.Context, audioPath string) (*TranscriptionResult, error) {
+	result, err := a.local.Transcribe(ctx, audioPath)
+	if err != nil {
+		return nil, err
+	}
+	return &TranscriptionResult{
+		Text:     result.Text,
+		Words:    convertLocalWords(result.Words),
+		Language: result.Language,
+		Duration: result.Duration,
+	}, nil
+}
+
+func convertLocalWords(words []local.Word) []Word {
+	result := make([]Word, len(words))
+	for i, w := range words {
+		result[i] = Word{Text: w.Text, Start: w.Start, End: w.End}
+	}
+	return result
+}

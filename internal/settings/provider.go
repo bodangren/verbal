@@ -9,12 +9,14 @@ const (
 	ProviderOpenAI ProviderType = "openai"
 	// ProviderGoogle represents the Google Speech-to-Text API.
 	ProviderGoogle ProviderType = "google"
+	// ProviderLocal represents local whisper.cpp transcription.
+	ProviderLocal ProviderType = "local"
 )
 
 // Valid returns true if the provider type is valid.
 func (p ProviderType) Valid() bool {
 	switch p {
-	case ProviderOpenAI, ProviderGoogle:
+	case ProviderOpenAI, ProviderGoogle, ProviderLocal:
 		return true
 	}
 	return false
@@ -88,6 +90,30 @@ func (g *GoogleConfig) IsEmpty() bool {
 	return g.APIKey == ""
 }
 
+// LocalConfig holds configuration for local whisper.cpp transcription.
+type LocalConfig struct {
+	ModelPath string `json:"model_path"`
+	ModelSize string `json:"model_size"`
+}
+
+// GetProviderType returns ProviderLocal.
+func (l *LocalConfig) GetProviderType() ProviderType {
+	return ProviderLocal
+}
+
+// Validate checks if the local configuration is valid.
+func (l *LocalConfig) Validate() error {
+	if l.ModelPath == "" {
+		return &ValidationError{Field: "model_path", Message: "model path is required"}
+	}
+	return nil
+}
+
+// IsEmpty returns true if no model path is set.
+func (l *LocalConfig) IsEmpty() bool {
+	return l.ModelPath == ""
+}
+
 // Settings holds the application settings including provider configurations.
 type Settings struct {
 	// ActiveProvider is the currently selected provider type.
@@ -96,6 +122,8 @@ type Settings struct {
 	OpenAI *OpenAIConfig `json:"openai,omitempty"`
 	// Google configuration.
 	Google *GoogleConfig `json:"google,omitempty"`
+	// Local configuration.
+	Local *LocalConfig `json:"local,omitempty"`
 }
 
 // ValidationError represents a validation error for a specific field.
@@ -130,6 +158,13 @@ func (s *Settings) Validate() error {
 		if err := s.Google.Validate(); err != nil {
 			return err
 		}
+	case ProviderLocal:
+		if s.Local == nil || s.Local.IsEmpty() {
+			return &ValidationError{Field: "local", Message: "Local configuration is required"}
+		}
+		if err := s.Local.Validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -149,6 +184,11 @@ func (s *Settings) GetActiveProviderConfig() ProviderConfig {
 			return nil
 		}
 		return s.Google
+	case ProviderLocal:
+		if s.Local == nil || s.Local.IsEmpty() {
+			return nil
+		}
+		return s.Local
 	}
 	return nil
 }
@@ -173,6 +213,13 @@ func (s *Settings) Clone() *Settings {
 	if s.Google != nil {
 		clone.Google = &GoogleConfig{
 			APIKey: s.Google.APIKey,
+		}
+	}
+
+	if s.Local != nil {
+		clone.Local = &LocalConfig{
+			ModelPath: s.Local.ModelPath,
+			ModelSize: s.Local.ModelSize,
 		}
 	}
 
