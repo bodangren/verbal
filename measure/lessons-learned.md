@@ -33,6 +33,7 @@
 - **TimestampMapper for Multi-Segment Exports:** Use cumulative offset tracking to map between local segment time and global timeline time. Essential for gapless multi-segment concatenation.
 - **SegmentMarker for Waveform Visualization:** Add segment boundaries as markers on WaveformWidget using a SegmentMarker struct with Time, Label, and IsActive fields. Draw active segments in orange, inactive in gray. [NEW]
 - **Multi-Track Toggle Must Wire to Visibility:** Phase completion must verify actual functionality, not just code existence. The multi-track toggle button existed but wasn't wired to control WaveformWidget segment visibility. [NEW]
+- **CGo Build Caching Required:** `gotk4-gstreamer` CGo compilation is extremely slow (~2min/package). Without ccache, every full rebuild recompiles all CGo code. Install ccache with `sudo apt-get install ccache` and ensure `gcc` is aliased to `ccache` or set `CCACHE_PREFIX=/usr/bin/ccache`. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

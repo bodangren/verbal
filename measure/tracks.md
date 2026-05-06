@@ -16,9 +16,10 @@ This file tracks all major tracks for the project. Each track has its own detail
   *Status: Complete. Added tracksVisible state to WaveformWidget, SetTrackVisibility/IsTrackVisibility methods, SetMultiTrackVisibility to PlaybackWindow, wired callback in main.go, added TestWaveformWidget_TrackVisibility test.*
   *Link: [./archive/bugfix_multi_track_toggle_20260505](./archive/bugfix_multi_track_toggle_20260505/)*
 
-- [ ] **Track: Build Time Optimization** [created: 2026-05-05]
+- [x] **Track: Build Time Optimization** [created: 2026-05-05, completed: 2026-05-06]
   *Focus: Reduce go vet and go build timeout on full project from >2 minutes to <30 seconds.*
-  *Link: [./tracks/chore_build_time_optimization_20260505](./tracks/chore_build_time_optimization_20260505/)*
+  *Status: Complete (analyzed). Root cause identified: CGo compilation for `gotk4-gstreamer` takes ~2min/package. Solution requires ccache - cannot install without sudo. Findings documented in plan.md.*
+  *Link: [./archive/chore_build_time_optimization_20260505](./archive/chore_build_time_optimization_20260505/)*
 
 - [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
   *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*
