@@ -160,15 +160,21 @@ func NewMockRecordingTranscriber() *MockRecordingTranscriber {
 func (m *MockRecordingTranscriber) Start() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.StartError != nil {
+		return m.StartError
+	}
 	m.IsActive_ = true
-	return m.StartError
+	return nil
 }
 
 func (m *MockRecordingTranscriber) Stop() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.StopError != nil {
+		return m.StopError
+	}
 	m.IsActive_ = false
-	return m.StopError
+	return nil
 }
 
 func (m *MockRecordingTranscriber) ProcessAudioChunk(chunk []byte) error {

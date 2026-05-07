@@ -259,6 +259,11 @@ func NewRepairDialog(parent *gtk.Window) *RepairDialog {
 	return rd
 }
 
+// GetInspectionReport returns the current inspection report.
+func (rd *RepairDialog) GetInspectionReport() *lifecycle.InspectionReport {
+	return rd.inspectionReport
+}
+
 // SetInspectionReport updates the dialog with inspection results.
 func (rd *RepairDialog) SetInspectionReport(report *lifecycle.InspectionReport) {
 	rd.inspectionReport = report

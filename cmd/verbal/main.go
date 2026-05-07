@@ -1143,7 +1143,7 @@ func showRepairDialog(window *adw.ApplicationWindow, state *appState) {
 			return
 		}
 		go func() {
-			report, err := state.databaseRepairer.RepairAll(dialog.inspectionReport)
+			report, err := state.databaseRepairer.RepairAll(dialog.GetInspectionReport())
 
 			glib.IdleAdd(func() {
 				if err != nil {
