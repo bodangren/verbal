@@ -37,6 +37,9 @@
 - **Real-time Transcription Streaming** - The `internal/ai/realtime` package provides interfaces for streaming transcription. `StreamingProvider` interface has `StartStreaming()` returning `StreamingSession` with `SendAudio()/Close()`. `StreamingConfig` uses callbacks for partial/final results. [NEW]
 - **RecordingTranscriber Pattern** - Thread-safe transcriber wrapper with `Start()/Stop()/ProcessAudioChunk()` methods. Uses internal lock for state management. Mock implementation for testing. [NEW]
 - **LiveCaptionWidget Pattern** - GTK widget for real-time caption display with `gtk.FlowBox` for word-by-word layout. Has `SetStatus()`, `AddWord()`, `Clear()` methods. CSS classes for styling: `.caption-word`, `.caption-word-recent`. [NEW]
+- **LiveCaptionWidget Integration Pattern** - When integrating live captions into PlaybackWindow, use `SetLiveCaptionWidget()` which inserts the widget at the top of the right pane via `InsertChildAfter()`. Use `ShowLiveCaption()/HideLiveCaption()` to toggle visibility. [NEW]
+- **Keyboard Shortcut Pattern** - GTK application actions with `app.SetAccelsForAction()` for keyboard shortcuts. For Ctrl+Shift+R: `app.SetAccelsForAction("app.realtime-transcribe", []string{"<Ctrl><Shift>R"})`. [NEW]
+- **Type Conversion for AI Types** - When bridging between packages (e.g., `realtime.WordData` to `ai.Word`), create a converter type with methods like `ConvertWordDataToWord()`. Keep converters in the realtime package since it depends on ai. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

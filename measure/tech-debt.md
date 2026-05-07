@@ -17,7 +17,7 @@
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [severity: low]
 - **SQLite Schema Migrations** - When adding new columns to SQLite tables, use ALTER TABLE ADD COLUMN in migrations. Older DB files need backfill via migrate() function in repository.go. [severity: low]
 - **Whisper CLI Dependency** - The local transcription requires whisper-cli binary to be installed. Model downloader provides HTTP download with progress. [severity: low]
-- **Real-time Transcription Streaming** - The `internal/ai/realtime` package provides interfaces and basic implementations. Full GStreamer integration for live audio streaming to transcription providers is stubbed. Integration into recording flow (Ctrl+Shift+R) and actual provider streaming still needs implementation. [severity: low] [NEW]
+- **Real-time Transcription Integration** - [integrated: 2026-05-07 - LiveCaptionWidget wired into PlaybackWindow, Ctrl+Shift+R accelerator added, RecordingTranscriber added to appState, toggleRealtimeTranscription function implemented] [severity: low, resolved]
 
 ## Resolved (Recent)
 

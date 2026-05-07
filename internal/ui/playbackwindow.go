@@ -40,6 +40,9 @@ type PlaybackWindow struct {
 	// Filler summary panel (collapsible)
 	fillerSummaryWidget *FillerSummaryWidget
 
+	// Live caption widget (for real-time transcription)
+	liveCaptionWidget *LiveCaptionWidget
+
 	// Playback controls
 	playButton  *gtk.Button
 	pauseButton *gtk.Button
@@ -547,4 +550,36 @@ func (pw *PlaybackWindow) SetFillerSummaryWidget(widget *FillerSummaryWidget) {
 // GetFillerSummaryWidget returns the current filler summary widget.
 func (pw *PlaybackWindow) GetFillerSummaryWidget() *FillerSummaryWidget {
 	return pw.fillerSummaryWidget
+}
+
+// SetLiveCaptionWidget sets the live caption widget for the right pane.
+// The widget is added at the top of the right pane, above the waveform.
+func (pw *PlaybackWindow) SetLiveCaptionWidget(widget *LiveCaptionWidget) {
+	if pw.liveCaptionWidget != nil {
+		pw.rightPane.Remove(pw.liveCaptionWidget)
+	}
+
+	pw.liveCaptionWidget = widget
+	if widget != nil {
+		pw.rightPane.InsertChildAfter(widget, pw.loadingLabel)
+	}
+}
+
+// GetLiveCaptionWidget returns the current live caption widget.
+func (pw *PlaybackWindow) GetLiveCaptionWidget() *LiveCaptionWidget {
+	return pw.liveCaptionWidget
+}
+
+// ShowLiveCaption shows the live caption widget if present.
+func (pw *PlaybackWindow) ShowLiveCaption() {
+	if pw.liveCaptionWidget != nil {
+		pw.liveCaptionWidget.Show()
+	}
+}
+
+// HideLiveCaption hides the live caption widget if present.
+func (pw *PlaybackWindow) HideLiveCaption() {
+	if pw.liveCaptionWidget != nil {
+		pw.liveCaptionWidget.Hide()
+	}
 }

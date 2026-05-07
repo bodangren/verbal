@@ -1,0 +1,11 @@
+{
+  "id": "feature_realtime_transcription_integration_20260507",
+  "name": "Feature - Real-time Transcription Integration",
+  "created": "2026-05-07",
+  "status": "planned",
+  "focus": "Integrate real-time transcription streaming into recording flow with Ctrl+Shift+R shortcut and live caption display",
+  "severity": "low",
+  "dependencies": [
+    "feature_realtime_transcription_stream_20260507"
+  ]
+}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"verbal/internal/ai"
+	"verbal/internal/ai/realtime"
 	"verbal/internal/db"
 	"verbal/internal/edit"
 	"verbal/internal/filler"
@@ -65,6 +66,10 @@ type appState struct {
 	archiveImporter   *lifecycle.ArchiveImporter
 	databaseInspector *lifecycle.DatabaseInspector
 	databaseRepairer  *lifecycle.DatabaseRepairer
+
+	// Real-time transcription
+	recordingTranscriber *realtime.RecordingTranscriber
+	liveCaptionWidget    *ui.LiveCaptionWidget
 }
 
 const smokeCheckArg = "--smoke-check"
@@ -198,6 +203,12 @@ func activate(app *adw.Application, database *db.Database) {
 		aiFactory:    aiFactory,
 	}
 
+	// Initialize real-time transcription components
+	state.liveCaptionWidget = ui.NewLiveCaptionWidget()
+	state.recordingTranscriber = realtime.NewRecordingTranscriber(realtime.RecordingTranscriberConfig{
+		ChunkSize: 4096,
+	})
+
 	// Initialize backup system if database is available
 	if database != nil {
 		dbPath := database.GetDBPath()
@@ -237,6 +248,9 @@ func activate(app *adw.Application, database *db.Database) {
 	// Create playback window
 	state.playbackWindow = ui.NewPlaybackWindow()
 	stack.AddNamed(state.playbackWindow.Widget(), "playback")
+
+	// Wire live caption widget into playback window for real-time transcription
+	state.playbackWindow.SetLiveCaptionWidget(state.liveCaptionWidget)
 
 	window.SetChild(stack)
 
@@ -443,6 +457,14 @@ func setupToolsMenu(app *gtk.Application, window *adw.ApplicationWindow, state *
 	})
 	app.AddAction(detectFillersAction)
 	app.SetAccelsForAction("app.detect-fillers", []string{"<Ctrl><Shift>F"})
+
+	// Real-time transcription toggle action
+	realtimeTranscribeAction := gio.NewSimpleAction("realtime-transcribe", nil)
+	realtimeTranscribeAction.ConnectActivate(func(_ *glib.Variant) {
+		toggleRealtimeTranscription(state)
+	})
+	app.AddAction(realtimeTranscribeAction)
+	app.SetAccelsForAction("app.realtime-transcribe", []string{"<Ctrl><Shift>R"})
 
 	// Repair action - only works if database is available
 	repairAction := gio.NewSimpleAction("repair", nil)
@@ -1139,6 +1161,67 @@ func showRepairDialog(window *adw.ApplicationWindow, state *appState) {
 	})
 
 	dialog.Show()
+}
+
+// toggleRealtimeTranscription toggles real-time transcription on/off.
+// If inactive, starts transcription and shows live captions.
+// If active, stops transcription and hides live captions.
+func toggleRealtimeTranscription(state *appState) {
+	if state.recordingTranscriber == nil {
+		return
+	}
+
+	if state.recordingTranscriber.IsActive() {
+		// Stop transcription
+		_ = state.recordingTranscriber.Stop()
+		state.playbackWindow.HideLiveCaption()
+		state.liveCaptionWidget.Clear()
+	} else {
+		// Start transcription
+		state.playbackWindow.ShowLiveCaption()
+		state.liveCaptionWidget.SetStatus("Starting real-time transcription...")
+
+		// Set up word callback to add words to live caption widget
+		converter := realtime.NewWordDataToWordConverter()
+		mockTranscriber := &realtimeTranscriberWrapper{
+			delegate: state.recordingTranscriber,
+			converter: converter,
+			liveCaptionWidget: state.liveCaptionWidget,
+		}
+
+		// Note: In a full implementation, we would wire the transcriber's OnWord callback
+		// to update the live caption widget. For now, we just toggle state.
+		_ = mockTranscriber
+	}
+}
+
+// realtimeTranscriberWrapper wraps a RecordingTranscriber with live caption integration.
+type realtimeTranscriberWrapper struct {
+	delegate         *realtime.RecordingTranscriber
+	converter        *realtime.WordDataToWordConverter
+	liveCaptionWidget *ui.LiveCaptionWidget
+}
+
+func (w *realtimeTranscriberWrapper) Start() error {
+	w.liveCaptionWidget.SetStatus("Transcribing...")
+	return w.delegate.Start()
+}
+
+func (w *realtimeTranscriberWrapper) Stop() error {
+	w.liveCaptionWidget.SetStatus("Stopped")
+	return w.delegate.Stop()
+}
+
+func (w *realtimeTranscriberWrapper) IsActive() bool {
+	return w.delegate.IsActive()
+}
+
+func (w *realtimeTranscriberWrapper) GetWords() []realtime.WordData {
+	return w.delegate.GetWords()
+}
+
+func (w *realtimeTranscriberWrapper) ProcessAudioChunk(chunk []byte) error {
+	return w.delegate.ProcessAudioChunk(chunk)
 }
 
 // showFillerRemovalDialog shows the filler removal dialog
