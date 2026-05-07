@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Real-time Transcription Stream** [created: 2026-05-07]
+  *Focus: Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.*
+  *Status: Phase 1 - RealtimeTranscriber package.*
+  *Link: [./tracks/feature_realtime_transcription_stream_20260507](./tracks/feature_realtime_transcription_stream_20260507/)*
+
 - [x] **Track: Feature - Offline Local Transcription** [created: 2026-05-06, completed: 2026-05-07]
   *Focus: Implement whisper.cpp-based local transcription to replace cloud AI providers for offline-first capability.*
   *Status: Complete. Phases 1-4 done (LocalProvider with whisper.cpp subprocess, LocalConfig settings, SettingsWindow integration with LocalConfigPanel, ModelDownloader with progress). Phase 5 (finalization) pending final make go-check.*

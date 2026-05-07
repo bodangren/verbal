@@ -1,0 +1,9 @@
+{
+  "id": "feature_realtime_transcription_stream_20260507",
+  "name": "Feature - Real-time Transcription Stream",
+  "created": "2026-05-07",
+  "status": "in_progress",
+  "focus": "Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.",
+  "actual_tasks": 0,
+  "deviation_notes": ""
+}
