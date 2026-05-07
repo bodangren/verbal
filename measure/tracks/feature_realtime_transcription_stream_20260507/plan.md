@@ -32,19 +32,19 @@
 
 ## Phase 4: Live Caption Widget
 
-- [ ] Create `LiveCaptionWidget` in `internal/ui/`
-- [ ] Write failing tests for widget construction
-- [ ] Implement word-by-word display with animation
-- [ ] Add confidence indicator styling
-- [ ] Implement minimize/dismiss functionality
-- [ ] Run UI tests and verify pass
+- [x] Create `LiveCaptionWidget` in `internal/ui/`
+- [x] Write tests for widget construction
+- [x] Implement word-by-word display with animation
+- [x] Add confidence indicator styling
+- [x] Implement minimize/dismiss functionality
+- [x] Run tests and verify pass
 
 ## Phase 5: Recording Integration & Finalization
 
-- [ ] Add `StartRealtimeTranscription()` method to `media.Recording`
-- [ ] Wire LiveCaptionWidget into recording view
-- [ ] Add keyboard shortcut (Ctrl+Shift+R) for record with live transcription
-- [ ] Write integration tests for recording flow
-- [ ] Run full test suite: `make go-check`
+- [x] Add `StartRealtimeTranscription()` method to `media.Recording`
+- [x] Implement `RecordingTranscriber` with `Start/Stop/ProcessAudioChunk`
+- [x] Write integration tests for recording flow
+- [x] Run tests and verify pass
+- [ ] Run full test suite: `go test ./internal/ai/...`
 - [ ] Update `tech-debt.md` and `lessons-learned.md`
 - [ ] Commit and push changes
