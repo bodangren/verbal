@@ -34,6 +34,9 @@
 - **Settings UI Panel Pattern** - When adding new provider config panels to SettingsWindow: (1) Add panel struct with Widget() method, (2) Add to stack with stack.AddNamed(), (3) Handle in onProviderChanged for visibility, (4) Add case in onTestClicked for validation, (5) Update GetSettings/SetSettings for the provider config. [NEW]
 - **Local Whisper Integration** - Use whisper-cli binary via exec.CommandContext with JSON output (-oj flag) for structured transcription results. Parse output from temp directory. [NEW]
 - **ModelDownloader Pattern** - HTTP download with progress callback using io.Copy in chunks. Clean up temp file on error with defer os.Remove. Atomic rename on completion. [NEW]
+- **Real-time Transcription Streaming** - The `internal/ai/realtime` package provides interfaces for streaming transcription. `StreamingProvider` interface has `StartStreaming()` returning `StreamingSession` with `SendAudio()/Close()`. `StreamingConfig` uses callbacks for partial/final results. [NEW]
+- **RecordingTranscriber Pattern** - Thread-safe transcriber wrapper with `Start()/Stop()/ProcessAudioChunk()` methods. Uses internal lock for state management. Mock implementation for testing. [NEW]
+- **LiveCaptionWidget Pattern** - GTK widget for real-time caption display with `gtk.FlowBox` for word-by-word layout. Has `SetStatus()`, `AddWord()`, `Clear()` methods. CSS classes for styling: `.caption-word`, `.caption-word-recent`. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.

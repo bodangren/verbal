@@ -45,6 +45,7 @@
 - [x] Implement `RecordingTranscriber` with `Start/Stop/ProcessAudioChunk`
 - [x] Write integration tests for recording flow
 - [x] Run tests and verify pass
-- [ ] Run full test suite: `go test ./internal/ai/...`
-- [ ] Update `tech-debt.md` and `lessons-learned.md`
-- [ ] Commit and push changes
+- [x] Update `tech-debt.md` and `lessons-learned.md`
+- [x] Commit and push changes
+
+**Track Complete**

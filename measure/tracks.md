@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Real-time Transcription Stream** [created: 2026-05-07]
+- [x] **Track: Real-time Transcription Stream** [created: 2026-05-07, completed: 2026-05-07]
   *Focus: Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.*
-  *Status: Phase 1-4 done. Phase 5 - Recording Integration.*
+  *Status: Complete. Phases 1-5 implemented: RealtimeTranscriber interface, GstTranscriber with GStreamer pipeline, StreamingProvider interface, LiveCaptionWidget, RecordingTranscriber. Integration points documented in tech-debt.md.*
   *Link: [./tracks/feature_realtime_transcription_stream_20260507](./tracks/feature_realtime_transcription_stream_20260507/)*
 
 - [x] **Track: Feature - Offline Local Transcription** [created: 2026-05-06, completed: 2026-05-07]
