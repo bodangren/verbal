@@ -434,6 +434,8 @@ func (pw *PlaybackWindow) SetWaveformWidget(widget *WaveformWidget) {
 	pw.waveformWidget = widget
 	// Insert at the beginning of the right pane (before transcription)
 	pw.rightPane.InsertChildAfter(widget, nil)
+	// Enable tooltip display on hover
+	widget.SetTooltipEnabled(true)
 }
 
 // GetWaveformWidget returns the current waveform widget.

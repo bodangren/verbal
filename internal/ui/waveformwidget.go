@@ -48,6 +48,9 @@ type WaveformWidget struct {
 	hoverPosition    time.Duration
 	motionController *gtk.EventControllerMotion
 	onHoverCallback  func(time.Duration)
+	tooltipEnabled   bool
+	tooltipWindow    *gtk.Window
+	tooltipLabel     *gtk.Label
 }
 
 // SegmentMarker represents a segment boundary for visualization.
@@ -90,6 +93,9 @@ func NewWaveformWidget() *WaveformWidget {
 	// Connect motion controller for tooltips
 	ww.motionController = ww.createMotionController()
 	drawingArea.AddController(ww.motionController)
+
+	// Initialize tooltip window
+	ww.initTooltip()
 
 	return ww
 }
@@ -400,6 +406,52 @@ func abs(x float64) float64 {
 
 // Tooltip methods
 
+// initTooltip creates the tooltip popup window.
+func (ww *WaveformWidget) initTooltip() {
+	tooltipWindow := gtk.NewWindow(gtk.WindowTypePopup)
+	tooltipWindow.SetSizeRequest(80, 24)
+	tooltipWindow.SetDecorated(false)
+	tooltipWindow.SetResizable(false)
+	tooltipWindow.SetHAlign(gtk.AlignCenter)
+	tooltipWindow.SetVAlign(gtk.AlignEnd)
+	tooltipWindow.SetName("waveform-tooltip")
+
+	tooltipLabel := gtk.NewLabel("")
+	tooltipLabel.SetHAlign(gtk.AlignCenter)
+	tooltipLabel.SetVAlign(gtk.AlignCenter)
+	tooltipLabel.AddCSSClass("waveform-tooltip-label")
+
+	tooltipWindow.SetChild(tooltipLabel)
+	tooltipWindow.Hide()
+
+	ww.tooltipWindow = tooltipWindow
+	ww.tooltipLabel = tooltipLabel
+}
+
+// SetTooltipEnabled enables or disables tooltip display on hover.
+func (ww *WaveformWidget) SetTooltipEnabled(enabled bool) {
+	ww.tooltipEnabled = enabled
+	if !enabled {
+		ww.HideTooltip()
+	}
+}
+
+// ShowTooltip displays the tooltip at the specified position.
+func (ww *WaveformWidget) ShowTooltip(pos time.Duration, mouseX, mouseY float64) {
+	if ww.tooltipWindow == nil || ww.tooltipLabel == nil {
+		return
+	}
+	ww.tooltipLabel.SetText(formatTimestamp(pos))
+	ww.tooltipWindow.Show()
+}
+
+// HideTooltip hides the tooltip popup.
+func (ww *WaveformWidget) HideTooltip() {
+	if ww.tooltipWindow != nil {
+		ww.tooltipWindow.Hide()
+	}
+}
+
 // createMotionController creates a motion controller for hover tracking.
 func (ww *WaveformWidget) createMotionController() *gtk.EventControllerMotion {
 	controller := gtk.NewEventControllerMotion()
@@ -407,17 +459,24 @@ func (ww *WaveformWidget) createMotionController() *gtk.EventControllerMotion {
 	controller.ConnectEnter(func(x, y float64) {
 		if ww.data != nil {
 			ww.updateHoverPosition(x)
+			if ww.tooltipEnabled {
+				ww.ShowTooltip(ww.hoverPosition, x, y)
+			}
 		}
 	})
 
 	controller.ConnectMotion(func(x, y float64) {
 		if ww.data != nil {
 			ww.updateHoverPosition(x)
+			if ww.tooltipEnabled {
+				ww.ShowTooltip(ww.hoverPosition, x, y)
+			}
 		}
 	})
 
 	controller.ConnectLeave(func() {
 		ww.hoverPosition = 0
+		ww.HideTooltip()
 	})
 
 	return controller

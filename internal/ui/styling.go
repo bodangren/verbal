@@ -366,6 +366,22 @@ box, paned, grid, list-box {
 	width: 2px;
 }
 
+/* --- Waveform Tooltip --- */
+.waveform-tooltip-label {
+	font-family: "JetBrains Mono", "Fira Code", monospace;
+	font-size: 11px;
+	padding: 4px 8px;
+	color: #F5F5F5;
+	background-color: #1E1E1E;
+	border: 1px solid #3D3D3D;
+	border-radius: 4px;
+}
+
+window.waveform-tooltip {
+	background-color: transparent;
+	border: none;
+}
+
 /* --- Dialogs --- */
 .dialog {
 	background-color: #2A2A2A;

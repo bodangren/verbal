@@ -6,6 +6,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
+- [ ] **Track: Feature - WaveformWidget Tooltip UI** [created: 2026-05-08]
+  *Focus: Implement tooltip popup display for WaveformWidget hover tracking.*
+  *Status: In Progress. Phase 1 (tooltip methods) and Phase 2 (PlaybackWindow integration) complete. Phase 3 pending: tracks.md update and commit.*
+  *Link: [./tracks/feature_waveform_tooltip_ui_20260508](./tracks/feature_waveform_tooltip_ui_20260508/)*
+
 - [x] **Track: Feature - Real-time Transcription Integration** [created: 2026-05-07, completed: 2026-05-07]
   *Focus: Integrate real-time transcription streaming into recording flow with Ctrl+Shift+R shortcut and live caption display.*
   *Status: Complete. Phase 2 completed: Added SetWordCallback/EmitWord methods to RecordingTranscriber, wired live caption display via word callback. Removed unused realtimeTranscriberWrapper. LiveCaptionWidget connects to recording transcriber's word callback with type conversion.*
