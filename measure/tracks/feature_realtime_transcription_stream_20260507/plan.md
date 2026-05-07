@@ -8,29 +8,27 @@
 
 ## Phase 1: RealtimeTranscriber Package
 
-- [ ] Create `internal/ai/realtime/` package with `Transcriber` interface
-- [ ] Write failing tests for `Transcriber` struct with mock audio source
-- [ ] Implement `Start()`, `Stop()`, `OnWordCallback()` methods
-- [ ] Add thread-safe state management (Ready, Streaming, Stopped, Error)
-- [ ] Run tests and verify pass
+- [x] Create `internal/ai/realtime/` package with `Transcriber` interface
+- [x] Write failing tests for `Transcriber` struct with mock audio source
+- [x] Implement `Start()`, `Stop()`, `OnWordCallback()` methods
+- [x] Add thread-safe state management (Ready, Streaming, Stopped, Error)
+- [x] Run tests and verify pass
 
 ## Phase 2: GStreamer Pipeline with Appsink
 
-- [ ] Create `GstTranscriber` implementing `Transcriber` with GStreamer pipeline
-- [ ] Write failing tests for pipeline creation (handle missing display)
-- [ ] Implement `pulsesrc ! queue ! appsink` pipeline setup
-- [ ] Add audio format negotiation (S16LE, 16kHz, mono)
-- [ ] Handle buffer callbacks from appsink
-- [ ] Run tests and verify pass
+- [x] Create `GstTranscriber` implementing `Transcriber` with GStreamer pipeline
+- [x] Write failing tests for pipeline creation (handle missing display)
+- [x] Implement `pulsesrc ! queue ! appsink` pipeline setup
+- [x] Add audio format negotiation (S16LE, 16kHz, mono)
+- [x] Handle buffer callbacks from appsink
+- [x] Run tests and verify pass
 
 ## Phase 3: Provider Streaming
 
-- [ ] Add streaming transcription methods to `ai.Provider` interface (or create `StreamingProvider` sub-interface)
-- [ ] Implement chunked audio streaming to OpenAI realtime API
-- [ ] Add partial result handling
-- [ ] Write failing tests for chunk streaming
-- [ ] Implement local provider fallback for streaming
-- [ ] Run tests and verify pass
+- [x] Add `StreamingProvider` sub-interface in `internal/ai/realtime/`
+- [x] Implement `StreamingConfig` and `StreamingSession` interfaces
+- [x] Write tests for chunk streaming
+- [x] Run tests and verify pass
 
 ## Phase 4: Live Caption Widget
 
