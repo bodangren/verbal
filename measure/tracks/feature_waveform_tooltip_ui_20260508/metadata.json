@@ -1,7 +1,8 @@
 {
   "id": "feature_waveform_tooltip_ui_20260508",
   "name": "WaveformWidget Tooltip UI Integration",
-  "status": "pending",
+  "status": "complete",
   "created": "2026-05-08",
+  "completed": "2026-05-08",
   "priority": "low"
 }

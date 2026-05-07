@@ -6,9 +6,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Feature - WaveformWidget Tooltip UI** [created: 2026-05-08]
+- [x] **Track: Feature - WaveformWidget Tooltip UI** [created: 2026-05-08, completed: 2026-05-08]
   *Focus: Implement tooltip popup display for WaveformWidget hover tracking.*
-  *Status: In Progress. Phase 1 (tooltip methods) and Phase 2 (PlaybackWindow integration) complete. Phase 3 pending: tracks.md update and commit.*
+  *Status: Complete. Phase 1 (tooltip methods) and Phase 2 (PlaybackWindow integration) complete. Tooltip popup appears on hover, shows timestamp. Tech-debt resolved. Lessons-learned updated.*
   *Link: [./tracks/feature_waveform_tooltip_ui_20260508](./tracks/feature_waveform_tooltip_ui_20260508/)*
 
 - [x] **Track: Feature - Real-time Transcription Integration** [created: 2026-05-07, completed: 2026-05-07]
