@@ -6,7 +6,7 @@ import (
 )
 
 type RecordingTranscriber struct {
-	mu         sync.RWMutex
+	mu          sync.RWMutex
 	transcriber Transcriber
 	provider    StreamingProvider
 	config      StreamingConfig
@@ -15,6 +15,7 @@ type RecordingTranscriber struct {
 	isActive    bool
 	chunkSize   int
 	lastChunk   []byte
+	onWord      func(WordData)
 }
 
 type RecordingTranscriberConfig struct {
@@ -125,20 +126,34 @@ func (rt *RecordingTranscriber) Clear() {
 	rt.words = make([]WordData, 0)
 }
 
+func (rt *RecordingTranscriber) SetWordCallback(callback func(WordData)) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	rt.onWord = callback
+}
+
+func (rt *RecordingTranscriber) EmitWord(word WordData) {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	if rt.onWord != nil {
+		rt.onWord(word)
+	}
+}
+
 type MockRecordingTranscriber struct {
-	IsActive_   bool
-	StartError  error
-	StopError   error
-	Chunks      [][]byte
-	Words       []WordData
-	mu          sync.Mutex
+	IsActive_  bool
+	StartError error
+	StopError  error
+	Chunks     [][]byte
+	Words      []WordData
+	mu         sync.Mutex
 }
 
 func NewMockRecordingTranscriber() *MockRecordingTranscriber {
 	return &MockRecordingTranscriber{
 		IsActive_: false,
-		Chunks:   make([][]byte, 0),
-		Words:    make([]WordData, 0),
+		Chunks:    make([][]byte, 0),
+		Words:     make([]WordData, 0),
 	}
 }
 

@@ -1172,56 +1172,23 @@ func toggleRealtimeTranscription(state *appState) {
 	}
 
 	if state.recordingTranscriber.IsActive() {
-		// Stop transcription
 		_ = state.recordingTranscriber.Stop()
 		state.playbackWindow.HideLiveCaption()
 		state.liveCaptionWidget.Clear()
 	} else {
-		// Start transcription
 		state.playbackWindow.ShowLiveCaption()
 		state.liveCaptionWidget.SetStatus("Starting real-time transcription...")
 
-		// Set up word callback to add words to live caption widget
 		converter := realtime.NewWordDataToWordConverter()
-		mockTranscriber := &realtimeTranscriberWrapper{
-			delegate: state.recordingTranscriber,
-			converter: converter,
-			liveCaptionWidget: state.liveCaptionWidget,
-		}
 
-		// Note: In a full implementation, we would wire the transcriber's OnWord callback
-		// to update the live caption widget. For now, we just toggle state.
-		_ = mockTranscriber
+		state.recordingTranscriber.SetWordCallback(func(word realtime.WordData) {
+			aiWord := converter.ConvertWordDataToWord(word)
+			state.liveCaptionWidget.AddWord(aiWord)
+		})
+
+		_ = state.recordingTranscriber.Start()
+		state.liveCaptionWidget.SetStatus("Transcribing...")
 	}
-}
-
-// realtimeTranscriberWrapper wraps a RecordingTranscriber with live caption integration.
-type realtimeTranscriberWrapper struct {
-	delegate         *realtime.RecordingTranscriber
-	converter        *realtime.WordDataToWordConverter
-	liveCaptionWidget *ui.LiveCaptionWidget
-}
-
-func (w *realtimeTranscriberWrapper) Start() error {
-	w.liveCaptionWidget.SetStatus("Transcribing...")
-	return w.delegate.Start()
-}
-
-func (w *realtimeTranscriberWrapper) Stop() error {
-	w.liveCaptionWidget.SetStatus("Stopped")
-	return w.delegate.Stop()
-}
-
-func (w *realtimeTranscriberWrapper) IsActive() bool {
-	return w.delegate.IsActive()
-}
-
-func (w *realtimeTranscriberWrapper) GetWords() []realtime.WordData {
-	return w.delegate.GetWords()
-}
-
-func (w *realtimeTranscriberWrapper) ProcessAudioChunk(chunk []byte) error {
-	return w.delegate.ProcessAudioChunk(chunk)
 }
 
 // showFillerRemovalDialog shows the filler removal dialog

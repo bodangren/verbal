@@ -20,8 +20,8 @@ Integrate the real-time transcription streaming interfaces (RealtimeTranscriber,
 
 ## Acceptance Criteria
 
-- [ ] Pressing Ctrl+Shift+R during recording starts real-time transcription
-- [ ] Live captions appear in LiveCaptionWidget during recording
-- [ ] Pressing Ctrl+Shift+R again stops transcription and finalizes captions
-- [ ] If streaming fails, fallback to file-based transcription works
-- [ ] All existing tests pass
+- [x] Pressing Ctrl+Shift+R during recording starts real-time transcription
+- [x] Live captions appear in LiveCaptionWidget during recording
+- [x] Pressing Ctrl+Shift+R again stops transcription and finalizes captions
+- [x] If streaming fails, fallback to file-based transcription works
+- [x] All existing tests pass

@@ -1,6 +1,6 @@
 # Plan: Real-time Transcription Integration
 
-**Status:** IN PHASE 4
+**Status:** COMPLETE
 **Created:** 2026-05-07
 **Focus:** Integrate real-time transcription streaming into recording flow with Ctrl+Shift+R shortcut and live caption display.
 
@@ -18,9 +18,9 @@
 
 - [x] Add liveCaptionWidget field to PlaybackWindow struct
 - [x] Add SetLiveCaptionWidget/ShowLiveCaption/HideLiveCaption methods to PlaybackWindow
-- [ ] Wire LiveCaptionWidget into main window during recording
-- [ ] Connect RecordingTranscriber word callback to LiveCaptionWidget.AddWord() with type conversion
-- [ ] Run tests and verify pass
+- [x] Wire LiveCaptionWidget into main window during recording
+- [x] Connect RecordingTranscriber word callback to LiveCaptionWidget.AddWord() with type conversion
+- [x] Run tests and verify pass
 
 ## Phase 3: Keyboard Shortcut
 
@@ -39,6 +39,7 @@
 
 ## Phase 5: Finalization
 
+- [x] Run full test suite and verify all pass
 - [x] Update tech-debt.md with insights
 - [x] Update lessons-learned.md with patterns discovered
 - [x] Commit and push changes

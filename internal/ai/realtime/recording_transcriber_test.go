@@ -246,3 +246,62 @@ func TestRecordingTranscriber_Concurrent(t *testing.T) {
 	<-done
 	<-done
 }
+
+func TestRecordingTranscriber_SetWordCallback(t *testing.T) {
+	rt := NewRecordingTranscriber(RecordingTranscriberConfig{})
+
+	callbackCalled := false
+	rt.SetWordCallback(func(word WordData) {
+		callbackCalled = true
+	})
+
+	rt.EmitWord(WordData{Text: "test"})
+	if !callbackCalled {
+		t.Error("expected callback to be called after EmitWord")
+	}
+}
+
+func TestRecordingTranscriber_EmitWord(t *testing.T) {
+	rt := NewRecordingTranscriber(RecordingTranscriberConfig{})
+
+	var receivedWord WordData
+	rt.SetWordCallback(func(word WordData) {
+		receivedWord = word
+	})
+
+	testWord := WordData{Text: "test", StartTime: 1.0, EndTime: 2.0, Confidence: 0.95}
+	rt.EmitWord(testWord)
+
+	if receivedWord.Text != "test" {
+		t.Errorf("expected 'test', got '%s'", receivedWord.Text)
+	}
+	if receivedWord.StartTime != 1.0 {
+		t.Errorf("expected 1.0, got %f", receivedWord.StartTime)
+	}
+}
+
+func TestRecordingTranscriber_EmitWord_NoCallback(t *testing.T) {
+	rt := NewRecordingTranscriber(RecordingTranscriberConfig{})
+
+	rt.EmitWord(WordData{Text: "should not panic"})
+}
+
+func TestRecordingTranscriber_ClearCallback(t *testing.T) {
+	rt := NewRecordingTranscriber(RecordingTranscriberConfig{})
+
+	callCount := 0
+	rt.SetWordCallback(func(word WordData) {
+		callCount++
+	})
+
+	rt.EmitWord(WordData{Text: "first"})
+	if callCount != 1 {
+		t.Errorf("expected 1 call, got %d", callCount)
+	}
+
+	rt.SetWordCallback(nil)
+	rt.EmitWord(WordData{Text: "second"})
+	if callCount != 1 {
+		t.Errorf("expected callCount still 1 after nil callback, got %d", callCount)
+	}
+}

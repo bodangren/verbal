@@ -40,6 +40,7 @@
 - **LiveCaptionWidget Integration Pattern** - When integrating live captions into PlaybackWindow, use `SetLiveCaptionWidget()` which inserts the widget at the top of the right pane via `InsertChildAfter()`. Use `ShowLiveCaption()/HideLiveCaption()` to toggle visibility. [NEW]
 - **Keyboard Shortcut Pattern** - GTK application actions with `app.SetAccelsForAction()` for keyboard shortcuts. For Ctrl+Shift+R: `app.SetAccelsForAction("app.realtime-transcribe", []string{"<Ctrl><Shift>R"})`. [NEW]
 - **Type Conversion for AI Types** - When bridging between packages (e.g., `realtime.WordData` to `ai.Word`), create a converter type with methods like `ConvertWordDataToWord()`. Keep converters in the realtime package since it depends on ai. [NEW]
+- **RecordingTranscriber Callback Pattern** - Use `SetWordCallback(func(WordData))` to wire word callbacks from the RecordingTranscriber to UI widgets like LiveCaptionWidget. The callback is stored in the struct and invoked via `EmitWord()`. [NEW]
 
 ## General
 - **Project Stability & Restoration:** NEVER delete functional code or entire modules to fix a broken build. Prioritize surgical fixes over "nuclear" resets.
