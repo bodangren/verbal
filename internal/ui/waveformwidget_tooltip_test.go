@@ -81,7 +81,7 @@ func TestWaveformWidget_translateToScreen(te *testing.T) {
 	if screenX2 <= screenX {
 		te.Errorf("Expected screenX2 > screenX, got %v <= %v", screenX2, screenX)
 	}
-	if screenY2 != screenY {
-		te.Errorf("Expected screenY2 == screenY (vertical offset only), got %v != %v", screenY2, screenY)
+	if screenY2 <= screenY {
+		te.Errorf("Expected screenY2 > screenY, got %v <= %v", screenY2, screenY)
 	}
 }
