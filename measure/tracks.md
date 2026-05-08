@@ -6,10 +6,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active & Planned Tracks
 
-- [ ] **Track: Feature - WaveformWidget Tooltip Positioning** [created: 2026-05-08, in_progress]
+- [x] **Track: Feature - WaveformWidget Tooltip Positioning** [created: 2026-05-08, completed: 2026-05-08]
   *Focus: Fix tooltip positioning to follow cursor by using translateToScreen() and Move() instead of HAlign/VAlign.*
   *Status: Phase 1 complete - translateToScreen added, initTooltip updated, ShowTooltip calls Move(). Tests pass. Phase 2 pending.*
-  *Link: [./tracks/feature_waveform_tooltip_positioning_20260508](./tracks/feature_waveform_tooltip_positioning_20260508/)*
+  *Link: [./archive/feature_waveform_tooltip_positioning_20260508](./archive/feature_waveform_tooltip_positioning_20260508/)*
 
 - [x] **Track: Feature - WaveformWidget Tooltip UI** [created: 2026-05-08, completed: 2026-05-08]
   *Focus: Implement tooltip popup display for WaveformWidget hover tracking.*

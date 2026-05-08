@@ -1,6 +1,6 @@
 # Plan: WaveformWidget Tooltip Positioning
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-05-08
 **Focus:** Fix tooltip positioning to follow cursor
 
@@ -18,10 +18,10 @@
 - [x] Remove SetHAlign/SetVAlign from initTooltip (popup positioning)
 - [x] Modify ShowTooltip to call Move() with screen coordinates
 - [x] Write test for translateToScreen
-- [ ] Run go vet ./internal/ui/...
-- [ ] Run go test ./internal/ui/...
+- [x] Run go vet ./internal/ui/...
+- [x] Run go test ./internal/ui/...
 
 ## Phase 3: Integration and Testing
 
-- [ ] Update tech-debt.md to mark tooltip positioning as resolved
-- [ ] Commit and push
+- [x] Update tech-debt.md to mark tooltip positioning as resolved
+- [x] Commit and push
