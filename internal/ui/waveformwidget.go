@@ -412,8 +412,6 @@ func (ww *WaveformWidget) initTooltip() {
 	tooltipWindow.SetSizeRequest(80, 24)
 	tooltipWindow.SetDecorated(false)
 	tooltipWindow.SetResizable(false)
-	tooltipWindow.SetHAlign(gtk.AlignCenter)
-	tooltipWindow.SetVAlign(gtk.AlignEnd)
 	tooltipWindow.SetName("waveform-tooltip")
 
 	tooltipLabel := gtk.NewLabel("")
@@ -442,7 +440,17 @@ func (ww *WaveformWidget) ShowTooltip(pos time.Duration, mouseX, mouseY float64)
 		return
 	}
 	ww.tooltipLabel.SetText(formatTimestamp(pos))
+
+	screenX, screenY := ww.translateToScreen(mouseX, mouseY)
+	ww.tooltipWindow.Move(int(screenX), int(screenY))
 	ww.tooltipWindow.Show()
+}
+
+// translateToScreen converts widget-relative coordinates to screen coordinates.
+func (ww *WaveformWidget) translateToScreen(widgetX, widgetY float64) (screenX, screenY float64) {
+	alloc := ww.Allocation()
+	originX, originY := float64(alloc.X), float64(alloc.Y)
+	return originX + widgetX, originY + widgetY - 30
 }
 
 // HideTooltip hides the tooltip popup.

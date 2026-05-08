@@ -64,3 +64,24 @@ func TestWaveformWidget_TooltipPosition(te *testing.T) {
 		})
 	}
 }
+
+func TestWaveformWidget_translateToScreen(te *testing.T) {
+	ww := NewWaveformWidget()
+
+	screenX, screenY := ww.translateToScreen(100, 50)
+
+	if screenX <= 0 {
+		te.Errorf("Expected positive screenX, got %v", screenX)
+	}
+	if screenY <= 0 {
+		te.Errorf("Expected positive screenY, got %v", screenY)
+	}
+
+	screenX2, screenY2 := ww.translateToScreen(200, 100)
+	if screenX2 <= screenX {
+		te.Errorf("Expected screenX2 > screenX, got %v <= %v", screenX2, screenX)
+	}
+	if screenY2 != screenY {
+		te.Errorf("Expected screenY2 == screenY (vertical offset only), got %v != %v", screenY2, screenY)
+	}
+}

@@ -12,7 +12,7 @@
 
 ### Low Severity
 - **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. [severity: low]
-- **WaveformWidget tooltip positioning** - `ShowTooltip` accepts `mouseX, mouseY` parameters but doesn't use them to position the tooltip popup window. The tooltip appears at its default location rather than following the cursor. [severity: low]
+- **WaveformWidget tooltip positioning** - [resolved: 2026-05-08 - ShowTooltip now uses translateToScreen() to convert widget coords to screen coords and calls Move() to position tooltip at cursor location. Removed SetHAlign/SetVAlign which interfered with manual positioning.] [severity: low]
 - **Design System Linter** - Use `npx @google/design.md lint` to validate DESIGN.md structure and catch issues before committing. [severity: low]
 - **Media package test coverage** - GStreamer pipeline tests require display/video files. Pipeline tests skipped - require hardware. [severity: low]
 - **WaveformWidget tooltip UI** - Hover tracking is implemented but actual tooltip display requires parent UI integration. [resolved: 2026-05-08 - WaveformWidget now has SetTooltipEnabled/ShowTooltip/HideTooltip methods, tooltip window initialized in NewWaveformWidget, PlaybackWindow enables tooltip via SetTooltipEnabled(true)]
