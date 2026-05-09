@@ -19,6 +19,7 @@
 - **SQLite Schema Migrations** - When adding new columns to SQLite tables, use ALTER TABLE ADD COLUMN in migrations. Older DB files need backfill via migrate() function in repository.go. [severity: low]
 - **Whisper CLI Dependency** - The local transcription requires whisper-cli binary to be installed. Model downloader provides HTTP download with progress. [severity: low]
 - **Real-time Transcription Integration** - [integrated: 2026-05-07 - LiveCaptionWidget wired into PlaybackWindow, Ctrl+Shift+R accelerator added, RecordingTranscriber added to appState, toggleRealtimeTranscription function implemented] [severity: low, resolved]
+- **Auto-Save and Crash Recovery** - [resolved: 2026-05-09 - AutoSaveRepository with auto_save table, AutoSaveService with 30s interval, RecoveryDialog UI. Dirty tracking and background auto-save implemented.]
 
 ## Resolved (Recent)
 

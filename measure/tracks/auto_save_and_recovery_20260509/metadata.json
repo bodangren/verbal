@@ -1,8 +1,9 @@
 {
   "id": "auto_save_and_recovery_20260509",
   "title": "Auto-Save and Crash Recovery",
-  "status": "planned",
+  "status": "in_progress",
   "priority": "high",
   "type": "feature",
-  "created": "2026-05-09"
+  "created": "2026-05-09",
+  "started": "2026-05-09"
 }

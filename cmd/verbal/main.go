@@ -55,6 +55,9 @@ type appState struct {
 	backupManager   *lifecycle.BackupManager
 	backupScheduler *lifecycle.BackupScheduler
 
+	// Auto-save system
+	autoSaveSvc *db.AutoSaveService
+
 	// Dialogs
 	exportDialog        *ui.ExportDialog
 	importDialog        *ui.ImportDialog
@@ -231,12 +234,21 @@ func activate(app *adw.Application, database *db.Database) {
 		state.databaseRepairer = lifecycle.NewDatabaseRepairer(database.RecordingRepo(), nil)
 	}
 
+	// Initialize auto-save service if database is available
+	if database != nil {
+		state.autoSaveSvc = db.NewAutoSaveService(database, 30*time.Second, nil)
+		state.autoSaveSvc.Start()
+	}
+
 	window.ConnectCloseRequest(func() (ok bool) {
 		if state.thumbnailSvc != nil {
 			state.thumbnailSvc.Close()
 		}
 		if state.backupScheduler != nil {
 			state.backupScheduler.Stop()
+		}
+		if state.autoSaveSvc != nil {
+			state.autoSaveSvc.Stop()
 		}
 		return false
 	})

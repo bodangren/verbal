@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -33,6 +34,30 @@ func (r *Recording) IsAvailable() bool {
 	}
 	_, err := os.Stat(r.FilePath)
 	return err == nil
+}
+
+// AutoSave represents the auto-saved state of a project.
+type AutoSave struct {
+	ID               int64
+	ProjectID        int64
+	TranscriptJSON   string
+	OperationsJSON   string
+	PlaybackPosition int64
+	SavedAt          time.Time
+}
+
+// AutoSaveInfo provides lightweight info about an auto-save without loading full data.
+type AutoSaveInfo struct {
+	ProjectID           int64
+	SavedAt             time.Time
+	HasData             bool
+	TranscriptWordCount int
+	PlaybackPosition    int64
+}
+
+// AutoSaveRepository provides CRUD operations for auto-save data.
+type AutoSaveRepository struct {
+	db *sql.DB
 }
 
 // scanner is an interface that wraps the Scan method for row scanning.
@@ -133,6 +158,11 @@ func (d *Database) ThumbnailRepo() *ThumbnailRepository {
 	return &ThumbnailRepository{db: d.db}
 }
 
+// AutoSaveRepo returns an AutoSaveRepository for auto-save operations.
+func (d *Database) AutoSaveRepo() *AutoSaveRepository {
+	return &AutoSaveRepository{db: d.db}
+}
+
 // migrate runs database migrations.
 func (d *Database) migrate() error {
 	schema := `
@@ -155,6 +185,15 @@ func (d *Database) migrate() error {
 		openai_config TEXT NOT NULL DEFAULT '{}',
 		google_config TEXT NOT NULL DEFAULT '{}',
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS auto_save (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_id INTEGER NOT NULL UNIQUE,
+		transcript_json TEXT NOT NULL DEFAULT '',
+		operations_json TEXT NOT NULL DEFAULT '',
+		playback_position INTEGER NOT NULL DEFAULT 0,
+		saved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);
 	`
 
@@ -434,4 +473,144 @@ func parseThumbnailGeneratedAt(value sql.NullString) *time.Time {
 	}
 	parsed = parsed.UTC()
 	return &parsed
+}
+
+// AutoSaveRepository provides CRUD operations for auto-save data.
+
+// autoSaveColumns is the standard SELECT column list for auto_save queries.
+const autoSaveColumns = `id, project_id, transcript_json, operations_json, playback_position, saved_at`
+
+// scanAutoSave scans a single row into an AutoSave struct.
+func scanAutoSave(s scanner) (*AutoSave, error) {
+	autoSave := &AutoSave{}
+	var savedAt string
+
+	err := s.Scan(
+		&autoSave.ID,
+		&autoSave.ProjectID,
+		&autoSave.TranscriptJSON,
+		&autoSave.OperationsJSON,
+		&autoSave.PlaybackPosition,
+		&savedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if savedAt != "" {
+		autoSave.SavedAt, _ = time.Parse(time.RFC3339, savedAt)
+	}
+
+	return autoSave, nil
+}
+
+// SaveAutoSave saves or updates auto-save data for a project.
+// Uses INSERT ... ON CONFLICT UPDATE to upsert.
+func (r *AutoSaveRepository) SaveAutoSave(as *AutoSave) error {
+	as.SavedAt = time.Now()
+
+	_, err := r.db.Exec(`
+		INSERT INTO auto_save (project_id, transcript_json, operations_json, playback_position, saved_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(project_id) DO UPDATE SET
+			transcript_json = excluded.transcript_json,
+			operations_json = excluded.operations_json,
+			playback_position = excluded.playback_position,
+			saved_at = excluded.saved_at
+	`,
+		as.ProjectID,
+		as.TranscriptJSON,
+		as.OperationsJSON,
+		as.PlaybackPosition,
+		as.SavedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("save auto_save: %w", err)
+	}
+
+	if as.ID == 0 {
+		var id int64
+		err := r.db.QueryRow(`SELECT id FROM auto_save WHERE project_id = ?`, as.ProjectID).Scan(&id)
+		if err != nil {
+			return fmt.Errorf("get auto_save id: %w", err)
+		}
+		as.ID = id
+	}
+
+	return nil
+}
+
+// LoadAutoSave retrieves the auto-save data for a project.
+func (r *AutoSaveRepository) LoadAutoSave(projectID int64) (*AutoSave, error) {
+	autoSave, err := scanAutoSave(r.db.QueryRow(`
+		SELECT `+autoSaveColumns+`
+		FROM auto_save
+		WHERE project_id = ?
+	`, projectID))
+	if err != nil {
+		return nil, fmt.Errorf("load auto_save: %w", err)
+	}
+	return autoSave, nil
+}
+
+// HasAutoSave checks if auto-save data exists for a project.
+func (r *AutoSaveRepository) HasAutoSave(projectID int64) (bool, error) {
+	var exists int
+	err := r.db.QueryRow(`SELECT 1 FROM auto_save WHERE project_id = ?`, projectID).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("has auto_save: %w", err)
+	}
+	return true, nil
+}
+
+// DeleteAutoSave removes auto-save data for a project.
+func (r *AutoSaveRepository) DeleteAutoSave(projectID int64) error {
+	_, err := r.db.Exec(`DELETE FROM auto_save WHERE project_id = ?`, projectID)
+	if err != nil {
+		return fmt.Errorf("delete auto_save: %w", err)
+	}
+	return nil
+}
+
+// GetAutoSaveInfo returns lightweight info about auto-save data without loading full transcript.
+func (r *AutoSaveRepository) GetAutoSaveInfo(projectID int64) (*AutoSaveInfo, error) {
+	var savedAt string
+	var transcriptJSON string
+	var playbackPosition int64
+
+	err := r.db.QueryRow(`
+		SELECT saved_at, transcript_json, playback_position
+		FROM auto_save
+		WHERE project_id = ?
+	`, projectID).Scan(&savedAt, &transcriptJSON, &playbackPosition)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get auto_save info: %w", err)
+	}
+
+	info := &AutoSaveInfo{
+		ProjectID:        projectID,
+		PlaybackPosition: playbackPosition,
+		HasData:          transcriptJSON != "",
+	}
+
+	if savedAt != "" {
+		info.SavedAt, _ = time.Parse(time.RFC3339, savedAt)
+	}
+
+	if transcriptJSON != "" {
+		var data map[string]interface{}
+		if err := json.Unmarshal([]byte(transcriptJSON), &data); err == nil {
+			if words, ok := data["words"].([]interface{}); ok {
+				info.TranscriptWordCount = len(words)
+			}
+		}
+	}
+
+	return info, nil
 }

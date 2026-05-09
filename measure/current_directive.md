@@ -1,3 +1,3 @@
 # Current Directive
 
-No pending work. All tracks complete. Next track will be created from next tech-debt item or user directive.
+Next track: batch_transcription_queue_20260509 - Queue multiple media files for sequential background transcription
