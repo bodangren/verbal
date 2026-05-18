@@ -19,7 +19,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Feature - Real-time Transcription Integration** [created: 2026-05-07, completed: 2026-05-07]
   *Focus: Integrate real-time transcription streaming into recording flow with Ctrl+Shift+R shortcut and live caption display.*
   *Status: Complete. Phase 2 completed: Added SetWordCallback/EmitWord methods to RecordingTranscriber, wired live caption display via word callback. Removed unused realtimeTranscriberWrapper. LiveCaptionWidget connects to recording transcriber's word callback with type conversion.*
-  *Link: [./tracks/feature_realtime_transcription_integration_20260507](./tracks/feature_realtime_transcription_integration_20260507/)*
+  *Link: [./archive/feature_realtime_transcription_integration_20260507](./archive/feature_realtime_transcription_integration_20260507/)*
 
 - [x] **Track: Real-time Transcription Stream** [created: 2026-05-07, completed: 2026-05-07]
   *Focus: Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.*
