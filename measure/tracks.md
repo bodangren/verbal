@@ -264,7 +264,7 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 
 ## Upcoming Tracks
 
-- [ ] **Track: Auto-Save and Crash Recovery** *Link: [./tracks/auto_save_and_recovery_20260509/](./tracks/auto_save_and_recovery_20260509/)* — Background auto-save of project state with crash recovery dialog on restart
+- [ ] **Track: Auto-Save and Crash Recovery** *Link: [./archive/auto_save_and_recovery_20260509/](./archive/auto_save_and_recovery_20260509/)* — Background auto-save of project state with crash recovery dialog on restart
 - [ ] **Track: Batch Transcription Queue** *Link: [./tracks/batch_transcription_queue_20260509/](./tracks/batch_transcription_queue_20260509/)* — Queue multiple media files for sequential background transcription
 - [ ] **Track: Transcript Search and Navigation** *Link: [./tracks/transcript_search_and_navigation_20260509/](./tracks/transcript_search_and_navigation_20260509/)* — Search within transcripts with highlighted matches and keyboard navigation
 - [ ] **Track: Export Presets and Profiles** *Link: [./tracks/export_presets_and_profiles_20260509/](./tracks/export_presets_and_profiles_20260509/)* — Named export presets for YouTube, podcast, archive, and custom profiles
