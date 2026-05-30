@@ -264,10 +264,11 @@ The following tracks were part of the initial Tauri/Rust prototype and have been
 
 ## Upcoming Tracks
 
-- [ ] **Track: Auto-Save and Crash Recovery** *Link: [./archive/auto_save_and_recovery_20260509/](./archive/auto_save_and_recovery_20260509/)* — Background auto-save of project state with crash recovery dialog on restart
+- [x] **Track: Auto-Save and Crash Recovery** *Link: [./archive/auto_save_and_recovery_20260509/](./archive/auto_save_and_recovery_20260509/)* — Background auto-save of project state with crash recovery dialog on restart
 - [ ] **Track: Batch Transcription Queue** *Link: [./tracks/batch_transcription_queue_20260509/](./tracks/batch_transcription_queue_20260509/)* — Queue multiple media files for sequential background transcription
 - [ ] **Track: Transcript Search and Navigation** *Link: [./tracks/transcript_search_and_navigation_20260509/](./tracks/transcript_search_and_navigation_20260509/)* — Search within transcripts with highlighted matches and keyboard navigation
 - [ ] **Track: Export Presets and Profiles** *Link: [./tracks/export_presets_and_profiles_20260509/](./tracks/export_presets_and_profiles_20260509/)* — Named export presets for YouTube, podcast, archive, and custom profiles
+- [ ] **Track: Undo/Redo System for Text-Driven Media Operations** *Link: [./tracks/undo_redo_media_operations_20260531/](./tracks/undo_redo_media_operations_20260531/)* — Full undo/redo stack for Delete, Reorder, InsertSilence, and Split operations with Ctrl+Z/Y shortcuts
 - [x] **Track: Export Pipeline Optimization** [created: 2026-04-25, completed: 2026-05-01]
   *Focus: Replace re-encoding (x264enc + avenc_aac) with stream-copy for faster, lossless export when codec parameters match.*
   *Status: Complete. Created `CodecDetector` interface and `GstCodecDetector` implementation. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9. Fallback to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests: `TestSegmentExporter_SetCodecInfo`, `TestSegmentExporter_canStreamCopy`. Multi-segment concatenation remains re-encode due to timestamp handling complexity (documented in tech-debt.md).*
