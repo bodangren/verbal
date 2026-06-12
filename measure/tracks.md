@@ -1,308 +1,86 @@
 # Project Tracks
 
-This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
+This file tracks all major tracks for the Verbal greenfield rewrite. Each track has its own detailed plan in its respective folder.
+
+Active tracks implement the MVP defined in [product.md](./product.md). Roadmap tracks implement post-MVP features.
 
 ---
 
-## Active & Planned Tracks
+## Active Tracks
 
-- [x] **Track: Feature - WaveformWidget Tooltip Positioning** [created: 2026-05-08, completed: 2026-05-08]
-  *Focus: Fix tooltip positioning to follow cursor by using translateToScreen() and Move() instead of HAlign/VAlign.*
-  *Status: Phase 1 complete - translateToScreen added, initTooltip updated, ShowTooltip calls Move(). Tests pass. Phase 2 pending.*
-  *Link: [./archive/feature_waveform_tooltip_positioning_20260508](./archive/feature_waveform_tooltip_positioning_20260508/)*
+- [x] **Track: Greenfield Project Setup** [created: 2026-06-12] [completed: 2026-06-12]
+  *Focus: Scaffold the new project structure, domain model, SQLite schema with versioned migrations, app controller, and CI checks.*
+  *Status: Complete. All acceptance criteria passed; `make check` and smoke check verified.*
+  *Link: [./tracks/greenfield_project_setup_20260612](./tracks/greenfield_project_setup_20260612/)*
 
-- [x] **Track: Feature - WaveformWidget Tooltip UI** [created: 2026-05-08, completed: 2026-05-08]
-  *Focus: Implement tooltip popup display for WaveformWidget hover tracking.*
-  *Status: Complete. Phase 1 (tooltip methods) and Phase 2 (PlaybackWindow integration) complete. Tooltip popup appears on hover, shows timestamp. Tech-debt resolved. Lessons-learned updated.*
-  *Link: [./archive/feature_waveform_tooltip_ui_20260508](./archive/feature_waveform_tooltip_ui_20260508/)*
+- [ ] **Track: MVP Recording & Import** [created: 2026-06-12]
+  *Focus: Record video/audio from V4L2/PipeWire and import existing media files into the library.*
+  *Status: Planned.*
+  *Link: [./tracks/mvp_recording_import_20260612](./tracks/mvp_recording_import_20260612/)*
 
-- [x] **Track: Feature - Real-time Transcription Integration** [created: 2026-05-07, completed: 2026-05-07]
-  *Focus: Integrate real-time transcription streaming into recording flow with Ctrl+Shift+R shortcut and live caption display.*
-  *Status: Complete. Phase 2 completed: Added SetWordCallback/EmitWord methods to RecordingTranscriber, wired live caption display via word callback. Removed unused realtimeTranscriberWrapper. LiveCaptionWidget connects to recording transcriber's word callback with type conversion.*
-  *Link: [./archive/feature_realtime_transcription_integration_20260507](./archive/feature_realtime_transcription_integration_20260507/)*
+- [ ] **Track: MVP Transcription** [created: 2026-06-12]
+  *Focus: Provider-agnostic transcription interface with OpenAI Whisper and Google Speech-to-Text implementations; word-level timestamp storage.*
+  *Status: Planned.*
+  *Link: [./tracks/mvp_transcription_20260612](./tracks/mvp_transcription_20260612/)*
 
-- [x] **Track: Real-time Transcription Stream** [created: 2026-05-07, completed: 2026-05-07]
-  *Focus: Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.*
-  *Status: Complete. Phases 1-5 implemented: RealtimeTranscriber interface, GstTranscriber with GStreamer pipeline, StreamingProvider interface, LiveCaptionWidget, RecordingTranscriber. Integration points documented in tech-debt.md.*
-  *Link: [./archive/feature_realtime_transcription_stream_20260507](./archive/feature_realtime_transcription_stream_20260507/)*
+- [ ] **Track: MVP Playback & Sync** [created: 2026-06-12]
+  *Focus: Embedded GStreamer playback, clickable transcript, and current-word highlighting.*
+  *Status: Planned.*
+  *Link: [./tracks/mvp_playback_sync_20260612](./tracks/mvp_playback_sync_20260612/)*
 
-- [x] **Track: Feature - Offline Local Transcription** [created: 2026-05-06, completed: 2026-05-07]
-  *Focus: Implement whisper.cpp-based local transcription to replace cloud AI providers for offline-first capability.*
-  *Status: Complete. Phases 1-4 done. Phase 5 (finalization) completed. Tests pass for local AI package. Build times are long due to CGo (documented in tech-debt.md). All acceptance criteria met.*
-  *Link: [./archive/feature_offline_local_transcription_20260506](./archive/feature_offline_local_transcription_20260506/)
+- [ ] **Track: MVP Library & Export** [created: 2026-06-12]
+  *Focus: Library list/delete view and export of the original media file.*
+  *Status: Planned.*
+  *Link: [./tracks/mvp_library_export_20260612](./tracks/mvp_library_export_20260612/)*
 
-- [x] **Track: Timeline Visualization Integration** [created: 2026-05-05, completed: 2026-05-05]
-  *Focus: Wire EditTimeline into PlaybackWindow, implement segment visualization on waveform, and add timeline zoom/scroll controls.*
-  *Status: Complete. All 5 phases implemented. Phase 4 (Multi-Track Toggle) properly wired via bugfix track bugfix_multi_track_toggle_20260505.*
-  *Link: [./archive/feature_timeline_visualization_20260505](./archive/feature_timeline_visualization_20260505/)
-
-- [x] **Track: Multi-Track Toggle Fix** [created: 2026-05-05, completed: 2026-05-05]
-  *Focus: Fix incomplete multi-track toggle - button existed but didn't control segment visibility in WaveformWidget.*
-  *Status: Complete. Added tracksVisible state to WaveformWidget, SetTrackVisibility/IsTrackVisibility methods, SetMultiTrackVisibility to PlaybackWindow, wired callback in main.go, added TestWaveformWidget_TrackVisibility test.*
-  *Link: [./archive/bugfix_multi_track_toggle_20260505](./archive/bugfix_multi_track_toggle_20260505/)*
-
-- [x] **Track: Build Time Optimization** [created: 2026-05-05, completed: 2026-05-06]
-  *Focus: Reduce go vet and go build timeout on full project from >2 minutes to <30 seconds.*
-  *Status: Complete (analyzed). Root cause identified: CGo compilation for `gotk4-gstreamer` takes ~2min/package. Solution requires ccache - cannot install without sudo. Findings documented in plan.md.*
-  *Link: [./archive/chore_build_time_optimization_20260505](./archive/chore_build_time_optimization_20260505/)*
-
-- [x] **Track: Feature - VirtualizedWordContainer Integration** [created: 2026-04-25, completed: 2026-04-25]
-  *Focus: Replace non-virtualized WordContainer in EditableTranscriptionView with VirtualizedWordContainer for efficient rendering of 5000+ word recordings.*
-  *Status: Complete. EditableTranscriptionView now uses *VirtualizedWordContainer with widget pool pre-allocation (100 widgets) and viewport-based rendering. Added GetHighlightedWord() to VirtualizedWordContainer for highlight sync compatibility. All tests pass, build passes, vet passes.*
-  *Link: [./archive/feature_virtualized_word_container_integration_20260425](./archive/feature_virtualized_word_container_integration_20260425)*
-
-- [x] **Track: Chore - Build Optimization** [created: 2026-04-24, completed: 2026-04-24]
-  *Focus: Configure Go build cache and add Makefile for faster incremental builds. UI package takes >2min to build due to CGo/GTK dependencies.*
-  *Status: Complete. Created Makefile with go-build, go-vet, go-test, go-check targets. Configured GOCACHE for persistent caching. Incremental builds now complete in ~6s vs >2min cold. All tests pass.*
-  *Link: [./archive/chore_build_optimization_20260424](./archive/chore_build_optimization_20260424)*
-
-- [x] **Track: Bugfix - VirtualizedWordContainer Fixes** [created: 2026-04-24, started: 2026-04-24, completed: 2026-04-24]
-  *Focus: Fix three bugs: unbounded FlowBox growth (no Remove), incorrect highlight indexing (word vs pool), data race on words slice.*
-  *Status: Complete. All 3 bugs fixed: (1) Added RemoveAll() before append, (2) Replaced lastHighlightedIdx with highlightedPoolIdx tracking pool slot not word index, (3) Changed binary search to take words parameter for snapshot under lock. All tests pass, build passes, vet passes.*
-  *Link: [./archive/bugfix_virtualized_word_container_fixes_20260424](./archive/bugfix_virtualized_word_container_fixes_20260424)*
-
-- [x] **Track: Feature - Word Virtualization for Long Recordings** [created: 2026-04-23, started: 2026-04-23, completed: 2026-04-24]
-  *Focus: Replace FlowBox word rendering with virtualized container for recordings 1+ hours with 5000+ words.*
-  *Status: Complete. All 4 phases implemented: VirtualizedWordContainer with binary search, widget pool pre-allocation, glib.IdleAdd rendering, scroll event binding, and finalized UpdateVisibleWidgets with proper widget creation. Tests pass, build passes, vet passes.*
-  *Link: [./archive/feature_word_virtualization_20260423/](./archive/feature_word_virtualization_20260423/)*
-
-- [x] **Track: Chore - Repository Initialization Audit** [created: 2026-04-23, started: 2026-04-23, completed: 2026-04-23]
-  *Focus: Audit codebase for improper struct{} initialization patterns instead of factory methods that ensure proper DB connection wiring.*
-  *Status: Complete. Audited all repository patterns - all properly initialized via factory methods. No issues found.*
-  *Link: [./archive/chore_repository_initialization_audit_20260423/](./archive/chore_repository_initialization_audit_20260423/)*
-
-- [x] **Track: Bugfix - Transcription Result Usability and Persistence** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
-  *Focus: Make completed transcription timing data discoverable, keep the playback window usable on laptop screens, and reload saved transcription results.*
-  *Status: Complete. Timed words use a labeled scrolled view, the main window defaults to resizable 1000x640, and saved `.meta.json` transcriptions reload on reopen.*
-  *Link: [./archive/bugfix_transcription_timing_view_20260417/](./archive/bugfix_transcription_timing_view_20260417/)*
-
-- [x] **Track: Bugfix - Transcription Max Retries Diagnostic Failure** [created: 2026-04-17, started: 2026-04-17, reopened: 2026-04-17, completed: 2026-04-17]
-  *Focus: Fix transcription failures surfacing only as generic `max retries exceeded`, and make provider/network/API failures diagnosable from the UI and metadata.*
-  *Status: Complete. OpenAI video transcription now uses GStreamer-extracted compressed FLAC plus local 25 MB upload preflight; provider errors remain copyable with retry context.*
-  *Link: [./archive/bugfix_transcription_retry_diagnostics_20260417/](./archive/bugfix_transcription_retry_diagnostics_20260417/)*
-
-- [x] **Track: Bugfix - MP4 File Open Does Not Load Playback** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
-  *Focus: Fix the manual QA blocker where selecting an MP4 in the open file dialog returns but does not load anything into the app.*
-  *Status: Complete. Open-file dialog now switches to playback, shows a loaded-file fallback widget, and playback pipeline paths are quoted for GStreamer.*
-  *Link: [./archive/bugfix_mp4_open_load_20260417/](./archive/bugfix_mp4_open_load_20260417/)*
-
-- [x] **Track: Chore - Manual Test Readiness and Project Status Audit** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
-  *Focus: Reconcile current project status, run automated verification, and produce a manual QA checklist for the Linux/GNOME app surface.*
-  *Status: Complete. Full tests, build, vet, smoke check, and bounded GTK launch pass; manual QA checklist documented in plan.md.*
-  *Link: [./archive/chore_manual_test_readiness_20260417/](./archive/chore_manual_test_readiness_20260417/)*
-
-- [x] **Track: Chore - RecordingRepository Query/Scan Refactoring** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
-  *Focus: Reduce ~200 lines of duplication in internal/db/repository.go by extracting common query/scan patterns.*
-  *Status: Complete. Extracted scanRecording() helper and recordingColumns constant. Reduced 531 lines to 422 lines (-109 lines). All 43 tests pass.*
-  *Link: [./archive/chore_recording_repository_refactor_20260417/](./archive/chore_recording_repository_refactor_20260417/)*
-
-- [x] **Track: Bugfix - BackupScheduler Robustness Improvements** [created: 2026-04-17, started: 2026-04-17, completed: 2026-04-17]
-  *Focus: Fix medium-severity backup scheduler issues: panic recovery, logger integration, and error handling.*
-  *Status: Complete. Added Logger interface, safeCallback() with panic recovery, replaced stderr writes with logger calls, updated all call sites.*
-  *Link: [./archive/bugfix_backup_scheduler_robustness_20260417/](./archive/bugfix_backup_scheduler_robustness_20260417/)*
-
-- [x] **Track: Bugfix - Waveform GStreamer Path Sanitization** [created: 2026-04-16, started: 2026-04-16, completed: 2026-04-16]
-  *Focus: Fix security vulnerability where file paths are interpolated into GStreamer pipelines without sanitization.*
-  *Status: Complete. Added quoteLocation() function, applied sanitization to generator.go and gstreamer_extractor.go, added comprehensive unit tests.*
-  *Link: [./archive/bugfix_waveform_path_sanitization_20260416/](./archive/bugfix_waveform_path_sanitization_20260416/)*
-
-- [x] **Track: Bugfix - Backup Atomicity and Safety** [created: 2026-04-14, started: 2026-04-14, completed: 2026-04-16]
-  *Focus: Fix high severity backup safety issues: atomic backup/restore, proper file permissions, and safe SQLite operations.*
-  *Status: Complete. All 6 phases finished: Permission fixes (0700/0600), timestamp format, BEGIN IMMEDIATE transaction for atomic backup, atomic restore with snapshot/rollback, integration/refactoring, test coverage >80%, and documentation.*  
-  *Link: [./archive/bugfix_backup_atomicity_safety_20260414/](./archive/bugfix_backup_atomicity_safety_20260414/)*
-
-- [x] **Track: Feature - Recording Data Lifecycle Enhancements** [created: 2026-04-10, started: 2026-04-10, completed: 2026-04-14]
-  *Focus: Add import/export, repair tooling, and recovery workflows for library database content.*
-  *Status: Completed. All 5 phases finished: Import/Export with ZIP archives, Repair tool with Inspector/Repairer, Backup system with Manager/Scheduler/Settings UI, and full menu integration into main.go. All features operational via keyboard shortcuts (Ctrl+Shift+I/E/R/B).*
-  *Link: [./archive/feature_recording_lifecycle_20260410/](./archive/feature_recording_lifecycle_20260410/)*
-
-- [x] **Track: Feature - Real Audio Waveform Extraction** [started: 2026-04-10, completed: 2026-04-10]
-  *Focus: Replace synthetic waveform data generation with real audio extraction using GStreamer.*
-  *Status: Completed. All 3 phases finished: AudioExtractor interface, GStreamerExtractor implementation with gst-launch-1.0, Generator integration, and comprehensive tests.*
-  *Link: [./archive/feature_real_waveform_audio_extraction_20260410/](./archive/feature_real_waveform_audio_extraction_20260410/)*
-
-- [x] **Track: Bugfix - Exact Recording Lookup for Transcription Updates** [started: 2026-04-10, completed: 2026-04-10]
-  *Focus: Replace LIKE-based DB lookup in transcription update paths with exact file path matching to avoid wrong-record writes.*
-  *Status: Completed. Added exact-path lookup methods (`GetByPathExact`, `GetByPath`), switched transcription persistence paths to exact matching, and added status-aware update handling for error vs completed states.*
-  *Link: [./archive/bugfix_recording_lookup_exact_match_20260410/](./archive/bugfix_recording_lookup_exact_match_20260410/)*
-
-- [x] **Track: Feature - Database & Recording Management** [started: 2026-04-06, completed: 2026-04-10]
-  *Focus: Implement persistent storage layer (SQLite) for recording history, metadata, and searchable transcripts.*
-  *Status: Reconciled to completed on 2026-04-10. Original partial execution was finalized through successor tracks and documented with full Measure artifacts.*
-  *Link: [./archive/feature_database_recording_management_20260406/](./archive/feature_database_recording_management_20260406/)*
-
-- [x] **Track: Chore - Test Truthfulness and Runtime Verification** [started: 2026-04-09, reopened: 2026-04-09, revalidated: 2026-04-09, rerun: 2026-04-09]
-  *Focus: Audit every test for behavioral validity, close false-positive coverage gaps, add runtime build/start smoke checks, and revalidate against latest workspace state.*
-  *Status: Revalidation rerun completed on 2026-04-09. Verified again by full suite pass (`go test ./... -count=1`), full build pass (`go build ./...`), startup smoke E2E pass (`TestE2E_BinaryBuildAndStartupSmoke`), direct startup smoke path (`go run ./cmd/verbal --smoke-check`), and bounded live GTK launch (`timeout 10s go run ./cmd/verbal` stayed running until timeout).*
-  *Link: [./archive/chore_test_truthfulness_e2e_20260409/](./archive/chore_test_truthfulness_e2e_20260409/)*
-
-- [x] **Track: Feature - Video Thumbnails for Library Items** [started: 2026-04-09, completed: 2026-04-09]
-  *Focus: Generate video thumbnails for recording library items using GStreamer frame extraction.*
-  *Status: All 5 phases complete. Features: DB-backed thumbnail persistence, GStreamer extraction, thumbnail widget integration, background queued generation, and freshness regeneration checks.*
-  *Link: [./archive/feature_video_thumbnails_20260409/](./archive/feature_video_thumbnails_20260409/)*
-
-- [x] **Track: Feature - Waveform Visualization** [started: 2026-04-08, completed: 2026-04-09]
-  *Focus: Add audio waveform visualization to playback view for visual navigation and editing cues.*
-  *Status: All 5 phases complete. Features: data generation, GTK4 widget, integration, scroll/zoom/selection, tooltips.*
-  *Link: [./archive/feature_waveform_visualization_20260408/](./archive/feature_waveform_visualization_20260408/)*
-
-- [x] **Track: Feature - Settings UI for AI Provider Configuration** [started: 2026-04-07, completed: 2026-04-08]
-  *Focus: Add settings/preferences UI for configuring AI transcription providers.*
-  *Link: [./archive/feature_settings_ui_20260407/](./archive/feature_settings_ui_20260407/)*
-
-- [x] **Track: Feature - Recording Library View** [started: 2026-04-07, completed: 2026-04-07]
-  *Focus: Add library/recording management view with database integration and search.*
-  *Link: [./archive/feature_recording_library_20260407/](./archive/feature_recording_library_20260407/)*
-
-- [x] **Track: Feature - PlaybackWindow Integration into Main App** [started: 2026-04-05, completed: 2026-04-05]
-  *Focus: Wire PlaybackWindow, sync integration, and editable transcription into main.go.*
-  *Link: [./archive/feature_playback_integration_20260405/](./archive/feature_playback_integration_20260405/)*
-
-- [x] **Track: Feature - Edit Transcription and Export Cuts** [started: 2026-04-05, completed: 2026-04-05]
-  *Focus: Editable transcription UI, segment selection, and GStreamer-based video cut export.*
-  *Link: [./archive/feature_edit_transcription_20260405/](./archive/feature_edit_transcription_20260405/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-04-04** [started: 2026-04-04, completed: 2026-04-04]
-  *Focus: Post-Phase 4 cleanup, dead code removal, and test coverage improvements.*
-  *Link: [./archive/chore_20260404/](./archive/chore_20260404/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-04-03** [started: 2026-04-03, completed: 2026-04-03]
-  *Focus: Post-Phase 3 cleanup and build verification. No issues found.*
-  *Link: [./archive/chore_20260403/](./archive/chore_20260403/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-04-02** [started: 2026-04-02, completed: 2026-04-02]
-  *Focus: Cleanup from video sync Phases 1-2; add edge case tests; prepare for Phase 3.*
-  *Link: [./archive/chore_20260402/](./archive/chore_20260402/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-04-01** [started: 2026-04-01, completed: 2026-04-01]
-  *Focus: Add missing tests for sync controller to achieve 100% coverage.*
-  *Link: [./archive/chore_20260401/](./archive/chore_20260401/)*
-
-- [x] **Track: Feature - Video Playback with Transcription Sync** [started: 2026-03-31, completed: 2026-04-04]
-  *Focus: Implement synchronized video playback with word-level transcription highlighting.*
-  *Status: All 5 phases complete. Manual QA pending (requires display + hardware).*
-  *Link: [./archive/feature_video_sync_20260331/](./archive/feature_video_sync_20260331/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-03-31** [started: 2026-03-31, completed: 2026-03-31]
-  *Focus: Final cleanup and preparation for video sync feature.*
-  *Link: [./archive/chore_20260331/](./archive/chore_20260331/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-03-30** [started: 2026-03-30, completed: 2026-03-30]
-  *Focus: Cleanup and address tech debt from March 28 AI provider implementation.*
-  *Link: [./archive/chore_20260330/](./archive/chore_20260330/)*
-
-- [x] **Track: Feature - Real AI Provider Implementations** [started: 2026-03-28, completed: 2026-03-28]
-  *Focus: Replace stub providers with real OpenAI Whisper and Google Speech-to-Text HTTP clients.*
-  *Link: [./archive/feature_real_ai_providers_20260328/](./archive/feature_real_ai_providers_20260328/)*
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-03-28** [started: 2026-03-28, completed: 2026-03-28]
-  *Focus: Wire transcription into main UI; add unit tests; resolve regression.*
-  *Link: [./archive/chore_20260328/](./archive/chore_20260328/)*
-
-- [x] **Track: Feature - Transcription Integration** [started: 2026-03-26, completed: 2026-03-26]
-  *Focus: Integrate AI transcription into main app with UI for results.*
-  *Link: [./archive/feature_transcription_integration_20260326/](./archive/feature_transcription_integration_20260326/)*
-
-- [x] **Track: Feature - AI Provider Abstraction Layer** [started: 2026-03-26, completed: 2026-03-26]
-  *Focus: Provider-agnostic interface for AI transcription (OpenAI/Google).*
-  *Link: [./archive/feature_ai_provider_20260326/](./archive/feature_ai_provider_20260326/)*
-
-- [x] **Track: Feature - Embedded Video Preview in GTK4** [started: 2026-03-26, completed: 2026-03-26]
-  *Focus: Replace external video window with embedded preview using gtk4paintablesink.*
-  *Link: [./archive/feature_embedded_video_20260326/](./archive/feature_embedded_video_20260326/)*
-
-- [x] **Track: Chore - Hardware Recording Integration** [started: 2026-03-26, completed: 2026-03-26]
-  *Focus: Refactor recording pipeline to use real webcam/mic with graceful fallback.*
-  *Link: [./archive/chore_20260326/](./archive/chore_20260326/)*
-
-- [x] **Track: Core Setup - Go + GTK4 + GStreamer** [started: 2026-03-25, completed: 2026-03-26]
-  *Focus: Project scaffolding, basic GTK window, and GStreamer pipeline initialization.*
-  *Link: [./archive/core_setup_20260325/](./archive/core_setup_20260325/)*
+- [ ] **Track: MVP Text-Driven Delete** [created: 2026-06-12]
+  *Focus: Delete a single word from the transcript and export a new media file with that segment removed.*
+  *Status: Planned.*
+  *Link: [./tracks/mvp_text_delete_20260612](./tracks/mvp_text_delete_20260612/)*
 
 ---
 
-## Future Roadmap
+## Roadmap
 
-- [ ] **Track: Advanced Media Processing & Editing**
-  Implement GStreamer-based local editing capabilities (trimming, concatenating) and multi-track support.
+The following tracks are intentionally outside the MVP. They will be created after the MVP is complete and manually verified.
 
-- [ ] **Track: Enhanced UI/UX & Waveform Visualization**
-  Integrate real-time audio waveform visualization and a timeline view for transcripts synchronized with video playback.
+- [ ] **Track: Multi-Range Delete & Reorder**
+  *Delete sentences, reorder paragraphs, insert silence, and split segments.*
 
-- [ ] **Track: Recording Data Lifecycle Enhancements**
-  Add import/export, repair tooling, and recovery workflows for library database content.
+- [ ] **Track: Undo/Redo System**
+  *Full history stack for text-driven editing operations with Ctrl+Z / Ctrl+Y.*
 
-- [ ] **Track: Offline AI & Local Transcription**
-  Add support for local transcription engines like Whisper (via CGo or local binary) to fulfill offline-first capabilities.
+- [ ] **Track: Waveform & Timeline Visualization**
+  *Audio waveform and segment timeline below the transcript.*
 
-- [ ] **Track: Real-time Transcription Stream**
-  Transition from file-based transcription to real-time GStreamer app-sink streaming for live captioning during recording.
+- [ ] **Track: Filler Word Detection & Removal**
+  *Highlight and remove filler words and repetitions.*
+
+- [ ] **Track: Transcript Search & Navigation**
+  *Search within transcripts with highlighted matches and keyboard navigation.*
+
+- [ ] **Track: Batch Transcription Queue**
+  *Queue multiple media files for sequential background transcription.*
+
+- [ ] **Track: Export Presets & Profiles**
+  *Named export presets for YouTube, podcast, archive, and custom profiles.*
+
+- [ ] **Track: Real-Time Transcription**
+  *Live captions during recording via streaming transcription.*
+
+- [ ] **Track: Local Offline Transcription**
+  *whisper.cpp-based local transcription engine.*
+
+- [ ] **Track: Auto-Save & Crash Recovery**
+  *Background project snapshots and recovery dialog on restart.*
+
+- [ ] **Track: Import/Export/Backup/Repair**
+  *ZIP archives, scheduled backups, and database repair tools.*
 
 ---
 
-- [x] **Track: Advanced Media Processing & Editing** [created: 2026-05-04, completed: 2026-05-05]
-  *Focus: Enhance GStreamer-based local editing capabilities with multi-track support, improved segment handling, and timestamp-accurate concatenation.*
-  *Status: Complete. Core infrastructure (Phases 1-4) implemented: multi-segment timestamp rewriting with TimestampMapper, segment boundary handling, MultiTrackTimeline widget, and export pipeline integration. UI integration (Phase 5) deferred due to CGo build timeout. All tests pass.*
-  *Link: [./archive/feature_advanced_media_processing_20260504](./archive/feature_advanced_media_processing_20260504)
+## Archive
 
-## Superseded (Tauri/Rust Implementation)
+Completed, superseded, and abandoned tracks are stored in [./archive](./archive/).
 
-The following tracks were part of the initial Tauri/Rust prototype and have been superseded by the pivot to Go and GTK4.
-
-- [x] **Track: Chore - Refactor/Cleanup 2026-03-25** [superseded]
-  *Link: [./archive/chore_20260325/](./archive/chore_20260325/)*
-- [x] **Track: Fix Critical Bugs from Code Review** [superseded]
-  *Link: [./archive/bugfix_20260324/](./archive/bugfix_20260324/)*
-- [x] **Track: Automated Transcription & Filler Word Detection** [superseded]
-  *Link: [./archive/transcription_20260324/](./archive/transcription_20260324/)*
-- [x] **Track: AI Provider Abstraction Layer** [superseded]
-  *Link: [./archive/ai_provider_20260323/](./archive/ai_provider_20260323/)*
-- [x] **Track: Build core text-to-video sync and local FFmpeg cutting** [superseded]
-  *Link: [./archive/buildcore_20260322/](./archive/buildcore_20260322/)*
-- [x] **Track: Fix Webcam Connection Issue (Pipewire → CrabCamera)** [superseded]
-  *Link: [./archive/fix_webcam_20260324/](./archive/fix_webcam_20260324/)*
-
-## Upcoming Tracks
-
-- [x] **Track: Auto-Save and Crash Recovery** *Link: [./archive/auto_save_and_recovery_20260509/](./archive/auto_save_and_recovery_20260509/)* — Background auto-save of project state with crash recovery dialog on restart
-- [ ] **Track: Batch Transcription Queue** *Link: [./tracks/batch_transcription_queue_20260509/](./tracks/batch_transcription_queue_20260509/)* — Queue multiple media files for sequential background transcription
-- [ ] **Track: Transcript Search and Navigation** *Link: [./tracks/transcript_search_and_navigation_20260509/](./tracks/transcript_search_and_navigation_20260509/)* — Search within transcripts with highlighted matches and keyboard navigation
-- [ ] **Track: Export Presets and Profiles** *Link: [./tracks/export_presets_and_profiles_20260509/](./tracks/export_presets_and_profiles_20260509/)* — Named export presets for YouTube, podcast, archive, and custom profiles
-- [ ] **Track: Undo/Redo System for Text-Driven Media Operations** *Link: [./tracks/undo_redo_media_operations_20260531/](./tracks/undo_redo_media_operations_20260531/)* — Full undo/redo stack for Delete, Reorder, InsertSilence, and Split operations with Ctrl+Z/Y shortcuts
-- [x] **Track: Export Pipeline Optimization** [created: 2026-04-25, completed: 2026-05-01]
-  *Focus: Replace re-encoding (x264enc + avenc_aac) with stream-copy for faster, lossless export when codec parameters match.*
-  *Status: Complete. Created `CodecDetector` interface and `GstCodecDetector` implementation. Added `CodecInfo` struct with VideoCodec/AudioCodec/Container fields. `SegmentExporter` now auto-detects codec and uses stream-copy pipeline (`qtdemux ! identity ! matroskamux`) for H264/H265/VP8/VP9. Fallback to re-encode for incompatible codecs. Added `ExportWithCodecDetection()` convenience method. New tests: `TestSegmentExporter_SetCodecInfo`, `TestSegmentExporter_canStreamCopy`. Multi-segment concatenation remains re-encode due to timestamp handling complexity (documented in tech-debt.md).*
-  *Link: [./archive/export_pipeline_optimize_20260425](./archive/export_pipeline_optimize_20260425/)*
-- [x] **Track: GTK4 Libadwaita Integration** [created: 2026-04-25, completed: 2026-05-02]
-  *Focus: Integrate Libadwaita for modern GNOME HIG compliance via gotk4-adwaita bindings.*
-  *Status: Complete. All 3 phases complete: Phase 1 added gotk4-adwaita dependency and tests, Phase 2 wired adw.Application and adw.ApplicationWindow into main.go with adw.Init(), Phase 3 updated memory files (tech-debt.md, lessons-learned.md). Build compiles, gofmt applied, all acceptance criteria met.*
-  *Link: [./archive/gtk4_libadwaita_20260425](./archive/gtk4_libadwaita_20260425/)
-- [x] **Track: Media Package Test Coverage** [created: 2026-04-25, completed: 2026-05-03]
-  *Focus: Improve media package test coverage from 46.8% to 80%+*
-  *Status: Complete. Phase 1-2: Expanded device and export test coverage. Pipeline tests skipped (require hardware/display). Coverage at 41%. Tech-debt updated. Track archived.*
-  *Link: [./archive/media_test_coverage_20260425](./archive/media_test_coverage_20260425/)*
-
-- [x] **Track: Text-Driven Editing Core** [created: 2026-05-02, completed: 2026-05-03]
-  *Focus: Implement the core text-driven media editing operations: delete word, delete sentence, reorder text, insert silence, and split paragraph. This is the central value proposition of Verbal.*
-  *Status: Complete. All 5 phases implemented: Operation interface (Delete, Reorder, InsertSilence, Split), TranscriptMapper with binary search O(log n) lookup, GstSegmentEditor for media operations, context menu UI integration, EditTimeline for export. All tests pass.*
-  *Link: [./archive/feature_text_driven_editing_core_20260502](./archive/feature_text_driven_editing_core_20260502/)*
-
-- [x] **Track: Fix Codec Detector and Wire Real Export Operations** [created: 2026-05-02, completed: 2026-05-03]
-  *Focus: Fix the non-functional GstCodecDetector.Detect method so stream-copy exports work, consolidate duplicated path sanitization, and replace simulation stubs in Export/Import/Repair dialogs with real lifecycle calls.*
-  *Status: Complete. Phase 1-2: GstCodecDetector implements pad-added signal handler with correct CodecInfo detection. Path sanitization consolidated into internal/media/sanitize.go. Phase 3-5: Replaced sleep-loop simulations with real lifecycle calls - showExportDialog uses archiveExporter.Export/ExportAll, showImportDialog uses archiveImporter.Import, showRepairDialog uses databaseInspector.RunAllChecks and databaseRepairer.RepairAll. All tests pass.*
-  *Link: [./archive/bugfix_codec_detector_real_export_wiring_20260502/](./archive/bugfix_codec_detector_real_export_wiring_20260502/)*
-
-- [x] **Track: Filler Word Detection UI Integration** [created: 2026-05-02, completed: 2026-05-04]
-  *Focus: Integrate the existing internal/filler package into the transcript UI: highlight filler words, display a summary panel with counts, and implement one-click removal of individual or all filler words.*
-  *Status: Complete. All 5 phases implemented: FillerService with caching, filler CSS highlighting in VirtualizedWordContainer, FillerSummaryWidget with counts/navigation, FillerRemovalService with segment computation, FillerRemovalDialog with progress UI, SQLite updates and UI refresh. Menu integration with Ctrl+Shift+F shortcut. All tests pass.*
-  *Link: [./archive/feature_filler_word_ui_integration_20260502/](./archive/feature_filler_word_ui_integration_20260502/)*
-
-- [x] **Track: Filler Word Detection** [created: 2026-04-25, completed: 2026-04-25]
-  *Focus: Implement detection and flagging of filler words in transcription data (um, uh, like, you know, etc.) and repetition patterns.*
-  *Status: Complete. Created `internal/filler` package with FillerWord struct, FillerType enum, Detector interface, and DefaultDetector implementation. Supports short fillers, hesitation patterns, and repetition detection with configurable sensitivity. All 17 tests pass, build passes, vet passes.*
-  *Link: [./archive/filler_word_detection_20260425](./archive/filler_word_detection_20260425/)
-
-- [x] **Track: Visual Refresh: Define Unique Identity** [created: 2026-04-25, completed: 2026-04-25]
-  *Focus: Define a unique, opinionated visual identity for the project ("Professional Precision Studio") and update DESIGN.md and styling.go accordingly.*
-  *Status: Complete. Defined dark theme with Electric Indigo (#6366F1) accent, monospace for data elements, and precise spacing. Updated DESIGN.md with full design tokens and passed `npx @google/design.md lint` validation. Updated styling.go with the new Professional Precision Studio theme. All tests pass.*
-  *Link: [./archive/visual_refresh_20260425](./archive/visual_refresh_20260425/)
+Old active tracks from before the greenfield rewrite have been archived under the `superseded_greenfield_20260612_*` prefix.
