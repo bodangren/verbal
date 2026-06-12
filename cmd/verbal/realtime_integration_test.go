@@ -1,13 +1,41 @@
 package main
 
 import (
+	"os"
+	"sync"
 	"testing"
 
+	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/ai/realtime"
 	"verbal/internal/ui"
 )
 
+var (
+	gtkInitOnce sync.Once
+	gtkInitOk   bool
+)
+
+func canInitializeGTK() bool {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		return false
+	}
+	gtkInitOnce.Do(func() {
+		defer func() {
+			if r := recover(); r != nil {
+				gtkInitOk = false
+			}
+		}()
+		gtk.Init()
+		gtkInitOk = true
+	})
+	return gtkInitOk
+}
+
 func TestAppState_RealtimeTranscriptionFields(t *testing.T) {
+	if !canInitializeGTK() {
+		t.Skip("No usable display available")
+	}
+
 	liveCaptionWidget := ui.NewLiveCaptionWidget()
 	if liveCaptionWidget == nil {
 		t.Error("expected non-nil liveCaptionWidget")
@@ -26,6 +54,10 @@ func TestAppState_RealtimeTranscriptionFields(t *testing.T) {
 }
 
 func TestLiveCaptionWidget_Basic(t *testing.T) {
+	if !canInitializeGTK() {
+		t.Skip("No usable display available")
+	}
+
 	widget := ui.NewLiveCaptionWidget()
 	if widget == nil {
 		t.Fatal("expected non-nil LiveCaptionWidget")
@@ -47,18 +79,15 @@ func TestLiveCaptionWidget_Basic(t *testing.T) {
 }
 
 func TestRecordingTranscriber_Toggle(t *testing.T) {
+	mockTranscriber := &mockRealtimeTranscriberForTest{started: false}
 	rt := realtime.NewRecordingTranscriber(realtime.RecordingTranscriberConfig{
-		ChunkSize: 4096,
+		Transcriber: mockTranscriber,
+		ChunkSize:   4096,
 	})
 
 	if rt.IsActive() {
 		t.Error("expected inactive initially")
 	}
-
-	mockTranscriber := &mockRealtimeTranscriberForTest{started: false}
-	rt.mu.Lock()
-	rt.transcriber = mockTranscriber
-	rt.mu.Unlock()
 
 	err := rt.Start()
 	if err != nil {

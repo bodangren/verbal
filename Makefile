@@ -1,4 +1,4 @@
-.PHONY: help go-build go-vet go-test go-check clean
+.PHONY: help go-build go-vet go-test go-check check clean
 
 GOCACHE ?= $(HOME)/.cache/go-build
 export GOCACHE
@@ -29,6 +29,8 @@ go-check: ## Run vet, build, tests in sequence (optimal for CI)
 	go vet ./...
 	go build ./...
 	go test ./... -count=1
+
+check: go-check ## Alias for go-check (CI-compatible target)
 
 clean: ## Remove build artifacts
 	rm -f verbal

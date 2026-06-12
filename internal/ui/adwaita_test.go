@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"os"
+	"context"
 	"testing"
 
 	"github.com/diamondburned/gotk4-adwaita/pkg/adw"
@@ -9,17 +9,17 @@ import (
 )
 
 func TestAdwaitaBindings(t *testing.T) {
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("No display available, skipping Adwaita test")
+	if !canInitializeGTK() {
+		t.Skip("No usable display available")
 	}
 
 	gtk.Init()
 	adw.Init()
 
 	app := adw.NewApplication("test.adwaita", 0)
-	app.Register(nil)
+	app.Register(context.Background())
 
-	win := adw.NewApplicationWindow(app)
+	win := adw.NewApplicationWindow(&app.Application)
 	win.SetTitle("Adwaita Test Window")
 
 	if title := win.Title(); title != "Adwaita Test Window" {
@@ -31,17 +31,17 @@ func TestAdwaitaBindings(t *testing.T) {
 }
 
 func TestAdwaitaApplicationWindow(t *testing.T) {
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
-		t.Skip("No display available, skipping Adwaita test")
+	if !canInitializeGTK() {
+		t.Skip("No usable display available")
 	}
 
 	gtk.Init()
 	adw.Init()
 
 	app := adw.NewApplication("test.adwaita.app", 0)
-	app.Register(nil)
+	app.Register(context.Background())
 
-	win := adw.NewApplicationWindow(app)
+	win := adw.NewApplicationWindow(&app.Application)
 	win.SetTitle("Test Application Window")
 
 	content := gtk.NewLabel("Hello from Adwaita!")

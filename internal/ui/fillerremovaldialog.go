@@ -33,14 +33,14 @@ type FillerRemovalDialog struct {
 }
 
 func NewFillerRemovalDialog(parent *gtk.Window) *FillerRemovalDialog {
-	dialog := gtk.NewDialog()
-	dialog.SetTitle("Remove Fillers")
-	dialog.SetTransientFor(parent)
-	dialog.SetModal(true)
-	dialog.SetDefaultSize(500, 350)
-	dialog.SetResizable(false)
+	gtkDialog := gtk.NewDialog()
+	gtkDialog.SetTitle("Remove Fillers")
+	gtkDialog.SetTransientFor(parent)
+	gtkDialog.SetModal(true)
+	gtkDialog.SetDefaultSize(500, 350)
+	gtkDialog.SetResizable(false)
 
-	content := dialog.ContentArea()
+	content := gtkDialog.ContentArea()
 	content.SetSpacing(0)
 
 	mainBox := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -112,17 +112,12 @@ func NewFillerRemovalDialog(parent *gtk.Window) *FillerRemovalDialog {
 
 	removeButton := gtk.NewButtonWithLabel("Remove All Fillers")
 	removeButton.AddCSSClass("destructive-action")
-	removeButton.ConnectClicked(func() {
-		if d.onRemove != nil {
-			d.onRemove()
-		}
-	})
 	buttonBox.Append(removeButton)
 
 	mainBox.Append(buttonBox)
 
-	dialog := &FillerRemovalDialog{
-		dialog:       dialog,
+	d := &FillerRemovalDialog{
+		dialog:       gtkDialog,
 		progressBar:  progressBar,
 		statusLabel:  statusLabel,
 		resultBox:    resultBox,
@@ -131,17 +126,25 @@ func NewFillerRemovalDialog(parent *gtk.Window) *FillerRemovalDialog {
 		cancelButton: cancelButton,
 	}
 
-	cancelButton.ConnectClicked(func() {
-		if dialog.onCancel != nil {
-			dialog.onCancel()
+	removeButton.ConnectClicked(func() {
+		if d.onRemove != nil {
+			d.onRemove()
+		} else {
+			d.handleRemove()
 		}
-		dialog.Close()
 	})
 
-	return dialog
+	cancelButton.ConnectClicked(func() {
+		if d.onCancel != nil {
+			d.onCancel()
+		}
+		d.Close()
+	})
+
+	return d
 }
 
-func (d *FillerRemovalDialog) onRemove() {
+func (d *FillerRemovalDialog) handleRemove() {
 	if d.removalService == nil || d.recordingID == 0 {
 		return
 	}
@@ -185,6 +188,8 @@ func (d *FillerRemovalDialog) ShowResult(outputPath string, removedCount int) {
 }
 
 func (d *FillerRemovalDialog) UpdateProgress(percent int, message string) {
+	d.progressPercent = percent
+
 	fraction := float64(percent) / 100.0
 	if fraction < 0 {
 		fraction = 0

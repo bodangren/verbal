@@ -1,12 +1,11 @@
 package ui
 
 import (
-	"os"
 	"testing"
 )
 
 func hasDisplay() bool {
-	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
+	return canInitializeGTK()
 }
 
 func TestNewWordLabel(t *testing.T) {

@@ -13,7 +13,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/diamondburned/gotk4 v0.3.2-0.20250703071127-d44ab4b5b24e // indirect
 	github.com/diamondburned/gotk4-adwaita v0.0.0-20250703085337-e94555b846b6 // indirect
-	github.com/diamondburned/gotk4-adwaita/pkg v0.0.0-20250703085337-e94555b846b6 // indirect
+	github.com/diamondburned/gotk4-adwaita/pkg v0.0.0-20250703085740-f81761ef0e0d // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect

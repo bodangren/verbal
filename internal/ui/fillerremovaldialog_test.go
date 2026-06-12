@@ -111,19 +111,24 @@ func TestFillerRemovalDialog_SetOnComplete(t *testing.T) {
 	dialog := NewFillerRemovalDialog(nil)
 	var receivedPath string
 	var receivedCount int
+	var receivedJSON string
 
-	dialog.SetOnComplete(func(outputPath string, removedCount int) {
+	dialog.SetOnComplete(func(outputPath string, removedCount int, updatedTranscriptionJSON string) {
 		receivedPath = outputPath
 		receivedCount = removedCount
+		receivedJSON = updatedTranscriptionJSON
 	})
 
-	dialog.onComplete("/output/path.mp4", 5)
+	dialog.onComplete("/output/path.mp4", 5, "{}")
 
 	if receivedPath != "/output/path.mp4" {
 		t.Errorf("expected outputPath '/output/path.mp4', got '%s'", receivedPath)
 	}
 	if receivedCount != 5 {
 		t.Errorf("expected removedCount 5, got %d", receivedCount)
+	}
+	if receivedJSON != "{}" {
+		t.Errorf("expected updatedTranscriptionJSON '{}', got '%s'", receivedJSON)
 	}
 }
 
@@ -154,7 +159,7 @@ func TestFillerRemovalDialog_ShowResult(t *testing.T) {
 	dialog := NewFillerRemovalDialog(nil)
 	dialog.ShowResult("/output/path.mp4", 10)
 
-	if dialog.resultLabel.GetText() == "" {
+	if dialog.resultLabel.Text() == "" {
 		t.Error("expected resultLabel to have text after ShowResult")
 	}
 }
