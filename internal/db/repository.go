@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -121,6 +120,13 @@ func NewDatabase(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
+	if _, err := db.Exec(`PRAGMA busy_timeout = 5000`); err != nil {
+		return nil, fmt.Errorf("set busy timeout: %w", err)
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode = WAL`); err != nil {
+		return nil, fmt.Errorf("set journal mode: %w", err)
+	}
+
 	database := &Database{
 		path: dbPath,
 		db:   db,
@@ -163,83 +169,9 @@ func (d *Database) AutoSaveRepo() *AutoSaveRepository {
 	return &AutoSaveRepository{db: d.db}
 }
 
-// migrate runs database migrations.
+// migrate runs the versioned schema migrations.
 func (d *Database) migrate() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS recordings (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		file_path TEXT NOT NULL,
-		duration INTEGER NOT NULL DEFAULT 0,
-		transcription_status TEXT NOT NULL DEFAULT 'pending',
-		transcription_json TEXT NOT NULL DEFAULT '',
-		thumbnail_data TEXT NOT NULL DEFAULT '',
-		thumbnail_mime_type TEXT NOT NULL DEFAULT '',
-		thumbnail_generated_at DATETIME NULL,
-		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS settings (
-		id INTEGER PRIMARY KEY CHECK (id = 1),
-		active_provider TEXT NOT NULL DEFAULT 'openai',
-		openai_config TEXT NOT NULL DEFAULT '{}',
-		google_config TEXT NOT NULL DEFAULT '{}',
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS auto_save (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL UNIQUE,
-		transcript_json TEXT NOT NULL DEFAULT '',
-		operations_json TEXT NOT NULL DEFAULT '',
-		playback_position INTEGER NOT NULL DEFAULT 0,
-		saved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	);
-	`
-
-	if _, err := d.db.Exec(schema); err != nil {
-		return err
-	}
-
-	// Backfill new columns on older DB files.
-	if err := d.addRecordingColumnIfMissing("thumbnail_data", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := d.addRecordingColumnIfMissing("thumbnail_mime_type", "TEXT NOT NULL DEFAULT ''"); err != nil {
-		return err
-	}
-	if err := d.addRecordingColumnIfMissing("thumbnail_generated_at", "DATETIME NULL"); err != nil {
-		return err
-	}
-	if err := d.addSettingsColumnIfMissing("local_config", "TEXT NOT NULL DEFAULT '{}'"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (d *Database) addRecordingColumnIfMissing(columnName, columnDef string) error {
-	_, err := d.db.Exec(fmt.Sprintf("ALTER TABLE recordings ADD COLUMN %s %s", columnName, columnDef))
-	if err == nil {
-		return nil
-	}
-	// SQLite returns "duplicate column name" if this column already exists.
-	if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
-		return nil
-	}
-	return fmt.Errorf("add recordings.%s column: %w", columnName, err)
-}
-
-func (d *Database) addSettingsColumnIfMissing(columnName, columnDef string) error {
-	_, err := d.db.Exec(fmt.Sprintf("ALTER TABLE settings ADD COLUMN %s %s", columnName, columnDef))
-	if err == nil {
-		return nil
-	}
-	// SQLite returns "duplicate column name" if this column already exists.
-	if strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
-		return nil
-	}
-	return fmt.Errorf("add settings.%s column: %w", columnName, err)
+	return Migrate(d.db)
 }
 
 // RecordingRepository provides CRUD operations for recordings.
