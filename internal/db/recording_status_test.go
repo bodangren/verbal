@@ -6,31 +6,11 @@ import (
 	"time"
 )
 
-// Red-phase contract test for the Phase 1 ↔ Phase 2 status badge
-// (spec FR2) and the typed status-filter API (RecordingStatus,
-// IsValid, ValidateRecordingStatus, ValidRecordingStatuses,
-// RecordingRepository.ListByStatus).
-//
-// Per test-strategy §8, this test is committed in the Red phase
-// (this attempt). The production code (internal/db/recording_status.go
-// and the new method on RecordingRepository) is deferred to a later
-// Green-phase attempt. Each test is therefore guarded with t.Skip so
-// the rest of the internal/db suite keeps passing on this branch.
-//
-// STUBS in this file (below the tests, marked with "STUB:") let the
-// test file compile against the *shape* of the API the Green phase
-// will produce. When flipping the Red task to [x] in plan.md, the
-// next attempt must:
-//   1. delete every STUB block in this file,
-//   2. remove every t.Skip guard in this file,
-//   3. add the real implementation in internal/db/recording_status.go
-//      and a new method on *RecordingRepository.
-// All three changes land in the same commit (workflow §3-4 + §8).
-
-// -- Tests (all currently skipped per test-strategy §8) ---------------
+// Tests for RecordingStatus, ValidateRecordingStatus, ValidRecordingStatuses,
+// and RecordingRepository.ListByStatus (spec FR2, test-strategy §5).
+// Production code lives in recording_status.go and repository.go.
 
 func TestRecordingStatus_IsValid(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	cases := []struct {
 		name   string
 		status RecordingStatus
@@ -55,7 +35,6 @@ func TestRecordingStatus_IsValid(t *testing.T) {
 }
 
 func TestRecordingStatus_StringConstants(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	cases := []struct {
 		got  RecordingStatus
 		want string
@@ -74,7 +53,6 @@ func TestRecordingStatus_StringConstants(t *testing.T) {
 }
 
 func TestValidateRecordingStatus(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	if err := ValidateRecordingStatus("pending"); err != nil {
 		t.Errorf("ValidateRecordingStatus(\"pending\") returned error: %v", err)
 	}
@@ -90,7 +68,6 @@ func TestValidateRecordingStatus(t *testing.T) {
 }
 
 func TestValidRecordingStatuses_ContainsAll(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	got := ValidRecordingStatuses()
 	want := map[RecordingStatus]bool{
 		StatusPending:    false,
@@ -114,7 +91,6 @@ func TestValidRecordingStatuses_ContainsAll(t *testing.T) {
 }
 
 func TestRecordingRepository_ListByStatus(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	tmpDir := t.TempDir()
 	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
@@ -176,7 +152,6 @@ func TestRecordingRepository_ListByStatus(t *testing.T) {
 }
 
 func TestRecordingRepository_ListByStatus_OrderByCreatedAtDesc(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	tmpDir := t.TempDir()
 	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
@@ -211,7 +186,6 @@ func TestRecordingRepository_ListByStatus_OrderByCreatedAtDesc(t *testing.T) {
 }
 
 func TestRecordingRepository_ListByStatus_RejectsInvalidStatus(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	tmpDir := t.TempDir()
 	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
@@ -227,7 +201,6 @@ func TestRecordingRepository_ListByStatus_RejectsInvalidStatus(t *testing.T) {
 }
 
 func TestRecordingRepository_ListByStatus_EmptyResult(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 1 task in progress")
 	tmpDir := t.TempDir()
 	db, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
@@ -244,45 +217,4 @@ func TestRecordingRepository_ListByStatus_EmptyResult(t *testing.T) {
 	if len(results) != 0 {
 		t.Errorf("ListByStatus on empty table = %d recordings, want 0", len(results))
 	}
-}
-
-// -- STUBS (REMOVE on Green) -----------------------------------------
-//
-// The following declarations exist only to let this test file compile
-// during the Red phase. They are intentionally no-op / wrong; the
-// Green-phase attempt must delete this entire block and add the real
-// implementation in internal/db/recording_status.go + the new method
-// on *RecordingRepository.
-
-// STUB: type removed in Green; real definition goes in
-// internal/db/recording_status.go
-type RecordingStatus string
-
-// STUB: constants removed in Green; real definitions go in
-// internal/db/recording_status.go
-const (
-	StatusPending    RecordingStatus = "pending"
-	StatusInProgress RecordingStatus = "in_progress"
-	StatusCompleted  RecordingStatus = "completed"
-	StatusError      RecordingStatus = "error"
-)
-
-// STUB: IsValid removed in Green; real definition goes in
-// internal/db/recording_status.go
-func (s RecordingStatus) IsValid() bool { return false }
-
-// STUB: ValidRecordingStatuses removed in Green; real definition goes in
-// internal/db/recording_status.go
-func ValidRecordingStatuses() []RecordingStatus { return nil }
-
-// STUB: ValidateRecordingStatus removed in Green; real definition goes in
-// internal/db/recording_status.go
-func ValidateRecordingStatus(s string) error { return nil }
-
-// STUB: ListByStatus method removed in Green; the real definition goes
-// in internal/db/repository.go. The Green-phase author must delete this
-// stub before adding the real method (otherwise Go's duplicate-method
-// check will fail to compile).
-func (r *RecordingRepository) ListByStatus(RecordingStatus) ([]*Recording, error) {
-	return nil, nil
 }

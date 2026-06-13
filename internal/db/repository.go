@@ -319,6 +319,28 @@ func (r *RecordingRepository) Delete(id int64) error {
 	return nil
 }
 
+// ListByStatus returns recordings with the given transcription status,
+// ordered by created_at descending (newest first). It validates the status
+// argument and returns an error for unrecognized values.
+func (r *RecordingRepository) ListByStatus(status RecordingStatus) ([]*Recording, error) {
+	if err := ValidateRecordingStatus(string(status)); err != nil {
+		return nil, err
+	}
+
+	rows, err := r.db.Query(`
+		SELECT `+recordingColumns+`
+		FROM recordings
+		WHERE transcription_status = ?
+		ORDER BY created_at DESC
+	`, string(status))
+	if err != nil {
+		return nil, fmt.Errorf("list recordings by status: %w", err)
+	}
+	defer rows.Close()
+
+	return scanRecordings(rows)
+}
+
 // SearchByTranscription searches recordings by transcription content.
 func (r *RecordingRepository) SearchByTranscription(query string) ([]*Recording, error) {
 	likeQuery := "%" + query + "%"
