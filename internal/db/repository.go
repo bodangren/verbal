@@ -169,6 +169,11 @@ func (d *Database) AutoSaveRepo() *AutoSaveRepository {
 	return &AutoSaveRepository{db: d.db}
 }
 
+// BatchQueueRepo returns a BatchQueueRepository for batch queue operations.
+func (d *Database) BatchQueueRepo() *BatchQueueRepository {
+	return &BatchQueueRepository{db: d.db}
+}
+
 // migrate runs the versioned schema migrations.
 func (d *Database) migrate() error {
 	return Migrate(d.db)

@@ -103,6 +103,21 @@ CREATE TABLE IF NOT EXISTS auto_save (
 			return addColumnIfNotExists(tx, "settings", "local_config", "TEXT NOT NULL DEFAULT '{}'")
 		},
 	},
+	{
+		Version: 7,
+		Name:    "create batch_queue table",
+		SQL: `
+CREATE TABLE IF NOT EXISTS batch_queue (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	file_path TEXT NOT NULL,
+	status TEXT NOT NULL DEFAULT 'pending',
+	progress REAL NOT NULL DEFAULT 0,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	started_at DATETIME NULL,
+	completed_at DATETIME NULL
+);
+`,
+	},
 }
 
 // Migrate applies all pending migrations in version order. It creates the
