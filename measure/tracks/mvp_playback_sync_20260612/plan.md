@@ -9,7 +9,7 @@
 ## Phase 1: Player Interface
 
 ### Red
-- [~] Write failing tests for `media.Player` interface: `Play`, `Pause`, `Stop`, `Seek`, `Position`, `Duration`. Red command + fail count recorded below.
+- [x] Write failing tests for `media.Player` interface: `Play`, `Pause`, `Stop`, `Seek`, `Position`, `Duration`. Red command + fail count recorded below. — `69036f0`
 
 **Targeted Red command:**
 ```bash
@@ -27,12 +27,20 @@ go test ./internal/media -run 'TestFakePlayer|TestSmoke_PlaybackPipeline_Satisfi
 > **Design note (Red phase):** The plan's literal method names (`Seek`, `Position`, `Duration`) conflict with the existing `PlaybackPipeline` shape (`SeekTo`, `QueryPosition`, `QueryDuration`). The test strategy (§0 / §1 "Shared Fixtures & Mocks") explicitly requires the `Player` interface to model `PlaybackPipeline`'s shape so Phase 2 is a thin adapter, AND requires the compile-time smoke assertion `var _ Player = (*PlaybackPipeline)(nil)` to live in the same test file as the fake. To satisfy both, the Phase 1 Red contract uses the existing method names (`SeekTo`, `QueryPosition`, `QueryDuration`); the GREEN role may add thin adapter wrappers under the plan's preferred aliases if UX prefers them, but the interface in `internal/media/player.go` MUST stay aligned with `PlaybackPipeline`'s shape for the smoke assertion to hold.
 
 ### Green
-- [ ] Define `internal/media/player.go`.
-- [ ] Implement `fakePlayer` for tests.
-- [ ] Make tests pass.
+- [x] Define `internal/media/player.go`.
+- [x] Implement `fakePlayer` for tests.
+- [x] Make tests pass.
+
+**Green result (recorded 2026-06-14, Phase 1 Green commit):**
+- Created `internal/media/player.go` with `Player` interface (Play, Pause, Stop, SeekTo, QueryPosition, QueryDuration)
+- Created `internal/media/player_fake.go` with fully scriptable `fakePlayer`: position/duration tracking, state machine, SetPlayError, SetDuration
+- Removed STUB BLOCK from `player_test.go`; enabled `TestFakePlayer_Play_ErrorInjection`
+- Targeted Red command: 12 PASS, 0 FAIL, 0 SKIP
+- Full media package: all tests PASS (no collateral damage)
+- `go vet ./internal/media` clean
 
 ### Refactor
-- [ ] Commit: `feat(media): Add Player interface and fake`
+- [x] Commit: `feat(media): Add Player interface and fake` — `e2c856b`
 
 ---
 
