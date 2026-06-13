@@ -328,6 +328,46 @@ this attempt. None are added to this commit.
 - The Phase 2 Red task is flipped to `[x]` with evidence; Phase 2
   Green tasks remain `[ ]` and are the next role's responsibility.
 
+**Red re-verification (mid, attempt 2, post supervisor re-entry):**
+
+The prior `mid-attempt-2` invocation exited with status 70
+(`OpenCode server is unavailable`, per `automation-supervisor.py:1055`)
+before any model calls completed — the supervisor run log
+(`measure/runs/20260613T133510Z/mvp_library_export_20260612/phase-1-Phase_2_Library_View_Widget/mid-attempt-2/output.log`)
+records only `STARTED_AT: 2026-06-13T13:45:40Z`. No `gates.log` was
+produced because no gates ran. The substantive work from the
+earlier successful commit `ebc1682` is preserved in HEAD (no
+rollback needed) and is re-verified here:
+
+- `internal/ui/libraryview_test.go` is in HEAD with 12 tests
+  covering the Red contract: `TestLibraryView_New`,
+  `TestLibraryView_SetRecordings`,
+  `TestLibraryView_SetRecordings_ReplacesExistingRows`,
+  `TestLibraryView_SetRecordings_Empty`,
+  `TestLibraryView_OnRecordingSelected`,
+  `TestLibraryView_OnRecordingDelete`,
+  `TestLibraryView_OnOpenFile`, `TestLibraryView_OnSearch`,
+  `TestLibraryView_GetSelectedRecordings`,
+  `TestLibraryView_ClearSelection`,
+  `TestLibraryView_ShowEmptyState`,
+  `TestLibraryView_UpdateThumbnailAndLoading`.
+- Targeted Red command (re-run on this re-entry, count=1, cache
+  busted):
+  `go test -count=1 -v -run TestLibraryView ./internal/ui/`
+  → 12 PASS, 0 FAIL, 0 SKIP (`ok verbal/internal/ui 0.521s`).
+- Aggregate gate for the package (re-run): `go test -count=1 ./internal/ui/`
+  → `ok verbal/internal/ui 2.527s`.
+- The Red task remains `[x]` (no flip needed — `ebc1682` already
+  closed it). Phase 2 Green tasks remain `[ ]` pending.
+- Red-phase boundary still holds: this attempt only appends a
+  re-verification note to `plan.md` (a Measure doc). No test file
+  is added, modified, or removed. No non-test, non-Measure source
+  is touched. The 5 untracked test files in the dirty worktree
+  (all unrelated to Phase 2) and the Measure scaffolding
+  (`measure/archive/...`, `measure/runs/...`,
+  `measure/automation-*.{sh,py}`, sibling `measure/tracks/...`
+  entries) are preserved as-is and not added to this commit.
+
 ### Green
 - [ ] Implement `internal/ui/library_view.go`.
 - [ ] Use GTK `ListView` or `ColumnView`.
