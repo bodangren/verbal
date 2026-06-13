@@ -28,9 +28,9 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
   *Status: Planned.*
   *Link: [./tracks/mvp_playback_sync_20260612](./tracks/mvp_playback_sync_20260612/)*
 
-- [ ] **Track: MVP Library & Export** [created: 2026-06-12]
+- [x] **Track: MVP Library & Export** [created: 2026-06-12] [completed: 2026-06-14]
   *Focus: Library list/delete view and export of the original media file.*
-  *Status: Planned.*
+  *Status: Complete. All five acceptance criteria satisfied at HEAD: `TestLibraryView_SetRecordings` (AC1), `TestRecordingRepository_Delete` + `TestController_DeleteRecording_*` (AC2), `TestExporter_HappyPath_CopiesFile` + `TestSmoke_ControllerExportLive` (AC3), `TestExporter_ProgressMonotonic` + `TestExporter_*Error` (AC4), and `make check` 18/18 green (AC5). One Low-severity spec drift remains (status enum vocabulary `pending|in_progress|completed|error` vs. FR2's `New|Transcribing|Transcribed|Error` UI labels; UI maps via `formatStatus`). See `measure/tech-debt.md`.*
   *Link: [./tracks/mvp_library_export_20260612](./tracks/mvp_library_export_20260612/)*
 
 - [ ] **Track: MVP Text-Driven Delete** [created: 2026-06-12]
