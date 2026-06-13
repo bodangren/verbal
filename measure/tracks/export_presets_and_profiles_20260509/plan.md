@@ -425,10 +425,275 @@ the responsible track owner) to commit separately.
 9. AudioCodecFLAC constant added alongside existing audio codec constants.
 
 ## Phase 3: Settings Management
-- [ ] Add presets panel to SettingsWindow
-- [ ] Allow edit/delete of custom presets
-- [ ] Built-in presets are read-only
+- [~] Add presets panel to SettingsWindow
+- [~] Allow edit/delete of custom presets
+- [~] Built-in presets are read-only
 - [ ] Manual verification
+
+### Phase 3 — Red notes (MID attempt, 2026-06-13)
+
+One new test file pins the Phase 3 Red contract:
+
+#### File: `internal/ui/settingspresetpanel_test.go`
+
+Display-gated tests for the new `SettingsPresetPanel` widget plus one
+display-independent compile-time contract test so headless CI still
+surfaces a clean Red signal (test-strategy §7 "Fake harness policy" —
+no fakes for runner plumbing; this is the UI seam, not a runner). All
+tests reference symbols that do not exist yet:
+
+- `type PresetManagementModel interface` with `ListPresets(ctx) ([]*db.Preset, error)`, `UpdatePreset(ctx, *db.Preset) error`, `DeletePreset(ctx, int64) error` (mirrors `PresetListModel` pattern at `internal/ui/exportdialog.go:18`, adding the write operations Phase 3 needs)
+- New file `internal/ui/settingspresetpanel.go` with `SettingsPresetPanel` struct, `NewSettingsPresetPanel(model PresetManagementModel) *SettingsPresetPanel`, plus `Widget`, `Refresh`, `Snapshot`, `IsEditEnabled`, `IsDeleteEnabled`, `TriggerDelete`, `TriggerEdit` methods (mirrors `BatchQueuePanel` pattern at `internal/ui/batchqueuepanel.go:27`)
+- Extension to `SettingsWindow` (the existing type at `internal/ui/settingswindow.go:12`) with unexported fields `presetModel PresetManagementModel`, `presetPanel *SettingsPresetPanel`, and a new exported method `SetPresetModel(m PresetManagementModel)` that constructs the panel and wires the model
+
+Tests added (11 total — all `TestSettingsPresetPanel*`):
+
+1. `TestSettingsPresetPanel_InterfaceContract` — display-independent.
+   Defines a compile-time `var _ PresetManagementModel = (*stubPresetManagementModel)(nil)`
+   assertion (test-strategy §7 "compile-time proof" pattern, mirroring
+   `TestExportDialogPresetListModel_InterfaceContract` at
+   `internal/ui/exportdialog_presets_test.go:104`) and a stub that
+   records `ListPresets` / `UpdatePreset` / `DeletePreset` calls.
+   Confirms the interface contract at the type level so the stub cannot
+   drift from production adapters. This is the headless-CI Red signal.
+2. `TestSettingsPresetPanel_PopulatesFromModel` — `NewSettingsPresetPanel(m)`
+   + `Refresh(ctx)` populates the panel snapshot from the model's
+   presets in the exact order the model returned them; snapshot count
+   equals `len(model.ListPresets)`. Order is built-ins-first-then-
+   custom-by-name (test-strategy §3 contract #7,
+   `internal/db/preset_repository.go:178`).
+3. `TestSettingsPresetPanel_EditDeleteDisabledForBuiltins` — for
+   built-in rows (`IsBuiltin=true`), `IsEditEnabled(idx)` and
+   `IsDeleteEnabled(idx)` both return `false`; for custom rows, both
+   return `true`. UI-level defence in depth required by test-strategy
+   §3 cross-phase "Built-in immutability ... at UI level (greyed
+   buttons)".
+4. `TestSettingsPresetPanel_DeleteCustomPresetCallsModel` —
+   `TriggerDelete(idx)` on a custom row invokes
+   `model.DeletePreset(ctx, id)` with the matching preset ID, then
+   auto-refreshes so the snapshot reflects the deletion. Verifies the
+   FSM closeout step (test-strategy §1 Phase 3 unit + §5 Phase 3
+   "edit/delete FSM").
+5. `TestSettingsPresetPanel_DeleteBuiltinRejectedAtUI` —
+   `TriggerDelete(idx)` on a built-in row returns a validation error
+   and does NOT call the model. The panel snapshot is unchanged.
+6. `TestSettingsPresetPanel_EditCustomPresetCallsModel` —
+   `TriggerEdit(idx, name, description)` on a custom row invokes
+   `model.UpdatePreset` with the updated `Name` + `Description`,
+   preserving `Container` / `VideoCodec` / `AudioCodec` / `Bitrate` /
+   `Width` / `Height` / `ID` from the original row and keeping
+   `IsBuiltin=false`. Panel auto-refreshes so the snapshot reflects the
+   rename.
+7. `TestSettingsPresetPanel_EditBuiltinRejectedAtUI` —
+   `TriggerEdit(idx, ...)` on a built-in row returns a validation
+   error and does NOT call the model.
+8. `TestSettingsPresetPanel_EditValidatesName` —
+   `TriggerEdit(idx, name, ...)` rejects empty / whitespace-only names
+   and names containing embedded `\n` / `\r` control characters before
+   calling the model. Mirrors the validation in
+   `ExportDialog.SaveCurrentAsCustomPreset`
+   (`internal/ui/exportdialog.go:419`) and in the repository's
+   `validatePreset` (`internal/db/preset_repository.go:342`) — defence
+   in depth at the UI boundary.
+9. `TestSettingsPresetPanel_DeletePropagatesModelError` — when the
+   model returns an error (e.g., the repository's built-in immutability
+   check fires on a race-condition path or a SQLite failure), the
+   panel surfaces the error to the caller rather than swallowing it.
+   This is the "defence in depth at the repository layer" leg of
+   test-strategy §3 "Built-in immutability".
+10. `TestSettingsPresetPanel_RefreshHandlesModelError` — `Refresh`
+    surfaces a model error to the caller so the `SettingsWindow` can
+    show a toast or status label when the database is unavailable.
+11. `TestSettingsPresetPanel_IntegratedIntoSettingsWindow` —
+    integration: `SettingsWindow.SetPresetModel(m)` constructs the
+    embedded `*SettingsPresetPanel` and exposes it via
+    `window.presetPanel`. After `Refresh`, the panel snapshot reflects
+    the model's presets in repository order.
+
+**Targeted Red command** (per test-strategy.md §7 Phase 3):
+
+```
+go test ./internal/ui/ -run TestSettingsPresetPanel -count=1 -v
+```
+
+Expected to FAIL with `[build failed]` because the package cannot
+compile against the contract symbols listed above. The Green author
+must (a) add the `PresetManagementModel` interface to a Phase 3 site
+in `internal/ui` (new file `internal/ui/settingspresetpanel.go` is the
+cleanest home); (b) add the `SettingsPresetPanel` struct + methods in
+that file; (c) extend `SettingsWindow` with the `presetPanel` field
+and `SetPresetModel` method, embedding the panel into the dialog's
+content area (likely as a new section below the provider stack); (d)
+wire the production `*db.PresetRepository` as `PresetManagementModel`
+in `internal/app/run.go` (alongside the existing settings-window and
+export-dialog wiring); (e) re-run the targeted Red command (must turn
+green or stay skipped on no display), then
+`go test ./internal/ui/... -count=1` for the broader gate. Manual
+GNOME visual verification (per test-strategy §7 Phase 3 Green/closeout
+gate) is the closing action by the Green author after the live UI is
+functional — it has no Red-phase test contract because it is a human
+gate.
+
+**Manual verification task ownership.** The `[ ] Manual verification`
+sub-task is **not** owned by this Red phase (no test artifact pins a
+manual gate). It is owned by the Green-phase author and the
+human reviewer; it asserts that the SettingsWindow shows the preset
+panel, built-in rows have greyed edit/delete buttons, and custom
+preset edit/delete operate correctly against a real SQLite database.
+This Red phase does not mark that sub-task as `[~]`; it remains `[ ]`
+until the Green author exercises the live UI on GNOME.
+
+**Aggregate-suite safety.** Per test-strategy.md §7 "Aggregate-suite
+hazards", the new test file is paired with this Red commit and is
+expected to flip Green within the same Phase 3 cycle. The
+`internal/ui/settingspresetpanel_test.go` file includes the
+display-independent `TestSettingsPresetPanel_InterfaceContract` test
+(test #1 above) so the headless-CI Red signal is clean even when GTK
+is unavailable — the UI package build failure would otherwise mask the
+Phase 3 contract. The Phase 4 `make go-check` will never observe a
+stranded Red test because Phase 3 Green is the gating predecessor.
+
+#### Red result evidence (MID attempt, 2026-06-13)
+
+The targeted Red command was run with `GOCACHE=~/.cache/go-build` and
+`-count=1` to bound the gate (no watch mode, no full suite):
+
+```
+go test ./internal/ui/ -run TestSettingsPresetPanel -count=1 -v
+```
+
+Result: `FAIL verbal/internal/ui [build failed]` (exit 1). The Go
+compiler reported the first 10 undefined-symbol errors before
+truncating with `too many errors`:
+
+```
+internal/ui/settingspresetpanel_test.go:179:8: undefined: PresetManagementModel
+internal/ui/settingspresetpanel_test.go:260:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:304:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:345:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:391:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:428:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:509:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:545:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:581:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:606:11: undefined: NewSettingsPresetPanel
+internal/ui/settingspresetpanel_test.go:606:11: too many errors
+FAIL	verbal/internal/ui [build failed]
+```
+
+The full set of undefined symbols required by the Phase 3 Red contract
+(surface in this exact form when the compiler reaches them):
+
+- `PresetManagementModel` (interface)
+- `NewSettingsPresetPanel` (constructor)
+- `SettingsPresetPanel.Refresh`, `Snapshot`, `Widget`, `IsEditEnabled`,
+  `IsDeleteEnabled`, `TriggerDelete`, `TriggerEdit` (methods on the
+  not-yet-defined `SettingsPresetPanel` type — the compiler stops at
+  10 errors so the method-level errors are known by inspection but not
+  all printed)
+- `SettingsWindow.SetPresetModel` (method)
+- `SettingsWindow.presetPanel` (unexported field)
+
+All `TestSettingsPresetPanel*` tests live behind `hasDisplay()`
+(tests #2–#11) except the compile-time
+`TestSettingsPresetPanel_InterfaceContract` (test #1), which provides
+the headless-CI Red signal that does not require GTK initialisation.
+No test case ran — the build itself fails Red because the production
+type, the interface, and the `SettingsWindow.SetPresetModel` /
+`SettingsWindow.presetPanel` integration do not exist.
+
+**Why this Red signal is sound** (per the MID prompt "Red tests must
+fail because the current implementation is missing or wrong, not
+merely because a durable record is stale"):
+
+- The signal exercises real Go compile-time type checks against
+  symbols that do not exist in HEAD's `internal/ui` package. The
+  existing `internal/ui/settingswindow.go:12` declares no
+  `presetPanel` field and no `SetPresetModel` method (verified with
+  `grep -n 'presetPanel\|SetPresetModel' internal/ui/settingswindow.go`
+  at MID start — zero matches). The package compiles cleanly at HEAD
+  (`go build ./internal/ui/` exits 0), so the Red failure is caused
+  solely by the new test file's references to undefined symbols, not
+  by any pre-existing build breakage.
+- No fake harness is registered as a production gate. The
+  `stubPresetManagementModel` is a test-only in-memory implementation
+  that exists solely in this `_test.go` file; Go's build tooling
+  ensures it cannot leak into a non-test file. The compile-time
+  interface assertion `var _ PresetManagementModel = (*stubPresetManagementModel)(nil)`
+  in test #1 forces the stub to satisfy the same interface as the
+  production `*db.PresetRepository` adapter (the Green author writes
+  in `internal/app/run.go`), preventing drift.
+- The contract is **live** to the extent test-strategy §7 Phase 3
+  requires — the display-gated tests (#2–#11) construct a real
+  `SettingsPresetPanel` widget and a real `SettingsWindow` against a
+  real GTK display when one is available. The compile-time contract
+  (#1) provides the headless-CI fallback so the contract is not lost
+  when GTK is unavailable. Per test-strategy §7 "Live vs. contract"
+  for Phase 3: **Live UI** (skips headless); built-in immutability is
+  a **contract test** at repository layer (already covered by Phase 1
+  `TestPresetRepository_Update_RejectsBuiltinMutation` +
+  `TestPresetRepository_Delete_RejectsBuiltin` —
+  `internal/db/preset_repository_test.go`).
+
+**Verification summary table:**
+
+| Step                                        | Command / artifact                                                  | Result                                                       |
+|---------------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------|
+| Pre-Red HEAD build                          | `go build ./internal/ui/`                                            | exit 0 (clean — confirms Red signal is caused by new test file alone) |
+| Targeted Red command                        | `go test ./internal/ui/ -run TestSettingsPresetPanel -count=1 -v`   | `FAIL verbal/internal/ui [build failed]` (exit 1)            |
+| Undefined-symbol compile errors             | counted from `go test` output                                       | 10 error lines covering 2 printed undefined symbols (`PresetManagementModel`, `NewSettingsPresetPanel`); `go test` truncates with `too many errors` after the first 10 entries, so the rest of the missing symbols (`SettingsPresetPanel.{Refresh, Snapshot, Widget, IsEditEnabled, IsDeleteEnabled, TriggerDelete, TriggerEdit}`, `SettingsWindow.SetPresetModel`, `SettingsWindow.presetPanel`) are known by inspection but not all printed |
+| Test cases that ran                         | counted from `go test -v` output                                    | 0 — build failed before any test executed                    |
+| Reason for Red                              | Production code intentionally absent (no `SettingsPresetPanel` type, no `PresetManagementModel` interface, no `SettingsWindow.SetPresetModel` method, no `SettingsWindow.presetPanel` field) | Canonical Red: missing implementation, neither introduced in this Red phase |
+| Test functions added                        | `grep -c '^func TestSettingsPresetPanel' internal/ui/settingspresetpanel_test.go` | 11 (one display-independent + ten display-gated) |
+| `internal/ui/settingswindow.go` state       | unchanged at HEAD                                                   | UI integration deferred to Green-phase author                |
+| `internal/ui/exportdialog.go` state         | unchanged at HEAD                                                   | Phase 2 implementation untouched                             |
+| Unrelated dirty paths preserved             | 21 untracked paths left in working tree (see "Dirty worktree handling" below) | Untouched, staged for owner / owning track                   |
+
+#### Dirty worktree handling
+
+At MID start the worktree contains 21 untracked paths (per the MID
+prompt's `git status --porcelain` snapshot). Classification per the
+MID dirty-worktree protocol:
+
+- **Generated / ignorable, preserved unmodified:** `graph.db`
+  (build-graph SQLite; this is a Go project so build-graph cannot
+  meaningfully scan it — see test-strategy.md §6 documented skip).
+- **Unrelated user work, preserved unmodified:**
+  - Other track / edge-case test files: `internal/db/repository_edge_test.go`,
+    `internal/db/service_edge_test.go`, `internal/db/settings_edge_test.go`,
+    `internal/db/thumbnail_edge_test.go`,
+    `internal/ui/livecaptionwidget_test.go`.
+  - Measure archive directories (superseded tracks from a prior reset):
+    `measure/archive/superseded_greenfield_20260612_batch_transcription_queue_20260509/`,
+    `measure/archive/superseded_greenfield_20260612_export_presets_and_profiles_20260509/`,
+    `measure/archive/superseded_greenfield_20260612_main_app_foundational_refactor_20260612/`,
+    `measure/archive/superseded_greenfield_20260612_transcript_search_and_navigation_20260509/`,
+    `measure/archive/superseded_greenfield_20260612_undo_redo_media_operations_20260531/`.
+  - Measure automation tooling:
+    `measure/automation-script.sh`,
+    `measure/automation-supervisor.py`,
+    `measure/runs/`.
+  - Sibling track folders (other MVP tracks owned by separate Measure
+    runs):
+    `measure/tracks/greenfield_project_setup_20260612/spec.md`,
+    `measure/tracks/mvp_library_export_20260612/{metadata.json,spec.md,test-strategy.md}`,
+    `measure/tracks/mvp_playback_sync_20260612/`,
+    `measure/tracks/mvp_recording_import_20260612/`,
+    `measure/tracks/mvp_text_delete_20260612/`,
+    `measure/tracks/mvp_transcription_20260612/`.
+- **Relevant to this track/phase:** none. All dirty paths fall into
+  the categories above. No dirty paths are folded into this Red commit.
+
+No source files outside test files and Measure docs are touched in
+this Red attempt. All unrelated paths are preserved for the user (or
+the responsible track owner) to commit separately. The only files this
+Red commit adds are:
+
+1. `internal/ui/settingspresetpanel_test.go` (new test file — the Red
+   contract).
+2. `measure/tracks/export_presets_and_profiles_20260509/plan.md` (this
+   Measure doc — Phase 3 task markers flipped to `[~]` and this Red
+   notes block appended).
 
 ## Phase 4: Verification
 - [ ] Full test suite pass
