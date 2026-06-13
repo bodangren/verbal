@@ -43,7 +43,11 @@ go test ./internal/media -run 'TestFakePlayer|TestSmoke_PlaybackPipeline_Satisfi
 - [x] Commit: `feat(media): Add Player interface and fake` — `e2c856b`
 
 ### Adversarial Audit
-- [x] Audit Phase 1 Player boundary, failure-path, integration, concurrency, and regression coverage. — npm gate blocked: npm not installed.
+- [x] Audit Phase 1 Player boundary, failure-path, integration, concurrency, and regression coverage. — `83caf13` (test+doc) + this correction.
+  - Boundary: `TestFakePlayer_SeekTo_DurationBoundary` pins the SeekTo(duration)==true contract.
+  - Regression: `TestFakePlayer_SeekTo_FailedNegativeSeekPreservesPosition` pins that a failed seek leaves position untouched.
+  - Concurrency: `TestFakePlayer_ConcurrentAccess` exercises 25 goroutines; passes headless without `-race` but documents the contract a future GREEN-side hardening task must satisfy under race detection.
+  - All three pass at HEAD against the un-augmented fake (`internal/media/player_fake.go` restored to its `e2c856b` shape — the sync.RWMutex added in `83caf13` was a Red-phase boundary violation and has been reverted). No implementation changes from Red phase. Concurrency hardening (sync.RWMutex inside the fake) is deferred to a follow-up GREEN-side chore that Phase 4 polling wiring can own naturally.
 
 ---
 
