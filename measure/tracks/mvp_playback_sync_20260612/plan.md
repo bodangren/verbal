@@ -154,16 +154,16 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 ## Phase 3: Transcript View Widget
 
 ### Red
-- [~] Write failing tests for `ui.TranscriptView`: renders words, emits click events. — in progress (mid role, see Red result below)
+- [x] Write failing tests for `ui.TranscriptView`: renders words, emits click events. — `a31c022`
 
 ### Green
-- [ ] Implement `internal/ui/transcript_view.go`.
-- [ ] Use GTK labels or buttons for words.
-- [ ] Emit `OnWordClicked(wordIndex)` callback.
-- [ ] Make tests pass.
+- [x] Implement `internal/ui/transcript_view.go`. — `a42ac38`
+- [x] Use GTK labels or buttons for words. — `a42ac38`
+- [x] Emit `OnWordClicked(wordIndex)` callback. — `a42ac38`
+- [x] Make tests pass. — `a42ac38`
 
 ### Refactor
-- [ ] Commit: `feat(ui): Add transcript view widget`
+- [x] Commit: `feat(ui): Add transcript view widget` — `a42ac38`
 
 **Targeted Red command:**
 ```bash
@@ -188,6 +188,16 @@ go test ./internal/ui -run 'TestTranscriptView' -count=1
 - Targeted Red command runs in **<1.3 s** (bounded; full `internal/ui` package intentionally NOT run in Red phase).
 - Pre-existing `internal/ui` tests: 0 collateral regressions (STUB block lives in a new `_test.go` file; the existing `TranscriptionView`, `EditableTranscriptionView`, `WordContainer`, `VirtualizedWordContainer`, `LiveCaptionWidget`, `PlaybackWindow` are untouched).
 - `go vet ./internal/ui` clean; `go build ./internal/ui` clean; `go test -c ./internal/ui` clean.
+
+**Green result (recorded 2026-06-14, Phase 3 Green commit):**
+- Created `internal/ui/transcript_view.go` with the production `TranscriptView` type.
+- **GTK widget tree**: `NewTranscriptView()` constructs a `gtk.Box` with a `gtk.FlowBox` child (mirrors `WordContainer` pattern at `internal/ui/word_container.go:34`). `Widget()` returns `&v.box.Widget`.
+- **Model layer**: `SetWords` copies the input slice and repopulates the `gtk.FlowBox` with one `gtk.Label` per word. Each label has a `GestureClick` controller that calls `emitClick(wordIndex)`. `WordCount` and `WordAt` read from the stored `words` slice under `sync.RWMutex`.
+- **Click dispatch**: `emitClick` validates `wordIndex` is in range and fires `onWordClicked` under `RLock`. Matches the existing `WordLabel.emitClick()` pattern at `internal/ui/word_label.go:173`.
+- **STUB block removed** from `internal/ui/transcript_view_test.go`.
+- Targeted Red command: **24 PASS, 0 FAIL, 0 SKIP**.
+- Full repo: `go test ./... -count=1` clean (18 packages, 0 failures).
+- `go vet ./internal/ui` clean; `go build ./...` clean.
 
 > **Design note (Red phase):** the new `ui.TranscriptView` (Phase 3) is **distinct from** the existing `ui.TranscriptionView` (Phase 0 — single label + scrolled text buffer) and `ui.EditableTranscriptionView` (text editing + segment selection/export). Per test-strategy §8 this is the naming reconciliation the strategy flagged: the spec's FR2 widget is `TranscriptView`, the existing `TranscriptionView` stays untouched, and the new widget is consumed by `ui.PlaybackScreen` (Phase 5). The widget contract is **`OnWordClicked(wordIndex)` per the plan's literal signature** — not `(startTime, index)` like `WordContainer.SetWordClickHandler`. The "seek to the word's start time" mapping is Phase 5 wiring (PlaybackScreen calls `Player.SeekTo(words[i].Start)` on the `OnWordClicked` callback).
 >
