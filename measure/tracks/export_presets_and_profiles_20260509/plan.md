@@ -425,10 +425,10 @@ the responsible track owner) to commit separately.
 9. AudioCodecFLAC constant added alongside existing audio codec constants.
 
 ## Phase 3: Settings Management
-- [x] Add presets panel to SettingsWindow
-- [x] Allow edit/delete of custom presets
-- [x] Built-in presets are read-only
-- [ ] Manual verification
+- [x] Add presets panel to SettingsWindow (`f103cca`)
+- [x] Allow edit/delete of custom presets (`f103cca`)
+- [x] Built-in presets are read-only (`f103cca`)
+- [ ] Manual verification (human gate — requires live GNOME UI; not automatable by JR agent)
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
 
