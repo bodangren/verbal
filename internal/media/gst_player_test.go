@@ -10,133 +10,13 @@ import (
 )
 
 // =============================================================================
-// STUB BLOCK — Phase 2 Red
+// Production types are defined in `internal/media/gst_player.go`. The STUB
+// BLOCK that originally lived here was removed in the Green commit
+// `feat(media): Add GStreamer player implementation`; the test file now
+// exercises the real implementation per test-strategy §5 (P2: pipeline-
+// string tests are pure-fn, state-machine tests target the real pipeline,
+// and the smoke test is gated by canInitializeGST() — never silent).
 // =============================================================================
-//
-// The following declarations shadow the future `internal/media/gst_player.go`
-// production file. They exist so this test file compiles against the expected
-// public API while the implementation is still pending. The Green role MUST:
-//   1. Create `internal/media/gst_player.go` with the same exported signatures,
-//      using real GStreamer calls and the same package-private helper surface.
-//   2. Remove this entire STUB BLOCK (including all STUB-only fields).
-//   3. Ensure all tests in this file pass against the production code.
-//
-// Per test-strategy §4 (Architecture Guardrails):
-//   - Path safety: any path reaching `gst_player.go` MUST go through
-//     `internal/media/sanitize.go` (QuoteLocation). The build-pipeline
-//     function must call QuoteLocation on the filePath argument.
-//   - "Player" interface satisfaction: `var _ Player = (*GstPlayer)(nil)`
-//     is asserted in the Compile-time section below.
-//   - "PipelineQuerier" interface satisfaction is also pinned so the
-//     existing `PositionMonitor` can take a `*GstPlayer` as a drop-in for
-//     `*PlaybackPipeline`.
-//
-// Per test-strategy §5 (Per-Phase Test Approach Notes for P2):
-//   - Pipeline-string construction tests (BuildGstPlayerPipeline) are pure-fn,
-//     no GStreamer init — fast, always run.
-//   - State-machine tests (QueryPosition / QueryDuration / SeekTo / GetState
-//     / Close) target the no-pipeline-yet branch.
-//   - `TestSmoke_GstPlayer_Constructs` builds a real pipeline against a
-//     tiny fixture, gated by canInitializeGST() — never skipped silently.
-// =============================================================================
-
-// BuildGstPlayerPipeline returns the GStreamer pipeline description used by
-// GstPlayer. It is exposed as a pure function so the Red tests can assert
-// the pipeline shape (filesrc + decodebin + video-sink + autoaudiosink)
-// without booting GStreamer.
-//
-// The videoSink argument is the GStreamer element name to use for the video
-// branch (e.g. "gtk4paintablesink", "autovideosink"). An empty string MUST
-// fall back to "autovideosink". The filePath argument MUST be sanitized via
-// QuoteLocation so paths containing newlines, carriage returns, or
-// spaces are safely escaped into the pipeline description.
-func BuildGstPlayerPipeline(filePath, videoSink string) string {
-	// STUB — Green phase produces a real `filesrc location=... ! decodebin
-	// name=dec dec. ! queue ! videoconvert ! <videoSink> dec. ! queue !
-	// audioconvert ! audioresample ! autoaudiosink` description, calling
-	// QuoteLocation(filePath) so shell-metacharacters cannot break out.
-	return ""
-}
-
-// GstPlayer is a GStreamer-based Player implementation that targets an
-// embedded GTK4 preview via gtk4paintablesink (when available), falling
-// back to autovideosink. It satisfies both the `Player` contract (Phase 1)
-// and the existing `PipelineQuerier` contract used by PositionMonitor.
-type GstPlayer struct {
-	// STUB-only fields removed by Green phase.
-	filePath    string
-	videoSink   string
-	pipelineStr string
-	closed      bool
-}
-
-// NewGstPlayer returns a GstPlayer for the given file path. The pipeline
-// is constructed via BuildGstPlayerPipeline; actual gst.ParseLaunch happens
-// lazily (on first Play or via the production code's explicit init step).
-// An empty filePath MUST return a non-nil error.
-func NewGstPlayer(filePath string) (*GstPlayer, error) {
-	// STUB — Green phase must validate filePath and reject empty input.
-	_ = errors.New
-	return &GstPlayer{
-		filePath:    filePath,
-		videoSink:   "autovideosink",
-		pipelineStr: BuildGstPlayerPipeline(filePath, "autovideosink"),
-	}, nil
-}
-
-// NewGstPlayerWithSink is the explicit-sink variant. An empty videoSink
-// MUST fall back to "autovideosink".
-func NewGstPlayerWithSink(filePath, videoSink string) (*GstPlayer, error) {
-	// STUB — Green phase must apply the empty-sink fallback to
-	// "autovideosink" before storing.
-	return &GstPlayer{
-		filePath:    filePath,
-		videoSink:   videoSink,
-		pipelineStr: BuildGstPlayerPipeline(filePath, videoSink),
-	}, nil
-}
-
-// FilePath returns the source file path passed to the constructor.
-func (g *GstPlayer) FilePath() string { return g.filePath }
-
-// VideoSink returns the GStreamer element name used for the video branch.
-func (g *GstPlayer) VideoSink() string { return g.videoSink }
-
-// PipelineDescription returns the cached pipeline description string.
-// Exposed for tests and for the production wiring in internal/app/run.go.
-func (g *GstPlayer) PipelineDescription() string { return g.pipelineStr }
-
-// Play starts playback. STUB returns nil so close-to-contract assertions
-// can pin behaviour. Green phase wires SetState(gst.StatePlaying).
-func (g *GstPlayer) Play() error { return nil }
-
-// Pause suspends playback. STUB returns nil.
-func (g *GstPlayer) Pause() error { return nil }
-
-// Stop halts playback and rewinds. STUB returns nil.
-func (g *GstPlayer) Stop() error { return nil }
-
-// Close releases all resources. STUB is idempotent.
-func (g *GstPlayer) Close() error {
-	g.closed = true
-	return nil
-}
-
-// SeekTo seeks to the given position in seconds. STUB returns true for
-// position >= 0 and false otherwise; production wires SeekSimple.
-func (g *GstPlayer) SeekTo(position float64) bool { return position >= 0 }
-
-// QueryPosition returns -1 (no pipeline constructed yet). Production code
-// returns gst.QueryPosition converted to seconds, or -1 on query failure.
-func (g *GstPlayer) QueryPosition() float64 { return -1 }
-
-// QueryDuration returns -1 (no pipeline constructed yet).
-func (g *GstPlayer) QueryDuration() float64 { return -1 }
-
-// GetState returns the current pipeline state. Initial state is StateStopped.
-func (g *GstPlayer) GetState() PipelineState { return StateStopped }
-
-// END STUB BLOCK
 
 // =============================================================================
 // Compile-time interface assertions

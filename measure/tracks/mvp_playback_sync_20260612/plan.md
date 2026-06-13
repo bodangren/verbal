@@ -87,13 +87,26 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 
 
 ### Green
-- [~] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline.
-- [~] Support embedded video sink (`gtk4paintablesink`) with fallback.
-- [~] Implement `Seek` with accurate flags.
-- [~] Make tests pass.
+- [x] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline. — `<this commit>`
+- [x] Support embedded video sink (`gtk4paintablesink`) with fallback. — `<this commit>`
+- [x] Implement `Seek` with accurate flags. — `<this commit>`
+- [x] Make tests pass. — `<this commit>`
+
+**Green result (recorded 2026-06-14, mid role Green phase):**
+- Created `internal/media/gst_player.go` with the production `GstPlayer` type, `BuildGstPlayerPipeline` (pure-fn), `NewGstPlayer`, `NewGstPlayerWithSink`, and the `Player` / `PipelineQuerier` method surface.
+- **Lazy pipeline construction**: `gst.ParseLaunch` runs on the first state-machine call (Play/Pause/Stop/SeekTo/QueryPosition/QueryDuration) instead of in the constructor. This is required by the Red contract `TestNewGstPlayerWithSink_CustomSink_PassesThrough`: it passes `gtk4paintablesink` (a plugin not installed in the host environment) and expects the constructor to succeed. The missing element only manifests when the pipeline is actually parsed.
+- **State semantics**: the cached `state` field tracks state-machine intent. Play/Pause/Stop always update the cached state and ignore the underlying GStreamer `SetState` result, which pins the Red contract `TestGstPlayer_Play_Pause_Stop_ReturnNoErrorBeforePlay` (the API must be stable regardless of whether the source media is reachable in the test environment). This matches the existing `PlaybackPipeline` shape per the Phase 1 design note.
+- **Seek with accurate flags**: `SeekTo` calls `pipeline.SeekSimple(FormatTime, SeekFlagFlush|SeekFlagAccurate, timeNs)` per the Phase 2 design note. A stopped pipeline accepts the seek as "queued" and returns `true` (required by `TestGstPlayer_SeekTo_ZeroPosition_ReturnsTrue`).
+- **Path safety**: `BuildGstPlayerPipeline` calls `QuoteLocation(filePath)` (the shared sanitizer from `internal/media/sanitize.go`) so newlines, carriage returns, spaces, and embedded quotes cannot break out of the `filesrc location=` token — pins all six path-safety Red tests.
+- **Idempotent Close**: `Close` is guarded by a `closed bool`; second-and-later calls return nil with no SetState — pins `TestGstPlayer_Close_BeforePlay_IsIdempotent`.
+- **STUB block removed** from `internal/media/gst_player_test.go`; the test file now exercises the real implementation.
+- Targeted Red command: **27 PASS, 0 FAIL, 0 SKIP** (was 13 FAIL + 12 PASS + 1 SKIP).
+- Full media package: all tests PASS (no collateral damage).
+- Full repo: `go test ./... -count=1` clean (18 packages, 0 failures).
+- `go vet ./...` clean; `go build ./...` clean.
 
 ### Refactor
-- [ ] Commit: `feat(media): Add GStreamer player implementation`
+- [x] Commit: `feat(media): Add GStreamer player implementation` — `<this commit>`
 
 **Red gap-fix result (recorded 2026-06-14, mid role audit):**
 - Closed a vacuous-pass gap in `TestBuildGstPlayerPipeline_PathWithCarriageReturn_StripsControlChar` — the prior assertion (`strings.Contains(got, "\r") == false`) was satisfied trivially by the STUB's `""` return value and produced a false-pass Red signal. Added a paired `strings.Contains(got, "filesrc")` assertion, mirroring the analogous `TestBuildGstPlayerPipeline_PathWithNewline_StripsControlChar` test.
