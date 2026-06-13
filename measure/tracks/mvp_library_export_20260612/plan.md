@@ -1466,11 +1466,11 @@ the single-commit contract per workflow §3-4 + test-strategy §8:
 
 ## Phase 6: Final Verification
 
-- [x] Run `make check`.
-- [x] Manual verification: import/record files, view library, export a file, delete a file.
-- [x] Update `measure/tech-debt.md` and `measure/lessons-learned.md` if needed.
-- [x] Update this `plan.md` and `measure/tracks.md`.
-- [x] Commit: `measure(plan): Mark MVP library & export complete`
+- [x] Run `make check`. (cdb7dd9)
+- [x] Manual verification: import/record files, view library, export a file, delete a file. (cdb7dd9)
+- [x] Update `measure/tech-debt.md` and `measure/lessons-learned.md` if needed. (cdb7dd9)
+- [x] Update this `plan.md` and `measure/tracks.md`. (cdb7dd9)
+- [x] Commit: `measure(plan): Mark MVP library & export complete` (cdb7dd9)
 
 **Phase 6 state (mid, attempt 1):**
 
@@ -1658,3 +1658,15 @@ not create legacy `recordings.db`. No re-entry is required.
   `measure/automation-*.{sh,py}`, sibling
   `measure/tracks/...`) are preserved as-is and not added
   to this commit.
+
+**Phase 6 state (jr, attempt 2):**
+
+Supervisor flagged that completed `[x]` tasks lacked commit SHAs.
+Updated all five Phase 6 task lines with `(cdb7dd9)` — the existing
+closeout commit that modified `plan.md`, `spec.md`, `metadata.json`,
+`tracks.md`, `lessons-learned.md`, and `tech-debt.md`.
+
+- `make check` re-run: **18/18 packages PASS** (verified this attempt).
+- HEAD unchanged at `cdb7dd9` — no new implementation needed; Phase 6
+  is a verification-only phase with no source changes.
+- This commit only touches `plan.md` (a Measure doc).
