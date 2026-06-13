@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,8 +25,6 @@ import (
 // the file compiles.
 
 func TestExporter_HappyPath_CopiesFile(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 3 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	destPath := filepath.Join(tmpDir, "dest.mp4")
@@ -55,8 +52,6 @@ func TestExporter_HappyPath_CopiesFile(t *testing.T) {
 }
 
 func TestExporter_SourceMissing_ReturnsError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 3 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "does_not_exist.mp4")
 	destPath := filepath.Join(tmpDir, "dest.mp4")
@@ -73,8 +68,6 @@ func TestExporter_SourceMissing_ReturnsError(t *testing.T) {
 }
 
 func TestExporter_DestUnwritable_ReturnsError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 3 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	if err := os.WriteFile(srcPath, []byte("hello"), 0o644); err != nil {
@@ -96,8 +89,6 @@ func TestExporter_DestUnwritable_ReturnsError(t *testing.T) {
 }
 
 func TestExporter_ProgressMonotonic(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 3 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	destPath := filepath.Join(tmpDir, "dest.mp4")
@@ -145,8 +136,6 @@ func TestExporter_ProgressMonotonic(t *testing.T) {
 }
 
 func TestExporter_ContextCanceledMidCopy_ReturnsError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 3 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.bin")
 	destPath := filepath.Join(tmpDir, "dest.bin")
@@ -194,44 +183,3 @@ func TestExporter_ContextCanceledMidCopy_ReturnsError(t *testing.T) {
 	}
 }
 
-// silence "imported and not used" if io is referenced in a follow-up.
-var _ = io.EOF
-
-// -- STUBS (REMOVE on Green) -----------------------------------------
-//
-// The following declarations exist only to let this test file compile
-// during the Red phase. They are intentionally no-op / wrong; the
-// Green-phase attempt must delete this entire block and add the real
-// implementation in internal/media/exporter.go.
-
-// progressFunc is the progress callback signature used by Exporter.Export.
-// Spec FR3: "Progress is reported via a simple callback." Matches the
-// shared fixture described in test-strategy §2.
-type progressFunc func(percent float64, msg string)
-
-// STUB: Exporter struct removed in Green; the real definition goes in
-// internal/media/exporter.go. The Green-phase author must delete this
-// stub before adding the real struct (otherwise Go's duplicate-decl
-// check will fail to compile).
-type Exporter struct{}
-
-// STUB: NewExporter removed in Green; the real constructor goes in
-// internal/media/exporter.go and may accept options (buffer size,
-// etc.) per test-strategy §5 P3 ("buffered copy").
-func NewExporter() *Exporter { return &Exporter{} }
-
-// STUB: Export removed in Green; the real implementation goes in
-// internal/media/exporter.go. The Green-phase author must delete this
-// stub before adding the real method (otherwise Go's duplicate-method
-// check will fail to compile). The real Export must:
-//   1. open srcPath for reading and stat it for size,
-//   2. create destPath for writing (failing if parent dir is missing),
-//   3. emit progress(0.0, ...) before the copy,
-//   4. loop reading chunks (default 32 KiB) and writing them, calling
-//      progress(fraction, "...") after each chunk,
-//   5. check ctx.Err() at every chunk and return ctx.Err() if canceled,
-//   6. emit progress(1.0, "...") and return nil on success,
-//   7. return an error wrapping fs.ErrNotExist when srcPath is missing.
-func (e *Exporter) Export(ctx context.Context, srcPath, destPath string, progress progressFunc) error {
-	return nil
-}

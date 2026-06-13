@@ -512,15 +512,15 @@ Full gate: `make go-check` → **18/18 packages green**.
 ## Phase 3: Original Export
 
 ### Red
-- [~] Write failing tests for `media.Exporter`: copies source file to destination with progress.
+- [x] Write failing tests for `media.Exporter`: copies source file to destination with progress.
 
 ### Green
-- [ ] Implement `internal/media/exporter.go`.
-- [ ] Use buffered copy with progress callback.
-- [ ] Make tests pass.
+- [x] Implement `internal/media/exporter.go`.
+- [x] Use buffered copy with progress callback.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(media): Add original file exporter`
+- [x] Commit: `feat(media): Add original file exporter`
 
 **Red-phase state (mid, attempt 1):**
 
@@ -710,6 +710,32 @@ Re-verification on this attempt (count=1, cache busted):
   Measure scaffolding (`measure/archive/...`, `measure/runs/...`,
   `measure/automation-*.{sh,py}`, sibling `measure/tracks/...`)
   are preserved as-is and not added to this attempt's commit.
+
+**Green-phase state (jr, attempt 1):**
+
+The Phase 3 Green implementation satisfies all three tasks:
+
+- **`internal/media/exporter.go`** (94 lines): `Exporter` struct,
+  `NewExporter()` constructor, `progressFunc` type alias
+  `func(percent float64, msg string)`. `Export` opens srcPath,
+  stats for size, creates destPath, emits `progress(0.0, ...)`,
+  loops 32 KiB buffered reads/writes emitting progress after each
+  chunk, checks `ctx.Err()` before each chunk and returns
+  `context.Canceled` if done, emits `progress(1.0, ...)` on
+  success. Does NOT use GStreamer (per test-strategy §4).
+- **`internal/media/exporter_test.go`** (185 lines): STUB block
+  removed, all 5 `t.Skip` guards removed, unused `io` import
+  removed. Tests run against the real implementation.
+- **Targeted Red command:**
+  `go test -count=1 -run TestExporter ./internal/media/ -v`
+  → **5 PASS, 0 FAIL, 0 SKIP** (`ok verbal/internal/media 2.266s`).
+- **Full gate:** `make go-check` → **18/18 packages green**.
+- **build-graph note:** `graph.db` exists but is TS-only per
+  test-strategy §0. Graph-Aware Mode not applicable to this Go
+  project. No `build-graph update` needed.
+- **Blast radius:** `Exporter` and `progressFunc` are only
+  referenced in `exporter_test.go` and `exporter.go`. No callers
+  outside `internal/media/`. Clean insert, no signature changes.
 
 ---
 
