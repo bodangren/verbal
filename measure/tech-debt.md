@@ -23,6 +23,7 @@
 - **Real-time Transcription Integration** - [integrated: 2026-05-07 - LiveCaptionWidget wired into PlaybackWindow, Ctrl+Shift+R accelerator added, RecordingTranscriber added to appState, toggleRealtimeTranscription function implemented] [severity: low, resolved]
 - **Auto-Save and Crash Recovery** - [resolved: 2026-05-09 - AutoSaveRepository with auto_save table, AutoSaveService with 30s interval, RecoveryDialog UI. Dirty tracking and background auto-save implemented.]
 - ~~**Status enum vocabulary drift (spec FR2 vs. storage)**~~ - [resolved: 2026-06-14 - `formatStatus` now maps storage values to FR2 UI labels: `pending` → `New`, `in_progress` → `Transcribing`, `completed` → `Transcribed`, `error` → `Error`; covered by `TestRecordingListItem_FormatStatus_MatchesSpecVocabulary`.]
+- **Library delete has no confirmation dialog** - The library Delete-button calls `Controller.DeleteRecording(rec.ID, false)` immediately, without a confirm/undo prompt. Spec FR1 and the MVP acceptance criteria do not require confirmation, so this was deferred at closeout of `mvp_library_export_20260612` (2026-06-14). UX polish item; revisit when a confirmation dialog or undo affordance is added in a future post-MVP UX track. [severity: low]
 
 ## Resolved (Recent)
 
