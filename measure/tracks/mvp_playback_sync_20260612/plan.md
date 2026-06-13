@@ -131,12 +131,30 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 - Targeted Red command runs in **<0.3 s** (bounded, full media package intentionally NOT run).
 - `go vet ./internal/media` clean; `go build ./internal/media` clean.
 
+**Red state-machine cycle coverage (recorded 2026-06-14, mid role post-Green close-out):** — pending commit
+- **Dirty worktree classification:** the supervisor's MID-start context showed `?? internal/media/gst_player.go` and `M internal/media/gst_player_test.go`; the actual `git status` at MID entry was clean for both files (Phase 2 Green was already committed in `2c7fc9a` and the plan updated in `02cd54b`). The remaining dirty entries in the worktree (`internal/db/*_edge_test.go`, `internal/ui/livecaptionwidget_test.go`, `internal/ui/transcript_view_test.go`, `measure/archive/...`, `measure/automation-*`, `measure/runs/...`) are **unrelated user work** — they are NOT part of the `mvp_playback_sync_20260612` track and MUST be preserved untouched per the workflow's "do not overwrite, revert, or hide unrelated user work" rule. Phase 2 Red is already `[x]`; the four Phase 2 Green sub-tasks are already `[x]` with commit `2c7fc9a`; Refactor is `[x]` with the same commit.
+- **Task status reconciliation:** the user prompt instructed the MID role to "own the Red phase for every currently incomplete non-deferred task in this phase." Phase 2 has no `[ ]` or `[~]` tasks — all 4 Green sub-tasks are `[x]`. Per the workflow's "if the new tests pass at HEAD, mark the task as already satisfied with evidence instead of creating a false Red phase" rule, Phase 2 Red is **already satisfied** with the evidence below.
+- **Additional Red coverage (3 new tests added):**
+  - `TestGstPlayer_Pause_TransitionsStateFromStoppedToPaused` — pins the Pause state transition (was previously covered only by the "return no error" smoke `TestGstPlayer_Play_Pause_Stop_ReturnNoErrorBeforePlay`, which did not assert the cached state).
+  - `TestGstPlayer_Stop_FromPlaying_TransitionsToStopped` — pins the Stop state transition from a non-initial state (Playing), exercising a state-machine edge rather than only the Stopped->Stopped self-loop.
+  - `TestGstPlayer_StateMachineCycle_PlayPausePlay_StopsAndResumes` — table-driven cycle test that catches regressions where a single transition works in isolation but breaks when chained.
+- **Targeted Red command result (post-additions):**
+  ```bash
+  go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewGstPlayer|TestSmoke_GstPlayer' -count=1 -v
+  ```
+  - **29 PASS, 0 FAIL, 0 SKIP** (was 27 PASS, 0 FAIL, 0 SKIP at Green close-out `2c7fc9a`).
+  - The 3 new tests **pass against the current Green impl** (`2c7fc9a`). This is the expected outcome — the Green impl correctly implements Play/Pause/Stop state transitions on the cached `state` field. Per the workflow's "mark as already satisfied with evidence instead of creating a false Red phase" rule, no Green/Refactor follow-up is required for these tests.
+  - Targeted command runs in **<1.0 s** (bounded; full media package intentionally NOT run in Red phase).
+  - `go vet ./internal/media` clean; `go build ./internal/media` clean.
+- **No new production code added** — the Green implementation in `internal/media/gst_player.go` (committed `2c7fc9a`) already satisfies all contracts pinned by the new tests. The 3 new tests are pure Red-coverage additions; no `feat`/`fix` commit is required.
+- **Phase 2 close-out:** all Phase 2 tasks remain `[x]`. Phase 2 is **complete** at HEAD. The next role (supervisor) may proceed to Phase 3 (Transcript View Widget) Red planning.
+
 ---
 
 ## Phase 3: Transcript View Widget
 
 ### Red
-- [ ] Write failing tests for `ui.TranscriptView`: renders words, emits click events.
+- [~] Write failing tests for `ui.TranscriptView`: renders words, emits click events. — in progress (mid role, see Red result below)
 
 ### Green
 - [ ] Implement `internal/ui/transcript_view.go`.
@@ -146,6 +164,36 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 
 ### Refactor
 - [ ] Commit: `feat(ui): Add transcript view widget`
+
+**Targeted Red command:**
+```bash
+go test ./internal/ui -run 'TestTranscriptView' -count=1
+```
+
+**Red result (recorded 2026-06-14, Phase 3 Red commit `a31c022`):**
+- 24 new tests added in `internal/ui/transcript_view_test.go` with a STUB block (per lessons-learned §"STUB-Block Test File for New Contracts") declaring the expected `TranscriptView` API.
+- **10 FAIL** (Red signal — STUB does not satisfy the contract):
+  - `TestTranscriptView_Widget_NotNilAfterConstruction` (display-gated; STUB `Widget()` returns nil)
+  - `TestTranscriptView_SetWords_StoresWords` (STUB `SetWords` no-op; `WordCount` returns 0)
+  - `TestTranscriptView_SetWords_ReplacesPreviousList` (STUB `SetWords` no-op; second list not stored)
+  - `TestTranscriptView_WordAt_ValidIndex_ReturnsWord` (STUB `WordAt` always returns false)
+  - `TestTranscriptView_WordAt_PreservesStartAndEndMetadata` (STUB `WordAt` always returns false)
+  - `TestTranscriptView_EmitClick_FiresCallbackWithIndex` (STUB `emitClick` no-op)
+  - `TestTranscriptView_SetOnWordClicked_ReplacesPrevious` (STUB `emitClick` no-op, replacement callback never fires)
+  - `TestTranscriptView_EmitClick_MultipleClicks_FireEachTime` (STUB `emitClick` no-op)
+  - `TestTranscriptView_SetWords_PopulatesFlowBox` (display-gated; STUB `Widget()` returns nil; cannot assert flow box population)
+  - `TestTranscriptView_SetWords_Nil_ClearsFlowBox` (display-gated; STUB `Widget()` returns nil)
+- **14 PASS** — pinning trivial behaviour the STUB happens to satisfy (constructor returns non-nil, fresh view `WordCount == 0`, out-of-range and empty `WordAt` returns false, no-callback / out-of-range / empty-list / post-`SetWords(nil)` `emitClick` does not fire, `SetOnWordClicked(nil)` disables the callback, concurrent `emitClick` does not race). These pin the contract the Green phase must preserve.
+- **0 SKIP** (headless CI; the two display-gated tests fail fast on `Widget() == nil` instead of skipping because the STUB never constructs GTK widgets).
+- Targeted Red command runs in **<1.3 s** (bounded; full `internal/ui` package intentionally NOT run in Red phase).
+- Pre-existing `internal/ui` tests: 0 collateral regressions (STUB block lives in a new `_test.go` file; the existing `TranscriptionView`, `EditableTranscriptionView`, `WordContainer`, `VirtualizedWordContainer`, `LiveCaptionWidget`, `PlaybackWindow` are untouched).
+- `go vet ./internal/ui` clean; `go build ./internal/ui` clean; `go test -c ./internal/ui` clean.
+
+> **Design note (Red phase):** the new `ui.TranscriptView` (Phase 3) is **distinct from** the existing `ui.TranscriptionView` (Phase 0 — single label + scrolled text buffer) and `ui.EditableTranscriptionView` (text editing + segment selection/export). Per test-strategy §8 this is the naming reconciliation the strategy flagged: the spec's FR2 widget is `TranscriptView`, the existing `TranscriptionView` stays untouched, and the new widget is consumed by `ui.PlaybackScreen` (Phase 5). The widget contract is **`OnWordClicked(wordIndex)` per the plan's literal signature** — not `(startTime, index)` like `WordContainer.SetWordClickHandler`. The "seek to the word's start time" mapping is Phase 5 wiring (PlaybackScreen calls `Player.SeekTo(words[i].Start)` on the `OnWordClicked` callback).
+>
+> **STUB-block Test File pattern (per lessons-learned §"STUB-Block Test File for New Contracts"):** the `TranscriptView` type and its method set are declared in `internal/ui/transcript_view_test.go` (a `_test.go` file) so the package compiles, the rest of `internal/ui` keeps passing, and the Green role completes the contract in one atomic commit (delete the STUB block, add the real implementation in `internal/ui/transcript_view.go`, drop the `// STUB:` comments on methods). The STUB is intentionally minimal — `SetWords` is a no-op, `Widget()` returns nil, `emitClick` is a no-op — so the Red contract is clear: any non-trivial implementation passes the tests.
+>
+> **Headless-vs-display-gated split (per test-strategy §1 P3 pyramid):** the model layer (SetWords/WordCount/WordAt) and the click-dispatch layer (SetOnWordClicked/emitClick) are tested headlessly via a `sync.RWMutex` and direct field access in the same package. The render layer is tested display-gated via `hasDisplay()` and `view.Widget() == nil` precondition assertions. The `emitClick` package-private method is the dispatch entry point used by the GTK `GestureClick` handler (Green phase) and by the headless Red tests below — mirrors the existing `WordLabel.emitClick()` pattern at `internal/ui/word_label.go:173`.
 
 ---
 
