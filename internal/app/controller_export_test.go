@@ -20,30 +20,14 @@ import (
 // Red and pass during Green.
 //
 // Layout:
-//   - Exporter / RecordingDeleter interfaces (test-local dependency shapes).
 //   - fakeExporter / fakeDeleter (routing test doubles).
 //   - mediaExporterAdapter (bridges *media.Exporter to the Exporter
 //     interface; *media.Exporter.Export uses the unexported
 //     media.progressFunc type, so direct interface satisfaction is not
 //     possible).
-//   - Routing tests (t.Skip-guarded per test-strategy §8).
-//   - Live gates (NOT t.Skip-guarded): TestSmoke_ControllerExportLive plus
+//   - Routing tests.
+//   - Live gates: TestSmoke_ControllerExportLive plus
 //     two delete observable-behavior tests.
-//   - STUB block at the bottom: the methods the Green phase must replace.
-
-// Exporter is the dependency shape Controller.ExportRecording routes to.
-// The progress callback uses the unnamed func type so the interface matches
-// the public signature a future production controller will expose.
-type Exporter interface {
-	Export(ctx context.Context, srcPath, destPath string, progress func(float64, string)) error
-}
-
-// RecordingDeleter is the dependency shape Controller.DeleteRecording
-// routes to. Only Delete is required by the Phase 4 contract; the full
-// *db.RecordingService satisfies this interface.
-type RecordingDeleter interface {
-	Delete(id int64) error
-}
 
 // fakeExporter records the arguments passed to Export and returns a
 // pre-canned error.
@@ -115,8 +99,7 @@ func newTestControllerWithDeps(t *testing.T, exporter Exporter, deleter Recordin
 	if err := ctrl.Initialize(); err != nil {
 		t.Fatalf("Initialize: %v", err)
 	}
-	setTestExporter(ctrl, exporter)
-	setTestDeleter(ctrl, deleter)
+	ctrl.WithExporter(exporter).WithRecordingDeleter(deleter)
 	return ctrl, database
 }
 
@@ -139,8 +122,6 @@ func makeTestRecording(t *testing.T, database *db.Database, filePath string) *db
 // --- Routing tests (t.Skip-guarded per test-strategy §8) ---
 
 func TestController_ExportRecording_RoutesToExporter(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	if err := os.WriteFile(srcPath, []byte("hello"), 0o644); err != nil {
@@ -162,8 +143,6 @@ func TestController_ExportRecording_RoutesToExporter(t *testing.T) {
 }
 
 func TestController_ExportRecording_PassesSrcPathFromRecording(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "my-video.mp4")
 	if err := os.WriteFile(srcPath, []byte("data"), 0o644); err != nil {
@@ -185,8 +164,6 @@ func TestController_ExportRecording_PassesSrcPathFromRecording(t *testing.T) {
 }
 
 func TestController_ExportRecording_PassesDestPathThrough(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	if err := os.WriteFile(srcPath, []byte("data"), 0o644); err != nil {
@@ -208,8 +185,6 @@ func TestController_ExportRecording_PassesDestPathThrough(t *testing.T) {
 }
 
 func TestController_ExportRecording_PropagatesExporterError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	tmpDir := t.TempDir()
 	srcPath := filepath.Join(tmpDir, "src.mp4")
 	if err := os.WriteFile(srcPath, []byte("data"), 0o644); err != nil {
@@ -230,8 +205,6 @@ func TestController_ExportRecording_PropagatesExporterError(t *testing.T) {
 }
 
 func TestController_ExportRecording_UnknownRecordingReturnsError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	fakeExp := &fakeExporter{}
 	fakeDel := &fakeDeleter{}
 	ctrl, _ := newTestControllerWithDeps(t, fakeExp, fakeDel)
@@ -247,8 +220,6 @@ func TestController_ExportRecording_UnknownRecordingReturnsError(t *testing.T) {
 }
 
 func TestController_DeleteRecording_RoutesToDeleter(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	fakeExp := &fakeExporter{}
 	fakeDel := &fakeDeleter{}
 	ctrl, database := newTestControllerWithDeps(t, fakeExp, fakeDel)
@@ -266,8 +237,6 @@ func TestController_DeleteRecording_RoutesToDeleter(t *testing.T) {
 }
 
 func TestController_DeleteRecording_PropagatesDeleterError(t *testing.T) {
-	t.Skip("track mvp_library_export_20260612 phase 4 task in progress")
-
 	sentinel := errors.New("deleter boom")
 	fakeExp := &fakeExporter{}
 	fakeDel := &fakeDeleter{returnErr: sentinel}
@@ -396,53 +365,4 @@ func TestController_DeleteRecording_RemoveMediaFileFalse_LeavesFile(t *testing.T
 	if _, err := os.Stat(mediaPath); err != nil {
 		t.Errorf("media file should still exist after DeleteRecording(recID, false), stat error = %v", err)
 	}
-}
-
-// --- STUB block (clearly marked; to be replaced in Green phase) ---
-//
-// The Green phase MUST, in a single commit (workflow §3-4 + test-strategy
-// §8):
-//   1. delete this entire STUB block,
-//   2. remove every t.Skip guard in the routing tests above,
-//   3. add the real (*Controller).ExportRecording and
-//      (*Controller).DeleteRecording methods in a new production file
-//      (e.g. internal/app/controller_export.go), plus a real WithExporter
-//      / WithRecordingDeleter injection mechanism,
-//   4. update newTestControllerWithDeps to call the real setters
-//      (e.g. ctrl.WithExporter(exporter)) instead of setTestExporter /
-//      setTestDeleter below.
-
-// STUB injection mechanism (test-only). The Green phase will replace this
-// with real fields and setters on *Controller. The maps are intentionally
-// unused by the STUB methods below — they exist only so the test helper
-// can compile and the smoke test can wire up a real adapter.
-var testExporterRegistry = map[*Controller]Exporter{}
-var testDeleterRegistry = map[*Controller]RecordingDeleter{}
-
-func setTestExporter(c *Controller, e Exporter) { testExporterRegistry[c] = e }
-func setTestDeleter(c *Controller, d RecordingDeleter) {
-	testDeleterRegistry[c] = d
-}
-
-// ExportRecording is a STUB that returns nil without invoking the
-// exporter. Green phase: replace with a real implementation that looks up
-// the recording via the database (returning an error for unknown IDs)
-// and calls c.exporter.Export(ctx, rec.FilePath, destPath, progress).
-func (c *Controller) ExportRecording(ctx context.Context, recID int64, destPath string, progress func(float64, string)) error {
-	_ = ctx
-	_ = recID
-	_ = destPath
-	_ = progress
-	return nil
-}
-
-// DeleteRecording is a STUB that returns nil without invoking the
-// deleter or touching the filesystem. Green phase: replace with a real
-// implementation that calls c.recordingSvc.Delete(recID) and, when
-// removeMediaFile is true, additionally removes the media file at
-// rec.FilePath from disk.
-func (c *Controller) DeleteRecording(recID int64, removeMediaFile bool) error {
-	_ = recID
-	_ = removeMediaFile
-	return nil
 }

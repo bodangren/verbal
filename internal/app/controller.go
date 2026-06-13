@@ -3,6 +3,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,11 +20,24 @@ type Config struct {
 	DBPath string
 }
 
+// Exporter copies a media file from src to dest with progress reporting.
+type Exporter interface {
+	Export(ctx context.Context, srcPath, destPath string, progress func(float64, string)) error
+}
+
+// RecordingDeleter removes a recording by ID.
+type RecordingDeleter interface {
+	Delete(id int64) error
+}
+
 // Controller owns dependency construction and lifecycle for the Verbal app.
 type Controller struct {
-	config   Config
-	dbPath   string
-	database *db.Database
+	config          Config
+	dbPath          string
+	database        *db.Database
+	recordingSvc    *db.RecordingService
+	exporter        Exporter
+	recordingDeleter RecordingDeleter
 }
 
 // New creates a Controller. If cfg is nil, default configuration is used.
@@ -35,6 +49,19 @@ func New(dbPath string, cfg *Config) *Controller {
 		config: *cfg,
 		dbPath: dbPath,
 	}
+}
+
+// WithExporter sets the exporter dependency and returns the controller for chaining.
+func (c *Controller) WithExporter(e Exporter) *Controller {
+	c.exporter = e
+	return c
+}
+
+// WithRecordingDeleter sets the recording deleter dependency and returns the
+// controller for chaining.
+func (c *Controller) WithRecordingDeleter(d RecordingDeleter) *Controller {
+	c.recordingDeleter = d
+	return c
 }
 
 // DefaultDBPath returns the default SQLite database path for the current user.
@@ -74,6 +101,7 @@ func (c *Controller) Initialize() error {
 	}
 
 	c.database = database
+	c.recordingSvc = db.NewRecordingService(database)
 	return nil
 }
 
@@ -134,4 +162,51 @@ func (c *Controller) Database() *db.Database {
 // IsInitialized reports whether the controller has opened a database.
 func (c *Controller) IsInitialized() bool {
 	return c.database != nil
+}
+
+// ExportRecording copies the original media file for the given recording to
+// destPath, reporting progress via the callback. It returns an error if the
+// recording is unknown or the exporter fails.
+func (c *Controller) ExportRecording(ctx context.Context, recID int64, destPath string, progress func(float64, string)) error {
+	rec, err := c.recordingSvc.GetByID(recID)
+	if err != nil {
+		return fmt.Errorf("export: lookup recording %d: %w", recID, err)
+	}
+	if c.exporter == nil {
+		return fmt.Errorf("export: no exporter configured")
+	}
+	if err := c.exporter.Export(ctx, rec.FilePath, destPath, progress); err != nil {
+		return fmt.Errorf("export: %w", err)
+	}
+	return nil
+}
+
+// DeleteRecording removes a recording from the database. When removeMediaFile
+// is true it also deletes the underlying media file from disk.
+func (c *Controller) DeleteRecording(recID int64, removeMediaFile bool) error {
+	var filePath string
+	if removeMediaFile {
+		rec, err := c.recordingSvc.GetByID(recID)
+		if err != nil {
+			return fmt.Errorf("delete: lookup recording %d: %w", recID, err)
+		}
+		filePath = rec.FilePath
+	}
+
+	if c.recordingDeleter != nil {
+		if err := c.recordingDeleter.Delete(recID); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+	} else {
+		if err := c.recordingSvc.Delete(recID); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+	}
+
+	if removeMediaFile && filePath != "" {
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("delete media file: %w", err)
+		}
+	}
+	return nil
 }
