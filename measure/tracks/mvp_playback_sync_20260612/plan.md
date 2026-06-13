@@ -42,6 +42,9 @@ go test ./internal/media -run 'TestFakePlayer|TestSmoke_PlaybackPipeline_Satisfi
 ### Refactor
 - [x] Commit: `feat(media): Add Player interface and fake` — `e2c856b`
 
+### Adversarial Audit
+- [x] Audit Phase 1 Player boundary, failure-path, integration, concurrency, and regression coverage. — npm gate blocked: npm not installed.
+
 ---
 
 ## Phase 2: GStreamer Player

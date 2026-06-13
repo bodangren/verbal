@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -183,6 +184,65 @@ func TestFakePlayer_Play_ErrorInjection(t *testing.T) {
 	if err := fp.Play(); err != nil {
 		t.Errorf("Play() after clearing error = %v, want nil", err)
 	}
+}
+
+func TestFakePlayer_SeekTo_DurationBoundary(t *testing.T) {
+	fp := newFakePlayer()
+	fp.SetDuration(10)
+
+	if ok := fp.SeekTo(10); !ok {
+		t.Fatal("SeekTo(duration) = false, want true")
+	}
+	if got := fp.QueryPosition(); got != 10 {
+		t.Fatalf("QueryPosition after SeekTo(duration) = %v, want 10", got)
+	}
+
+	if ok := fp.SeekTo(10.000001); ok {
+		t.Fatal("SeekTo beyond duration = true, want false")
+	}
+	if got := fp.QueryPosition(); got != 10 {
+		t.Fatalf("QueryPosition after failed beyond-duration seek = %v, want unchanged 10", got)
+	}
+}
+
+func TestFakePlayer_SeekTo_FailedNegativeSeekPreservesPosition(t *testing.T) {
+	fp := newFakePlayer()
+
+	if ok := fp.SeekTo(4); !ok {
+		t.Fatal("SeekTo(4) = false, want true")
+	}
+	if ok := fp.SeekTo(-0.001); ok {
+		t.Fatal("SeekTo(-0.001) = true, want false")
+	}
+	if got := fp.QueryPosition(); got != 4 {
+		t.Fatalf("QueryPosition after failed negative seek = %v, want unchanged 4", got)
+	}
+}
+
+func TestFakePlayer_ConcurrentAccess(t *testing.T) {
+	fp := newFakePlayer()
+	fp.SetDuration(100)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 25; i++ {
+		pos := float64(i)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := fp.Play(); err != nil {
+				t.Errorf("Play() = %v, want nil", err)
+			}
+			if ok := fp.SeekTo(pos); !ok {
+				t.Errorf("SeekTo(%v) = false, want true", pos)
+			}
+			_ = fp.QueryPosition()
+			_ = fp.QueryDuration()
+			if err := fp.Pause(); err != nil {
+				t.Errorf("Pause() = %v, want nil", err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // =============================================================================
