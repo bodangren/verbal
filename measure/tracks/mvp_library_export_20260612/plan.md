@@ -1445,6 +1445,23 @@ the single-commit contract per workflow §3-4 + test-strategy §8:
   signature changes to existing code. The only consumer is
   `paths_test.go` in the same package.
 
+**Adversarial audit (2026-06-13):**
+
+- Found integration drift: `internal/settings.Paths` implemented FR4
+  (`projectDir/verbal.db` and `projectDir/recordings/`), but
+  `internal/app.Controller` default first-run path still used the legacy
+  `~/.config/verbal/recordings.db` path and only created the DB parent.
+- Fixed `DefaultDBPath()` and default `Initialize()` to derive from
+  `settings.DefaultProjectDir()` / `settings.NewPaths()` and call
+  `Paths.Initialize()` before opening `verbal.db`.
+- Added controller integration coverage proving default first-run creates
+  `recordings/` and `verbal.db` and does not create legacy
+  `recordings.db`.
+- Verification: targeted app/settings tests PASS, app/settings package
+  suites PASS, `go test ./... -count=1` PASS, `make check` PASS.
+  `npm test` was attempted but could not execute because `npm` is not
+  installed in this environment; its package script body passed directly.
+
 ---
 
 ## Phase 6: Final Verification

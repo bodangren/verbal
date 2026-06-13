@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -97,11 +98,38 @@ func TestController_Activate_InitializationError(t *testing.T) {
 }
 
 func TestDefaultDBPath(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	path := DefaultDBPath()
 	if path == "" {
-		t.Skip("no home directory available")
+		t.Fatal("DefaultDBPath() returned empty path")
 	}
-	if filepath.Base(path) != "recordings.db" {
-		t.Errorf("DefaultDBPath() = %q, want path ending in recordings.db", path)
+	if filepath.Base(path) != "verbal.db" {
+		t.Errorf("DefaultDBPath() = %q, want path ending in verbal.db", path)
+	}
+	if filepath.Base(filepath.Dir(path)) != "verbal" {
+		t.Errorf("DefaultDBPath() = %q, want database under project directory", path)
+	}
+}
+
+func TestController_Initialize_DefaultPathCreatesProjectLayout(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	ctrl := New("", nil)
+	if err := ctrl.Initialize(); err != nil {
+		t.Fatalf("Initialize() error = %v", err)
+	}
+	defer ctrl.Shutdown()
+
+	projectDir := filepath.Join(dataHome, "verbal")
+	if _, err := os.Stat(filepath.Join(projectDir, "recordings")); err != nil {
+		t.Fatalf("recordings directory not created: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, "verbal.db")); err != nil {
+		t.Fatalf("verbal.db not created: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, "recordings.db")); err == nil {
+		t.Fatalf("legacy recordings.db should not be created")
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat legacy recordings.db: %v", err)
 	}
 }

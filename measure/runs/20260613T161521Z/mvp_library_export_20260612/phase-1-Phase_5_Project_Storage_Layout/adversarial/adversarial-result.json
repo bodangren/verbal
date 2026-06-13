@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "summary": "Phase 5 storage path implementation now passes focused and full-suite validation; adversarial integration testing found and fixed controller default-path drift from legacy recordings.db to the FR4 project layout using verbal.db plus recordings/.",
+  "findings": [],
+  "evidence": [
+    "Reviewed measure/tracks/mvp_library_export_20260612/spec.md FR4, plan.md Phase 5, and test-strategy.md P5.",
+    "Inspected git diff since 03ebd1a42573f90acea87a8b347f0df4922f6636: internal/settings/paths.go, internal/settings/paths_test.go, plan updates.",
+    "Added integration coverage in internal/app/controller_test.go for DefaultDBPath and first-run default Initialize project layout.",
+    "Fixed internal/app/controller.go to derive default DB path from settings.Paths and initialize projectDir/recordings/ before opening verbal.db.",
+    "go test -count=1 -run 'TestDefaultDBPath|TestController_Initialize_DefaultPathCreatesProjectLayout' ./internal/app/ -v: PASS",
+    "go test -count=1 ./internal/settings/: PASS",
+    "go test -count=1 ./internal/app/: PASS",
+    "npm test: BLOCKED because npm is not installed (/bin/bash: npm: command not found)",
+    "go test ./... -count=1 (package.json test script body): PASS",
+    "make check: PASS"
+  ]
+}

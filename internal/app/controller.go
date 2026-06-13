@@ -75,11 +75,11 @@ func (c *Controller) WithRecordingDeleter(d RecordingDeleter) *Controller {
 
 // DefaultDBPath returns the default SQLite database path for the current user.
 func DefaultDBPath() string {
-	homeDir, _ := os.UserHomeDir()
-	if homeDir == "" {
+	projectDir := settings.DefaultProjectDir()
+	if projectDir == "" {
 		return ""
 	}
-	return filepath.Join(homeDir, ".config", "verbal", "recordings.db")
+	return settings.NewPaths(projectDir).DatabasePath
 }
 
 // Initialize opens the SQLite database and runs migrations.
@@ -93,7 +93,14 @@ func (c *Controller) Initialize() error {
 		dbPath = c.dbPath
 	}
 	if dbPath == "" {
-		dbPath = DefaultDBPath()
+		paths := settings.NewPaths(settings.DefaultProjectDir())
+		if paths.ProjectDir == "" {
+			return fmt.Errorf("controller: no database path available")
+		}
+		if err := paths.Initialize(); err != nil {
+			return fmt.Errorf("controller: initialize project paths: %w", err)
+		}
+		dbPath = paths.DatabasePath
 	}
 	if dbPath == "" {
 		return fmt.Errorf("controller: no database path available")
