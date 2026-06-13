@@ -163,9 +163,9 @@ DB regression: `go test ./internal/db/... -count=1` — PASS
 Vet: `go vet ./internal/transcription/...` — clean
 
 ## Phase 3: UI Integration
-- [~] Add "Batch Transcribe" menu item and dialog — Red `6b3709e` (Green pending: implement BatchTranscribeDialog + action wiring)
-- [~] Add queue sidebar panel with progress bars — Red `6b3709e` (Green pending: implement BatchQueuePanel + BatchQueueModel)
-- [~] Add cancel/pause controls — Red `6b3709e` (Green pending: implement CancelItem/SetPaused + callbacks)
+- [x] Add "Batch Transcribe" menu item and dialog — Red `6b3709e` / Green `db6e9f3`
+- [x] Add queue sidebar panel with progress bars — Red `6b3709e` / Green `db6e9f3`
+- [x] Add cancel/pause controls — Red `6b3709e` / Green `db6e9f3`
 - [ ] Manual verification
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
@@ -336,6 +336,30 @@ without claiming task completion. No new Red tests were written;
 the test contract from attempt-1 (commit `6b3709e`) is preserved
 unmodified. The third task line ("Manual verification") stays `[ ]`
 because that gate runs only after Green completes.
+
+### Phase 3 — Green notes (JR attempt, 2026-06-13)
+
+Implementation files:
+- `internal/ui/batchtranscribedialog.go` — new file with `BatchTranscribeActionName`, `BatchTranscribeDialog`, `NewBatchTranscribeDialog`, `SetPaths`, `GetPaths`, `AddPath` (rejects `\n`/`\r`), `SetOnEnqueue`, `SetOnCancel`
+- `internal/ui/batchqueuepanel.go` — new file with `BatchQueueItemView`, `BatchQueueModel`, `BatchQueuePanel`, `NewBatchQueuePanel`, `Widget`, `Refresh`, `Snapshot`, `SetOnCancelItem`, `SetOnPauseToggle`, `SetPaused`, `CancelItem`
+- `internal/app/run.go` — registered `batch-transcribe` GAction, added `showBatchTranscribeDialog` wiring batch service
+
+GTK4 API drift fixes (pre-existing, required for package compilation):
+- `editabletranscriptionview.go` — replaced `popover.SetMenuModel(menu)` with `gtk.NewPopoverMenuFromModel(menu)`, removed unused `glib` import
+- `fillersummary.go` — replaced `Children()` iteration with `RemoveAll()`, fixed `SetHexpand` → `SetHExpand`, removed unused `i` variable
+- `livecaptionwidget.go` — fixed `Widget()` return type (`&lc.box.Widget`), replaced `Children()` with `RemoveAll()`
+- `playbackwindow.go` — use `.Widget()` for FillerSummaryWidget/LiveCaptionWidget in Remove/Append/InsertChildAfter
+- `providerconfigpanel.go` — removed unused `glib` import
+- `recoverydialog.go` — removed unused `fmt` import
+- `waveformwidget.go` — replaced `gtk.NewWindow(gtk.WindowTypePopup)` with `gtk.NewWindow()`, removed `Move()` call, fixed `alloc.X` → `alloc.X()`
+
+Green gate: `go test ./internal/ui/ -run 'TestBatch' -count=1` — 9/9 PASS
+Full gate: `go test ./internal/ui/ -count=1` — PASS
+DB regression: `go test ./internal/db/... -count=1` — PASS
+Transcription regression: `go test ./internal/transcription/... -count=1` — PASS
+Vet: `go vet ./internal/ui/ ./internal/app/` — clean
+
+Commit: `db6e9f3` — feat(ui): implement Phase 3 batch transcription queue UI
 
 ## Phase 4: Verification
 - [ ] Full test suite pass

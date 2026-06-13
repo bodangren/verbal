@@ -11,25 +11,7 @@
 - **Embedded video preview requires gstreamer1.0-plugins-bad** - [same as above]
 ### Low Severity
 
-- **`internal/ui` package fails to compile against gotk4 GTK4 API** -
-  Pre-existing GTK4 API drift in committed source files blocks any new
-  test in `internal/ui/` from producing a clean Red signal:
-  - `editabletranscriptionview.go:278` — `popover.SetMenuModel` removed
-    from `*gtk.Popover`; needs `SetMenuModel(menu)` on `*gio.MenuModel`
-    or `SetMenu(menu)`.
-  - `fillersummary.go:184, 188, 203, 257` — `*gtk.ListBox.Children()`
-    removed, `SetHexpand` renamed to `SetHExpand` (case-sensitive),
-    unused `i` declared.
-  - `livecaptionwidget.go:95, 141` — `*gtk.Box` no longer satisfies
-    `*gtk.Widget` in return position; `*gtk.FlowBox.Children()` removed.
-  - `playbackwindow.go:543, 548, 561` — `FillerSummaryWidget` and
-    `LiveCaptionWidget` don't implement `gtk.Widgetter` (missing
-    `FreezeNotify`/`ThawNotify`).
-  This blocks Phase 3 of `batch_transcription_queue_20260509`
-  (2026-06-13) from running its targeted Red command with a clean
-  signal. Tracked separately from this track; should be resolved as a
-  prerequisite to any Phase 3 Green work. [severity: low, tracked:
-  phase-3-batch-queue-red-2026-06-13]
+- **`internal/ui` package fails to compile against gotk4 GTK4 API** - [resolved: 2026-06-13 - Fixed all GTK4 API drift: SetMenuModel → NewPopoverMenuFromModel, Children() → RemoveAll(), SetHexpand → SetHExpand, WindowTypePopup → NewWindow(), alloc.X → alloc.X(), unused imports removed. Package compiles and all tests pass.]
 
 - **Widget Pool Index Mapping** - When implementing highlighting in virtualized containers, track the pool slot index (poolIdx), not the word index. Calculate poolIdx = wordIndex - startIdx based on current scroll position. [severity: low]
 - **WaveformWidget tooltip positioning** - [resolved: 2026-05-08 - ShowTooltip now uses translateToScreen() to convert widget coords to screen coords and calls Move() to position tooltip at cursor location. Removed SetHAlign/SetVAlign which interfered with manual positioning.] [severity: low]
