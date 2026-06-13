@@ -106,7 +106,7 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 - Targeted Red command runs in **0.087 s** (bounded, full media package intentionally NOT run).
 - `go vet ./internal/media` clean; `go build ./internal/media` clean.
 
-**Red state-machine test (recorded 2026-06-14, mid role Red phase close-out):**
+**Red state-machine test (recorded 2026-06-14, mid role Red phase close-out):** — `fe771b1`
 - Added `TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying` per test-strategy §1 (Phase 2 pyramid: "state-machine table tests with mock bus"). Pins the contract that `Play()` transitions the pipeline state from `StateStopped` to `StatePlaying`. The STUB returns `nil` from `Play()` but does not mutate `GetState()`, so the test fails on the STUB and passes only when the Green role wires `pipeline.SetState(gst.StatePlaying)` on `Play()`.
 - Updated targeted Red command result:
   - **13 FAIL** (was 12) at top level; the new FAIL is `TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying` on `GetState() == StatePlaying` after `Play()`.
