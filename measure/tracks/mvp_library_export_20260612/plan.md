@@ -742,7 +742,175 @@ The Phase 3 Green implementation satisfies all three tasks:
 ## Phase 4: UI Wiring
 
 ### Red
-- [ ] Write failing tests that controller routes export/delete intents to services.
+- [~] Write failing tests that controller routes export/delete intents to services.
+
+**Red-phase state (mid, attempt 2, post supervisor re-entry):**
+
+The prior `mid-attempt-1` invocation ran out of output tokens during the
+exploratory thinking phase and committed nothing (HEAD did not advance;
+Phase 4 Red task remained `[ ]`). This attempt lands the Red contract
+cleanly: one new test file
+(`internal/app/controller_export_test.go`) plus a `plan.md` marker flip.
+
+**New file:** `internal/app/controller_export_test.go` — 10 tests
+covering the Phase 4 contract (test-strategy §5 P4, §6, §7):
+
+- **Interfaces (test-local dependency shapes):**
+  - `Exporter` — `Export(ctx, src, dest, progress func(float64, string)) error`
+  - `RecordingDeleter` — `Delete(id int64) error`
+
+- **Fakes:**
+  - `fakeExporter` — records ctx, srcPath, destPath, progress callback
+    and call count; returns a pre-canned error.
+  - `fakeDeleter` — records recID and call count; returns a pre-canned
+    error.
+
+- **Adapter:**
+  - `mediaExporterAdapter` — wraps `*media.Exporter` to satisfy the
+    `Exporter` interface. `*media.Exporter.Export` uses the unexported
+    `media.progressFunc` type, so direct interface satisfaction is not
+    possible. The adapter bridges the gap via implicit conversion
+    (`func(float64, string)` → `progressFunc` at the call site; same
+    underlying type, per Go assignability rules).
+
+- **No-op:**
+  - `noopExporter` — satisfies `Exporter` by doing nothing. Used by
+    delete tests that don't exercise the export path.
+
+- **Helpers:**
+  - `newTestControllerWithDeps(t, exporter, deleter)` — constructs a
+    real `*db.Database` and `*Controller` and wires the test doubles
+    via the STUB setters below.
+  - `makeTestRecording(t, database, filePath)` — inserts a `*db.Recording`
+    with a fixed 5s duration and `"pending"` status (matching the
+    service-layer default in `service.go`).
+
+- **Routing tests (7, all `t.Skip`-guarded per test-strategy §8):**
+  1. `TestController_ExportRecording_RoutesToExporter` — fake records
+     call; asserts `callCount == 1`.
+  2. `TestController_ExportRecording_PassesSrcPathFromRecording` —
+     asserts the exporter's `lastSrcPath` equals `rec.FilePath`.
+  3. `TestController_ExportRecording_PassesDestPathThrough` — asserts
+     the exporter's `lastDestPath` equals the controller's `destPath`.
+  4. `TestController_ExportRecording_PropagatesExporterError` — fake
+     returns a sentinel error; asserts `errors.Is` wraps it.
+  5. `TestController_ExportRecording_UnknownRecordingReturnsError` —
+     asserts error and `callCount == 0` (recording lookup must fail
+     first, before the exporter is invoked).
+  6. `TestController_DeleteRecording_RoutesToDeleter` — fake records
+     call; asserts `callCount == 1` and `lastID == rec.ID`.
+  7. `TestController_DeleteRecording_PropagatesDeleterError` — fake
+     returns a sentinel error; asserts `errors.Is` wraps it.
+
+- **Live gates (3, NOT `t.Skip`-guarded; MUST fail during Red):**
+  1. `TestSmoke_ControllerExportLive` — constructs a real
+     `*media.Exporter` (via the adapter), a real `*db.Database`, a 1 KiB
+     source file, and calls `Controller.ExportRecording`. Asserts the
+     dest file exists and matches the source byte-for-byte. Per
+     test-strategy §6, this is the bounded smoke test that prevents a
+     fake from silently shadowing the real production path. The name
+     starts with `TestSmoke_` and the test is NOT excluded from
+     `go test ./...`.
+  2. `TestController_DeleteRecording_RemoveMediaFileTrue_RemovesBoth`
+     — creates a real media file, inserts a recording, calls
+     `DeleteRecording(recID, true)`, asserts both the DB row and the
+     media file are gone.
+  3. `TestController_DeleteRecording_RemoveMediaFileFalse_LeavesFile`
+     — creates a real media file, inserts a recording, calls
+     `DeleteRecording(recID, false)`, asserts the DB row is gone but
+     the media file remains.
+
+- **STUB block (clearly marked at the bottom of the file):**
+  - `setTestExporter(c, e)` / `setTestDeleter(c, d)` — store the test
+    doubles in package-level maps (intentionally unused by the STUB
+    methods below).
+  - `(*Controller).ExportRecording(ctx, recID, destPath, progress) error`
+    — STUB returns `nil` without invoking the exporter. Documented
+    Green-phase requirement: look up the recording via the database
+    (returning an error for unknown IDs) and call
+    `c.exporter.Export(ctx, rec.FilePath, destPath, progress)`.
+  - `(*Controller).DeleteRecording(recID, removeMediaFile) error` —
+    STUB returns `nil` without invoking the deleter or touching the
+    filesystem. Documented Green-phase requirement: call
+    `c.recordingSvc.Delete(recID)` and, when `removeMediaFile` is true,
+    additionally remove the media file at `rec.FilePath` from disk.
+
+**Targeted Red command (count=1, cache busted):**
+
+```bash
+go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_ControllerExportLive' ./internal/app/ -v
+```
+
+**Result on this attempt:**
+
+- 7 routing tests: SKIP (each `t.Skip` fires; expected per test-strategy
+  §8 mid-task convention).
+- 3 live gates: FAIL with the expected "current implementation is
+  wrong" reasons:
+  1. `TestSmoke_ControllerExportLive` — `ReadFile dest: open
+     /tmp/.../dest.bin: no such file or directory` (STUB did not copy).
+  2. `TestController_DeleteRecording_RemoveMediaFileTrue_RemovesBoth`
+     — `recording should be removed from DB` AND `media file should be
+     removed, stat error = <nil>` (STUB did nothing).
+  3. `TestController_DeleteRecording_RemoveMediaFileFalse_LeavesFile`
+     — `recording should be removed from DB` (STUB did nothing; file
+     correctly still exists, which is the "leaves file" branch).
+
+**Aggregate gate for the package:**
+
+```bash
+go test -count=1 ./internal/app/
+```
+
+→ `FAIL verbal/internal/app 1.337s` (3 FAIL from the live gates, 7 SKIP
+from the routing tests, 0 unexpected regressions in the pre-existing
+`controller_test.go` / `open_load_test.go` / `run_test.go`).
+
+The 3 live-gate failures collectively prove the contract is real and
+testable. The 7 skip-guarded routing tests document the full routing
+contract (which arguments the Controller must pass to the exporter and
+deleter) and will be unskipped in the Green-phase commit.
+
+**Red-phase boundary:**
+
+- Only `internal/app/controller_export_test.go` (a new test file) and
+  `measure/tracks/mvp_library_export_20260612/plan.md` (a Measure doc)
+  are touched in this attempt.
+- No existing source code (`controller.go`, `run.go`, `exporter.go`,
+  `repository.go`, etc.) is modified.
+- No production code is added or removed.
+- The STUB `ExportRecording` and `DeleteRecording` methods on
+  `*Controller` are defined inside the `_test.go` file and are therefore
+  compiled into the test binary only; they do not appear in
+  `go build ./...` output. The `go build ./...` aggregate remains green.
+
+**Green-phase handoff (single commit per workflow §3-4 + test-strategy
+§8):**
+
+The next role MUST, in one commit:
+1. delete the entire STUB block at the bottom of
+   `internal/app/controller_export_test.go` (the package-level maps,
+   the `setTestExporter` / `setTestDeleter` helpers, and the STUB
+   `ExportRecording` / `DeleteRecording` methods);
+2. remove every `t.Skip` guard in the routing tests above;
+3. add a real `WithExporter(Exporter) *Controller` and
+   `WithRecordingDeleter(RecordingDeleter) *Controller` setter (or
+   equivalent injection mechanism) on `*Controller`;
+4. add a real `exporter Exporter` and `recordingDeleter RecordingDeleter`
+   field on `*Controller` (modifying `controller.go` is allowed for the
+   Green role);
+5. add the real `(*Controller).ExportRecording(ctx, recID, destPath,
+   progress) error` method that looks up the recording via the database
+   (returning an error for unknown IDs) and calls
+   `c.exporter.Export(ctx, rec.FilePath, destPath, progress)`;
+6. add the real `(*Controller).DeleteRecording(recID, removeMediaFile)
+   error` method that calls `c.recordingDeleter.Delete(recID)` and, when
+   `removeMediaFile` is true, additionally removes the media file at
+   `rec.FilePath` from disk;
+7. update `newTestControllerWithDeps` in the test file to call the real
+   setters (`ctrl.WithExporter(exporter)`,
+   `ctrl.WithRecordingDeleter(deleter)`) instead of
+   `setTestExporter` / `setTestDeleter`.
 
 ### Green
 - [ ] Add "Export" and "Delete" actions to the app controller.
