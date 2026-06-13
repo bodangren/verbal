@@ -181,11 +181,9 @@ func (w *FillerSummaryWidget) UpdateWithFillers(fillers []*filler.FillerWord) {
 
 	w.removeAllButton.SetSensitive(len(fillers) > 0)
 
-	for _, child := range w.fillerList.Children() {
-		w.fillerList.Remove(child)
-	}
+	w.fillerList.RemoveAll()
 
-	for i, f := range fillers {
+	for _, f := range fillers {
 		row := gtk.NewListBoxRow()
 		rowBox := gtk.NewBox(gtk.OrientationHorizontal, 8)
 		rowBox.SetMarginStart(8)
@@ -200,7 +198,7 @@ func (w *FillerSummaryWidget) UpdateWithFillers(fillers []*filler.FillerWord) {
 
 		textLabel := gtk.NewLabel(fmt.Sprintf(`"%s"`, f.Text))
 		textLabel.SetHAlign(gtk.AlignStart)
-		textLabel.SetHexpand(true)
+		textLabel.SetHExpand(true)
 
 		timeLabel := gtk.NewLabel(fmt.Sprintf("%.1fs-%.1fs", f.Start, f.End))
 		timeLabel.AddCSSClass("text-secondary")
@@ -254,7 +252,5 @@ func (w *FillerSummaryWidget) Clear() {
 	w.totalCount.SetText("0 total")
 	w.removeAllButton.SetSensitive(false)
 
-	for _, child := range w.fillerList.Children() {
-		w.fillerList.Remove(child)
-	}
+	w.fillerList.RemoveAll()
 }

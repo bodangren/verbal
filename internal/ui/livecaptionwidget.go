@@ -92,7 +92,7 @@ func NewLiveCaptionWidget() *LiveCaptionWidget {
 func (lc *LiveCaptionWidget) Widget() *gtk.Widget {
 	lc.mu.RLock()
 	defer lc.mu.RUnlock()
-	return lc.box
+	return &lc.box.Widget
 }
 
 func (lc *LiveCaptionWidget) Show() {
@@ -138,9 +138,7 @@ func (lc *LiveCaptionWidget) Clear() {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	for _, child := range lc.wordFlowBox.Children() {
-		lc.wordFlowBox.Remove(child)
-	}
+	lc.wordFlowBox.RemoveAll()
 	lc.words = make([]ai.Word, 0)
 	lc.currentWord = 0
 }

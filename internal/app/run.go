@@ -22,6 +22,7 @@ import (
 	"verbal/internal/sync"
 	"verbal/internal/thumbnail"
 	"verbal/internal/transcription"
+	"verbal/internal/transcription/batch"
 	"verbal/internal/ui"
 
 	"github.com/OmegaRogue/gotk4-gstreamer/pkg/gst"
@@ -73,6 +74,9 @@ type appState struct {
 	// Real-time transcription
 	recordingTranscriber *realtime.RecordingTranscriber
 	liveCaptionWidget    *ui.LiveCaptionWidget
+
+	// Batch transcription
+	batchSvc *batch.Service
 }
 
 // runGTKApp starts the GTK application using services owned by the controller.
@@ -374,6 +378,13 @@ func setupFileMenu(app *gtk.Application, window *adw.ApplicationWindow, state *a
 	})
 	app.AddAction(transcribeAction)
 	app.SetAccelsForAction("app.transcribe", []string{"<Ctrl>t"})
+
+	// Batch transcribe action
+	batchTranscribeAction := gio.NewSimpleAction(ui.BatchTranscribeActionName, nil)
+	batchTranscribeAction.ConnectActivate(func(_ *glib.Variant) {
+		showBatchTranscribeDialog(window, state)
+	})
+	app.AddAction(batchTranscribeAction)
 
 	// Settings/Preferences action
 	settingsAction := gio.NewSimpleAction("preferences", nil)
@@ -1243,6 +1254,52 @@ func (a *fillerRecordingAdapter) GetByID(id int64) (filler.Recording, error) {
 		FilePath:          rec.FilePath,
 		TranscriptionJSON: rec.TranscriptionJSON,
 	}, nil
+}
+
+// showBatchTranscribeDialog shows the batch transcribe dialog for
+// selecting multiple files to enqueue for batch transcription.
+func showBatchTranscribeDialog(window *adw.ApplicationWindow, state *appState) {
+	if state.db == nil {
+		return
+	}
+
+	dialog := ui.NewBatchTranscribeDialog(&window.Window)
+
+	dialog.SetOnEnqueue(func(paths []string) {
+		queueRepo := state.db.BatchQueueRepo()
+		for _, p := range paths {
+			if _, err := queueRepo.Enqueue(p); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to enqueue %s: %v\n", p, err)
+			}
+		}
+
+		// Start batch processing if not already running
+		if state.batchSvc == nil {
+			provider, providerErr := ai.NewProviderFromEnv()
+			if providerErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: No AI provider configured: %v\n", providerErr)
+				return
+			}
+			transcriptionSvc := transcription.NewService(provider)
+			state.batchSvc = batch.NewService(queueRepo, transcriptionSvc, state.recordingSvc)
+			state.batchSvc.SetProgressCallback(func(event batch.ProgressEvent) {
+				glib.IdleAdd(func() {
+					// Progress events are handled by the queue panel
+				})
+			})
+			go func() {
+				if err := state.batchSvc.Run(context.Background()); err != nil {
+					fmt.Fprintf(os.Stderr, "Batch transcription error: %v\n", err)
+				}
+			}()
+		}
+	})
+
+	dialog.SetOnCancel(func() {
+		// Nothing to do on cancel
+	})
+
+	dialog.Show()
 }
 
 // showBackupSettingsDialog shows the backup settings dialog

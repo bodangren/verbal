@@ -540,12 +540,12 @@ func (pw *PlaybackWindow) GenerateWaveform(filePath string, generator interface 
 // The widget is added at the bottom of the right pane, below the transcription.
 func (pw *PlaybackWindow) SetFillerSummaryWidget(widget *FillerSummaryWidget) {
 	if pw.fillerSummaryWidget != nil {
-		pw.rightPane.Remove(pw.fillerSummaryWidget)
+		pw.rightPane.Remove(pw.fillerSummaryWidget.Widget())
 	}
 
 	pw.fillerSummaryWidget = widget
 	if widget != nil {
-		pw.rightPane.Append(widget)
+		pw.rightPane.Append(widget.Widget())
 	}
 }
 
@@ -558,12 +558,12 @@ func (pw *PlaybackWindow) GetFillerSummaryWidget() *FillerSummaryWidget {
 // The widget is added at the top of the right pane, above the waveform.
 func (pw *PlaybackWindow) SetLiveCaptionWidget(widget *LiveCaptionWidget) {
 	if pw.liveCaptionWidget != nil {
-		pw.rightPane.Remove(pw.liveCaptionWidget)
+		pw.rightPane.Remove(pw.liveCaptionWidget.Widget())
 	}
 
 	pw.liveCaptionWidget = widget
 	if widget != nil {
-		pw.rightPane.InsertChildAfter(widget, pw.loadingLabel)
+		pw.rightPane.InsertChildAfter(widget.Widget(), pw.loadingLabel)
 	}
 }
 

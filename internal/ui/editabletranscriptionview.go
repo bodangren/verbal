@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
-	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/ai"
 )
@@ -274,8 +273,7 @@ func (v *EditableTranscriptionView) ShowContextMenu(wordIndex int, wordText stri
 	menu.AppendItem(deleteSentenceItem)
 	menu.AppendItem(splitItem)
 
-	popover := gtk.NewPopover()
-	popover.SetMenuModel(menu)
+	popover := gtk.NewPopoverMenuFromModel(menu)
 	popover.SetHasArrow(true)
 	popover.Popup()
 }

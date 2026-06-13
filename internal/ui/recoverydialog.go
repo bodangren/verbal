@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
