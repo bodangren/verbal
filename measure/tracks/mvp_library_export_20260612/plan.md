@@ -515,12 +515,12 @@ Full gate: `make go-check` → **18/18 packages green**.
 - [x] Write failing tests for `media.Exporter`: copies source file to destination with progress.
 
 ### Green
-- [x] Implement `internal/media/exporter.go`.
-- [x] Use buffered copy with progress callback.
-- [x] Make tests pass.
+- [x] Implement `internal/media/exporter.go`. (c9ac564)
+- [x] Use buffered copy with progress callback. (c9ac564)
+- [x] Make tests pass. (c9ac564)
 
 ### Refactor
-- [x] Commit: `feat(media): Add original file exporter`
+- [x] Commit: `feat(media): Add original file exporter` (c9ac564)
 
 **Red-phase state (mid, attempt 1):**
 
