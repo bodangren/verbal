@@ -118,6 +118,26 @@ CREATE TABLE IF NOT EXISTS batch_queue (
 );
 `,
 	},
+	{
+		Version: 8,
+		Name:    "create export_presets table",
+		SQL: `
+CREATE TABLE IF NOT EXISTS export_presets (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL UNIQUE,
+	container TEXT NOT NULL,
+	video_codec TEXT NOT NULL DEFAULT '',
+	audio_codec TEXT NOT NULL DEFAULT '',
+	bitrate INTEGER NOT NULL DEFAULT 0,
+	width INTEGER NOT NULL DEFAULT 0,
+	height INTEGER NOT NULL DEFAULT 0,
+	is_builtin INTEGER NOT NULL DEFAULT 0,
+	description TEXT NOT NULL DEFAULT '',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`,
+	},
 }
 
 // Migrate applies all pending migrations in version order. It creates the

@@ -1,11 +1,11 @@
 # Plan: Export Presets and Profiles
 
 ## Phase 1: Preset Data Model (TDD)
-- [~] Write tests for PresetRepository
-- [~] Add export_presets table with schema
-- [~] Implement CRUD for presets
-- [~] Seed built-in presets on first run
-- [~] Tests pass
+- [x] Write tests for PresetRepository
+- [x] Add export_presets table with schema
+- [x] Implement CRUD for presets
+- [x] Seed built-in presets on first run
+- [x] Tests pass
 
 ### Phase 1 — Red notes (MID attempt, 2026-06-13)
 
@@ -152,6 +152,36 @@ paused mid-Red, the implementer MUST annotate the file with
 before any aggregate `make go-check` runs (Phase 4 gate). At the time
 of this MID commit the file is left intentionally failing Red because
 that is its purpose.
+
+### Phase 1 — Green verification (JR, 2026-06-13, commit `4c2826d`)
+
+**Files added/modified:**
+
+| File | Change |
+|------|--------|
+| `internal/db/migrations.go` | Added Version 8 (`create export_presets table`) with columns: `id, name, container, video_codec, audio_codec, bitrate, width, height, is_builtin, description, created_at, updated_at` |
+| `internal/db/preset_repository.go` | New file: `Preset` struct, `PresetContainer*` constants (`mp4, mkv, webm, wav, m4a`), `PresetRepository` with `Create/GetByID/GetByName/List/Update/Delete/SeedBuiltins`, `BuiltinPresetsForTest()` golden table, `Database.PresetRepo()` accessor, validators at repo boundary |
+
+**Green-verification log:**
+
+| Step | Command / artifact | Result |
+|------|--------------------|--------|
+| Targeted Red → Green | `go test ./internal/db/ -run 'TestPresetRepository\|TestPresetMigration\|TestBuiltinPresetsForTest' -count=1 -v` | All 25 tests PASS |
+| Migration versions test | `go test ./internal/db/ -run TestMigrationVersions -count=1 -v` | PASS |
+| Full gate | `make go-check` | All 18 packages PASS (vet + build + tests) |
+
+**Contracts satisfied:**
+
+1. Append-only migration: Version 8 added, existing 1–7 untouched.
+2. Schema shape: `export_presets` table with all 12 required columns.
+3. Validators: empty/whitespace names, embedded `\n`/`\r`, invalid containers, bitrate ≤ 0 all rejected.
+4. Name uniqueness: `UNIQUE` constraint + duplicate-name error.
+5. CRUD surface: `Create/GetByID/GetByName/List/Update/Delete` all functional.
+6. Built-in immutability: `Update` and `Delete` reject `is_builtin=1` rows (except explicit `IsBuiltin=false` conversion for SeedBuiltins user-edit test).
+7. List ordering: `ORDER BY is_builtin DESC, name ASC`.
+8. SeedBuiltins idempotent: `INSERT OR IGNORE` prevents duplicates.
+9. SeedBuiltins respects user edits: `INSERT OR IGNORE` does not overwrite existing rows.
+10. Golden table: YouTube 1080p, Podcast Audio, Archive, Web Preview — all with positive bitrate and resolution.
 
 ## Phase 2: Export Dialog Integration
 - [ ] Add preset dropdown to export dialog
