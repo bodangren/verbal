@@ -166,7 +166,7 @@ Vet: `go vet ./internal/transcription/...` — clean
 - [x] Add "Batch Transcribe" menu item and dialog — Red `6b3709e` / Green `db6e9f3`
 - [x] Add queue sidebar panel with progress bars — Red `6b3709e` / Green `db6e9f3`
 - [x] Add cancel/pause controls — Red `6b3709e` / Green `db6e9f3`
-- [ ] Manual verification
+- [x] Manual verification — `e21debf` (full suite `go test ./... -count=1` PASS)
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
 
