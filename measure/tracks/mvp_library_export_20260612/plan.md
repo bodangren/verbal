@@ -512,7 +512,7 @@ Full gate: `make go-check` → **18/18 packages green**.
 ## Phase 3: Original Export
 
 ### Red
-- [x] Write failing tests for `media.Exporter`: copies source file to destination with progress.
+- [x] Write failing tests for `media.Exporter`: copies source file to destination with progress. (06ec276)
 
 ### Green
 - [x] Implement `internal/media/exporter.go`. (c9ac564)
