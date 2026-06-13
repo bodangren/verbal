@@ -163,9 +163,9 @@ DB regression: `go test ./internal/db/... -count=1` — PASS
 Vet: `go vet ./internal/transcription/...` — clean
 
 ## Phase 3: UI Integration
-- [x] Add "Batch Transcribe" menu item and dialog — `6b3709e` (Red contract committed)
-- [x] Add queue sidebar panel with progress bars — `6b3709e` (Red contract committed)
-- [x] Add cancel/pause controls — `6b3709e` (Red contract committed)
+- [~] Add "Batch Transcribe" menu item and dialog — Red `6b3709e` (Green pending: implement BatchTranscribeDialog + action wiring)
+- [~] Add queue sidebar panel with progress bars — Red `6b3709e` (Green pending: implement BatchQueuePanel + BatchQueueModel)
+- [~] Add cancel/pause controls — Red `6b3709e` (Green pending: implement CancelItem/SetPaused + callbacks)
 - [ ] Manual verification
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
@@ -321,6 +321,21 @@ proceed. The Red contract is intentionally committed now so that the
 next role has a fixed target to implement against; the GTK4 drift
 is a separate, pre-existing tech-debt item that should be tracked
 in `measure/tech-debt.md` rather than fixed in this Red-only pass.
+
+#### Status note (MID-attempt-2, 2026-06-13)
+
+Supervisor gate flagged that attempt-1 marked the three Phase 3
+implementation tasks as `[x]` after Red-only work; this is incorrect
+because the Green implementation has not been written yet — only the
+Red tests are committed. Per the workflow's task lifecycle, tasks
+remain `[~]` until the work that satisfies the task is complete. Fixed
+in this attempt by reverting the three implementation tasks from `[x]`
+back to `[~]` and appending a `Red 6b3709e (Green pending: …)` note
+on each line so the Red commit SHA stays visible for traceability
+without claiming task completion. No new Red tests were written;
+the test contract from attempt-1 (commit `6b3709e`) is preserved
+unmodified. The third task line ("Manual verification") stays `[ ]`
+because that gate runs only after Green completes.
 
 ## Phase 4: Verification
 - [ ] Full test suite pass
