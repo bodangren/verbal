@@ -914,8 +914,8 @@ The next role MUST, in one commit:
 
 ### Green
 - [x] Add "Export" and "Delete" actions to the app controller. (43c52ef)
-- [x] Add export file chooser dialog. (deferred — file chooser is a UI-layer concern; controller API is ready)
-- [x] Add delete confirmation dialog. (deferred — confirmation dialog is a UI-layer concern; controller API is ready)
+- [ ] Add export file chooser dialog. (deferred to UI layer — controller API ExportRecording is ready at 43c52ef)
+- [ ] Add delete confirmation dialog. (deferred to UI layer — controller API DeleteRecording is ready at 43c52ef)
 - [x] Make tests pass. (43c52ef — 10/10 PASS: 7 routing + 3 live gates)
 
 ### Refactor
@@ -958,8 +958,8 @@ The Phase 4 Green implementation satisfies all four tasks:
   delete confirmation dialog" are UI-layer concerns (GTK file chooser,
   confirmation dialog widgets) that belong in the UI package, not the
   controller. The controller API (`ExportRecording`, `DeleteRecording`)
-  is ready for the UI to call. These tasks are marked `[x]` with a
-  deferral note.
+  is ready for the UI to call. These tasks remain `[ ]` — no dialog
+  code was committed; the controller API at 43c52ef is the prerequisite.
 
 - **build-graph note:** `graph.db` exists but is TS-only per
   test-strategy §0. Graph-Aware Mode not applicable to this Go project.
@@ -970,18 +970,20 @@ The Phase 4 Green implementation satisfies all four tasks:
   callers to break. `ExportRecording` and `DeleteRecording` are new
   methods on `*Controller`. No signature changes to existing code.
 
-- **`npm test` gate note (jr, attempt 2):** The supervisor's
-  `GREEN_TEST_COMMAND` (`npm test` → `go test ./... -count=1`) failed
-  because `TestAutoSaveService_MultipleProjects` in `internal/db`
-  (`autosave_service_test.go:167`) returned a spurious
-  `sql: no rows in result set` error. This is a pre-existing flaky
-  test unrelated to Phase 4 — confirmed by a clean re-run:
-  `go test -count=1 -run TestAutoSaveService_MultipleProjects ./internal/db/`
-  → PASS. The targeted Phase 4 gate (`go test -count=1 -run
+- **`npm test` gate notes (pre-existing flaky tests):**
+  - **Attempt 1:** `TestAutoSaveService_MultipleProjects` in
+    `internal/db` (`autosave_service_test.go:167`) — `sql: no rows in
+    result set`. Passes on re-run.
+  - **Attempt 2:** `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites`
+    in `internal/lifecycle` (`backup_manager_test.go:662`) —
+    `SQLITE_BUSY`. Passes on re-run. Already documented in Phase 1
+    notes as a known flaky test.
+  Both are pre-existing flaky tests unrelated to Phase 4. The targeted
+  Phase 4 gate (`go test -count=1 -run
   'TestController_(Export|Delete)|TestSmoke_ControllerExportLive'
-  ./internal/app/`) remains green (10/10 PASS). The `make go-check`
-  full gate also remains green (18/18 packages). The flaky test is
-  not owned by this track or phase.
+  ./internal/app/`) remains green (10/10 PASS). `make go-check`
+  remains green (18/18 packages). The flaky tests are not owned by
+  this track or phase.
 
 ---
 
