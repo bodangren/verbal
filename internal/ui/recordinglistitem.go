@@ -285,10 +285,12 @@ func formatDuration(d time.Duration) string {
 // formatStatus returns a human-readable status string.
 func formatStatus(status string) string {
 	switch status {
+	case "pending":
+		return "New"
+	case "in_progress":
+		return "Transcribing"
 	case "completed":
 		return "Transcribed"
-	case "pending":
-		return "Pending"
 	case "error":
 		return "Error"
 	default:

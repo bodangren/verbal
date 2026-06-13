@@ -8,6 +8,21 @@ import (
 	"verbal/internal/db"
 )
 
+func TestRecordingListItem_FormatStatus_MatchesSpecVocabulary(t *testing.T) {
+	cases := map[string]string{
+		"pending":     "New",
+		"in_progress": "Transcribing",
+		"completed":   "Transcribed",
+		"error":       "Error",
+	}
+
+	for input, want := range cases {
+		if got := formatStatus(input); got != want {
+			t.Errorf("formatStatus(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestLibraryView_New(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 		t.Skip("No display available")
