@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "summary": "Adversarial audit found and fixed FR2 status-label drift; export/delete/path gates remain green, make check passes, and no blocking findings remain. npm test could not execute because npm is not installed on PATH, but its package script body is go test ./... -count=1 and make check ran that successfully.",
+  "findings": [],
+  "evidence": [
+    "Read measure/tracks/mvp_library_export_20260612/spec.md, plan.md, and test-strategy.md",
+    "Inspected tracked diff since f1333a63e9c24c10b7d9721bc91c1b5dc3b8b432",
+    "Added internal/ui/libraryview_test.go: TestRecordingListItem_FormatStatus_MatchesSpecVocabulary",
+    "Fixed internal/ui/recordinglistitem.go formatStatus mapping: pending -> New, in_progress -> Transcribing, completed -> Transcribed, error -> Error",
+    "go test -count=1 -run TestRecordingListItem_FormatStatus_MatchesSpecVocabulary ./internal/ui/ PASS",
+    "go test -count=1 -run 'TestRecordingListItem_FormatStatus|TestLibraryView|TestExporter|TestController_(Export|Delete)|TestSmoke_Controller|TestPaths|TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_(List|Delete|Update|ListByStatus)' ./internal/db ./internal/ui ./internal/media ./internal/app ./internal/settings PASS",
+    "make check PASS: go vet ./..., go build ./..., go test ./... -count=1 all green",
+    "npm test attempted twice; failed before running tests with /bin/bash: npm: command not found",
+    "Committed a22d48a fix(ui): Match recording status labels to spec",
+    "Committed 7aefac5 docs(measure): Record adversarial status label fix"
+  ]
+}

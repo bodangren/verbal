@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "summary": "Phase 4 UI Wiring is complete. Controller ExportRecording and DeleteRecording methods are implemented with proper dependency injection (WithExporter/WithRecordingDeleter), error propagation, and fallback paths. All 10 targeted tests pass (7 routing + 3 live gates). Full make go-check is 18/18 green. No t.Skip guards, no STUB blocks, no intentionally-red tests, no fake-harness masking. Two dialog tasks deferred to UI layer with explicit documentation and test-strategy support.",
+  "findings": [],
+  "evidence": [
+    "go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_ControllerExportLive' ./internal/app/ -v => 10 PASS, 0 FAIL, 0 SKIP",
+    "go test -count=1 ./internal/app/ -v => 25 PASS (full package suite)",
+    "make go-check => 18/18 packages green (go vet + go build + go test ./... -count=1)",
+    "internal/app/controller.go:170-212 — ExportRecording and DeleteRecording with error handling and fallback",
+    "internal/app/controller_export_test.go — 10 tests, no t.Skip guards, no STUB block",
+    "TestSmoke_ControllerExportLive uses real media.Exporter via mediaExporterAdapter (no fake masking)",
+    "TestController_DeleteRecording_RemoveMediaFileTrue/False exercise real filesystem operations",
+    "git diff 94bd8ed..HEAD: 3 files changed (controller.go +81/-9, controller_export_test.go +368, plan.md +244)",
+    "Commit SHAs verified: bb89cc1 (Red), 43c52ef (Green/Refactor) match plan.md task markers",
+    "build-graph skipped: Go project, TS-only tool per test-strategy.md §0"
+  ]
+}

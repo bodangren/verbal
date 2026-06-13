@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "summary": "Phase 1 Library Repository passes acceptance. All 8 targeted RecordingStatus/ListByStatus tests pass against real SQLite. Full make go-check green (18/18 packages). No t.Skip guards, no stub blocks, no fake-harness masking. Commit SHAs in plan.md (ef7dcc0 Red, 8ead24d Green) verified. One non-blocking finding: spec FR2 names status values as New|Transcribing|Transcribed|Error but implementation uses pending|in_progress|completed|error, matching pre-existing codebase conventions (migration DEFAULT, service layer, all prior tests). Spec should be updated to reflect established convention.",
+  "findings": [
+    "Spec FR2 / test-strategy §3 define status enum as New|Transcribing|Transcribed|Error, but implementation uses pending|in_progress|completed|error. Implementation is internally consistent and matches pre-existing migration DEFAULT ('pending'), RecordingService, and all existing test fixtures. Not blocking — spec drift, not a bug. Recommend updating spec FR2 and test-strategy §3 to match."
+  ],
+  "evidence": [
+    "go test -count=1 -v -run 'TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/ → 8 PASS, 0 FAIL, 0 SKIP",
+    "go test -count=1 ./internal/db/ → ok verbal/internal/db (10.840s)",
+    "make go-check → 18/18 packages green (go vet, go build, go test ./... -count=1)",
+    "rg 't\\.Skip|STUB|stub|TODO|FIXME|HACK' internal/db/recording_status_test.go → no matches",
+    "git show --stat ef7dcc0 → test(db): add Phase 1 Red contract (288-line test file + plan.md)",
+    "git show --stat 8ead24d → feat(db): implement RecordingStatus type (recording_status.go +41, recording_status_test.go -71 net, repository.go +22)",
+    "git log --oneline 8ead24d..HEAD → 2 commits (docs + graph.db only, no code changes)",
+    "internal/db/recording_status.go:41 lines — typed RecordingStatus enum, IsValid, ValidRecordingStatuses, ValidateRecordingStatus",
+    "internal/db/repository.go:325-342 — ListByStatus validates input, queries with ORDER BY created_at DESC, uses shared scanRecordings",
+    "internal/db/recording_status_test.go:220 lines — 8 tests covering truth table, constants, validation, completeness, happy path, ordering, invalid-arg, empty-table",
+    "internal/db/migrations.go:32 — DEFAULT 'pending' confirms pre-existing convention",
+    "Untracked files (repository_edge_test.go, service_edge_test.go, settings_edge_test.go, thumbnail_edge_test.go, livecaptionwidget_test.go) do not reference RecordingStatus or ListByStatus"
+  ]
+}

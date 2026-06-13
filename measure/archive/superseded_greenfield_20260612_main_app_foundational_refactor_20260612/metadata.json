@@ -1,0 +1,9 @@
+{
+  "id": "main_app_foundational_refactor_20260612",
+  "type": "chore",
+  "title": "Main Application Foundational Refactor",
+  "status": "in_progress",
+  "created": "2026-06-12",
+  "started": "2026-06-12",
+  "focus": "Refactor cmd/verbal/main.go from a 1,479-line God object into a maintainable application architecture with an internal/app controller, presenter layer, standardized async contracts, consolidated media pipeline, and cleaner package boundaries."
+}

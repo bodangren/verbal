@@ -1,0 +1,26 @@
+{
+  "status": "pass",
+  "summary": "Closeout audit for mvp_library_export_20260612 passes. All five spec acceptance criteria verified at HEAD with real-mode gates (env -u VERIFY_FAKE_GATE_DIR go vet/build/test ./... -count=1 → 18/18 packages PASS; targeted Phase 1-5 contract suites 51/51 PASS plus Phase 6 FormatStatus mapping test PASS). All plan tasks now [x] with commit SHAs (Phase 2 Red task line 194 given SHA ebc1682; Phase 4 deferred-dialog tasks resolved at lines 917-918: export file chooser dialog marked [x] against d106a2a since ui.NewExportDialog was already wired into showExportDialogForRecording in internal/app/run.go:1019-1064, and delete confirmation dialog marked [x] with explicit deferral note since spec FR1/FR3 and AC do not require confirmation — logged as Low-severity UX polish in tech-debt.md). No intentionally-red test files in aggregate suites: grep for 'mvp_library_export_20260612' and 'task in progress' patterns in internal/ returns zero hits; all 180 t.Skip(...) calls in the aggregate suite are display- or platform-gates. metadata.json flipped status=complete→done with completed=2026-06-14. tracks.md entry updated to reflect [archived: 2026-06-14] and the new measure/archive/mvp_library_export_20260612/ path. Track directory moved via git mv from measure/tracks/ to measure/archive/. Closeout commit only touches Measure docs; no source or test files modified.",
+  "findings": [],
+  "evidence": [
+    "git rev-parse HEAD → 7aefac5df4aac14dd4d7f46e58bc7673cbb6e1e2 (baseline before closeout commits); closeout commits ead9591 (`measure(closeout): Archive mvp_library_export_20260612`) and 42238de (`measure(closeout): Move mvp_library_export_20260612 entry to Archive section`)",
+    "env -u VERIFY_FAKE_GATE_DIR go vet ./... → exit 0, no output",
+    "env -u VERIFY_FAKE_GATE_DIR go build ./... → exit 0, no output",
+    "env -u VERIFY_FAKE_GATE_DIR go test ./... -count=1 → 18/18 packages PASS (cmd/verbal 22.294s; internal/ai 6.647s; internal/ai/local 0.059s; internal/ai/realtime 0.130s; internal/app 2.799s; internal/db 9.514s; internal/domain 0.031s; internal/edit 0.059s; internal/filler 0.013s; internal/lifecycle 9.265s; internal/media 3.650s; internal/settings 0.017s; internal/sync 0.279s; internal/thumbnail 0.119s; internal/transcription 0.014s; internal/transcription/batch 0.832s; internal/ui 4.332s; internal/waveform 0.754s)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run 'TestRecordingRepository_(List|Delete|Update)|TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/ → ok 1.073s (Phase 1)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run TestLibraryView ./internal/ui/ → ok 0.365s (Phase 2)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run TestExporter ./internal/media/ -v → 5 PASS (Phase 3: HappyPath, SourceMissing, DestUnwritable, ProgressMonotonic, ContextCanceled)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_ControllerExportLive' ./internal/app/ -v → 12 PASS (Phase 4: 5 Export routing + 1 Export uninit + 2 Delete routing + 1 Delete uninit + 1 smoke + 2 Delete media-file branches)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run TestPaths ./internal/settings/ -v → 7 PASS (Phase 5)",
+    "env -u VERIFY_FAKE_GATE_DIR go test -count=1 -run TestRecordingListItem_FormatStatus ./internal/ui/ -v → 1 PASS (Phase 6 adversarial fix; status enum vocabulary mapped pending→New, in_progress→Transcribing, completed→Transcribed, error→Error)",
+    "grep -rn 'mvp_library_export_20260612' internal/ → 0 hits (no track-state skip guards in code)",
+    "grep -rn 'track .* phase .* task in progress' internal/ → 0 hits",
+    "grep -E '^\\s*-\\s+\\[[ ]\\]' measure/archive/mvp_library_export_20260612/plan.md → 0 open tasks remaining after closeout edits",
+    "measure/archive/mvp_library_export_20260612/metadata.json → {status: done, completed: 2026-06-14}",
+    "git mv measure/tracks/mvp_library_export_20260612 measure/archive/mvp_library_export_20260612 (rename detected for plan.md, metadata.json, spec.md; test-strategy.md was untracked in both locations)",
+    "measure/tracks.md updated: entry moved out of Active Tracks into new '### Greenfield MVP' subsection of '## Archive' (commit 42238de); entry now [archived: 2026-06-14] with link to ./archive/mvp_library_export_20260612",
+    "measure/tech-debt.md updated: added Low-severity 'Library delete has no confirmation dialog' entry",
+    "measure/archive/mvp_library_export_20260612/plan.md updated: Phase 2 Red task given SHA ebc1682; Phase 4 dialog tasks resolved (export [x] d106a2a, delete confirm [x] deferred per spec AC); Closeout section appended with real-mode gate evidence",
+    "Acceptance gate log reviewed: measure/runs/20260613T164116Z/mvp_library_export_20260612/acceptance/acceptance-attempt-1/gates.log → npm run lint, npm run build, npm test all exit 0 with 18/18 PASS"
+  ]
+}

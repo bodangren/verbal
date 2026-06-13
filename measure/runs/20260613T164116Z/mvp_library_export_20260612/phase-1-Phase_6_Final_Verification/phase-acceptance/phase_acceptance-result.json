@@ -1,0 +1,23 @@
+{
+  "status": "pass",
+  "summary": "Phase 6 Final Verification passes. make check: 18/18 packages green. All 51 per-phase targeted tests PASS (P1: 19, P2: 12, P3: 5, P4: 12, P5: 7). No intentionally-red t.Skip guards remain. No STUB code blocks in any test file. Smoke test TestSmoke_ControllerExportLive uses real media.NewExporter (not fake). All 10 commit SHAs referenced in plan.md verified present in git history. metadata.json status=complete, tracks.md marked [x], spec.md all 5 ACs checked off. Changes since f1333a6 are Measure-doc-only (plan.md, spec.md, metadata.json, tracks.md, lessons-learned.md, tech-debt.md). No source code changes in Phase 6. Two Phase 4 dialog tasks remain [ ] but are explicitly documented as deferred UI-layer concerns. One Low-severity spec drift (status enum vocabulary) logged in tech-debt.md.",
+  "findings": [],
+  "evidence": [
+    "make check: 18/18 packages PASS (cmd/verbal, internal/ai, internal/ai/local, internal/ai/realtime, internal/app, internal/db, internal/domain, internal/edit, internal/filler, internal/lifecycle, internal/media, internal/settings, internal/sync, internal/thumbnail, internal/transcription, internal/transcription/batch, internal/ui, internal/waveform)",
+    "Phase 1 targeted: go test -count=1 -run 'TestRecordingRepository_(List|Delete|Update)' ./internal/db/ -> 11 PASS",
+    "Phase 1 targeted: go test -count=1 -run 'TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/ -> 8 PASS",
+    "Phase 2 targeted: go test -count=1 -run TestLibraryView ./internal/ui/ -> 12 PASS",
+    "Phase 3 targeted: go test -count=1 -run TestExporter ./internal/media/ -> 5 PASS",
+    "Phase 4 targeted: go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_ControllerExportLive' ./internal/app/ -> 12 PASS",
+    "Phase 5 targeted: go test -count=1 -run TestPaths ./internal/settings/ -> 7 PASS",
+    "grep t.Skip track guard: 0 matches in *_test.go (all skip guards removed)",
+    "grep STUB: 4 matches in *.go, all in comments (no STUB code blocks)",
+    "grep panic/TODO stubs in internal/: 0 matches",
+    "TestSmoke_ControllerExportLive uses media.NewExporter() (real exporter, not fake) at controller_export_test.go:288",
+    "git cat-file: all 10 referenced SHAs (ef7dcc0, 8ead24d, 06ec276, c9ac564, bb89cc1, 43c52ef, 03ebd1a, 1218747, cdb7dd9, a480110) verified as commit objects",
+    "git diff --stat f1333a6..HEAD: 6 files changed (all measure/ docs, 0 source files)",
+    "metadata.json: status=complete",
+    "tracks.md: mvp_library_export_20260612 marked [x] with per-AC evidence",
+    "spec.md: all 5 acceptance criteria checked [x]"
+  ]
+}

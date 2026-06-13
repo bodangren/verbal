@@ -11,7 +11,7 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
 - [x] **Track: Greenfield Project Setup** [created: 2026-06-12] [completed: 2026-06-12]
   *Focus: Scaffold the new project structure, domain model, SQLite schema with versioned migrations, app controller, and CI checks.*
   *Status: Complete. All acceptance criteria passed; `make check` and smoke check verified.*
-  *Link: [./tracks/greenfield_project_setup_20260612](./tracks/greenfield_project_setup_20260612/)*
+  *Link: [./archive/greenfield_project_setup_20260612](./archive/greenfield_project_setup_20260612/)*
 
 - [ ] **Track: MVP Recording & Import** [created: 2026-06-12]
   *Focus: Record video/audio from V4L2/PipeWire and import existing media files into the library.*

@@ -1,0 +1,18 @@
+{
+  "status": "pass",
+  "summary": "Phase 5 (Project Storage Layout) passes all acceptance criteria. All 7 tests PASS (0 SKIP, 0 FAIL). Full make go-check green (18/18 packages). Implementation in internal/settings/paths.go satisfies spec FR4 (projectDir, recordings/ subdir, verbal.db path) and test-strategy requirements (0755 mode, idempotent Initialize, no-clobber, no premature interfaces). STUB block and all t.Skip guards removed in Green commit 1218747. Commit SHAs match plan.md. No intentionally-red tests remain in aggregate suites. No fake-harness masking. No blocking findings.",
+  "findings": [],
+  "evidence": [
+    "go test -count=1 -run TestPaths ./internal/settings/ -v → 7 PASS, 0 FAIL, 0 SKIP (0.016s)",
+    "go test -count=1 ./internal/settings/ -v → all PASS (0.034s)",
+    "make go-check → 18/18 packages green (vet + build + test)",
+    "internal/settings/paths.go:50 lines — Paths struct, NewPaths, DefaultProjectDir, Initialize",
+    "internal/settings/paths_test.go:184 lines — 7 tests, no t.Skip guards, no STUB block",
+    "git diff 03ebd1a..1218747 -- internal/settings/ → +50 paths.go, -69 paths_test.go (STUB+guards removed)",
+    "git show --stat 1218747 → feat(settings): Add project directory layout",
+    "rg 't\\.Skip.*phase.*in progress' internal/settings/ → no matches",
+    "rg 'STUB' internal/settings/ → only a comment in test explaining anti-stub assertion (line 116)",
+    "git status --porcelain → 5 untracked test files (all unrelated to Phase 5, classified in plan.md)",
+    "plan.md Phase 5 tasks: Red [x] (03ebd1a), Green [x] (1218747), Refactor [x] (1218747) — SHAs verified in git log"
+  ]
+}

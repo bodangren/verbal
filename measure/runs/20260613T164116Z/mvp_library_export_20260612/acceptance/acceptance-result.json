@@ -1,0 +1,28 @@
+{
+  "status": "pass",
+  "summary": "Track mvp_library_export_20260612 verified end-to-end: all 5 spec acceptance criteria are backed by real, passing tests at HEAD (7aefac5); make check (go vet + go build + go test ./... -count=1) is 18/18 packages green with FAKE_GATE/FAKE_MODE/FAKE_TEST unset; every per-phase targeted Red command (Phase 1 List/Update/Delete + Status enum, Phase 2 LibraryView, Phase 3 Exporter, Phase 4 Controller Export/Delete + TestSmoke_ControllerExportLive, Phase 5 Paths) passes with 0 SKIP from this track; the FR2 vocabulary fix (pending->New, in_progress->Transcribing, completed->Transcribed, error->Error in internal/ui/recordinglistitem.go:286-299) is covered by TestRecordingListItem_FormatStatus_MatchesSpecVocabulary; controller wiring is real (Controller.ExportRecording/DeleteRecording at internal/app/controller.go:192/211 with WithExporter/WithRecordingDeleter setters and a default *media.Exporter installed in Initialize); settings.Paths drives the default DB path (internal/app/controller.go:78,96 derive from settings.DefaultProjectDir()/NewPaths().DatabasePath = projectDir/verbal.db); destPath is filepath.Clean'd in the GTK glue (internal/app/run.go:1043); no STUB declarations, no t.Skip guards bound to this track, and no FAKE_GATE/Red-at-HEAD markers remain in the source tree. The two [ ] Phase 4 tasks (file chooser dialog, delete confirmation dialog) are explicitly deferred to the UI layer with documented rationale and are not required by any spec AC; they are not blocking. plan.md, spec.md, metadata.json (status=complete), tracks.md, lessons-learned.md, and tech-debt.md are all consistent with the verified state.",
+  "findings": [],
+  "evidence": [
+    "git log --oneline -15 (HEAD=7aefac5 docs(measure): Record adversarial status label fix)",
+    "git status --porcelain (only unrelated dirty files: 5 untracked _test.go files in internal/db and internal/ui from a different role; measure/runs and measure/archive scaffolding; sibling track specs)",
+    "env | grep -iE 'fake|mock|test_' -> no fake env vars set",
+    "grep 'track mvp_library_export' internal/ --include='*.go' -> 0 matches (no leftover skip messages)",
+    "grep 'FAKE_GATE|FAKE_MODE|Red at HEAD|intentional-red' --include='*.go' --include='*.md' (excluding measure/runs and measure/archive) -> 0 source matches; only one stale historical phrase in measure/tracks/batch_transcription_queue_20260509/plan.md (different track, archived narrative)",
+    "go vet ./... -> clean",
+    "go build ./... -> clean",
+    "go test ./... -count=1 -> 18/18 packages PASS (cmd/verbal 32.604s, internal/ai 6.781s, internal/ai/local 0.048s, internal/ai/realtime 0.047s, internal/app 2.645s, internal/db 11.625s, internal/domain 0.032s, internal/edit 0.199s, internal/filler 0.024s, internal/lifecycle 9.252s, internal/media 4.020s, internal/settings 0.055s, internal/sync 0.341s, internal/thumbnail 0.550s, internal/transcription 0.049s, internal/transcription/batch 0.938s, internal/ui 3.589s, internal/waveform 0.941s)",
+    "go test -count=1 -run 'TestRecordingRepository_(List|Delete|Update)' ./internal/db/ -> ok (0.987s)",
+    "go test -count=1 -run 'TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/ -> ok (0.401s)",
+    "go test -count=1 -run TestLibraryView ./internal/ui/ -> ok (0.865s)",
+    "go test -count=1 -run TestExporter ./internal/media/ -> ok (2.462s)",
+    "go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_ControllerExportLive' ./internal/app/ -> ok (1.006s, includes the mandatory smoke test against a real *media.Exporter at internal/app/controller_export_test.go:274)",
+    "go test -count=1 -run TestPaths ./internal/settings/ -> ok (0.028s)",
+    "go test -count=1 -run TestRecordingListItem_FormatStatus_MatchesSpecVocabulary ./internal/ui/ -> ok (0.266s)",
+    "Source review: internal/ui/recordinglistitem.go:286-299 maps storage statuses to FR2 UI labels (pending->New, in_progress->Transcribing, completed->Transcribed, error->Error)",
+    "Source review: internal/app/controller.go:64-71 (WithExporter/WithRecordingDeleter), :78-82 (DefaultDBPath via settings.NewPaths(...).DatabasePath), :96 (Paths.Initialize before opening DB), :122 (default originalFileExporterAdapter wraps media.NewExporter()), :192 (ExportRecording), :211 (DeleteRecording)",
+    "Source review: internal/app/run.go:1043 calls Controller.ExportRecording with filepath.Clean(destPath) per lessons-learned 'Path Safety on User-Controlled Destinations'",
+    "Plan review: measure/tracks/mvp_library_export_20260612/plan.md - all Phase 1-6 tasks except two explicitly-deferred UI dialog tasks in Phase 4 are [x] with commit SHAs (ef7dcc0/8ead24d/ebc1682/d7e456c/06ec276/c9ac564/bb89cc1/43c52ef/03ebd1a/1218747/cdb7dd9); deferred dialog tasks are out of spec scope, not blockers",
+    "Spec review: measure/tracks/mvp_library_export_20260612/spec.md - 5/5 ACs are [x] with citations to specific tests; metadata.json status=complete; tracks.md flipped to [x] with completion date 2026-06-14",
+    "Lessons-learned and tech-debt review: relevant entries (STUB-block pattern, mandatory smoke test, path safety, first-run idempotency, default-path drift, FR2 vocabulary fix as resolved tech-debt) are consistent with verified state"
+  ]
+}
