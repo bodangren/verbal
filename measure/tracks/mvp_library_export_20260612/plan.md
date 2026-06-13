@@ -512,7 +512,7 @@ Full gate: `make go-check` → **18/18 packages green**.
 ## Phase 3: Original Export
 
 ### Red
-- [ ] Write failing tests for `media.Exporter`: copies source file to destination with progress.
+- [~] Write failing tests for `media.Exporter`: copies source file to destination with progress.
 
 ### Green
 - [ ] Implement `internal/media/exporter.go`.
@@ -521,6 +521,195 @@ Full gate: `make go-check` → **18/18 packages green**.
 
 ### Refactor
 - [ ] Commit: `feat(media): Add original file exporter`
+
+**Red-phase state (mid, attempt 1):**
+
+The Red contract for this phase — a new `internal/media.Exporter`
+type that performs a buffered `io.Copy` from a source media file to
+a user-selected destination, reporting progress via a callback and
+honoring context cancellation — is committed as a skip-guarded test
+file plus a clearly-marked STUB API block (same pattern used in
+Phase 1's `recording_status_test.go` per test-strategy §8).
+
+The contract is required by [spec FR3](./spec.md) ("'Export' action
+copies the original media file to a user-selected path. Progress is
+reported via a simple callback. Errors are surfaced in a dialog.")
+and the per-phase test plan in [test-strategy §5 P3](./test-strategy.md):
+"happy path copy, source-missing error, dest-unwritable error,
+progress monotonicity (0→100 inclusive), context cancellation
+mid-copy."
+
+**New file:** `internal/media/exporter_test.go` — five tests:
+- `TestExporter_HappyPath_CopiesFile` — 1 KiB source file copied
+  to destination; dest bytes equal src bytes exactly.
+- `TestExporter_SourceMissing_ReturnsError` — non-existent
+  srcPath; Export returns a non-nil error and does not create the
+  destination.
+- `TestExporter_DestUnwritable_ReturnsError` — destPath whose
+  parent directory does not exist (or is unwritable); Export
+  returns a non-nil error.
+- `TestExporter_ProgressMonotonic` — captured progress events are
+  bounded in [0.0, 1.0], non-decreasing across the slice, and the
+  last event equals 1.0; first event equals 0.0.
+- `TestExporter_ContextCanceledMidCopy_ReturnsError` — 5 MiB
+  source file; ctx canceled immediately after the first progress
+  event; Export returns a non-nil error that wraps
+  `context.Canceled`.
+
+Every test is guarded at the top with
+`t.Skip("track mvp_library_export_20260612 phase 3 task in progress")`
+per test-strategy §8. The same file contains a clearly-marked
+**STUB block** declaring the expected API
+(`Exporter`, `NewExporter`, `(*Exporter).Export`, and a
+`progressFunc` type alias matching the test-strategy signature
+`func(percent float64, msg string)`) so the file compiles and the
+rest of `internal/media` keeps passing under `make go-check`. The
+STUB `Export` returns `(nil, nil)` and accepts but ignores its
+arguments; the STUB `NewExporter` returns a zero-value struct.
+
+The next Green-phase attempt must:
+1. delete the STUB block from `exporter_test.go`,
+2. remove every `t.Skip` guard in the test file,
+3. add the real implementation in `internal/media/exporter.go`
+   (buffered `io.Copy`, `os.Open`/`os.Create` + `os.Stat` for
+   size, progress emitted at start, after every chunk, and at
+   completion; context cancellation checked on every chunk),
+all in one commit (workflow §3-4 + test-strategy §8).
+
+**Red verification (mid, attempt 1):**
+
+- Committed `internal/media/exporter_test.go` (this commit): 5
+  tests, all guarded with
+  `t.Skip("track mvp_library_export_20260612 phase 3 task in progress")`,
+  followed by a clearly-marked STUB block (struct, constructor,
+  Export method, type alias) that lets the file compile.
+- Targeted Red command on the new file alone (count=1, cache
+  busted):
+  `go test -count=1 -run TestExporter ./internal/media/ -v`
+  → 5 SKIP, 0 FAIL (each `t.Skip` fires; no real test executes).
+- **Ephemeral verification harness** (NOT committed): the same
+  5 assertions in `internal/media/exporter_red_verification_test.go`
+  with the `t.Skip` lines removed, run against the current STUB
+  `Exporter.Export` returning `(nil, nil)`:
+  `go test -count=1 -run '^TestRedVerify_' ./internal/media/ -v`
+  → 5 of 5 FAIL, 0 SKIP. Each failure corresponds to the STUB's
+  "current implementation is wrong" behavior:
+    1. `TestRedVerify_Exporter_HappyPath` — dest file does not
+       exist after Export (STUB did nothing).
+    2. `TestRedVerify_Exporter_SourceMissing` — Export returned
+       `nil` error for a missing source (STUB never validates).
+    3. `TestRedVerify_Exporter_DestUnwritable` — Export returned
+       `nil` error for an unwritable destination.
+    4. `TestRedVerify_Exporter_ProgressMonotonic` — captured
+       0 progress events (STUB never invokes callback).
+    5. `TestRedVerify_Exporter_ContextCanceled` — Export returned
+       `nil` error after context cancellation.
+  The verification file was deleted in the same attempt and is
+  NOT in the working tree or any commit.
+- Aggregate gate for the package (post-delete, post-verify):
+  `go test -count=1 ./internal/media/` → `ok verbal/internal/media`.
+- Full `make go-check` re-run on this attempt: 18/18 packages
+  green (same set as Phase 2). The flaky
+  `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites`
+  in `internal/lifecycle` did NOT reproduce on this run.
+- Red-phase boundary holds: only `exporter_test.go` (a test
+  file) and `plan.md` (a Measure doc) are touched in this
+  attempt. No production code (`internal/media/exporter.go`,
+  `internal/media/export.go`) is added or modified, and no
+  source file outside `internal/media/...` is touched.
+
+**Dirty worktree classification (mid, attempt 1, Phase 3):**
+
+| Path | Classification | Rationale |
+|---|---|---|
+| `internal/db/repository_edge_test.go` | **unrelated to Phase 3** | Phase 1 territory (`*Recording` / `*Database` / `*RecordingRepository` edge cases). Preserved as-is. |
+| `internal/db/service_edge_test.go` | **unrelated to Phase 3** | Phase 1 territory (`RecordingService` edge cases). Preserved as-is. |
+| `internal/db/settings_edge_test.go` | **unrelated to Phase 3** | Phase 5/UI territory (`SettingsRepository`); not Phase 3 export. Preserved as-is. |
+| `internal/db/thumbnail_edge_test.go` | **unrelated to Phase 3** | `ThumbnailRepository` validation; thumbnails are a post-MVP non-goal per spec.md. Preserved as-is. |
+| `internal/ui/livecaptionwidget_test.go` | **unrelated to Phase 3** | `LiveCaptionWidget` tests for `mvp_transcription_20260612` per lessons-learned.md. Different track. Preserved as-is. |
+
+None of the 5 untracked test files reference `media.Exporter`,
+`NewExporter`, `Exporter.Export`, `exporter.go`, or any other
+Phase 3 symbol. They are not added to this commit, and their
+presence does not affect the Red-phase outcome. The remaining
+dirty entries are `measure/archive/...`, `measure/runs/...`,
+`measure/automation-script.sh`, `measure/automation-supervisor.py`,
+`measure/tracks/greenfield_project_setup_20260612/spec.md`,
+`measure/tracks/mvp_library_export_20260612/{metadata.json,spec.md,
+test-strategy.md}`, `measure/tracks/mvp_playback_sync_20260612/`,
+`measure/tracks/mvp_recording_import_20260612/`,
+`measure/tracks/mvp_text_delete_20260612/`, and
+`measure/tracks/mvp_transcription_20260612/` — all
+Measure-internal or out-of-scope artifacts. None are added to
+this commit.
+
+**build-graph note:** `graph.db` exists at HEAD (29 nodes,
+22 edges — TS-only tool per test-strategy.md §0). Graph-Aware
+Mode is not applicable to this Go project; no `scan` was run.
+A targeted `build-graph search` for "exporter" and
+"SegmentExporter" returned no results, confirming the graph has
+no record of either — the new `internal/media.Exporter` is
+introduced in this attempt, and the existing
+`internal/media.SegmentExporter` is also absent from the graph
+(stale snapshot from before Phase 1). All structural context
+for this Red attempt was gathered via `glob`/`grep`/`read`
+over `internal/media/`, which confirmed:
+- `internal/media/export.go` defines `SegmentExporter` (a
+  GStreamer-based multi-segment exporter for cut-clip export
+  via the Text-Driven Delete track). It is **not** the
+  original-file exporter — different type, different shape,
+  different scope. Per test-strategy §3, the new
+  `media.Exporter` is a **different type** and MUST NOT
+  extend `SegmentExporter`. Confirmed by reading
+  `internal/media/export.go` and the Phase 1/2 plan notes.
+- No file named `internal/media/exporter.go` exists at HEAD —
+  the new contract is genuinely new, not an extension of
+  existing code.
+- No callers of any not-yet-defined `media.Exporter` symbol
+  exist in the codebase (grep confirmed: no `media.Exporter`,
+  no `media.NewExporter` references anywhere).
+
+This confirms a clean blast radius for the new contract.
+
+**Red re-verification (mid, attempt 2, post supervisor re-entry):**
+
+The prior `mid-attempt-1` invocation exited with status 124
+(supervisor timeout) per the supervisor run log
+(`measure/runs/20260613T143300Z/mvp_library_export_20260612/phase-1-Phase_3_Original_Export/mid-attempt-1/output.log`).
+The substantive work from that attempt is preserved in the
+working tree (no rollback needed): `internal/media/exporter_test.go`
+untracked (236 lines, 5 tests, all skip-guarded, plus STUB API
+block) and `plan.md` modified (Phase 3 Red task flipped to `[~]`
+plus the verification notes above).
+
+Re-verification on this attempt (count=1, cache busted):
+- Targeted Red command:
+  `go test -count=1 -run TestExporter ./internal/media/ -v`
+  → 5 SKIP, 0 FAIL (`ok verbal/internal/media 0.038s`).
+- Aggregate gate for the package:
+  `go test -count=1 ./internal/media/` → `ok verbal/internal/media`.
+- The committed-as-step-below `internal/media/exporter_test.go`
+  is unchanged from the prior attempt (5 tests, all skip-guarded,
+  STUB block at the bottom). No test source churn, no expansion,
+  no tightening needed — the prior attempt's contract already
+  satisfies the brief's "fail because current implementation is
+  missing or wrong" criterion (STUB `Export` returns `(nil, nil)`
+  against any input; the committed tests would FAIL on their
+  assertions against a real STUB-only implementation; the
+  ephemeral harness from attempt 1 already proved 5/5 FAIL on
+  the same assertions against the same STUB).
+- The Red task remains `[~]` (active re-verification) for the
+  Green handoff; this attempt only adds the re-verification note
+  and commits the Red contract that the prior attempt prepared
+  but did not finish committing before the timeout.
+- Red-phase boundary still holds: only `exporter_test.go` (test)
+  and `plan.md` (Measure doc) are touched. No production code in
+  `internal/media/exporter.go` or `internal/media/export.go` is
+  added or modified. The 5 untracked test files in the dirty
+  worktree (all unrelated to Phase 3, classified above) and the
+  Measure scaffolding (`measure/archive/...`, `measure/runs/...`,
+  `measure/automation-*.{sh,py}`, sibling `measure/tracks/...`)
+  are preserved as-is and not added to this attempt's commit.
 
 ---
 
