@@ -239,6 +239,12 @@ func TestBuildGstPlayerPipeline_PathWithCarriageReturn_StripsControlChar(t *test
 	if strings.Contains(got, "\r") {
 		t.Errorf("BuildGstPlayerPipeline() = %q, must not contain raw carriage return", got)
 	}
+	// Pair the no-CR guard with a filesrc presence check so the test is a
+	// real Red signal against the STUB (which returns "" and trivially
+	// satisfies "no \r"). Mirrors TestBuildGstPlayerPipeline_PathWithNewline.
+	if !strings.Contains(got, "filesrc") {
+		t.Errorf("BuildGstPlayerPipeline() = %q, want substring %q", got, "filesrc")
+	}
 }
 
 func TestBuildGstPlayerPipeline_QuotedPath_UsesQuoteLocation(t *testing.T) {

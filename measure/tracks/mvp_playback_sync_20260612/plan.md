@@ -95,6 +95,17 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 ### Refactor
 - [ ] Commit: `feat(media): Add GStreamer player implementation`
 
+**Red gap-fix result (recorded 2026-06-14, mid role audit):**
+- Closed a vacuous-pass gap in `TestBuildGstPlayerPipeline_PathWithCarriageReturn_StripsControlChar` — the prior assertion (`strings.Contains(got, "\r") == false`) was satisfied trivially by the STUB's `""` return value and produced a false-pass Red signal. Added a paired `strings.Contains(got, "filesrc")` assertion, mirroring the analogous `TestBuildGstPlayerPipeline_PathWithNewline_StripsControlChar` test.
+- Updated targeted Red command result:
+  - **12 FAIL** (Red signal — was 11) at top level; the new FAIL is `TestBuildGstPlayerPipeline_PathWithCarriageReturn_StripsControlChar` failing on the `filesrc` substring check.
+  - **12 PASS** (was 13) — the vacuous CR pass moved to FAIL.
+  - **3 sub-FAIL** in `TestBuildGstPlayerPipeline_HandlesPathSafely_TableDriven` (parent also FAILs).
+  - **1 SKIP** (`TestSmoke_GstPlayer_Constructs` — gated by `canInitializeGST()`, skips with reason per test-strategy §5 P2).
+  - Total: **12 FAIL + 12 PASS + 1 SKIP = 25 top-level tests** (plus 3 subtests).
+- Targeted Red command runs in **0.087 s** (bounded, full media package intentionally NOT run).
+- `go vet ./internal/media` clean; `go build ./internal/media` clean.
+
 ---
 
 ## Phase 3: Transcript View Widget
