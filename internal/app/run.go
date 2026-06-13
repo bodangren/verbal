@@ -461,6 +461,9 @@ func showSettingsWindow(parent *adw.ApplicationWindow, state *appState) {
 	// Create and show settings window
 	settingsWindow := ui.NewSettingsWindow(&parent.Window)
 	settingsWindow.SetSettings(currentSettings)
+	if presetModel := newPresetRepositoryAdapter(state.db); presetModel != nil {
+		settingsWindow.SetPresetModel(presetModel)
+	}
 
 	// Wire up test callback
 	settingsWindow.SetOnTest(func(config settings.ProviderConfig) error {
@@ -963,6 +966,9 @@ func showExportDialog(window *adw.ApplicationWindow, state *appState) {
 	}
 
 	dialog := ui.NewExportDialog(&window.Window)
+	if presetModel := newPresetRepositoryAdapter(state.db); presetModel != nil {
+		dialog.SetPresetModel(presetModel)
+	}
 
 	dialog.SetOnExport(func(recordingID, destPath string) {
 		if state.archiveExporter == nil {
@@ -1010,6 +1016,9 @@ func showExportDialogForRecording(window *adw.ApplicationWindow, state *appState
 	}
 
 	dialog := ui.NewExportDialog(&window.Window)
+	if presetModel := newPresetRepositoryAdapter(state.db); presetModel != nil {
+		dialog.SetPresetModel(presetModel)
+	}
 	dialog.SetRecording(rec)
 
 	dialog.SetOnExport(func(recordingID, destPath string) {

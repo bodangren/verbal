@@ -565,7 +565,6 @@ func TestPresetRepository_Update_RejectsBuiltinMutation(t *testing.T) {
 	}
 
 	for _, b := range builtins {
-		// Try to mutate the bitrate of a built-in.
 		loaded, err := repo.GetByName(b.Name)
 		if err != nil {
 			t.Fatalf("GetByName(%q) error = %v", b.Name, err)
@@ -574,6 +573,42 @@ func TestPresetRepository_Update_RejectsBuiltinMutation(t *testing.T) {
 		if err := repo.Update(loaded); err == nil {
 			t.Errorf("Update() on builtin %q succeeded, want error (built-ins are immutable)", b.Name)
 		}
+	}
+}
+
+func TestPresetRepository_Update_RejectsBuiltinDemotion(t *testing.T) {
+	tmpDir := t.TempDir()
+	database, err := NewDatabase(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("NewDatabase() error = %v", err)
+	}
+	defer database.Close()
+
+	repo := database.PresetRepo()
+	if err := repo.SeedBuiltins(); err != nil {
+		t.Fatalf("SeedBuiltins() error = %v", err)
+	}
+
+	loaded, err := repo.GetByName("YouTube 1080p")
+	if err != nil {
+		t.Fatalf("GetByName(YouTube 1080p) error = %v", err)
+	}
+	loaded.IsBuiltin = false
+	loaded.Bitrate = 1234
+
+	if err := repo.Update(loaded); err == nil {
+		t.Fatal("Update() demoted built-in to custom, want immutable built-ins rejected")
+	}
+
+	got, err := repo.GetByID(loaded.ID)
+	if err != nil {
+		t.Fatalf("GetByID() after rejected demotion error = %v", err)
+	}
+	if !got.IsBuiltin {
+		t.Error("built-in preset was demoted despite rejected Update")
+	}
+	if got.Bitrate == 1234 {
+		t.Error("built-in preset bitrate changed despite rejected Update")
 	}
 }
 
@@ -741,28 +776,22 @@ func TestPresetRepository_SeedBuiltins_DoesNotOverwriteCustomPresetSharingBuilti
 
 	repo := database.PresetRepo()
 
-	// First seed the built-ins so the schema is populated with the
-	// canonical values.
+	if _, err := repo.Create(&Preset{
+		Name:        "YouTube 1080p",
+		Container:   PresetContainerMP4,
+		VideoCodec:  "h264",
+		AudioCodec:  "aac",
+		Bitrate:     1234,
+		Width:       1280,
+		Height:      720,
+		IsBuiltin:   false,
+		Description: "user-customised",
+	}); err != nil {
+		t.Fatalf("Create(customised-YouTube-1080p) error = %v", err)
+	}
+
 	if err := repo.SeedBuiltins(); err != nil {
 		t.Fatalf("SeedBuiltins() error = %v", err)
-	}
-
-	// Simulate a user renaming a custom preset to clash with a built-in
-	// name — SeedBuiltins must NOT overwrite the user's row with the
-	// canonical built-in values.
-	original, err := repo.GetByName("YouTube 1080p")
-	if err != nil {
-		t.Fatalf("GetByName(YouTube 1080p) error = %v", err)
-	}
-	original.IsBuiltin = false
-	original.Bitrate = 1234
-	original.Description = "user-customised"
-	if err := repo.Update(original); err != nil {
-		t.Fatalf("Update(customised-YouTube-1080p) error = %v", err)
-	}
-
-	if err := repo.SeedBuiltins(); err != nil {
-		t.Fatalf("SeedBuiltins() (second call) error = %v", err)
 	}
 
 	got, err := repo.GetByName("YouTube 1080p")

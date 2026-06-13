@@ -882,3 +882,17 @@ this Red attempt. The only files this Red commit modifies are:
 **Total: 54 phase-specific tests PASS.** All automated gates green.
 
 **Remaining:** `Live GNOME visual verification` — manual gate owned by human reviewer. Requires a running GNOME session with GTK4 to verify the SettingsWindow preset panel visually.
+
+### Phase 4 — Adversarial audit (2026-06-13)
+
+Adversarial review found and fixed two blocking integration/immutability gaps:
+
+1. `PresetRepository.Update` allowed a caller to demote a built-in row by setting `IsBuiltin=false`, then mutate it. Added `TestPresetRepository_Update_RejectsBuiltinDemotion` and changed `Update` to reject any update when the persisted row is built-in.
+2. Export/settings UI preset models were implemented but not wired to the real repository in app creation paths. Added `presetRepositoryAdapter`, compile-time UI interface assertions, a real SQLite adapter integration test, and wired settings/export dialogs to `newPresetRepositoryAdapter(state.db)`.
+
+Validation:
+
+- `go test ./internal/db/ -run 'TestPresetRepository_Update_RejectsBuiltin|TestPresetRepository_SeedBuiltins' -count=1 -v` — PASS
+- `go test ./internal/app/ -run 'TestPresetRepositoryAdapter|TestBuildServiceGraph' -count=1 -v` — PASS
+- `make check` — PASS (go vet, go build, go test ./... -count=1)
+- `npm test` — BLOCKED (`npm: command not found` in environment)

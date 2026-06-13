@@ -205,7 +205,7 @@ func (r *PresetRepository) Update(p *Preset) error {
 	if err != nil {
 		return fmt.Errorf("update preset: %w", err)
 	}
-	if existing.IsBuiltin && p.IsBuiltin {
+	if existing.IsBuiltin {
 		return fmt.Errorf("update preset: built-in presets are immutable")
 	}
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"verbal/internal/db"
 	"verbal/internal/settings"
 	"verbal/internal/thumbnail"
+	"verbal/internal/ui"
 )
 
 // TestSmokeCheckServiceGraph_CharacterizesServiceWiring asserts that the
@@ -64,4 +66,71 @@ func TestBuildServiceGraph_CharacterizesActivationWiring(t *testing.T) {
 	}
 
 	thumbnailSvc.Close()
+}
+
+func TestPresetRepositoryAdapter_SatisfiesUIPresetModels(t *testing.T) {
+	var _ ui.PresetListModel = (*presetRepositoryAdapter)(nil)
+	var _ ui.PresetManagementModel = (*presetRepositoryAdapter)(nil)
+}
+
+func TestPresetRepositoryAdapter_UsesRealRepository(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "recordings.db")
+	database, err := db.NewDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("create test database: %v", err)
+	}
+	defer database.Close()
+
+	adapter := newPresetRepositoryAdapter(database)
+	if adapter == nil {
+		t.Fatal("newPresetRepositoryAdapter returned nil")
+	}
+
+	if err := database.PresetRepo().SeedBuiltins(); err != nil {
+		t.Fatalf("SeedBuiltins error = %v", err)
+	}
+
+	if err := adapter.SaveCustomPreset(context.Background(), &db.Preset{
+		Name:       "Adapter Custom",
+		Container:  db.PresetContainerMP4,
+		VideoCodec: "h264",
+		AudioCodec: "aac",
+		Bitrate:    1_000_000,
+		Width:      1280,
+		Height:     720,
+		IsBuiltin:  true,
+	}); err != nil {
+		t.Fatalf("SaveCustomPreset error = %v", err)
+	}
+
+	created, err := database.PresetRepo().GetByName("Adapter Custom")
+	if err != nil {
+		t.Fatalf("GetByName(Adapter Custom) error = %v", err)
+	}
+	if created.IsBuiltin {
+		t.Fatal("SaveCustomPreset stored IsBuiltin=true, want forced custom preset")
+	}
+
+	created.Name = "Adapter Custom Renamed"
+	if err := adapter.UpdatePreset(context.Background(), created); err != nil {
+		t.Fatalf("UpdatePreset error = %v", err)
+	}
+	if _, err := database.PresetRepo().GetByName("Adapter Custom Renamed"); err != nil {
+		t.Fatalf("renamed preset not found: %v", err)
+	}
+
+	presets, err := adapter.ListPresets(context.Background())
+	if err != nil {
+		t.Fatalf("ListPresets error = %v", err)
+	}
+	if len(presets) < 5 {
+		t.Fatalf("ListPresets returned %d presets, want seeded built-ins plus custom", len(presets))
+	}
+
+	if err := adapter.DeletePreset(context.Background(), created.ID); err != nil {
+		t.Fatalf("DeletePreset error = %v", err)
+	}
+	if _, err := database.PresetRepo().GetByID(created.ID); err == nil {
+		t.Fatal("GetByID after DeletePreset succeeded, want deleted preset missing")
+	}
 }
