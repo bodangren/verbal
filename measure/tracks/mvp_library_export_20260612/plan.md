@@ -9,7 +9,7 @@
 ## Phase 1: Library Repository
 
 ### Red
-- [~] Write failing tests for listing, deleting, and updating recordings.
+- [~] Write failing tests for listing, deleting, and updating recordings. (ef7dcc0)
 
 ### Green
 - [ ] Implement methods in `internal/db/recording_repository.go`.
@@ -50,6 +50,49 @@ No production code (`internal/db/recording_status.go`,
 `internal/db/repository.go`) is touched in this attempt, and no
 non-test/non-Measure files outside the worktree (no `internal/ui/*`,
 no `AGENTS.md`, no archived tracks) are modified.
+
+**Red verification (mid, attempt 5, supervisor re-entry after status 70):**
+
+The prior `mid-attempt-2` invocation exited with status 70
+(`OpenCode server is unavailable`, per `automation-supervisor.py:1055`)
+before any model calls completed — the output log records only
+`STARTED_AT` and the supervisor JSON header. The substantive
+work from the earlier successful `ef7dcc0` commit is preserved in
+HEAD (no rollback needed) and is re-verified here:
+
+- `internal/db/recording_status_test.go` is in HEAD at `ef7dcc0`:
+  8 tests, all guarded with
+  `t.Skip("track mvp_library_export_20260612 phase 1 task in progress")`,
+  followed by a clearly-marked STUB block (type, four constants,
+  `IsValid`, `ValidRecordingStatuses`, `ValidateRecordingStatus`,
+  `(*RecordingRepository).ListByStatus`) that lets the file compile.
+- Targeted Red command on the file alone (count=1, cache busted):
+  `go test -count=1 -run 'TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/`
+  → 8 SKIP, 0 FAIL (each `t.Skip` fires; no real test executes).
+- Aggregate gate for the package: `go test -count=1 ./internal/db/`
+  → `ok verbal/internal/db` (the STUB block keeps the package
+  building; the rest of the suite is unaffected).
+- Full `make go-check` re-run on this attempt: 18/18 packages green
+  (`cmd/verbal`, `internal/ai`, `internal/ai/local`, `internal/ai/realtime`,
+  `internal/app`, `internal/db`, `internal/domain`, `internal/edit`,
+  `internal/filler`, `internal/lifecycle`, `internal/media`,
+  `internal/settings`, `internal/sync`, `internal/thumbnail`,
+  `internal/transcription`, `internal/transcription/batch`,
+  `internal/ui`, `internal/waveform`). A pre-existing flaky
+  `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites`
+  in `internal/lifecycle` was observed once during the initial
+  full run (SQLITE_BUSY under load) but passes on re-run — unrelated
+  to this track; logged in the running aggregate.
+- The Red task remains `[~]` because the Green-phase commit
+  (delete STUB block, drop `t.Skip` guards, add
+  `internal/db/recording_status.go` and the real
+  `(*RecordingRepository).ListByStatus`) is intentionally
+  deferred — workflow §3-4 + test-strategy §8 require all three
+  changes to land in a single later commit.
+
+This commit (`docs(measure): ...`) only updates `plan.md` (a
+Measure doc) and does not touch any non-test, non-Measure file,
+so the Red-phase boundary holds.
 
 ---
 
