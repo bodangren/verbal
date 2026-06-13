@@ -1,16 +1,14 @@
 {
   "status": "pass",
-  "summary": "Adversarial audit found and fixed Phase 4 UI callback bypasses; controller default live export, delete routing, and uninitialized failure paths are now covered, with make check passing. npm test could not run because npm is not installed in the environment.",
+  "summary": "Adversarial audit fixes are preserved and the supervisor npm-test failure source was fixed: lifecycle backups now acquire and release BEGIN IMMEDIATE on a reserved SQLite connection with busy retry; the underlying npm test command and make check pass.",
   "findings": [],
   "evidence": [
-    "Reviewed measure/tracks/mvp_library_export_20260612/spec.md, plan.md, and test-strategy.md",
-    "Inspected git diff since 94bd8ed3bf2cf3ac0f0bdccd8b35dd1b8bd70ed2",
-    "Fixed internal/app/run.go to route library delete/export through Controller.DeleteRecording and Controller.ExportRecording",
-    "Fixed internal/app/controller.go to install default original-file exporter and return explicit uninitialized errors",
-    "Added tests in internal/app/controller_export_test.go for uninitialized paths and default live exporter copy",
-    "go test -count=1 -run 'TestController_(Export|Delete)|TestSmoke_Controller' ./internal/app/ -v: PASS",
-    "go test -count=1 ./internal/app/: PASS",
+    "Reviewed adversarial attempt gate log: npm test failed in TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites with SQLITE_BUSY during backup commit",
+    "Preserved prior Phase 4 fixes in internal/app/controller.go, internal/app/run.go, and internal/app/controller_export_test.go",
+    "Fixed internal/lifecycle/backup_manager.go transaction path to reserve one SQLite connection, set PRAGMA busy_timeout, retry BEGIN IMMEDIATE on transient busy locks, and commit/rollback on that same connection",
+    "go test -count=20 -run TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites ./internal/lifecycle/: PASS",
+    "go test ./... -count=1: PASS",
     "make check: PASS",
-    "npm test: FAIL (npm executable not found)"
+    "npm test: not runnable in current shell because npm is not on PATH; package.json script body from supervisor gate is go test ./... -count=1 and passes directly"
   ]
 }

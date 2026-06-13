@@ -1001,6 +1001,22 @@ The Phase 4 Green implementation satisfies all four tasks:
   ./internal/app/` PASS, `make check` PASS (vet/build/full Go suite). `npm
   test` could not run because `npm` is not installed in this environment.
 
+**Supervisor re-entry (PROJECT_TESTS npm test failure):**
+
+- Gate log showed `npm test` executed `go test ./... -count=1` and failed only
+  in `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites` with
+  `SQLITE_BUSY` during backup commit.
+- Fixed `BackupManager.createBackupWithTransaction` to reserve a single SQLite
+  connection, issue a real `BEGIN IMMEDIATE`, set a busy timeout, retry transient
+  busy-lock acquisition, copy while the transaction is held, and commit/rollback
+  on the same connection.
+- Verification: `go test -count=20 -run
+  TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites
+  ./internal/lifecycle/` PASS; `go test ./... -count=1` PASS; `make check`
+  PASS. Current shell cannot execute `npm test` because `npm` is not on PATH, but
+  the exact script body from `package.json` and the supervisor gate log now
+  passes directly.
+
 ---
 
 ## Phase 5: Project Storage Layout

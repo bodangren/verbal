@@ -178,41 +178,58 @@ func (bm *BackupManager) CreateBackup() (string, error) {
 // createBackupWithTransaction performs an atomic backup using BEGIN IMMEDIATE transaction.
 // This ensures a consistent snapshot by obtaining an exclusive lock during the copy.
 func (bm *BackupManager) createBackupWithTransaction(backupPath string) (string, error) {
-	// Start a transaction with BEGIN IMMEDIATE to obtain exclusive lock
-	// This blocks other writers and ensures a consistent snapshot
-	tx, err := bm.db.BeginTx(context.Background(), &sql.TxOptions{
-		Isolation: sql.LevelSerializable,
-	})
+	ctx := context.Background()
+	conn, err := bm.db.Conn(ctx)
 	if err != nil {
-		return "", fmt.Errorf("begin transaction: %w", err)
+		return "", fmt.Errorf("reserve database connection: %w", err)
 	}
-	defer tx.Rollback() // Rollback if we don't commit
+	defer conn.Close()
 
-	// Execute BEGIN IMMEDIATE equivalent by issuing a write operation
-	// This ensures we have an exclusive lock on the database
-	_, err = tx.Exec("BEGIN IMMEDIATE")
-	if err != nil {
-		// If BEGIN IMMEDIATE fails, try regular transaction
-		// This can happen if another transaction is already in progress
-		_, execErr := tx.Exec("SELECT 1")
-		if execErr != nil {
-			return "", fmt.Errorf("acquire database lock: %w", err)
+	if _, err := conn.ExecContext(ctx, "PRAGMA busy_timeout = 5000"); err != nil {
+		return "", fmt.Errorf("set busy timeout: %w", err)
+	}
+
+	if err := beginImmediateWithRetry(ctx, conn, 2*time.Second); err != nil {
+		return "", fmt.Errorf("begin immediate transaction: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_, _ = conn.ExecContext(ctx, "ROLLBACK")
 		}
-	}
+	}()
 
-	// Now perform the file copy while holding the transaction lock
 	if err := bm.copyDatabaseFile(backupPath); err != nil {
 		return "", err
 	}
 
-	// Commit the transaction to release the lock
-	if err := tx.Commit(); err != nil {
-		// If commit fails, remove the partial backup
+	if _, err := conn.ExecContext(ctx, "COMMIT"); err != nil {
 		os.Remove(backupPath)
 		return "", fmt.Errorf("commit transaction: %w", err)
 	}
+	committed = true
 
 	return backupPath, nil
+}
+
+func beginImmediateWithRetry(ctx context.Context, conn *sql.Conn, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for {
+		_, err := conn.ExecContext(ctx, "BEGIN IMMEDIATE")
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if time.Now().After(deadline) || !isSQLiteBusy(err) {
+			return lastErr
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func isSQLiteBusy(err error) bool {
+	return err != nil && (strings.Contains(err.Error(), "SQLITE_BUSY") || strings.Contains(err.Error(), "database is locked"))
 }
 
 // createBackupSimple performs a simple file copy backup without transaction protection.
