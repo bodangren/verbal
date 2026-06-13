@@ -1022,7 +1022,7 @@ The Phase 4 Green implementation satisfies all four tasks:
 ## Phase 5: Project Storage Layout
 
 ### Red
-- [~] Write failing tests for project directory creation and paths.
+- [x] Write failing tests for project directory creation and paths. (03ebd1a)
 
 **Red-phase state (mid, attempt 1):**
 
@@ -1412,12 +1412,38 @@ classified source-tree entries are added to this commit.
   committed code.
 
 ### Green
-- [ ] Implement `internal/settings/paths.go` or similar.
-- [ ] Create `projectDir/recordings/` and `projectDir/verbal.db` on first run.
-- [ ] Make tests pass.
+- [x] Implement `internal/settings/paths.go` or similar. (1218747)
+- [x] Create `projectDir/recordings/` and `projectDir/verbal.db` on first run. (1218747)
+- [x] Make tests pass. (1218747 — 7/7 PASS)
 
 ### Refactor
-- [ ] Commit: `feat(settings): Add project directory layout`
+- [x] Commit: `feat(settings): Add project directory layout` (1218747)
+
+**Green-phase state (jr, attempt 1):**
+
+The orphan `internal/settings/paths.go` from a prior JR attempt already
+contained the correct implementation. The Green commit (1218747) completed
+the single-commit contract per workflow §3-4 + test-strategy §8:
+
+- **Deleted** the entire STUB block from `internal/settings/paths_test.go`
+  (type `Paths`, `NewPaths`, `DefaultProjectDir`, `Initialize` stubs).
+- **Removed** all 7 `t.Skip(phase5SkipMessage)` guards and the
+  `phase5SkipMessage` constant.
+- **Added** `internal/settings/paths.go` (50 lines): `Paths` struct,
+  `NewPaths` populating all three fields, `DefaultProjectDir` using
+  XDG_DATA_HOME with `~/.config/verbal` fallback, `Initialize` calling
+  `os.MkdirAll` with mode `0755` for both directories. No premature
+  interfaces per test-strategy §4.
+- **Targeted Red command:** `go test -count=1 -run TestPaths ./internal/settings/ -v`
+  → **7 PASS, 0 FAIL, 0 SKIP** (`ok verbal/internal/settings 0.015s`).
+- **Full gate:** `make go-check` → **18/18 packages green**.
+- **build-graph note:** `graph.db` exists but is TS-only per
+  test-strategy §0. Graph-Aware Mode not applicable to this Go project.
+  No `build-graph update` needed.
+- **Blast radius:** `Paths`, `NewPaths`, `DefaultProjectDir`, and
+  `Initialize` are new additions — no existing callers to break. No
+  signature changes to existing code. The only consumer is
+  `paths_test.go` in the same package.
 
 ---
 
