@@ -1254,6 +1254,163 @@ out-of-scope artifacts; none are added to this commit.
   so until the Green-phase commit lands; Phase 5 Green and
   Refactor tasks remain `[ ]` pending for the next roles.
 
+**Mid re-verification blocked (this attempt, post-supervisor re-entry):**
+
+This re-entry cannot run the targeted Phase 5 Red command
+because the worktree now contains an untracked production file
+`internal/settings/paths.go` that conflicts with the STUB block
+in the committed Red test file. The orphan was placed in the
+worktree by an out-of-order Green-role attempt after the
+previous mid reported `status: complete`; it was never
+committed and is NOT in any branch (verified via
+`git log --all --diff-filter=A -- internal/settings/paths.go`
+→ no commits). The orphan declares the same `Paths`,
+`NewPaths`, `DefaultProjectDir`, and `(*Paths).Initialize`
+symbols as the STUB block in `paths_test.go`, so the test build
+fails with "redeclared in this block" errors and no test in
+`internal/settings/...` can run.
+
+**Worktree evidence (this attempt):**
+
+- `git status --porcelain` lists `?? internal/settings/paths.go`
+  (untracked; 50 lines, mtime 1781367177, 4 minutes after the
+  Red-commit mtime 1781366743).
+- `git ls-files internal/settings/` confirms `paths_test.go` is
+  tracked (committed at `03ebd1a`); `paths.go` is NOT tracked.
+- `git log --oneline -3` shows the Red commit is at HEAD; no
+  subsequent commits have touched `paths.go`.
+- `git stash list` is empty; no stashed work hides the orphan.
+
+**Targeted Red command (this attempt, count=1, cache busted):**
+
+```bash
+go test -count=1 -run TestPaths ./internal/settings/ -v
+```
+
+Result: **BUILD FAILED** (4 redeclaration errors, 0 tests run):
+
+```
+# verbal/internal/settings [verbal/internal/settings.test]
+internal/settings/paths_test.go:228:6: Paths redeclared in this block
+	internal/settings/paths.go:10:6: other declaration of Paths
+internal/settings/paths_test.go:237:6: NewPaths redeclared in this block
+	internal/settings/paths.go:18:6: other declaration of NewPaths
+internal/settings/paths_test.go:244:6: DefaultProjectDir redeclared in this block
+	internal/settings/paths.go:28:6: other declaration of DefaultProjectDir
+internal/settings/paths_test.go:251:17: method Paths.Initialize already declared at internal/settings/paths.go:42:17
+FAIL	verbal/internal/settings [build failed]
+```
+
+The "fail count" is 0 test FAILs (the build never gets to
+running tests). The contract is unchanged at HEAD but cannot
+be exercised while the orphan is present.
+
+**Aggregate gate for the package (this attempt):**
+
+```bash
+go test -count=1 ./internal/settings/
+```
+
+Result: **BUILD FAILED** (same 4 redeclaration errors). 0 tests
+run.
+
+**Production-only build sanity check (this attempt):**
+
+```bash
+go build ./...
+```
+
+Result: **PASS** (production build is clean because
+`paths_test.go` is excluded from `go build`; the orphan's
+declarations are valid production code, not a duplicate of any
+existing production file).
+
+**Why mid is blocked (not just "test fail"):**
+
+The brief requires Red tests to "fail because the current
+implementation is missing or wrong, not merely because a
+durable record is stale." The committed Red contract is
+correct (verified by the previous mid attempt's ephemeral
+harness: 7/7 FAIL against the STUBs, 0 SKIP). The current
+failure is a **package build failure**, not a test assertion
+failure — the test binary cannot even be produced. The
+mid role is not authorized to:
+
+- Delete the orphan (would destroy in-progress Green work
+  from another role; brief: "preserve unrelated user work;
+  do not overwrite, revert, or hide it").
+- Commit the orphan (would convert a Red phase into a Green
+  commit, violating workflow §3-4 and test-strategy §8 which
+  require the STUB block + t.Skip guards to be removed in
+  the **same** commit that adds the real `paths.go`).
+- Delete the STUB block from `paths_test.go` (that is a
+  Green-phase action, not Red; doing it would change the
+  character of the test file from "skip-guarded Red" to
+  "unguarded runnable test" and is out of scope per
+  AGENTS.md: "Do NOT modify existing source code except
+  test files and Measure docs" — strictly the test file is
+  allowed, but the deletion of the STUB block is the Green
+  role's required action per the test file's own header
+  comment).
+
+The mid role's only authorized action here is documentation
+(this plan.md update) plus the handoff message. Resolution
+requires either:
+
+- **Green role completes the work** (preferred — the
+  orphan is the Green deliverable): delete the STUB block
+  and every `t.Skip(phase5SkipMessage)` guard from
+  `internal/settings/paths_test.go`, then `git add`
+  `internal/settings/paths.go` and `paths_test.go` and
+  commit the Green task. This is the path the
+  `paths_test.go` header comment already prescribes.
+- **A supervisor/orchestrator removes the orphan** to
+  restore the prior Red-only worktree state (e.g.
+  `rm internal/settings/paths.go`), after which the next
+  mid attempt can re-verify the Red contract.
+
+**Dirty worktree classification (this attempt, Phase 5):**
+
+| Path | Classification | Rationale |
+|---|---|---|
+| `internal/settings/paths.go` | **relevant, in-progress Green work from JR** | The Phase 5 Green deliverable started by the prior JR attempt and left untracked. Conflicts with the STUB block in the committed Red test file. Not modified by this mid attempt; preserved as-is. Resolution is the Green role's job. |
+| `internal/db/repository_edge_test.go` | **unrelated to Phase 5** | Phase 1 territory. Preserved as-is. |
+| `internal/db/service_edge_test.go` | **unrelated to Phase 5** | Phase 1 territory. Preserved as-is. |
+| `internal/db/settings_edge_test.go` | **unrelated to Phase 5** | `SettingsRepository` tests; the DB-side persistence layer, not the project-storage paths layer. Preserved as-is. |
+| `internal/db/thumbnail_edge_test.go` | **unrelated to Phase 5** | `ThumbnailRepository` validation; post-MVP non-goal per spec.md. Preserved as-is. |
+| `internal/ui/livecaptionwidget_test.go` | **unrelated to Phase 5** | `LiveCaptionWidget` tests for `mvp_transcription_20260612`. Preserved as-is. |
+
+The Measure scaffolding (`measure/archive/...`,
+`measure/runs/...`, `measure/automation-*.{sh,py}`, sibling
+`measure/tracks/...` entries) is all Measure-internal or
+out-of-scope and is preserved as-is. None of the 6
+classified source-tree entries are added to this commit.
+
+**Phase-end state (this attempt):**
+
+- The Red contract from `03ebd1a` is intact in HEAD and was
+  previously verified (7/7 FAIL against STUBs via ephemeral
+  harness; full `make go-check` 18/18 green at the time of
+  the Red commit). The Red task marker remains `[~]`.
+- This attempt only updates `plan.md` (a Measure doc) with
+  the blocked-state report above. No test file is added,
+  modified, or removed. No non-Measure source is touched.
+- The orphan `internal/settings/paths.go` is left in the
+  worktree exactly as it was at the start of this attempt;
+  no `git add` or `git rm` is performed on it. The worktree
+  state at the end of this attempt is the same as at the
+  start with respect to this file (modulo the `plan.md`
+  doc-only change).
+- The `internal/settings` test build is broken on disk but
+  `go build ./...` is green. Full `make go-check` is NOT
+  re-run on this attempt because the test build is
+  expected to fail and re-running would burn time without
+  producing new information. The prior `make go-check`
+  evidence (18/18 green at the Red commit) still applies
+  to the **Red** state — the build break is exclusively a
+  consequence of the orphan, not a regression in the
+  committed code.
+
 ### Green
 - [ ] Implement `internal/settings/paths.go` or similar.
 - [ ] Create `projectDir/recordings/` and `projectDir/verbal.db` on first run.
