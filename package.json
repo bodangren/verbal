@@ -1,0 +1,12 @@
+{
+  "name": "verbal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verbal — local-first media transcription and editing tool",
+  "scripts": {
+    "test": "go test ./... -count=1",
+    "build": "go build ./...",
+    "vet": "go vet ./...",
+    "check": "go vet ./... && go build ./... && go test ./... -count=1"
+  }
+}
