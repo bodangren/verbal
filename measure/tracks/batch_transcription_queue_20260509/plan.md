@@ -57,10 +57,10 @@ tests cleanly in isolation.
 Commit: `0238aff` — feat(db): implement batch queue data model and repository
 
 ## Phase 2: Queue Processing Engine
-- [x] Write tests for BatchTranscriptionService — `07a6058` (Red) / `<sha>` (Green)
-- [x] Implement sequential processing with progress callbacks — `<sha>`
-- [x] Wire existing TranscriptionService into batch runner — `<sha>`
-- [x] Tests pass — `<sha>`
+- [x] Write tests for BatchTranscriptionService — `07a6058` (Red) / `8b0abdc` (Green)
+- [x] Implement sequential processing with progress callbacks — `8b0abdc`
+- [x] Wire existing TranscriptionService into batch runner — `8b0abdc`
+- [x] Tests pass — `8b0abdc`
 
 ### Phase 2 — Red notes (MID attempt, 2026-06-13)
 
