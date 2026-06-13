@@ -94,6 +94,98 @@ This commit (`docs(measure): ...`) only updates `plan.md` (a
 Measure doc) and does not touch any non-test, non-Measure file,
 so the Red-phase boundary holds.
 
+**Red re-verification (mid, attempt 6, post supervisor re-entry):**
+
+The committed Red contract is unchanged from `ef7dcc0` and is
+re-verified here with a stronger, ephemeral harness that proves
+the contract is real (not just durable skip records):
+
+- Committed `internal/db/recording_status_test.go` at HEAD
+  (`ef7dcc0`): 8 tests, all guarded with
+  `t.Skip("track mvp_library_export_20260612 phase 1 task in progress")`.
+  Targeted Red command on the file alone:
+  `go test -count=1 -run 'TestRecordingStatus|TestValidateRecordingStatus|TestValidRecordingStatuses|TestRecordingRepository_ListByStatus' ./internal/db/`
+  → 8 SKIP, 0 FAIL (each `t.Skip` fires; expected per
+  test-strategy §8 mid-task convention).
+- **Ephemeral verification harness** (NOT committed): the same
+  8 assertions in `internal/db/recording_status_red_verification_test.go`
+  with the `t.Skip` lines removed, run against the current STUB
+  declarations:
+  `go test -count=1 -run '^TestRedVerify_' ./internal/db/ -v`
+  → 6 of 8 FAIL, 2 of 8 PASS, 0 SKIP. Failures match the
+  expected "current implementation is wrong" reasons:
+    1. `TestRedVerify_RecordingStatus_IsValid` — 4 of 7
+       sub-cases fail (canonical statuses return `false` from
+       the stub `IsValid`).
+    2. `TestRedVerify_ValidateRecordingStatus` — 2 of 4
+       sub-cases fail (`ValidateRecordingStatus("bogus")` and
+       `ValidateRecordingStatus("")` return `nil` from the
+       stub instead of an error).
+    3. `TestRedVerify_ValidRecordingStatuses_ContainsAll` —
+       1 fail (returns 0 entries, want 4).
+    4. `TestRedVerify_RecordingRepository_ListByStatus` — 3
+       sub-cases fail (returns 0 recordings, want 2/1/1).
+    5. `TestRedVerify_RecordingRepository_ListByStatus_OrderByCreatedAtDesc` —
+       1 fail (returns 0 recordings, want 3).
+    6. `TestRedVerify_RecordingRepository_ListByStatus_RejectsInvalidStatus` —
+       1 fail (returns `nil` error for `"bogus"`).
+  The 2 passes are coincidental matches against the stubs
+  (constant string values are correct; empty-table `ListByStatus`
+  returning `(nil, nil)` happens to have length 0, matching the
+  assertion). The 6 failures collectively prove the contract is
+  real and testable.
+  The verification file was deleted in the same attempt and
+  is NOT in the working tree or any commit.
+- Aggregate gate for the package (post-delete, post-verify):
+  `go test -count=1 ./internal/db/` → `ok verbal/internal/db`
+  (11.329s).
+- Full `make go-check` re-run on this attempt: 18/18 packages
+  green (`cmd/verbal`, `internal/ai`, `internal/ai/local`,
+  `internal/ai/realtime`, `internal/app`, `internal/db`,
+  `internal/domain`, `internal/edit`, `internal/filler`,
+  `internal/lifecycle`, `internal/media`, `internal/settings`,
+  `internal/sync`, `internal/thumbnail`, `internal/transcription`,
+  `internal/transcription/batch`, `internal/ui`,
+  `internal/waveform`). The previously-noted flaky
+  `TestCreateBackup_CreatesConsistentSnapshotWithConcurrentWrites`
+  in `internal/lifecycle` did NOT reproduce this run.
+- Red-phase boundary still holds: only `plan.md` is touched in
+  this attempt. The STUB block in `recording_status_test.go`
+  and the skip guards remain exactly as committed at `ef7dcc0`.
+
+**Dirty worktree classification (mid, attempt 6):**
+
+The worktree contains 5 untracked test files (none added or
+modified by this track). Per the brief, each is classified
+explicitly so the supervisor can audit and the next role can
+fold relevant ones or leave unrelated ones alone:
+
+| Path | Classification | Rationale |
+|---|---|---|
+| `internal/db/repository_edge_test.go` | **adjacent, not Phase 1 contract** | Tests orthogonal edge cases of existing `*Recording` (IsAvailable), `*Database` (GetDBPath, GetDB, NewDatabase mkdir error). None reference the new `RecordingStatus` / `ListByStatus` contract. Edge-test suite from a separate role; preserved as-is. |
+| `internal/db/service_edge_test.go` | **adjacent, not Phase 1 contract** | Tests `RecordingService.GetRecent` and `AddRecording_InsertError`. Service-layer edge tests from a separate role; preserved as-is. |
+| `internal/db/settings_edge_test.go` | **unrelated to Phase 1** | Tests `SettingsRepository` (`recordToSettings` invalid-JSON, `settingsToRecord` nil-configs, `CreateSettingsSchema` idempotency). Settings repo is Phase 5/UI territory, not Phase 1 Library Repository. Preserved as-is. |
+| `internal/db/thumbnail_edge_test.go` | **unrelated to Phase 1** | Tests `ThumbnailRepository` validation (`SaveThumbnail` arg checks, `GetThumbnail` not-found/empty-data). Thumbnails are explicitly listed as a non-goal in spec.md and post-MVP. Preserved as-is. |
+| `internal/ui/livecaptionwidget_test.go` | **unrelated to Phase 1** | Tests `LiveCaptionWidget` (a `mvp_transcription_20260612` widget per lessons-learned.md). Different track, different phase, different package. Preserved as-is. |
+
+None of the 5 files are added to this commit. None reference
+the Phase 1 contract (`RecordingStatus`, `IsValid`,
+`ValidateRecordingStatus`, `ValidRecordingStatuses`,
+`(*RecordingRepository).ListByStatus`). They do NOT block
+Phase 1 closeout — `make go-check` is green with them present
+(verified this run).
+
+The remaining dirty entries are `measure/archive/...` and
+`measure/runs/...` (generated by the automation harness and
+prior phase runs) plus `measure/automation-script.sh` /
+`measure/automation-supervisor.py` and the new sibling track
+specs (`greenfield_project_setup_20260612/spec.md`,
+`mvp_library_export_20260612/{metadata.json,spec.md,
+test-strategy.md}`, `mvp_playback_sync_20260612/`,
+`mvp_recording_import_20260612/`, `mvp_text_delete_20260612/`,
+`mvp_transcription_20260612/`). All are Measure-internal or
+out-of-scope artifacts; none are added to this commit.
+
 ---
 
 ## Phase 2: Library View Widget
