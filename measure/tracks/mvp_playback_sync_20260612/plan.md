@@ -87,10 +87,10 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 
 
 ### Green
-- [x] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline. — `<this commit>`
-- [x] Support embedded video sink (`gtk4paintablesink`) with fallback. — `<this commit>`
-- [x] Implement `Seek` with accurate flags. — `<this commit>`
-- [x] Make tests pass. — `<this commit>`
+- [x] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline. — `2c7fc9a`
+- [x] Support embedded video sink (`gtk4paintablesink`) with fallback. — `2c7fc9a`
+- [x] Implement `Seek` with accurate flags. — `2c7fc9a`
+- [x] Make tests pass. — `2c7fc9a`
 
 **Green result (recorded 2026-06-14, mid role Green phase):**
 - Created `internal/media/gst_player.go` with the production `GstPlayer` type, `BuildGstPlayerPipeline` (pure-fn), `NewGstPlayer`, `NewGstPlayerWithSink`, and the `Player` / `PipelineQuerier` method surface.
@@ -106,7 +106,7 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 - `go vet ./...` clean; `go build ./...` clean.
 
 ### Refactor
-- [x] Commit: `feat(media): Add GStreamer player implementation` — `<this commit>`
+- [x] Commit: `feat(media): Add GStreamer player implementation` — `2c7fc9a`
 
 **Red gap-fix result (recorded 2026-06-14, mid role audit):**
 - Closed a vacuous-pass gap in `TestBuildGstPlayerPipeline_PathWithCarriageReturn_StripsControlChar` — the prior assertion (`strings.Contains(got, "\r") == false`) was satisfied trivially by the STUB's `""` return value and produced a false-pass Red signal. Added a paired `strings.Contains(got, "filesrc")` assertion, mirroring the analogous `TestBuildGstPlayerPipeline_PathWithNewline_StripsControlChar` test.
