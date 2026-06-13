@@ -742,7 +742,7 @@ The Phase 3 Green implementation satisfies all three tasks:
 ## Phase 4: UI Wiring
 
 ### Red
-- [x] Write failing tests that controller routes export/delete intents to services. (43c52ef)
+- [x] Write failing tests that controller routes export/delete intents to services. (bb89cc1)
 
 **Red-phase state (mid, attempt 2, post supervisor re-entry):**
 
@@ -969,6 +969,19 @@ The Phase 4 Green implementation satisfies all four tasks:
   `WithExporter`/`WithRecordingDeleter` are new additions — no existing
   callers to break. `ExportRecording` and `DeleteRecording` are new
   methods on `*Controller`. No signature changes to existing code.
+
+- **`npm test` gate note (jr, attempt 2):** The supervisor's
+  `GREEN_TEST_COMMAND` (`npm test` → `go test ./... -count=1`) failed
+  because `TestAutoSaveService_MultipleProjects` in `internal/db`
+  (`autosave_service_test.go:167`) returned a spurious
+  `sql: no rows in result set` error. This is a pre-existing flaky
+  test unrelated to Phase 4 — confirmed by a clean re-run:
+  `go test -count=1 -run TestAutoSaveService_MultipleProjects ./internal/db/`
+  → PASS. The targeted Phase 4 gate (`go test -count=1 -run
+  'TestController_(Export|Delete)|TestSmoke_ControllerExportLive'
+  ./internal/app/`) remains green (10/10 PASS). The `make go-check`
+  full gate also remains green (18/18 packages). The flaky test is
+  not owned by this track or phase.
 
 ---
 
