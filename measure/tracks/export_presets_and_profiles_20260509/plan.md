@@ -184,10 +184,215 @@ that is its purpose.
 10. Golden table: YouTube 1080p, Podcast Audio, Archive, Web Preview — all with positive bitrate and resolution.
 
 ## Phase 2: Export Dialog Integration
-- [ ] Add preset dropdown to export dialog
-- [ ] Wire preset selection to codec detection and stream-copy logic
-- [ ] Add "Save as Custom Preset" button
-- [ ] Tests pass
+- [~] Add preset dropdown to export dialog — Red pending (MID attempt)
+- [~] Wire preset selection to codec detection and stream-copy logic — Red pending (MID attempt)
+- [~] Add "Save as Custom Preset" button — Red pending (MID attempt)
+- [~] Tests pass — Red pending (MID attempt)
+
+### Phase 2 — Red notes (MID attempt, 2026-06-13)
+
+Two new test files pin the Phase 2 Red contract — one per the
+test-strategy.md §7 split (2a UI dialog wiring, 2b media pure-function):
+
+#### File 1: `internal/ui/exportdialog_presets_test.go` (Phase 2a)
+
+Display-gated tests for the preset dropdown integration on the
+existing `ExportDialog` plus one display-independent contract test
+so headless CI still surfaces a clean Red signal (test-strategy §7
+"Fake harness policy" — no fakes for runner plumbing; this is the
+UI seam, not a runner). All test files reference symbols that do
+not exist yet:
+
+- `type PresetListModel interface` with `ListPresets(ctx) ([]*db.Preset, error)` and `SaveCustomPreset(ctx, *db.Preset) error` (mirrors `BatchQueueModel` pattern at `internal/ui/batchqueuepanel.go:21`)
+- `func (*ExportDialog) SetPresetModel(m PresetListModel)`
+- `func (*ExportDialog) SelectedPreset() *db.Preset`
+- `func (*ExportDialog) SetOnPresetSelected(cb func(p *db.Preset))`
+- `func (*ExportDialog) SaveCurrentAsCustomPreset(name, description string) error` — uses `PresetListModel.SaveCustomPreset` after applying UI-side validation (rejects empty name, embedded `\n`/`\r`, delegates codec/bitrate/w/h from current selection)
+- `func (*ExportDialog) PipelineConfig() media.PipelineConfig` (read-only view of codec→stream-copy decision for the selected preset against the source codec)
+- A dropdown widget surface (`*gtk.DropDown` referenced via `ed.presetDropdown`) populated from `PresetListModel.ListPresets` ordered built-ins-first-then-custom-by-name (mirrors `db.PresetRepository.List` ordering — test-strategy §3 contract #7)
+- Default selection index 0 (first row, which is the first built-in per List ordering) — verified via `ed.presetDropdown.Selected()` after `SetRecording(...)`
+
+Tests added:
+
+1. `TestExportDialogPresetListModel_InterfaceContract` — display-independent. Defines a compile-time `var _ PresetListModel = (*stubPresetListModel)(nil)` assertion (test-strategy §7 "compile-time proof" pattern) and a stub that records `ListPresets`/`SaveCustomPreset` calls. Confirms the interface contract at the type level so the stub cannot drift from production adapters. This is the headless-CI Red signal.
+2. `TestExportDialogPresetDropdown_PopulatesFromModel` — `SetPresetModel(stub)` + `SetRecording(rec)` populates the dropdown from the model's presets in the exact order the model returned them; dropdown item count equals `len(model.ListPresets)`.
+3. `TestExportDialogPresetDropdown_DefaultSelection` — after `SetPresetModel` + `SetRecording`, the selected index is 0 (first built-in row).
+4. `TestExportDialogPresetDropdown_SelectingPresetFiresCallback` — changing the selection invokes the registered `SetOnPresetSelected` callback with the matching `*db.Preset`.
+5. `TestExportDialogSaveAsCustomPreset_CallsModelWithFields` — `SaveCurrentAsCustomPreset("My Preset", "desc")` invokes the model's `SaveCustomPreset` exactly once with the preset populated from the current selection (name, description, container, video/audio codec, bitrate, width, height, IsBuiltin=false).
+6. `TestExportDialogSaveAsCustomPreset_RejectsEmptyOrNewlineName` — `SaveCurrentAsCustomPreset("", ...)` and `SaveCurrentAsCustomPreset("bad\nname", ...)` return a validation error and do NOT call the model's `SaveCustomPreset` (test-strategy §3 path safety).
+
+#### File 2: `internal/media/preset_pipeline_test.go` (Phase 2b)
+
+Pure-function tests for the codec→preset→pipeline mapping that the
+Green author implements in `internal/media` (test-strategy §5 Phase 2
+"stream-copy decision is a pure function under unit test using
+`fakeCodecDetector`"). All tests reference symbols that do not exist
+yet:
+
+- `type PipelineConfig struct` with fields `VideoCodec, AudioCodec, Container string; Bitrate int64; Width, Height int; StreamCopy bool; AudioOnly bool; Muxer, VEncoder, AEncoder string` (test-strategy §2 Built-in preset coverage requires containers mp4, mkv, webm, wav, m4a — muxer/encoder derived from container)
+- `func PresetToPipelineConfig(p *db.Preset, sourceCodec CodecInfo) PipelineConfig` — pure function, decides stream-copy from `CodecInfo.CanStreamCopy()` AND matches against the preset's declared `VideoCodec`. Mismatch forces re-encode even when `CanStreamCopy()` is true (spec AC #5: "Stream-copy used when source matches preset codec" — requires both).
+- `type PresetCodecDetector interface { Detect(filePath string) (CodecInfo, error) }` (mirrors existing `media.CodecDetector` — the Green author reuses the existing interface or extends it; either way the test depends only on the interface, not the GStreamer implementation)
+- A compile-time assertion `var _ PresetCodecDetector = (CodecDetector)(nil)` proving the existing `CodecDetector` interface satisfies the new contract so the fake cannot drift from production (test-strategy §7).
+
+Tests added:
+
+1. `TestPresetCodecDetector_InterfaceCompatibility` — compile-time proof that the existing `media.CodecDetector` interface satisfies `PresetCodecDetector` (no drift). Display-independent.
+2. `TestPresetToPipelineConfig_H264Preset_H264Source_StreamCopy` — YouTube 1080p preset (H.264/AAC/MP4) + H.264 source → `StreamCopy=true`, muxer=mp4mux, vencoder="copy".
+3. `TestPresetToPipelineConfig_VP9Preset_VP9Source_StreamCopy` — Web Preview preset (VP9/Opus/WebM) + VP9 source → `StreamCopy=true`, muxer=webmmux, aencoder="copy".
+4. `TestPresetToPipelineConfig_MismatchedCodecs_ForcesReencode` — H.264 source + Web Preview preset (VP9) → `StreamCopy=false`, vencoder=vp9enc, aencoder=opusenc.
+5. `TestPresetToPipelineConfig_AV1Source_NeverStreamCopy` — AV1 source + H.264 preset → `StreamCopy=false` regardless of preset (CodecInfo.CanStreamCopy() returns false for AV1; defence in depth per test-strategy §3 stream-copy gating).
+6. `TestPresetToPipelineConfig_PodcastAudioPreset_AudioOnly` — Podcast Audio preset (VideoCodec="", AudioCodec="aac", Container=m4a) + any source → `AudioOnly=true`, no vencoder, aencoder=aac, muxer=mp4mux.
+7. `TestPresetToPipelineConfig_DimensionsFromPreset` — preset's width/height are propagated to `PipelineConfig` (YouTube 1080p → 1920x1080).
+8. `TestPresetToPipelineConfig_BitrateFromPreset` — preset's bitrate is propagated (8_000_000 for YouTube 1080p).
+9. `TestPresetToPipelineConfig_ContainerDeterminesMuxer` — table-driven: `mp4 → mp4mux`, `mkv → matroskamux`, `webm → webmmux`, `m4a → mp4mux`, `wav → wavenc` (covers all 5 containers from `db.PresetContainer*` constants).
+10. `TestPresetToPipelineConfig_ArchivePreset_Lossless` — Archive preset (H.264 + FLAC + MKV) + H.264 source → `StreamCopy=true`, no audio re-encode (`aencoder="copy"`).
+
+**Targeted Red commands** (per test-strategy.md §7):
+
+```
+go test ./internal/ui/ -run TestExportDialogPreset -count=1 -v
+go test ./internal/media/ -run TestPresetToPipelineConfig -count=1 -v
+```
+
+Both are expected to FAIL with `[build failed]` because the package
+cannot compile against the contract symbols listed above. The Green
+author must (a) add `PresetListModel` interface + `SetPresetModel` /
+`SelectedPreset` / `SetOnPresetSelected` /
+`SaveCurrentAsCustomPreset` / `PipelineConfig` methods to
+`internal/ui/exportdialog.go`; (b) add `PipelineConfig` struct,
+`PresetCodecDetector` interface, and `PresetToPipelineConfig` pure
+function to `internal/media` (new file `internal/media/preset_pipeline.go`);
+(c) wire the production `*db.PresetRepository` as `PresetListModel`
+in `internal/app/run.go` (alongside the existing export dialog wiring
+at `run.go:960`); (d) re-run the targeted Red commands (must turn
+green or stay skipped on no display), then
+`go test ./internal/ui/... ./internal/media/... -count=1` for the
+broader gate.
+
+**Aggregate-suite safety.** Per test-strategy.md §7 "Aggregate-suite
+hazards", the new test files are paired with this Red commit and are
+expected to flip Green within the same Phase 2 cycle. The
+`internal/ui/exportdialog_presets_test.go` file includes the
+display-independent `TestExportDialogPresetListModel_InterfaceContract`
+test (test #1 above) so the headless-CI Red signal is clean even when
+GTK is unavailable — the UI package build failure would otherwise mask
+the Phase 2 contract. The `internal/media/preset_pipeline_test.go`
+file has no GTK dependency and runs in any environment.
+
+#### Red result evidence (MID attempt, 2026-06-13)
+
+Both targeted Red commands were run with `GOCACHE=~/.cache/go-build`
+and `-count=1` to bound the gate (no watch mode, no full suite).
+
+**Phase 2a (UI dialog wiring):**
+
+```
+go test ./internal/ui/ -run TestExportDialogPreset -count=1 -v
+```
+
+Result: `FAIL verbal/internal/ui [build failed]` (exit 1). The Go
+compiler reported the first 10 undefined-symbol errors before
+truncating with `too many errors`:
+
+```
+internal/ui/exportdialog_presets_test.go:105:8: undefined: PresetListModel
+internal/ui/exportdialog_presets_test.go:162:9: dialog.SetPresetModel undefined (type *ExportDialog has no field or method SetPresetModel)
+internal/ui/exportdialog_presets_test.go:165:12: dialog.presetDropdown undefined (type *ExportDialog has no field or method presetDropdown)
+internal/ui/exportdialog_presets_test.go:169:18: dialog.presetDropdown undefined (type *ExportDialog has no field or method presetDropdown)
+internal/ui/exportdialog_presets_test.go:179:19: dialog.SelectedPreset undefined (type *ExportDialog has no field or method SelectedPreset)
+internal/ui/exportdialog_presets_test.go:205:9: dialog.SetPresetModel undefined (type *ExportDialog has no field or method SetPresetModel)
+internal/ui/exportdialog_presets_test.go:208:12: dialog.presetDropdown undefined (type *ExportDialog has no field or method presetDropdown)
+internal/ui/exportdialog_presets_test.go:211:19: dialog.presetDropdown undefined (type *ExportDialog has no field or method presetDropdown)
+internal/ui/exportdialog_presets_test.go:214:19: dialog.SelectedPreset undefined (type *ExportDialog has no field or method SelectedPreset)
+internal/ui/exportdialog_presets_test.go:238:9: dialog.SetPresetModel undefined (type *ExportDialog has no field or method SetPresetModel)
+internal/ui/exportdialog_presets_test.go:238:9: too many errors
+```
+
+The full set of undefined symbols required by the Phase 2a Red
+contract (surface in this exact form when the compiler reaches them):
+
+- `PresetListModel` (interface)
+- `ExportDialog.SetPresetModel` (method)
+- `ExportDialog.presetDropdown` (unexported field)
+- `ExportDialog.SelectedPreset` (method)
+- `ExportDialog.SetOnPresetSelected` (method, used in test #4)
+- `ExportDialog.SaveCurrentAsCustomPreset` (method, used in tests #5 + #6)
+
+All `TestExportDialogPreset*` tests live behind `hasDisplay()` (test
+#2–#6) except the compile-time `TestExportDialogPresetListModel_InterfaceContract`
+(test #1), which provides the headless-CI Red signal that does not
+require GTK initialisation. No test case ran — the build itself fails
+Red because the production methods and the `PresetListModel` interface
+do not exist.
+
+**Phase 2b (media pure-function):**
+
+```
+go test ./internal/media/ -run TestPresetToPipelineConfig -count=1 -v
+```
+
+Result: `FAIL verbal/internal/media [build failed]` (exit 1). The Go
+compiler reported the first 10 undefined-symbol errors before
+truncating with `too many errors`:
+
+```
+internal/media/preset_pipeline_test.go:80:8: undefined: PresetCodecDetector
+internal/media/preset_pipeline_test.go:92:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:130:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:154:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:177:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:193:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:214:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:226:52: undefined: AudioCodecFLAC
+internal/media/preset_pipeline_test.go:228:9: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:262:11: undefined: PresetToPipelineConfig
+internal/media/preset_pipeline_test.go:262:11: too many errors
+```
+
+The full set of undefined symbols required by the Phase 2b Red
+contract:
+
+- `PresetCodecDetector` (interface, used in test #1)
+- `PresetToPipelineConfig` (function, used in tests #2–#10)
+- `AudioCodecFLAC` (constant, used in tests #8 + #10 to model the
+  lossless archive source audio codec; the Green author must add this
+  constant alongside `AudioCodecAAC`, `AudioCodecMP3`, `AudioCodecOpus`,
+  `AudioCodecVorbis`, `AudioCodecUnknown` already declared at
+  `internal/media/codec.go:26-30`)
+
+No test case ran — the build itself fails Red because the production
+function and the supporting type constant do not exist.
+
+**Why these Red signals are sound** (per user prompt "Red tests must
+fail because the current implementation is missing or wrong, not
+merely because a durable record is stale"):
+
+- Phase 2a Red fails because `ExportDialog` has no `SetPresetModel` /
+  `SelectedPreset` / `presetDropdown` / `SaveCurrentAsCustomPreset`
+  members and `PresetListModel` interface does not exist. The
+  production code at `internal/ui/exportdialog.go:22-374` has not been
+  extended for preset integration (Phase 2 is Red-only at this point).
+- Phase 2b Red fails because `PresetToPipelineConfig` function and
+  `PresetCodecDetector` interface do not exist; `AudioCodecFLAC`
+  constant is also absent. The production code at
+  `internal/media/codec.go` declares only AAC/MP3/Opus/Vorbis/Unknown,
+  and `internal/media/export.go` has no preset→pipeline translator.
+- Both Red signals are not stale record assertions — they exercise
+  real Go compile-time type checks against symbols that do not exist
+  in HEAD's `internal/ui` and `internal/media` packages.
+
+#### Dirty worktree handling
+
+At MID start the worktree contains 21 untracked paths (per the
+user prompt). Classification:
+
+- **Irrelevant / generated, preserved unmodified:** `graph.db` (build-graph SQLite; this is a Go project so build-graph cannot scan it — see test-strategy.md §6 documented skip).
+- **Unrelated user work, preserved unmodified:** all `internal/db/*_edge_test.go`, `internal/ui/livecaptionwidget_test.go`, `measure/archive/superseded_greenfield_20260612_*/`, `measure/automation-script.sh`, `measure/automation-supervisor.py`, `measure/runs/`, plus sibling MVP track folders (`measure/tracks/greenfield_project_setup_20260612/`, `mvp_*`).
+- **Relevant to this track/phase:** none. All dirty paths fall into the categories above. No dirty paths are folded into this Red commit.
+
+No source files outside test files and Measure docs are touched in
+this Red attempt. All unrelated paths are preserved for the user (or
+the responsible track owner) to commit separately.
 
 ## Phase 3: Settings Management
 - [ ] Add presets panel to SettingsWindow
