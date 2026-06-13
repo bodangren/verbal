@@ -87,28 +87,39 @@ Per the MID dirty-worktree protocol these are classified as unrelated
 user work and were NOT touched or committed in this Red phase — they
 are preserved in the working tree for the user (or the responsible
 track) to commit separately. The only files this Red commit adds are
-the new test file and the plan update.
+Measure docs (`test-strategy.md` and this plan note).
 
-**MID follow-up (2026-06-13, attempt 2).** The first MID attempt
-committed the Red test contract (b063f34) and marked Phase 1 tasks
-`[~]` (2533924) but left the supporting `internal/db/migrations.go`
-change (Version 8 — `create export_presets table`) and the
-`test-strategy.md` Measure doc uncommitted. This follow-up folds both
-into the Red-phase commit alongside a small plan note, completing the
-Phase 1 Red deliverable so the next role (Green author) can implement
-the production code (`internal/db/preset_repository.go`,
-`Database.PresetRepo()`, `Preset` type, `PresetContainer*` constants,
-`BuiltinPresetsForTest()`, `SeedBuiltins()`) without any missing
-schema or doc piece.
+**MID follow-up (2026-06-13, attempt 2 — boundary correction).**
+Attempt 1 left a working-tree modification to `internal/db/migrations.go`
+(Version 8 — `create export_presets table`) and an untracked
+`test-strategy.md` Measure doc. Attempt 1 mistakenly committed the
+migration along with the Measure docs. The supervisor gate flagged the
+migration edit as a Red-phase boundary violation — the Red-phase rule
+allows modifications only to test files and Measure docs, and the
+schema migration belongs to Green-phase work. This follow-up:
 
-**Red-verification log (attempt 2, post-fold commit `aa36018`).**
+1. Reverts attempt 1's two commits and discards the uncommitted
+   `migrations.go` change so the file is restored to its HEAD state
+   (no Version 8 — the Green author will add it).
+2. Recomits `test-strategy.md` (Measure doc) and this corrected plan
+   note (Measure doc) as the only Red-phase delta.
+
+The migration contract still belongs in Green — the Red contract test
+file pins the schema shape, validator behaviour, name uniqueness,
+CRUD surface, built-in immutability, list ordering, SeedBuiltins
+idempotency, SeedBuiltins respect-for-user-edits, and the
+`BuiltinPresetsForTest` golden table. None of those contracts are
+weakened by deferring the schema change to Green.
+
+**Red-verification log (attempt 2, post-boundary-correction commit).**
 
 | Step                                        | Command / artifact                                                  | Result                                                       |
 |---------------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------|
 | Targeted Red command                        | `go test ./internal/db/ -run TestPresetRepository -count=1 -v`     | `FAIL verbal/internal/db [build failed]` (exit 1)            |
-| Undefined-symbol compile errors             | counted from `go test` output                                       | 12 distinct undefined-symbol errors (Preset, PresetContainerMP4, Database.PresetRepo, BuiltinPresetsForTest, SeedBuiltins, …) |
+| Undefined-symbol compile errors             | counted from `go test` output                                       | 10 error lines covering 3 distinct undefined symbols (`Preset`, `PresetContainerMP4`, `Database.PresetRepo`); `go test` truncates with `too many errors` after the first 10 entries, so the rest of the missing symbols (`PresetContainerMKV`, `PresetContainerWebM`, `BuiltinPresetsForTest`, `SeedBuiltins`, `PresetRepository.Create/GetByID/GetByName/List/Update/Delete`) are known by inspection but not all printed |
 | Test cases that ran                         | counted from `go test -v` output                                    | 0 — build failed before any test executed                    |
-| Reason for Red                              | Production code intentionally absent (`internal/db/preset_repository.go` not created; `Preset`, `PresetContainer*`, `Database.PresetRepo`, `SeedBuiltins`, `BuiltinPresetsForTest` undefined) | Canonical Red: missing implementation, not stale artefact     |
+| Reason for Red                              | Production code intentionally absent (`internal/db/preset_repository.go` not created; `Preset`, `PresetContainer*` constants, `Database.PresetRepo`, `PresetRepository.Create/GetByID/GetByName/List/Update/Delete`, `PresetRepository.SeedBuiltins`, `BuiltinPresetsForTest` undefined) AND the `export_presets` migration is intentionally absent | Canonical Red: missing implementation + missing schema, neither introduced in this Red phase |
+| `internal/db/migrations.go` state           | restored to HEAD (no Version 8)                                     | Schema migration deferred to Green-phase author              |
 | Unrelated dirty paths preserved             | 16 untracked paths left in working tree (see "Dirty worktree handling" above) | Untouched, staged for owner / owning track                   |
 
 **Aggregate-suite safety.** Per test-strategy.md §7 "Aggregate-suite
