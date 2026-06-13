@@ -27,9 +27,9 @@ go test ./internal/media -run 'TestFakePlayer|TestSmoke_PlaybackPipeline_Satisfi
 > **Design note (Red phase):** The plan's literal method names (`Seek`, `Position`, `Duration`) conflict with the existing `PlaybackPipeline` shape (`SeekTo`, `QueryPosition`, `QueryDuration`). The test strategy (§0 / §1 "Shared Fixtures & Mocks") explicitly requires the `Player` interface to model `PlaybackPipeline`'s shape so Phase 2 is a thin adapter, AND requires the compile-time smoke assertion `var _ Player = (*PlaybackPipeline)(nil)` to live in the same test file as the fake. To satisfy both, the Phase 1 Red contract uses the existing method names (`SeekTo`, `QueryPosition`, `QueryDuration`); the GREEN role may add thin adapter wrappers under the plan's preferred aliases if UX prefers them, but the interface in `internal/media/player.go` MUST stay aligned with `PlaybackPipeline`'s shape for the smoke assertion to hold.
 
 ### Green
-- [x] Define `internal/media/player.go`.
-- [x] Implement `fakePlayer` for tests.
-- [x] Make tests pass.
+- [x] Define `internal/media/player.go`. — `e2c856b`
+- [x] Implement `fakePlayer` for tests. — `e2c856b`
+- [x] Make tests pass. — `e2c856b`
 
 **Green result (recorded 2026-06-14, Phase 1 Green commit):**
 - Created `internal/media/player.go` with `Player` interface (Play, Pause, Stop, SeekTo, QueryPosition, QueryDuration)
