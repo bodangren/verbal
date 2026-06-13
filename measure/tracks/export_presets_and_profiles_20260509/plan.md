@@ -425,9 +425,9 @@ the responsible track owner) to commit separately.
 9. AudioCodecFLAC constant added alongside existing audio codec constants.
 
 ## Phase 3: Settings Management
-- [~] Add presets panel to SettingsWindow
-- [~] Allow edit/delete of custom presets
-- [~] Built-in presets are read-only
+- [x] Add presets panel to SettingsWindow
+- [x] Allow edit/delete of custom presets
+- [x] Built-in presets are read-only
 - [ ] Manual verification
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
@@ -694,6 +694,33 @@ Red commit adds are:
 2. `measure/tracks/export_presets_and_profiles_20260509/plan.md` (this
    Measure doc — Phase 3 task markers flipped to `[~]` and this Red
    notes block appended).
+
+### Phase 3 — Green verification (JR, 2026-06-13, commit `f103cca`)
+
+**Files added/modified:**
+
+| File | Change |
+|------|--------|
+| `internal/ui/settingspresetpanel.go` | New file: `PresetManagementModel` interface (`ListPresets`, `UpdatePreset`, `DeletePreset`), `SettingsPresetPanel` struct with `NewSettingsPresetPanel`, `Widget`, `Refresh`, `Snapshot`, `IsEditEnabled`, `IsDeleteEnabled`, `TriggerDelete`, `TriggerEdit` methods. Built-in immutability enforced at UI level (edit/delete buttons disabled for `IsBuiltin=true`; `TriggerEdit`/`TriggerDelete` reject built-in rows before calling model). Name validation at UI boundary (empty, whitespace, `\n`/`\r` rejected). Auto-refresh after successful mutations. Model error propagation. |
+| `internal/ui/settingswindow.go` | Extended `SettingsWindow` with `presetModel PresetManagementModel` and `presetPanel *SettingsPresetPanel` fields. Added `SetPresetModel(m PresetManagementModel)` method that constructs the panel and embeds it below the provider stack. |
+
+**Green-verification log:**
+
+| Step | Command / artifact | Result |
+|------|--------------------|--------|
+| Targeted Red → Green | `go test ./internal/ui/ -run TestSettingsPresetPanel -count=1 -v` | All 11 tests PASS |
+| Full gate | `make go-check` | All 18 packages PASS (vet + build + tests) |
+
+**Contracts satisfied:**
+
+1. PresetManagementModel interface with ListPresets/UpdatePreset/DeletePreset (compile-time assertion passes with stub).
+2. SettingsPresetPanel populates from model in model order (built-ins first per repo ordering).
+3. Edit/delete disabled for built-in presets (IsEditEnabled/IsDeleteEnabled return false; TriggerEdit/TriggerDelete return error without calling model).
+4. Edit/delete functional for custom presets (model called with correct arguments; panel auto-refreshes).
+5. Name validation: empty, whitespace, `\n`/`\r` rejected before model call.
+6. Model error propagation: DeletePreset/UpdatePreset/ListPresets errors surface to caller.
+7. SettingsWindow integration: SetPresetModel constructs panel, exposes via presetPanel field.
+8. AudioCodecFLAC constant was already added in Phase 2 (no additional work needed).
 
 ## Phase 4: Verification
 - [ ] Full test suite pass
