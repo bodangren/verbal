@@ -357,6 +357,92 @@ func TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying(t *testing.T) {
 	}
 }
 
+// TestGstPlayer_Pause_TransitionsStateFromStoppedToPaused is the
+// counterpart to TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying
+// for the Pause transition. test-strategy §1 (Phase 2 pyramid) requires
+// a state-machine table; the Red phase had only the Play transition
+// pinned, so this Red-close-out addition tightens coverage for Pause.
+// The contract: Pause() ALWAYS sets the cached state to StatePaused,
+// matching the existing TestPlaybackPipeline_Pause_StateTransition shape
+// (playback_test.go).
+func TestGstPlayer_Pause_TransitionsStateFromStoppedToPaused(t *testing.T) {
+	p, _ := NewGstPlayer("/tmp/sample.mp4")
+
+	if got := p.GetState(); got != StateStopped {
+		t.Fatalf("GetState() before Pause = %v, want %v (initial)", got, StateStopped)
+	}
+	if err := p.Pause(); err != nil {
+		t.Fatalf("Pause(): %v", err)
+	}
+	if got := p.GetState(); got != StatePaused {
+		t.Errorf("GetState() after Pause = %v, want %v (state transition)", got, StatePaused)
+	}
+}
+
+// TestGstPlayer_Stop_FromPlaying_TransitionsToStopped is the Stop
+// counterpart of the Play/Pause transition tests above. It exercises
+// the Stop transition from a non-initial state (Playing) so the state
+// machine is exercised on a state-machine edge rather than only on the
+// Stopped->Stopped self-loop. Complements TestPlaybackPipeline_Stop_*
+// (playback_test.go).
+func TestGstPlayer_Stop_FromPlaying_TransitionsToStopped(t *testing.T) {
+	p, _ := NewGstPlayer("/tmp/sample.mp4")
+
+	if err := p.Play(); err != nil {
+		t.Fatalf("setup Play(): %v", err)
+	}
+	if got := p.GetState(); got != StatePlaying {
+		t.Fatalf("setup: GetState() = %v, want %v", got, StatePlaying)
+	}
+	if err := p.Stop(); err != nil {
+		t.Fatalf("Stop(): %v", err)
+	}
+	if got := p.GetState(); got != StateStopped {
+		t.Errorf("GetState() after Stop = %v, want %v (state transition)", got, StateStopped)
+	}
+}
+
+// TestGstPlayer_StateMachineCycle_PlayPausePlay_StopsAndResumes exercises
+// the full state-machine cycle Play -> Pause -> Play -> Stop in a single
+// test. This is the table-driven equivalent of the per-transition tests
+// above; the cycle assertion catches regressions where a single
+// transition works in isolation but breaks when chained (e.g., a Play
+// that mutates internal state in a way that prevents the next Pause
+// from updating the cache).
+func TestGstPlayer_StateMachineCycle_PlayPausePlay_StopsAndResumes(t *testing.T) {
+	p, _ := NewGstPlayer("/tmp/sample.mp4")
+
+	want := []struct {
+		op   string
+		err  error
+		next PipelineState
+	}{
+		{"play", nil, StatePlaying},
+		{"pause", nil, StatePaused},
+		{"play", nil, StatePlaying},
+		{"stop", nil, StateStopped},
+	}
+	for i, step := range want {
+		var got error
+		switch step.op {
+		case "play":
+			got = p.Play()
+		case "pause":
+			got = p.Pause()
+		case "stop":
+			got = p.Stop()
+		default:
+			t.Fatalf("step %d: unknown op %q", i, step.op)
+		}
+		if got != step.err {
+			t.Errorf("step %d (%s) error = %v, want %v", i, step.op, got, step.err)
+		}
+		if s := p.GetState(); s != step.next {
+			t.Errorf("step %d (%s): GetState() = %v, want %v", i, step.op, s, step.next)
+		}
+	}
+}
+
 // =============================================================================
 // Live smoke (gated by GStreamer init, never skipped silently)
 // =============================================================================
