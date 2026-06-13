@@ -87,10 +87,10 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
 
 
 ### Green
-- [ ] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline.
-- [ ] Support embedded video sink (`gtk4paintablesink`) with fallback.
-- [ ] Implement `Seek` with accurate flags.
-- [ ] Make tests pass.
+- [~] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline.
+- [~] Support embedded video sink (`gtk4paintablesink`) with fallback.
+- [~] Implement `Seek` with accurate flags.
+- [~] Make tests pass.
 
 ### Refactor
 - [ ] Commit: `feat(media): Add GStreamer player implementation`
@@ -104,6 +104,18 @@ go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewG
   - **1 SKIP** (`TestSmoke_GstPlayer_Constructs` — gated by `canInitializeGST()`, skips with reason per test-strategy §5 P2).
   - Total: **12 FAIL + 12 PASS + 1 SKIP = 25 top-level tests** (plus 3 subtests).
 - Targeted Red command runs in **0.087 s** (bounded, full media package intentionally NOT run).
+- `go vet ./internal/media` clean; `go build ./internal/media` clean.
+
+**Red state-machine test (recorded 2026-06-14, mid role Red phase close-out):**
+- Added `TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying` per test-strategy §1 (Phase 2 pyramid: "state-machine table tests with mock bus"). Pins the contract that `Play()` transitions the pipeline state from `StateStopped` to `StatePlaying`. The STUB returns `nil` from `Play()` but does not mutate `GetState()`, so the test fails on the STUB and passes only when the Green role wires `pipeline.SetState(gst.StatePlaying)` on `Play()`.
+- Updated targeted Red command result:
+  - **13 FAIL** (was 12) at top level; the new FAIL is `TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying` on `GetState() == StatePlaying` after `Play()`.
+  - **12 PASS** (unchanged).
+  - **3 sub-FAIL** in `TestBuildGstPlayerPipeline_HandlesPathSafely_TableDriven` (parent also FAILs).
+  - **1 SKIP** (`TestSmoke_GstPlayer_Constructs`).
+  - Total: **13 FAIL + 12 PASS + 1 SKIP = 26 top-level tests** (plus 3 subtests).
+- Marked Phase 2 Green sub-tasks as `[~]` to signal the Red phase is closed and the Green phase is queued for the next role (supervisor gate "at least one current phase task to be marked [~] after Red work").
+- Targeted Red command runs in **<0.3 s** (bounded, full media package intentionally NOT run).
 - `go vet ./internal/media` clean; `go build ./internal/media` clean.
 
 ---

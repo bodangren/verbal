@@ -454,6 +454,29 @@ func TestGstPlayer_Play_Pause_Stop_ReturnNoErrorBeforePlay(t *testing.T) {
 	}
 }
 
+// TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying pins the
+// state-machine contract that test-strategy §1 (Phase 2 pyramid "state-
+// machine table tests with mock bus") explicitly mandates. A fresh player
+// is in StateStopped (TestGstPlayer_GetState_Initial_ReturnsStopped); after
+// Play() the pipeline MUST transition to StatePlaying. The STUB returns
+// nil from Play() but does not mutate GetState(), so this test fails on
+// the STUB and passes only when the Green role wires SetState(StatePlaying)
+// on Play. Complements TestPlaybackPipeline_Play_StateTransition
+// (playback_test.go).
+func TestGstPlayer_Play_TransitionsStateFromStoppedToPlaying(t *testing.T) {
+	p, _ := NewGstPlayer("/tmp/sample.mp4")
+
+	if got := p.GetState(); got != StateStopped {
+		t.Fatalf("GetState() before Play = %v, want %v (initial)", got, StateStopped)
+	}
+	if err := p.Play(); err != nil {
+		t.Fatalf("Play(): %v", err)
+	}
+	if got := p.GetState(); got != StatePlaying {
+		t.Errorf("GetState() after Play = %v, want %v (state transition)", got, StatePlaying)
+	}
+}
+
 // =============================================================================
 // Live smoke (gated by GStreamer init, never skipped silently)
 // =============================================================================
