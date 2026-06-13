@@ -22,6 +22,17 @@
 - **Progress Callbacks via IdleAdd:** Route all GTK progress-bar updates from batch processing goroutines through `glib.IdleAdd` to avoid cross-thread widget access crashes.
 - **Cancel Propagation:** Pass `context.Context` through the transcription runner so that canceling a batch job propagates cleanly to the in-flight API call without leaving the database in an inconsistent state.
 
+## Export Presets and Profiles
+
+- **Append-Only Migrations:** When adding a new SQLite table, append a fresh migration version (never edit existing versions). `migrations_compat_test.go` proves the chain stays unbroken — it continues to pass after the new version is added. Reusing a version number silently breaks databases that already ran past it.
+- **Built-in vs Custom via `is_builtin` Flag:** Distinguish shipped presets from user edits with a boolean column rather than a magic name or hard-coded ID list. `SeedBuiltins` uses `INSERT OR IGNORE` so user-customised rows sharing a built-in name are preserved across restarts. UI greys the edit/delete buttons when `is_builtin=1`; the repository also rejects mutations on built-ins as defence in depth.
+- **Stream-Copy Needs Both Checks:** Stream-copying requires BOTH `CodecInfo.CanStreamCopy()` (hardware path support) AND preset-codec matching the source codec. Either check alone is wrong: an H.264 preset + VP9 source must re-encode even though VP9 supports stream-copy into webm. Gate the decision on `CanStreamCopy() && presetCodec == sourceCodec`.
+- **Audio-Only via Empty VideoCodec:** Model audio-only presets (Podcast Audio, AAC-only m4a) by leaving `VideoCodec=""`. The pure-function translator `PresetToPipelineConfig` flips `AudioOnly=true` and skips the video encoder entirely when the field is empty.
+- **Pure-Function Translator Pattern:** Keep `PresetToPipelineConfig` as a pure function in `internal/media`, separate from the GTK widget. The widget calls the function with a `CodecInfo` from the production `CodecDetector`; unit tests call it directly with a hand-built `CodecInfo` so stream-copy decisions are testable without GStreamer or a display.
+- **Compile-Time Interface Assertions:** `var _ PresetListModel = (*stubPresetListModel)(nil)` and `var _ PresetCodecDetector = (CodecDetector)(nil)` are the cheapest insurance against drift. The stub cannot satisfy the interface unless the production adapter also does. Run them inside a `_test.go` file with `func Test*_InterfaceContract(t *testing.T)` so headless CI catches interface drift even when GTK is unavailable.
+- **Headless-CI Red Signal:** Mix display-gated tests with a single display-independent compile-time contract test per UI file. The compile-time test fails the build cleanly under `go test` in headless CI (the `hasDisplay()` skip cannot help when the package won't compile), preserving the Red signal that the package-build failure would otherwise mask.
+- **Model Interface Pattern for UI Panels:** Decouple GTK widgets from the database with a small interface (`PresetListModel`, `PresetManagementModel`) that the production `*PresetRepository` satisfies in `internal/app/run.go`. Tests use a stub that records calls; production wiring uses the real repo. Mirrors the `BatchQueueModel` pattern — keep it consistent across new UI panels.
+
 ## General
 
 - **MVP First:** Build the smallest end-to-end flow (record/import → transcribe → playback → delete word → export) before adding advanced features.

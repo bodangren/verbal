@@ -723,8 +723,145 @@ Red commit adds are:
 8. AudioCodecFLAC constant was already added in Phase 2 (no additional work needed).
 
 ## Phase 4: Verification
-- [ ] Full test suite pass
-- [ ] Build and vet clean
-- [ ] Live GNOME visual verification — SettingsWindow shows preset panel, built-in rows have greyed edit/delete, custom edit/delete functional
-- [ ] Update lessons-learned.md
-- [ ] Commit and push
+- [~] Full test suite pass
+- [~] Build and vet clean
+- [~] Live GNOME visual verification — SettingsWindow shows preset panel, built-in rows have greyed edit/delete, custom edit/delete functional
+- [~] Update lessons-learned.md
+- [~] Commit and push
+
+### Phase 4 — Red notes (MID attempt, 2026-06-13)
+
+Phase 4 has **no new test artifacts** — its deliverable is the aggregate
+gate (`make go-check`) confirming that the implementation produced by
+Phases 1–3 holds together end-to-end (test-strategy.md §7 Phase 4: "n/a
+— no new tests; integration gate"). Per the MID prompt "If the new
+tests pass at HEAD, … mark the task as already satisfied with evidence
+instead of creating a false Red phase", this Red attempt runs the
+aggregate gate against HEAD and records the evidence. No new test files
+are authored — the test contracts were pinned in Phases 1–3.
+
+**build-graph status.** `build-graph stats ./graph.db` reports 19 nodes,
+14 edges, 5 files (only the new files from this track). The project is
+**Go**, so build-graph is a documented-skip per test-strategy.md §6
+(TS-only tool). No fresh scan is run; structural questions were resolved
+via grep/glob.
+
+**Targeted Red command** (per test-strategy.md §7 Phase 4 — the only
+phase where the bounded aggregate gate is the right command):
+
+```
+make go-check
+```
+
+(executes `go vet ./...` + `go build ./...` + `go test ./... -count=1` —
+`-count=1` disables test-result caching per the MID "no watch mode, no
+unbounded full-suite smoke" rule).
+
+**Result:** exit 0, 1m26.6s wall, all 18 packages PASS:
+
+```
+ok  	verbal/cmd/verbal	28.742s
+ok  	verbal/internal/ai	7.475s
+ok  	verbal/internal/ai/local	0.040s
+ok  	verbal/internal/ai/realtime	0.056s
+ok  	verbal/internal/app	1.599s
+ok  	verbal/internal/db	14.148s
+ok  	verbal/internal/domain	0.027s
+ok  	verbal/internal/edit	0.106s
+ok  	verbal/internal/filler	0.020s
+ok  	verbal/internal/lifecycle	5.186s
+ok  	verbal/internal/media	1.790s
+ok  	verbal/internal/settings	0.012s
+ok  	verbal/internal/sync	0.295s
+ok  	verbal/internal/thumbnail	0.243s
+ok  	verbal/internal/transcription	0.046s
+ok  	verbal/internal/transcription/batch	0.676s
+ok  	verbal/internal/ui	3.395s
+ok  	verbal/internal/waveform	0.826s
+```
+
+Zero `go vet` findings, zero `go build` errors, zero test failures. The
+Red command **passes** at HEAD, so per the MID "no false Red phase"
+rule these three tasks are marked as already satisfied with evidence
+below — they are NOT converted to `[x]` in this MID commit because the
+Green-phase author (who runs `make go-check` again as the Phase 4 closeout
+gate) owns the final task flip. The evidence proves the gate will pass
+when re-run.
+
+**Per-package targeted evidence** (re-run of the Phase 1–3 targeted Red
+commands with `-count=1 -v` for explicit pass count):
+
+- **Phase 1 (db):**
+  `go test ./internal/db/ -run 'TestPresetRepository|TestPresetMigration|TestBuiltinPresetsForTest|TestMigrationVersions' -count=1 -v`
+  → 26 tests PASS in 2.234s. Covers `TestMigrationVersions`,
+  `TestPresetMigration_*` (creates-table, idempotent, schema-shape,
+  is-append-only), `TestPresetRepository_*` (create validators +
+  duplicate, get-by-id/name, list ordering, update/delete + built-in
+  rejection, seed golden table + idempotency + respect-for-user-edits),
+  and `TestBuiltinPresetsForTest_CoversRequiredNames`.
+- **Phase 2b (media):**
+  `go test ./internal/media/ -run 'TestPresetToPipelineConfig|TestPresetCodecDetector' -count=1 -v`
+  → 11 tests PASS in 0.126s. Covers interface compatibility, H.264/VP9
+  stream-copy, mismatch forced re-encode, AV1 never stream-copy,
+  audio-only path, dimensions/bitrate from preset, container→muxer
+  table (mp4/mkv/webm/wav/m4a), and Archive lossless.
+- **Phase 2a + 3 (ui):**
+  `go test ./internal/ui/ -run 'TestExportDialogPreset|TestExportDialogSaveAsCustomPreset|TestSettingsPresetPanel' -count=1 -v`
+  → 17 tests PASS in 0.989s. Covers dialog dropdown populate/default
+  selection/callback/save-as-custom (with name validation), settings
+  panel populate/built-in immutability/edit/delete with model + name
+  validation + error propagation + `SettingsWindow.SetPresetModel`
+  integration.
+
+**Total: 54 phase-specific tests PASS** (26 db + 11 media + 17 ui).
+Combined with the rest of `make go-check` (the 18 packages above all
+green), every automated gate for the export_presets track is satisfied.
+
+#### Tasks satisfied at this Red attempt (evidence, not yet flipped to `[x]`)
+
+| Task                                       | Evidence                                                                                       | Owner of final flip |
+|--------------------------------------------|------------------------------------------------------------------------------------------------|---------------------|
+| `Full test suite pass`                    | `make go-check` 18/18 packages PASS; 54 phase tests PASS (per-package targeted re-run)         | Green-phase author (re-runs gate + flips to `[x]`) |
+| `Build and vet clean`                     | `make go-check` `go vet ./...` exit 0, `go build ./...` exit 0                                 | Green-phase author  |
+| `Update lessons-learned.md`               | `## Export Presets and Profiles` section appended with 9 bullet points (40-line total, under 50-line cap) | MID commits this commit; Green-phase author confirms on closeout |
+| `Live GNOME visual verification`          | Manual gate — not a Red test. Owned by human reviewer per test-strategy.md §7 Phase 4.        | Human reviewer / Green-phase author marks complete after visual check |
+| `Commit and push`                         | This MID commit lands the docs (plan.md + lessons-learned.md). Final `git push` is owned by the user / CI. | User / CI          |
+
+#### Why this is not a false Red phase
+
+- The Phase 4 aggregate gate is the **production gate** for this track
+  (test-strategy.md §7 Phase 4: "Live end-to-end" via `make go-check`).
+- It runs at HEAD and **passes**. Forcing a Red outcome by tightening a
+  contract would require writing a new test that fails against the
+  current passing code, which is exactly the "false Red" the MID prompt
+  forbids.
+- The MID role's contribution to Phase 4 is the **documentation
+  bookkeeping** (lessons learned + plan.md verification log) and the
+  **execution of the aggregate gate as evidence**. The actual flip from
+  `[~]` to `[x]` is owned by the Green-phase author per the workflow
+  contract (workflow.md §10 Step 10.1: "update its status from `[~]`
+  to `[x]`").
+
+#### Dirty worktree handling
+
+At MID start the worktree contains 21 untracked paths (per the MID
+prompt). Classification per the Phase 2 / Phase 3 Red notes (which
+already enumerated these paths) — **all unrelated to this track**:
+
+- **Generated / ignorable:** `graph.db` (build-graph SQLite; Go project
+  so build-graph cannot scan — see test-strategy.md §6 documented
+  skip).
+- **Unrelated user work, preserved unmodified:** all `*_edge_test.go`,
+  `livecaptionwidget_test.go`, `measure/archive/superseded_greenfield_*`,
+  `measure/automation-*`, `measure/runs/`, sibling MVP tracks
+  (`greenfield_project_setup_*`, `mvp_*`).
+- **Relevant to this track/phase:** none. No dirty paths are folded into
+  this Red commit.
+
+No source files outside test files and Measure docs are touched in
+this Red attempt. The only files this Red commit modifies are:
+
+1. `measure/tracks/export_presets_and_profiles_20260509/plan.md` (Measure
+   doc — task markers flipped to `[~]`, this Red notes block appended).
+2. `measure/lessons-learned.md` (Measure doc — `## Export Presets and
+   Profiles` section appended).
