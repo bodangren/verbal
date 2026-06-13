@@ -4,124 +4,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/ai"
 )
 
-// =============================================================================
-// STUB BLOCK (test-strategy §1 STUB-Block Test File; lessons-learned
-// "STUB-Block Test File for New Contracts")
-//
-// The Green phase will produce the real implementation in
-// internal/ui/transcript_view.go. Until then, this test file declares
-// the expected `TranscriptView` API so the tests compile and target
-// the missing implementation. STUB methods do NOT satisfy the
-// contract — that is what makes the Red tests fail.
-//
-// Phase 3 spec (FR2 — mvp_playback_sync_20260612/spec.md):
-//   - internal/ui provides a TranscriptView widget.
-//   - Displays words in a flowing layout.
-//   - Each word is a selectable label with start/end metadata.
-//   - Clicking a word seeks the player to the word's start time.
-//
-// The new TranscriptView is distinct from the existing
-// ui.TranscriptionView (single label + scrolled text buffer) and
-// ui.EditableTranscriptionView (text editing + segment export).
-// TranscriptView is the read-only word-list display used by
-// ui.PlaybackScreen (Phase 5). Per test-strategy §8 the naming
-// reconciliation lives here: `TranscriptView` is the new FR2 widget;
-// the existing `TranscriptionView` (lowercase 'r') is the Phase 0
-// "transcription result" text view and stays untouched.
-// =============================================================================
-
-// TranscriptView is a read-only widget that displays a list of
-// transcribed words in a flowing layout. Each word is rendered as a
-// clickable label. Clicking a word invokes the callback registered
-// via SetOnWordClicked with the word's index in the most-recent
-// SetWords list (the spec's OnWordClicked(wordIndex) contract).
-//
-// The widget is consumed by ui.PlaybackScreen (Phase 5) and receives
-// highlight updates from the sync controller (Phase 4) via the same
-// word-index channel (Phase 4's Red will extend the contract).
-type TranscriptView struct {
-	mu            sync.RWMutex
-	words         []ai.Word
-	onWordClicked func(wordIndex int)
-
-	// GTK widgets, populated lazily on Widget().
-	box     *gtk.Box
-	flowBox *gtk.FlowBox
-	labels  []*gtk.Label
-}
-
-// NewTranscriptView creates an empty transcript view.
-//
-// STUB: does not populate the GTK widget tree. The Green phase
-// constructs the gtk.Box / gtk.FlowBox hierarchy here (mirroring the
-// existing WordContainer pattern at internal/ui/word_container.go:33).
-func NewTranscriptView() *TranscriptView {
-	return &TranscriptView{
-		words:  []ai.Word{},
-		labels: []*gtk.Label{},
-	}
-}
-
-// Widget returns the root GTK widget for embedding in containers.
-//
-// STUB: returns nil. The Green phase will return a *gtk.Widget that
-// wraps the gtk.Box; the widget tree is built lazily on first call.
-func (v *TranscriptView) Widget() *gtk.Widget {
-	return nil
-}
-
-// SetWords replaces the displayed words with the given list. Calling
-// with a nil or empty slice clears the view.
-//
-// STUB: does not store the words or update the flow box. The Green
-// phase will copy the slice and (if the widget tree has been
-// created) repopulate the gtk.FlowBox with one gtk.Label per word.
-func (v *TranscriptView) SetWords(words []ai.Word) {}
-
-// WordCount returns the number of words currently displayed.
-//
-// STUB: always returns 0.
-func (v *TranscriptView) WordCount() int {
-	return 0
-}
-
-// WordAt returns the word at the given index. Returns (ai.Word{},
-// false) if the index is out of range.
-//
-// STUB: always returns the zero value and false.
-func (v *TranscriptView) WordAt(index int) (ai.Word, bool) {
-	return ai.Word{}, false
-}
-
-// SetOnWordClicked registers a callback invoked when a word is
-// clicked. The callback receives the index of the clicked word in
-// the most-recent SetWords list. Passing nil clears the callback.
-//
-// STUB: stores the callback reference but emitClick does not invoke
-// it; see emitClick below.
-func (v *TranscriptView) SetOnWordClicked(callback func(wordIndex int)) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	v.onWordClicked = callback
-}
-
-// emitClick is the package-private dispatch entry point used by the
-// gtk.GestureClick handler attached to each word label (Green phase)
-// and by the headless Red-phase tests below. It fires the registered
-// OnWordClicked callback for the given word index if and only if the
-// index is in range. Tests assert that:
-//
-//   - a click on a valid index fires the callback with that index
-//   - a click on an out-of-range or empty-list index does NOT fire
-//   - the callback receives the most-recently-set OnWordClicked
-//
-// STUB: a no-op. The Green phase will route it to v.onWordClicked
-// after validating index < len(v.words).
-func (v *TranscriptView) emitClick(wordIndex int) {}
+// Red-phase behavioural contract tests for TranscriptView.
+// The TranscriptView type and methods are implemented in
+// internal/ui/transcript_view.go.
 
 // =============================================================================
 // Red-phase behavioural contract tests
