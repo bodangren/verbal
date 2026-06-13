@@ -1,65 +1,11 @@
 package media
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 )
-
-// =============================================================================
-// STUB BLOCK (Phase 1 Red) — media.Player contract & fakePlayer stub
-// =============================================================================
-//
-// This block declares the expected production shape of the Player interface
-// and a deliberately minimal fakePlayer so the test file compiles while
-// Phase 1 Green work creates the real contract in internal/media/player.go
-// and the real fakePlayer in internal/media/player_fake.go.
-//
-// GREEN REMOVE THIS BLOCK ENTIRELY: when player.go defines
-//   type Player interface { Play() error; Pause() error; Stop() error;
-//       SeekTo(position float64) bool; QueryPosition() float64;
-//       QueryDuration() float64 }
-// and player_fake.go defines a fully scriptable fakePlayer (error injection,
-// state observer, scriptable position/duration per test-strategy §1), this
-// block is removed and the tests below reference the production identifiers
-// directly.
-//
-// Method-name choice: this STUB intentionally mirrors the existing
-// PlaybackPipeline signature shape (SeekTo / QueryPosition / QueryDuration)
-// rather than the informal aliases in plan.md (Seek / Position / Duration).
-// test-strategy §0 mandates the Player interface MUST be modelled to match
-// PlaybackPipeline so Phase 2 GStreamer implementation is a thin adapter,
-// and §1 mandates the compile-time smoke assertion
-// `var _ Player = (*PlaybackPipeline)(nil)` to live alongside the fake.
-// Both constraints are satisfied by matching the existing signatures; the
-// GREEN role can add thin adapter aliases on top if the public API prefers
-// the plan's shorter names.
-//
-// See: measure/tracks/mvp_playback_sync_20260612/{plan.md,test-strategy.md}
-
-type Player interface {
-	Play() error
-	Pause() error
-	Stop() error
-	SeekTo(position float64) bool
-	QueryPosition() float64
-	QueryDuration() float64
-}
-
-type fakePlayer struct{}
-
-func (f *fakePlayer) Play() error            { return nil }
-func (f *fakePlayer) Pause() error           { return nil }
-func (f *fakePlayer) Stop() error            { return nil }
-func (f *fakePlayer) SeekTo(_ float64) bool  { return false }
-func (f *fakePlayer) QueryPosition() float64 { return -1 }
-func (f *fakePlayer) QueryDuration() float64 { return -1 }
-
-func newFakePlayer() *fakePlayer { return &fakePlayer{} }
-
-// =============================================================================
-// END STUB BLOCK
-// =============================================================================
 
 // Compile-time interface assertions. test-strategy §1 (Mandatory Smoke Test
 // for Cross-Package Fakes) requires both: the fake cannot drift from
@@ -221,11 +167,22 @@ func TestFakePlayer_PlayPausePlay_PositionUnchangedAcrossToggles(t *testing.T) {
 // fakePlayer must expose a way to script a Play() error so Phase 4 and 5
 // can simulate GStreamer init failures. The STUB has no such hook.
 func TestFakePlayer_Play_ErrorInjection(t *testing.T) {
-	// The STUB has no SetPlayError hook; Green phase must add
-	// `func (f *fakePlayer) SetPlayError(err error)` plus a scriptable
-	// return path in Play(). Until then this test is the missing-API
-	// RED signal documented in test-strategy §1.
-	t.Skip("STUB fakePlayer lacks SetPlayError; enabled once Green phase lands internal/media/player_fake.go")
+	fp := newFakePlayer()
+
+	wantErr := fmt.Errorf("simulated GStreamer init failure")
+	fp.SetPlayError(wantErr)
+
+	if err := fp.Play(); err == nil {
+		t.Fatal("Play() with scripted error = nil, want error")
+	} else if err != wantErr {
+		t.Errorf("Play() error = %v, want %v", err, wantErr)
+	}
+
+	// After clearing the error, Play must succeed again.
+	fp.SetPlayError(nil)
+	if err := fp.Play(); err != nil {
+		t.Errorf("Play() after clearing error = %v, want nil", err)
+	}
 }
 
 // =============================================================================
