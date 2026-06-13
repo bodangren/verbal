@@ -124,6 +124,24 @@ commit. `graph.db` is the empty leftover from a prior attempt and is
 irrelevant because this is a pure-Go repo (build-graph is TypeScript-only,
 confirmed by `find -maxdepth 2 -name tsconfig.json` returning nothing).
 
+#### Attempt-2 retry note (2026-06-13)
+
+MID attempt 1 produced commit `07a6058` (Red tests + plan notes) and
+emitted its MEASURE_AGENT_RESULT, but the agent process exited with
+status 124 (900s wall-clock timeout) after the work was done — an
+operational/runtime issue, not a gate failure. On attempt 2 the Red
+artifact and bounded gate were re-verified:
+- `git log` head is still `07a6058 test(batch-queue): add Phase 2 Red contract for BatchTranscriptionService`.
+- Re-running `go test ./internal/transcription/batch/ -run 'TestBatchTranscriptionService' -count=1` still
+  yields `FAIL verbal/internal/transcription/batch [build failed]` with
+  the same 10+ undefined-symbol errors (`ProgressEvent`, `ProgressCallback`,
+  `TranscriptionRunner`, `NewService`, …). The contract is intact and
+  no source-code or test-file changes are required.
+
+No new commit is needed for the artifact itself; this retry note is
+appended in a separate trivial docs commit so the supervisor sees a
+fresh attempt-2 commit referencing the gate re-verification.
+
 ## Phase 3: UI Integration
 - [ ] Add "Batch Transcribe" menu item and dialog
 - [ ] Add queue sidebar panel with progress bars
