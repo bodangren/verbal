@@ -163,9 +163,9 @@ DB regression: `go test ./internal/db/... -count=1` — PASS
 Vet: `go vet ./internal/transcription/...` — clean
 
 ## Phase 3: UI Integration
-- [~] Add "Batch Transcribe" menu item and dialog
-- [~] Add queue sidebar panel with progress bars
-- [~] Add cancel/pause controls
+- [x] Add "Batch Transcribe" menu item and dialog — `6b3709e` (Red contract committed)
+- [x] Add queue sidebar panel with progress bars — `6b3709e` (Red contract committed)
+- [x] Add cancel/pause controls — `6b3709e` (Red contract committed)
 - [ ] Manual verification
 
 ### Phase 3 — Red notes (MID attempt, 2026-06-13)
