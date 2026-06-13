@@ -1,12 +1,24 @@
 package ui
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"verbal/internal/db"
+	"verbal/internal/media"
 )
+
+// PresetListModel is the interface the ExportDialog uses to fetch and
+// save presets. Production code adapts *db.PresetRepository; tests use
+// a stub (mirrors BatchQueueModel at internal/ui/batchqueuepanel.go:21).
+type PresetListModel interface {
+	ListPresets(ctx context.Context) ([]*db.Preset, error)
+	SaveCustomPreset(ctx context.Context, p *db.Preset) error
+}
 
 // ExportType represents the type of export operation.
 type ExportType int
@@ -35,6 +47,14 @@ type ExportDialog struct {
 	statusLabel       *gtk.Label
 	exportButton      *gtk.Button
 	cancelButton      *gtk.Button
+
+	// Preset UI
+	presetModel     PresetListModel
+	presetDropdown  *gtk.DropDown
+	presets         []*db.Preset
+	selectedPreset  *db.Preset
+	onPresetSelected func(*db.Preset)
+	pipelineConfig  *media.PipelineConfig
 
 	// State
 	progressPercent int
@@ -218,6 +238,7 @@ func (ed *ExportDialog) SetRecording(recording *db.Recording) {
 		filename := filepath.Base(recording.FilePath)
 		ed.dialog.SetTitle("Export: " + filename)
 	}
+	ed.loadPresets()
 }
 
 // SetOnExport sets the callback for when export is confirmed.
@@ -371,4 +392,123 @@ func (ed *ExportDialog) onCancelClicked() {
 		ed.onCancel()
 	}
 	ed.dialog.Close()
+}
+
+// SetPresetModel sets the model that provides preset data for the
+// dropdown. The dropdown is populated when SetRecording is called.
+func (ed *ExportDialog) SetPresetModel(m PresetListModel) {
+	ed.presetModel = m
+}
+
+// SelectedPreset returns the currently selected preset, or nil if no
+// preset is selected.
+func (ed *ExportDialog) SelectedPreset() *db.Preset {
+	return ed.selectedPreset
+}
+
+// SetOnPresetSelected registers a callback that fires when the user
+// selects a different preset from the dropdown.
+func (ed *ExportDialog) SetOnPresetSelected(cb func(p *db.Preset)) {
+	ed.onPresetSelected = cb
+}
+
+// SaveCurrentAsCustomPreset validates the supplied name and saves the
+// currently selected preset as a custom preset with the given name and
+// description. The new preset inherits codec, container, bitrate, and
+// resolution from the selected preset but IsBuiltin=false.
+func (ed *ExportDialog) SaveCurrentAsCustomPreset(name, description string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("preset name must not be empty")
+	}
+	if strings.ContainsAny(name, "\n\r") {
+		return fmt.Errorf("preset name must not contain embedded control characters")
+	}
+
+	if ed.selectedPreset == nil {
+		return fmt.Errorf("no preset selected")
+	}
+
+	p := &db.Preset{
+		Name:        name,
+		Description: description,
+		Container:   ed.selectedPreset.Container,
+		VideoCodec:  ed.selectedPreset.VideoCodec,
+		AudioCodec:  ed.selectedPreset.AudioCodec,
+		Bitrate:     ed.selectedPreset.Bitrate,
+		Width:       ed.selectedPreset.Width,
+		Height:      ed.selectedPreset.Height,
+		IsBuiltin:   false,
+	}
+
+	return ed.presetModel.SaveCustomPreset(context.Background(), p)
+}
+
+// PipelineConfig returns the resolved pipeline configuration for the
+// currently selected preset. Returns nil if no preset is selected.
+func (ed *ExportDialog) PipelineConfig() media.PipelineConfig {
+	if ed.pipelineConfig != nil {
+		return *ed.pipelineConfig
+	}
+	return media.PipelineConfig{}
+}
+
+// loadPresets fetches presets from the model and populates the dropdown.
+func (ed *ExportDialog) loadPresets() {
+	if ed.presetModel == nil {
+		return
+	}
+
+	presets, err := ed.presetModel.ListPresets(context.Background())
+	if err != nil || len(presets) == 0 {
+		return
+	}
+
+	ed.presets = presets
+
+	names := make([]string, len(presets))
+	for i, p := range presets {
+		names[i] = p.Name
+	}
+
+	stringList := gtk.NewStringList(names)
+
+	if ed.presetDropdown != nil {
+		ed.presetDropdown.SetModel(&stringList.ListModel)
+	} else {
+		ed.presetDropdown = gtk.NewDropDown(&stringList.ListModel, nil)
+		ed.presetDropdown.SetHExpand(true)
+	}
+
+	ed.presetDropdown.NotifyProperty("selected", func() {
+		idx := ed.presetDropdown.Selected()
+		if int(idx) < len(ed.presets) {
+			ed.selectedPreset = ed.presets[idx]
+			if ed.onPresetSelected != nil {
+				ed.onPresetSelected(ed.selectedPreset)
+			}
+		}
+	})
+
+	if len(presets) > 0 {
+		ed.selectedPreset = presets[0]
+	}
+
+	// Insert dropdown into the dialog content area.
+	content := ed.dialog.ContentArea()
+	if content != nil {
+		presetBox := gtk.NewBox(gtk.OrientationVertical, 8)
+		presetBox.SetMarginStart(18)
+		presetBox.SetMarginEnd(18)
+		presetBox.SetMarginTop(0)
+		presetBox.SetMarginBottom(0)
+
+		presetLabel := gtk.NewLabel("Preset")
+		presetLabel.SetHAlign(gtk.AlignStart)
+		presetLabel.AddCSSClass("heading")
+		presetBox.Append(presetLabel)
+		presetBox.Append(ed.presetDropdown)
+
+		content.Prepend(presetBox)
+	}
 }

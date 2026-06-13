@@ -27,6 +27,7 @@ const (
 	AudioCodecMP3     AudioCodec = "mp3"
 	AudioCodecOpus    AudioCodec = "opus"
 	AudioCodecVorbis  AudioCodec = "vorbis"
+	AudioCodecFLAC    AudioCodec = "flac"
 	AudioCodecUnknown AudioCodec = "unknown"
 )
 
