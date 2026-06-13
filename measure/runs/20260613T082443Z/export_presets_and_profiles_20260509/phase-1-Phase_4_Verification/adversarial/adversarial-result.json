@@ -1,0 +1,18 @@
+{
+  "status": "fail",
+  "summary": "Adversarial audit fixed repository built-in demotion and missing app-to-repository preset wiring; Go CI passes, but npm test could not run because npm is not installed in the environment.",
+  "findings": [
+    "Required command `npm test` remains unrun: `/bin/bash: line 1: npm: command not found`."
+  ],
+  "evidence": [
+    "Reviewed measure/tracks/export_presets_and_profiles_20260509/spec.md, plan.md, and test-strategy.md",
+    "Inspected git diff since 5ae955ef56fa6d69a54cb1a9ab8d580f8bca947a",
+    "Added internal/db TestPresetRepository_Update_RejectsBuiltinDemotion and fixed PresetRepository.Update built-in immutability",
+    "Added internal/app presetRepositoryAdapter with real SQLite adapter tests and wired settings/export dialogs",
+    "go test ./internal/db/ -run 'TestPresetRepository_Update_RejectsBuiltin|TestPresetRepository_SeedBuiltins' -count=1 -v: PASS",
+    "go test ./internal/app/ -run 'TestPresetRepositoryAdapter|TestBuildServiceGraph' -count=1 -v: PASS",
+    "make check: PASS (go vet ./..., go build ./..., go test ./... -count=1)",
+    "npm test: BLOCKED (npm: command not found)",
+    "Commit 99decc8 fix(presets): wire repository adapter and harden built-ins"
+  ]
+}
