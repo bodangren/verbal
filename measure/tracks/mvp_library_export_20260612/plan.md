@@ -1022,7 +1022,237 @@ The Phase 4 Green implementation satisfies all four tasks:
 ## Phase 5: Project Storage Layout
 
 ### Red
-- [ ] Write failing tests for project directory creation and paths.
+- [~] Write failing tests for project directory creation and paths.
+
+**Red-phase state (mid, attempt 1):**
+
+The Red contract for this phase — a new `internal/settings.Paths`
+type that resolves the project directory layout per spec FR4
+(`projectDir/recordings/` for media files, `projectDir/verbal.db`
+for the database) and a `(*Paths).Initialize()` method that creates
+the directories with mode `0755`, leaves an existing `verbal.db`
+untouched on second call, and is safe to call repeatedly — is
+committed as a skip-guarded test file plus a clearly-marked STUB
+API block (same pattern used in Phase 1's `recording_status_test.go`
+and Phase 3's `exporter_test.go` per test-strategy §8).
+
+The contract is required by [spec FR4](./spec.md) ("Project
+directory structure is created on first run. Media files live under
+projectDir/recordings/. Database lives at projectDir/verbal.db.")
+and pinned by [test-strategy §5 P5](./test-strategy.md): "directory
+created with `0755`, `recordings/` subdir, `verbal.db` path returned,
+second call is no-op." The idempotency / no-clobber clause comes
+from [test-strategy §3](./test-strategy.md): "first-run idempotency
+— running `Initialize()` twice must not error, must not clobber
+`verbal.db`." The "no premature interfaces" guardrail comes from
+[test-strategy §4](./test-strategy.md): "No new abstraction layers
+beyond what spec requires (avoid premature interfaces in
+`internal/settings/paths.go`)."
+
+**New file:** `internal/settings/paths_test.go` — 7 tests covering
+the contract:
+
+1. `TestPaths_NewPaths_SetsFields` — `NewPaths(projectDir)` populates
+   `ProjectDir`, `RecordingsDir = projectDir/recordings`, and
+   `DatabasePath = projectDir/verbal.db`.
+2. `TestPaths_Initialize_CreatesProjectDir` — `Initialize()` creates
+   the project directory when it doesn't exist.
+3. `TestPaths_Initialize_CreatesRecordingsSubdir` — `Initialize()`
+   creates the `recordings/` subdirectory.
+4. `TestPaths_Initialize_PermissionsAre0755` — both created
+   directories have mode `0755` (sub-tested per directory; skipped
+   on Windows where Unix mode bits are not meaningful).
+5. `TestPaths_Initialize_IsIdempotent` — second `Initialize()` call
+   returns `nil` and the directories remain present.
+6. `TestPaths_Initialize_DoesNotClobberDatabase` — writing a
+   sentinel `verbal.db` then calling `Initialize()` again preserves
+   the sentinel bytes (no-clobber per test-strategy §3).
+7. `TestPaths_DefaultProjectDir_NonEmpty` — `DefaultProjectDir()`
+   returns a non-empty absolute path so the controller has a
+   deterministic default to fall back to. The exact location is an
+   implementation detail for the Green role.
+
+Every test is guarded at the top with
+`t.Skip(phase5SkipMessage)` per test-strategy §8 (constant defined
+once at the top of the file). The same file contains a clearly
+marked **STUB block** declaring the expected API (`Paths` struct
+with three exported fields, `NewPaths(projectDir string) *Paths`,
+`DefaultProjectDir() string`, and `(*Paths).Initialize() error`)
+so the file compiles and the rest of `internal/settings` keeps
+passing under `make go-check`. The STUB `NewPaths` returns a
+zero-value `Paths`, `DefaultProjectDir` returns `""`, and
+`Initialize` returns `nil` without touching the filesystem.
+
+The next Green-phase attempt must, in one commit:
+1. delete the entire STUB block at the bottom of
+   `internal/settings/paths_test.go`,
+2. remove every `t.Skip(phase5SkipMessage)` guard above,
+3. add the real implementation in `internal/settings/paths.go`
+   with `Paths`, `NewPaths`, `DefaultProjectDir`, and a real
+   `(*Paths).Initialize()` that `os.MkdirAll`s `ProjectDir` and
+   `RecordingsDir` with mode `0755` and leaves an existing
+   `DatabasePath` untouched.
+
+**Red verification (mid, attempt 1):**
+
+- **Committed `internal/settings/paths_test.go` (this commit):**
+  7 tests, all guarded with
+  `t.Skip("track mvp_library_export_20260612 phase 5 task in progress")`,
+  followed by a clearly-marked STUB block (struct, constructor,
+  default-path helper, Initialize method) that lets the file compile.
+- **Targeted Red command** on the new file alone (count=1, cache
+  busted), per test-strategy §7 P5:
+
+  ```bash
+  go test -count=1 -run TestPaths ./internal/settings/ -v
+  ```
+
+  → **7 SKIP, 0 FAIL** (each `t.Skip` fires; no real test
+  executes; `ok verbal/internal/settings 0.008s`).
+- **Ephemeral verification harness** (NOT committed): the same
+  7 assertions in
+  `internal/settings/paths_red_verification_test.go` with the
+  `t.Skip` lines removed and test names prefixed `TestRedVerify_`,
+  run against the current STUB declarations:
+
+  ```bash
+  go test -count=1 -run '^TestRedVerify_Paths_' ./internal/settings/ -v
+  ```
+
+  → **7 of 7 FAIL, 0 SKIP, 0 PASS** (`FAIL verbal/internal/settings`).
+  Each failure corresponds to the STUB's "current implementation is
+  wrong" behavior:
+  1. `TestRedVerify_Paths_NewPaths_SetsFields` — STUB returns
+     zero-value `Paths` (`ProjectDir=""`, `RecordingsDir=""`,
+     `DatabasePath=""`) instead of the populated fields.
+  2. `TestRedVerify_Paths_Initialize_CreatesProjectDir` — STUB
+     `Initialize` does nothing, so `os.Stat(projectDir)` returns
+     `no such file or directory`.
+  3. `TestRedVerify_Paths_Initialize_CreatesRecordingsSubdir` —
+     STUB `Initialize` does nothing, and `RecordingsDir` is `""`
+     from the zero-value `NewPaths`, so `os.Stat` fails.
+  4. `TestRedVerify_Paths_Initialize_PermissionsAre0755` — STUB
+     `Initialize` does nothing; `os.Stat` of the missing directory
+     fails before the mode check.
+  5. `TestRedVerify_Paths_Initialize_IsIdempotent` — both
+     `Initialize` calls return `nil` vacuously, but the
+     `os.Stat` of the missing directories fails.
+  6. `TestRedVerify_Paths_Initialize_DoesNotClobberDatabase` —
+     STUB never creates the parent directory, so
+     `os.WriteFile(p.DatabasePath, sentinel, 0644)` fails with
+     `no such file or directory` before the second `Initialize`
+     is even called.
+  7. `TestRedVerify_Paths_DefaultProjectDir_NonEmpty` — STUB
+     returns `""`.
+
+  The ephemeral file was deleted in the same attempt and is NOT
+  in the working tree or any commit.
+- **Aggregate gate for the package** (post-delete, post-verify):
+  `go test -count=1 ./internal/settings/`
+  → `ok verbal/internal/settings 0.010s`.
+- **Full `make go-check` re-run on this attempt:** 18/18 packages
+  green (`cmd/verbal`, `internal/ai`, `internal/ai/local`,
+  `internal/ai/realtime`, `internal/app`, `internal/db`,
+  `internal/domain`, `internal/edit`, `internal/filler`,
+  `internal/lifecycle`, `internal/media`, `internal/settings`,
+  `internal/sync`, `internal/thumbnail`, `internal/transcription`,
+  `internal/transcription/batch`, `internal/ui`,
+  `internal/waveform`). No regressions; no flaky tests
+  reproduced on this run.
+- **Red-phase boundary holds:** only `paths_test.go` (a new test
+  file) and `plan.md` (a Measure doc) are touched in this attempt.
+  No production code (`internal/settings/paths.go`,
+  `internal/settings/service.go`, `internal/settings/provider.go`)
+  is added or modified, and no source file outside
+  `internal/settings/...` is touched.
+
+**build-graph note:** `graph.db` exists at HEAD (29 nodes,
+22 edges — TS-only tool per [test-strategy §0](./test-strategy.md)).
+Graph-Aware Mode is not applicable to this Go project; no `scan`
+was run. Targeted `build-graph search` for `Paths`, `projectDir`,
+and `settings` returned no results, confirming the graph has no
+record of any Phase 5 symbol — the new `internal/settings.Paths`,
+`NewPaths`, `DefaultProjectDir`, and `(*Paths).Initialize` are
+introduced in this attempt. All structural context for this Red
+attempt was gathered via `glob`/`grep`/`read` over
+`internal/settings/` and `internal/app/`, which confirmed:
+- No file named `internal/settings/paths.go` exists at HEAD —
+  the new contract is genuinely new, not an extension of existing
+  code.
+- No callers of any not-yet-defined `settings.Paths` symbol exist
+  in the codebase (grep confirmed: no `settings.Paths`,
+  `settings.NewPaths`, `settings.DefaultProjectDir`, or
+  `settings.Initialize` references anywhere).
+- `internal/app/controller.go:77-83` defines `DefaultDBPath()`
+  which currently returns `~/.config/verbal/recordings.db`. The
+  Green role will need to reconcile this with the new
+  `DefaultProjectDir()` + `Paths.DatabasePath` (= `verbal.db`)
+  contract — note the filename change from `recordings.db` to
+  `verbal.db` is required by spec FR4 and will be threaded through
+  in Green or a later Phase 6 / verification task. This Red
+  attempt does not touch `controller.go`.
+- No file under `internal/` references the symbols
+  `Paths`, `RecordingsDir`, or `DatabasePath` in the
+  `internal/settings` namespace today.
+
+This confirms a clean blast radius for the new contract.
+
+**Dirty worktree classification (mid, attempt 1, Phase 5):**
+
+The worktree contains 5 untracked test files from a separate role.
+Per the brief, each is classified explicitly so the supervisor can
+audit and the next role can fold relevant ones or leave unrelated
+ones alone:
+
+| Path | Classification | Rationale |
+|---|---|---|
+| `internal/db/repository_edge_test.go` | **unrelated to Phase 5** | Edge tests for `*Recording` / `*Database` / `*RecordingRepository`; Phase 1 territory. No reference to `settings.Paths` or the project-storage contract. Preserved as-is. |
+| `internal/db/service_edge_test.go` | **unrelated to Phase 5** | `RecordingService` edge tests; Phase 1 territory. Preserved as-is. |
+| `internal/db/settings_edge_test.go` | **unrelated to Phase 5** | `SettingsRepository` validation tests — the DB-side settings persistence layer, NOT the project-storage paths layer being introduced here. Different package, different abstraction. Preserved as-is. |
+| `internal/db/thumbnail_edge_test.go` | **unrelated to Phase 5** | `ThumbnailRepository` validation; thumbnails are a post-MVP non-goal per spec.md. Preserved as-is. |
+| `internal/ui/livecaptionwidget_test.go` | **unrelated to Phase 5** | `LiveCaptionWidget` tests for `mvp_transcription_20260612` per `lessons-learned.md`. Different track, different phase, different package. Preserved as-is. |
+
+None of the 5 untracked test files reference `settings.Paths`,
+`settings.NewPaths`, `settings.DefaultProjectDir`,
+`settings.Initialize`, `paths.go`, or `paths_test.go`. They are not
+added to this commit, and their presence does not affect the
+Red-phase outcome — `make go-check` is green with them present
+(verified this run).
+
+The remaining dirty entries are `measure/archive/...`,
+`measure/runs/...`, `measure/automation-script.sh`,
+`measure/automation-supervisor.py`, the new sibling track specs
+(`greenfield_project_setup_20260612/spec.md`,
+`mvp_library_export_20260612/{metadata.json,spec.md,
+test-strategy.md}`, `mvp_playback_sync_20260612/`,
+`mvp_recording_import_20260612/`, `mvp_text_delete_20260612/`,
+`mvp_transcription_20260612/`). All are Measure-internal or
+out-of-scope artifacts; none are added to this commit.
+
+**Phase-end Red boundary (mid, attempt 1):**
+
+- Only `internal/settings/paths_test.go` (a new test file) and
+  `measure/tracks/mvp_library_export_20260612/plan.md` (a Measure
+  doc — explicitly allowed by the brief) are touched in this
+  attempt.
+- No existing source code (`controller.go`, `service.go`,
+  `provider.go`, etc.) is modified.
+- No production code is added or removed.
+- The STUB declarations (`Paths`, `NewPaths`, `DefaultProjectDir`,
+  `(*Paths).Initialize`) are defined inside `paths_test.go` and
+  therefore exist only in the test binary; they are NOT compiled
+  into the production `internal/settings` build (`_test.go` files
+  are excluded from `go build`). This is by design — the STUBs
+  exist so `go test ./internal/settings/...` and `make go-check`
+  pass while the Red contract is committed. The Green role MUST
+  move these declarations into `internal/settings/paths.go` with
+  real bodies and delete the STUB block from the test file in the
+  same commit that flips the task to `[x]`; otherwise the Green
+  build will fail with a "redeclared in this block" error when
+  both files coexist during `go test`.
+- The Phase 5 Red task is marked `[~]` (in progress) and remains
+  so until the Green-phase commit lands; Phase 5 Green and
+  Refactor tasks remain `[ ]` pending for the next roles.
 
 ### Green
 - [ ] Implement `internal/settings/paths.go` or similar.
