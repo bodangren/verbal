@@ -89,6 +89,28 @@ are preserved in the working tree for the user (or the responsible
 track) to commit separately. The only files this Red commit adds are
 the new test file and the plan update.
 
+**MID follow-up (2026-06-13, attempt 2).** The first MID attempt
+committed the Red test contract (b063f34) and marked Phase 1 tasks
+`[~]` (2533924) but left the supporting `internal/db/migrations.go`
+change (Version 8 — `create export_presets table`) and the
+`test-strategy.md` Measure doc uncommitted. This follow-up folds both
+into the Red-phase commit alongside a small plan note, completing the
+Phase 1 Red deliverable so the next role (Green author) can implement
+the production code (`internal/db/preset_repository.go`,
+`Database.PresetRepo()`, `Preset` type, `PresetContainer*` constants,
+`BuiltinPresetsForTest()`, `SeedBuiltins()`) without any missing
+schema or doc piece.
+
+**Red-verification log (attempt 2, post-fold commit `aa36018`).**
+
+| Step                                        | Command / artifact                                                  | Result                                                       |
+|---------------------------------------------|---------------------------------------------------------------------|--------------------------------------------------------------|
+| Targeted Red command                        | `go test ./internal/db/ -run TestPresetRepository -count=1 -v`     | `FAIL verbal/internal/db [build failed]` (exit 1)            |
+| Undefined-symbol compile errors             | counted from `go test` output                                       | 12 distinct undefined-symbol errors (Preset, PresetContainerMP4, Database.PresetRepo, BuiltinPresetsForTest, SeedBuiltins, …) |
+| Test cases that ran                         | counted from `go test -v` output                                    | 0 — build failed before any test executed                    |
+| Reason for Red                              | Production code intentionally absent (`internal/db/preset_repository.go` not created; `Preset`, `PresetContainer*`, `Database.PresetRepo`, `SeedBuiltins`, `BuiltinPresetsForTest` undefined) | Canonical Red: missing implementation, not stale artefact     |
+| Unrelated dirty paths preserved             | 16 untracked paths left in working tree (see "Dirty worktree handling" above) | Untouched, staged for owner / owning track                   |
+
 **Aggregate-suite safety.** Per test-strategy.md §7 "Aggregate-suite
 hazards", the new test file is paired with this Red commit and is
 expected to flip Green within the same Phase 1 cycle. If Phase 1 is
