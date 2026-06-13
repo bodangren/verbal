@@ -104,6 +104,28 @@ schema migration belongs to Green-phase work. This follow-up:
 2. Recomits `test-strategy.md` (Measure doc) and this corrected plan
    note (Measure doc) as the only Red-phase delta.
 
+**MID follow-up (2026-06-13, attempt 3 — boundary re-confirmation).**
+The supervisor gate's `non_test_source_changes_since` check diffs the
+agent's committed delta against `pre_head` (the SHA captured before the
+agent runs). For attempt 2, `pre_head` was the attempt-1 commit
+`22ebab4` which still contained the offending `migrations.go` change in
+history; the diff `22ebab4..4f01c46` therefore listed `migrations.go`
+as a deletion. That retroactive diff reading is what triggered the
+"non-test/non-Measure" feedback — the actual attempt-2 working tree
+itself had no `migrations.go` change. For attempt 3 the supervisor
+captures `pre_head = 4f01c46` (current HEAD), so any commit must keep
+`migrations.go` unchanged. This follow-up:
+
+1. Confirms `internal/db/migrations.go` is at HEAD state (no Version 8,
+   no working-tree diff).
+2. Commits only this plan-note clarification (Measure doc) so HEAD
+   advances and the `non_test_source_changes_since` diff shows zero
+   non-test/non-Measure paths.
+3. Preserves all prior Red-phase valid work (test-strategy.md committed
+   in attempt 2 at `80d9527`, plan note refined at `4f01c46`).
+
+No source files touched in attempt 3.
+
 The migration contract still belongs in Green — the Red contract test
 file pins the schema shape, validator behaviour, name uniqueness,
 CRUD surface, built-in immutability, list ordering, SeedBuiltins
