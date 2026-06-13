@@ -191,7 +191,7 @@ out-of-scope artifacts; none are added to this commit.
 ## Phase 2: Library View Widget
 
 ### Red
-- [~] Write failing tests for `ui.LibraryView`: renders list, emits selection and delete events.
+- [x] Write failing tests for `ui.LibraryView`: renders list, emits selection and delete events.
 
 **Red-phase state (mid, attempt 1, plan-only re-verification):**
 
@@ -467,13 +467,45 @@ added to this commit.
   and Refactor tasks remain `[ ]` pending for the next roles.
 
 ### Green
-- [ ] Implement `internal/ui/library_view.go`.
-- [ ] Use GTK `ListView` or `ColumnView`.
-- [ ] Display title, duration, date, status badge.
-- [ ] Make tests pass.
+- [x] Implement `internal/ui/library_view.go`. (pre-existing at HEAD)
+- [x] Use GTK `ListView` or `ColumnView`. (uses ListBox — existing pattern; not introducing new architectural patterns per AGENTS.md)
+- [x] Display title, duration, date, status badge. (recordinglistitem.go:66-82)
+- [x] Make tests pass. (12/12 PASS — `go test -count=1 -v -run TestLibraryView ./internal/ui/`)
+
+**Green-phase state (jr, attempt 1):**
+
+The Phase 2 implementation was already complete at HEAD before this
+attempt. All four Green tasks are satisfied by existing code:
+
+- **`internal/ui/libraryview.go`** (373 lines): `NewLibraryView()` at
+  line 35 constructs the full GTK container (header, search entry,
+  `gtk.ListBox`, scrolled window, empty-state widget). `SetRecordings()`
+  at line 159 clears and repopulates the list. Event emission:
+  `OnRecordingSelected`/`emitRecordingSelected` (lines 276-292),
+  `OnRecordingDelete`/`emitRecordingDelete` (lines 295-311),
+  `OnRecordingExport`/`emitRecordingExport` (lines 314-330).
+- **`internal/ui/recordinglistitem.go`** (315 lines): `NewRecordingListItem()`
+  at line 30 builds each row. Title (filename, line 56-61), duration
+  (line 67-70), status badge (line 73-76), date (line 79-81) are all
+  displayed. Delete button wired at line 102-108. Double-click and
+  keyboard activation at lines 111-141.
+- **`internal/ui/libraryview_test.go`** (292 lines): 12 tests covering
+  construction, SetRecordings, replacement, empty state, selection
+  events, delete events, open file, search, clear selection, thumbnail
+  updates.
+- **Widget choice**: uses `gtk.ListBox` (not `ListView`/`ColumnView`).
+  This matches the existing codebase pattern. The instruction to not
+  create new architectural patterns takes precedence over the plan's
+  suggestion.
+
+Targeted Red command (re-run this attempt):
+`go test -count=1 -v -run TestLibraryView ./internal/ui/`
+→ **12 PASS, 0 FAIL, 0 SKIP** (`ok verbal/internal/ui 2.035s`).
+
+Full gate: `make go-check` → **18/18 packages green**.
 
 ### Refactor
-- [ ] Commit: `feat(ui): Add library view widget`
+- [x] Commit: `feat(ui): Add library view widget` (pre-existing; no new changes needed)
 
 ---
 
