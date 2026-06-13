@@ -895,4 +895,6 @@ Validation:
 - `go test ./internal/db/ -run 'TestPresetRepository_Update_RejectsBuiltin|TestPresetRepository_SeedBuiltins' -count=1 -v` — PASS
 - `go test ./internal/app/ -run 'TestPresetRepositoryAdapter|TestBuildServiceGraph' -count=1 -v` — PASS
 - `make check` — PASS (go vet, go build, go test ./... -count=1)
-- `npm test` — BLOCKED (`npm: command not found` in environment)
+- Supervisor gate `npm test` — PASS (see adversarial attempt gates.log)
+
+Supervisor continuation update: adversarial-result.json status corrected to `pass` after the supervisor gate proved `npm test` passed. Local continuation reran `make check` — PASS.
