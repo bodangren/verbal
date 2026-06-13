@@ -35,6 +35,10 @@ type SettingsWindow struct {
 
 	// Current settings (working copy)
 	currentSettings *settings.Settings
+
+	// Preset management
+	presetModel PresetManagementModel
+	presetPanel *SettingsPresetPanel
 }
 
 // NewSettingsWindow creates a new settings dialog.
@@ -267,6 +271,38 @@ func (sw *SettingsWindow) SetOnSave(callback func(*settings.Settings)) {
 // SetOnTest sets the callback for testing provider connection.
 func (sw *SettingsWindow) SetOnTest(callback func(settings.ProviderConfig) error) {
 	sw.onTest = callback
+}
+
+// SetPresetModel sets the model that provides preset data for the
+// embedded preset management panel. The panel is constructed and added
+// to the dialog's content area below the provider stack.
+func (sw *SettingsWindow) SetPresetModel(m PresetManagementModel) {
+	sw.presetModel = m
+	sw.presetPanel = NewSettingsPresetPanel(m)
+
+	// Insert the preset panel into the dialog content area, between the
+	// provider stack and the status area.
+	mainBox := sw.stack.Parent()
+	if mainBox != nil {
+		if box, ok := mainBox.(*gtk.Box); ok {
+			separator := gtk.NewSeparator(gtk.OrientationHorizontal)
+			separator.SetMarginTop(12)
+			box.InsertChildAfter(separator, sw.stack)
+
+			presetHeader := gtk.NewLabel("Export Presets")
+			presetHeader.AddCSSClass("heading")
+			presetHeader.SetHAlign(gtk.AlignStart)
+			presetHeader.SetMarginStart(18)
+			presetHeader.SetMarginTop(8)
+			box.InsertChildAfter(presetHeader, separator)
+
+			presetWidget := sw.presetPanel.Widget()
+			presetWidget.SetVExpand(false)
+			presetWidget.SetMarginStart(6)
+			presetWidget.SetMarginEnd(6)
+			box.InsertChildAfter(presetWidget, presetHeader)
+		}
+	}
 }
 
 // onProviderChanged handles provider selection change.
