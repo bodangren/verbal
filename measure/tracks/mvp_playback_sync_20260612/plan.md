@@ -54,7 +54,37 @@ go test ./internal/media -run 'TestFakePlayer|TestSmoke_PlaybackPipeline_Satisfi
 ## Phase 2: GStreamer Player
 
 ### Red
-- [ ] Write failing tests for GStreamer player pipeline construction and state queries.
+- [x] Write failing tests for GStreamer player pipeline construction and state queries.
+
+**Targeted Red command:**
+```bash
+go test ./internal/media -run 'TestGstPlayer|TestBuildGstPlayerPipeline|TestNewGstPlayer' -count=1
+```
+
+> **Regex deviation from test-strategy §7:** the §7 regex `TestGstPlayer|TestSmoke_GstPlayer_PlaysOneSecond` does not match the `TestBuildGstPlayerPipeline_*` and `TestNewGstPlayer_*` prefixes (those do not contain `TestGstPlayer` as a substring). The actual Red command widens the regex to cover all Phase 2 tests. The spirit of §7 (a single bounded command) is preserved; the new regex still runs in <1s and is scoped to the Phase 2 surface only.
+
+**Red result (recorded 2026-06-14, Phase 2 Red commit):**
+- 23 new tests added in `internal/media/gst_player_test.go` with a STUB block (per lessons-learned §"STUB-Block Test File for New Contracts") declaring the expected `BuildGstPlayerPipeline`, `GstPlayer`, `NewGstPlayer`, `NewGstPlayerWithSink` API.
+- **12 FAIL** (Red signal — STUB returns `""` for the pipeline string, returns `nil` error for empty path, and stores `""` for an empty video-sink):
+  - `TestBuildGstPlayerPipeline_ContainsFilesrcAndDecodebin` (missing `filesrc` + `decodebin`)
+  - `TestBuildGstPlayerPipeline_DefaultSink_UsesAutovideosink` (missing `autovideosink`)
+  - `TestBuildGstPlayerPipeline_GtkPaintableSink_ReplacesAutovideosink` (missing `gtk4paintablesink`)
+  - `TestBuildGstPlayerPipeline_AlwaysIncludesAutoaudiosink` (missing `autoaudiosink` for both sinks)
+  - `TestBuildGstPlayerPipeline_EmptySink_FallsBackToAutovideosink` (no fallback applied)
+  - `TestBuildGstPlayerPipeline_PathWithNewline_StripsControlChar` (no `filesrc` substring — STUB empty)
+  - `TestBuildGstPlayerPipeline_QuotedPath_UsesQuoteLocation` (no QuoteLocation output in pipeline)
+  - `TestBuildGstPlayerPipeline_PathWithSpaces_QuotesProperly` (path missing from STUB output)
+  - `TestBuildGstPlayerPipeline_HandlesPathSafely_TableDriven` (3 subtests: newline, CR, plain — all fail on missing `filesrc`)
+  - `TestNewGstPlayer_EmptyPath_ReturnsError` (no error returned by STUB)
+  - `TestNewGstPlayerWithSink_EmptySink_FallsBackToAutovideosink` (STUB stores `""` instead of falling back)
+- **10 PASS** — pinning trivial contracts the STUB satisfies: `InterfaceContract`, `FilePath_StoresProvidedPath`, `PipelineDescription_MatchesBuilderOutput`, `QueryPosition/QueryDuration_BeforePlay_ReturnsNegativeOne`, `GetState_Initial_ReturnsStopped`, `SeekTo_NegativePosition_ReturnsFalse`, `SeekTo_ZeroPosition_ReturnsTrue`, `Close_BeforePlay_IsIdempotent`, `Play_Pause_Stop_ReturnNoErrorBeforePlay`, `NewGstPlayer_ValidPath_ReturnsNonNilPlayer`, `NewGstPlayerWithSink_CustomSink_PassesThrough`.
+- **1 SKIP** — `TestSmoke_GstPlayer_Constructs` skips with reason `"GStreamer not initializable: BuildGstPlayerPipeline returned empty (production not yet wired)"` (the `canInitializeGST()` probe detects the STUB and skips with a printed reason per test-strategy §5 P2 "uses `t.Skip` only when ... — never silent").
+- `go vet ./internal/media` clean.
+- Targeted Red command runs in 0.537 s (bounded — full media package intentionally NOT run in Red phase; the test-strategy §7 targeted command is the contract for Phase 2 Red).
+- Pre-existing media-package tests not exercised by the targeted regex; the STUB block is package-scoped but does not collide with any existing type (no `GstPlayer` in `internal/media` at HEAD; `BuildGstPlayerPipeline` is undeclared). `go vet ./internal/media` and `go build ./internal/media` both clean.
+
+> **Design note (Red phase):** the plan lists `Seek` (not `SeekTo`) for the player, but Phase 1's design note in this plan established that the `Player` interface MUST stay aligned with the existing `PlaybackPipeline` shape (`SeekTo` / `QueryPosition` / `QueryDuration`) so the smoke assertion `var _ Player = (*PlaybackPipeline)(nil)` holds. The Phase 2 Red contract follows the same convention: `*GstPlayer` satisfies `Player` via `SeekTo` (compile-time assertion `var _ Player = (*GstPlayer)(nil)` in `gst_player_test.go`). The `*GstPlayer` also satisfies `PipelineQuerier` (compile-time assertion `var _ PipelineQuerier = (*GstPlayer)(nil)`) so it is a drop-in replacement for `*PlaybackPipeline` in `PositionMonitor` (used by Phase 4 polling). The Green role implements `SeekTo` with `gst.SeekFlagFlush | gst.SeekFlagAccurate` (the accurate flag is what the spec calls "Seek with accurate flags").
+
 
 ### Green
 - [ ] Implement `internal/media/gst_player.go` using `playbin3` or custom decodebin pipeline.
