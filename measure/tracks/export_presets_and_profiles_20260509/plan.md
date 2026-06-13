@@ -184,10 +184,10 @@ that is its purpose.
 10. Golden table: YouTube 1080p, Podcast Audio, Archive, Web Preview — all with positive bitrate and resolution.
 
 ## Phase 2: Export Dialog Integration
-- [~] Add preset dropdown to export dialog — Red pending (MID attempt)
-- [~] Wire preset selection to codec detection and stream-copy logic — Red pending (MID attempt)
-- [~] Add "Save as Custom Preset" button — Red pending (MID attempt)
-- [~] Tests pass — Red pending (MID attempt)
+- [x] Add preset dropdown to export dialog
+- [x] Wire preset selection to codec detection and stream-copy logic
+- [x] Add "Save as Custom Preset" button
+- [x] Tests pass
 
 ### Phase 2 — Red notes (MID attempt, 2026-06-13)
 
@@ -393,6 +393,36 @@ user prompt). Classification:
 No source files outside test files and Measure docs are touched in
 this Red attempt. All unrelated paths are preserved for the user (or
 the responsible track owner) to commit separately.
+
+### Phase 2 — Green verification (JR, 2026-06-13, commit `bb032a8`)
+
+**Files added/modified:**
+
+| File | Change |
+|------|--------|
+| `internal/media/codec.go` | Added `AudioCodecFLAC` constant |
+| `internal/media/preset_pipeline.go` | New file: `PipelineConfig` struct, `PresetCodecDetector` interface, `PresetToPipelineConfig` pure function, `containerMuxer`/`videoEncoderName`/`audioEncoderName` helpers |
+| `internal/ui/exportdialog.go` | Added `PresetListModel` interface, preset fields on `ExportDialog` (`presetModel`, `presetDropdown`, `presets`, `selectedPreset`, `onPresetSelected`, `pipelineConfig`), methods `SetPresetModel`, `SelectedPreset`, `SetOnPresetSelected`, `SaveCurrentAsCustomPreset`, `PipelineConfig`, `loadPresets` |
+
+**Green-verification log:**
+
+| Step | Command / artifact | Result |
+|------|--------------------|--------|
+| Targeted Red → Green (2b media) | `go test ./internal/media/ -run 'TestPresetToPipelineConfig\|TestPresetCodecDetector' -count=1 -v` | All 11 tests PASS |
+| Targeted Red → Green (2a UI) | `go test ./internal/ui/ -run 'TestExportDialogPreset\|TestExportDialogSaveAsCustomPreset' -count=1 -v` | All 6 tests PASS |
+| Full gate | `make go-check` | All 18 packages PASS (vet + build + tests) |
+
+**Contracts satisfied:**
+
+1. PipelineConfig struct with all required fields (VideoCodec, AudioCodec, Container, Bitrate, Width, Height, StreamCopy, AudioOnly, Muxer, VEncoder, AEncoder).
+2. PresetCodecDetector interface compatible with existing CodecDetector (compile-time assertion passes).
+3. PresetToPipelineConfig pure function: stream-copy gates on both CanStreamCopy() AND codec match.
+4. Audio-only path: VideoCodec="" → AudioOnly=true, VEncoder="".
+5. Container→muxer mapping covers all 5 containers (mp4, mkv, webm, wav, m4a).
+6. PresetListModel interface with ListPresets + SaveCustomPreset.
+7. ExportDialog preset integration: dropdown populated from model, default selection index 0, callback on selection change.
+8. SaveCurrentAsCustomPreset validates name (empty, whitespace, \n/\r rejected), delegates to model with IsBuiltin=false.
+9. AudioCodecFLAC constant added alongside existing audio codec constants.
 
 ## Phase 3: Settings Management
 - [ ] Add presets panel to SettingsWindow
