@@ -34,6 +34,7 @@ import (
 )
 
 type appState struct {
+	controller         *Controller
 	window             *adw.ApplicationWindow
 	stack              *gtk.Stack
 	playbackWindow     *ui.PlaybackWindow
@@ -88,7 +89,7 @@ func runGTKApp(c *Controller) error {
 
 	app := adw.NewApplication("com.verbal.editor", gio.ApplicationFlagsNone)
 	app.ConnectActivate(func() {
-		activate(app, database)
+		activate(app, c, database)
 	})
 
 	if code := app.Run(os.Args); code > 0 {
@@ -125,7 +126,7 @@ func buildServiceGraph(database *db.Database) (*db.RecordingService, *thumbnail.
 	return recordingSvc, thumbnailSvc, settingsSvc, aiFactory
 }
 
-func activate(app *adw.Application, database *db.Database) {
+func activate(app *adw.Application, controller *Controller, database *db.Database) {
 	ui.LoadApplicationCSS()
 	adw.Init()
 
@@ -148,6 +149,7 @@ func activate(app *adw.Application, database *db.Database) {
 	stack.SetTransitionDuration(200)
 
 	state := &appState{
+		controller:   controller,
 		window:       window,
 		stack:        stack,
 		loader:       ui.NewRecordingLoader(),
@@ -274,8 +276,12 @@ func setupLibraryView(state *appState) {
 
 	// Handle recording deletion
 	state.libraryView.OnRecordingDelete(func(rec *db.Recording) {
-		// Delete from database
-		if state.recordingSvc != nil {
+		if state.controller != nil {
+			if err := state.controller.DeleteRecording(rec.ID, false); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to delete recording: %v\n", err)
+				return
+			}
+		} else if state.recordingSvc != nil {
 			if err := state.recordingSvc.Delete(rec.ID); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to delete recording: %v\n", err)
 				return
@@ -1022,15 +1028,21 @@ func showExportDialogForRecording(window *adw.ApplicationWindow, state *appState
 	dialog.SetRecording(rec)
 
 	dialog.SetOnExport(func(recordingID, destPath string) {
-		if state.archiveExporter == nil {
+		if state.controller == nil {
 			dialog.UpdateProgress(0, "Export not available")
+			return
+		}
+		recID, err := strconv.ParseInt(recordingID, 10, 64)
+		if err != nil {
+			dialog.UpdateProgress(0, fmt.Sprintf("Export failed: %v", err))
+			dialog.SetExportingState(false)
 			return
 		}
 		go func() {
 			ctx := context.Background()
-			err := state.archiveExporter.Export(ctx, recordingID, destPath, func(percent int, msg string) {
+			err := state.controller.ExportRecording(ctx, recID, filepath.Clean(destPath), func(percent float64, msg string) {
 				glib.IdleAdd(func() {
-					dialog.UpdateProgress(percent, msg)
+					dialog.UpdateProgress(int(percent*100), msg)
 				})
 			})
 			glib.IdleAdd(func() {

@@ -10,6 +10,7 @@ import (
 
 	"verbal/internal/ai"
 	"verbal/internal/db"
+	"verbal/internal/media"
 	"verbal/internal/settings"
 	"verbal/internal/thumbnail"
 )
@@ -30,13 +31,21 @@ type RecordingDeleter interface {
 	Delete(id int64) error
 }
 
+type originalFileExporterAdapter struct {
+	inner *media.Exporter
+}
+
+func (a *originalFileExporterAdapter) Export(ctx context.Context, srcPath, destPath string, progress func(float64, string)) error {
+	return a.inner.Export(ctx, srcPath, destPath, progress)
+}
+
 // Controller owns dependency construction and lifecycle for the Verbal app.
 type Controller struct {
-	config          Config
-	dbPath          string
-	database        *db.Database
-	recordingSvc    *db.RecordingService
-	exporter        Exporter
+	config           Config
+	dbPath           string
+	database         *db.Database
+	recordingSvc     *db.RecordingService
+	exporter         Exporter
 	recordingDeleter RecordingDeleter
 }
 
@@ -102,6 +111,12 @@ func (c *Controller) Initialize() error {
 
 	c.database = database
 	c.recordingSvc = db.NewRecordingService(database)
+	if c.exporter == nil {
+		c.exporter = &originalFileExporterAdapter{inner: media.NewExporter()}
+	}
+	if c.recordingDeleter == nil {
+		c.recordingDeleter = c.recordingSvc
+	}
 	return nil
 }
 
@@ -168,6 +183,9 @@ func (c *Controller) IsInitialized() bool {
 // destPath, reporting progress via the callback. It returns an error if the
 // recording is unknown or the exporter fails.
 func (c *Controller) ExportRecording(ctx context.Context, recID int64, destPath string, progress func(float64, string)) error {
+	if c.recordingSvc == nil {
+		return fmt.Errorf("export: controller not initialized")
+	}
 	rec, err := c.recordingSvc.GetByID(recID)
 	if err != nil {
 		return fmt.Errorf("export: lookup recording %d: %w", recID, err)
@@ -184,6 +202,9 @@ func (c *Controller) ExportRecording(ctx context.Context, recID int64, destPath 
 // DeleteRecording removes a recording from the database. When removeMediaFile
 // is true it also deletes the underlying media file from disk.
 func (c *Controller) DeleteRecording(recID int64, removeMediaFile bool) error {
+	if c.recordingSvc == nil {
+		return fmt.Errorf("delete: controller not initialized")
+	}
 	var filePath string
 	if removeMediaFile {
 		rec, err := c.recordingSvc.GetByID(recID)

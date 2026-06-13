@@ -985,6 +985,22 @@ The Phase 4 Green implementation satisfies all four tasks:
   remains green (18/18 packages). The flaky tests are not owned by
   this track or phase.
 
+**Adversarial audit (2026-06-13):**
+
+- Found that GTK library callbacks in `run.go` bypassed the new controller
+  Phase 4 APIs: delete called `recordingSvc.Delete` directly, and original
+  export used archive ZIP export instead of `Controller.ExportRecording`.
+- Fixed by carrying the `*Controller` into `appState`, routing library delete
+  through `Controller.DeleteRecording`, routing single-recording export through
+  `Controller.ExportRecording`, cleaning the destination path, and installing a
+  default original-file exporter during `Controller.Initialize()`.
+- Added adversarial coverage for uninitialized export/delete failure paths and
+  a live smoke test proving the default controller exporter copies the original
+  file without injected fakes.
+- Verification: targeted Phase 4 app tests PASS (13/13), `go test -count=1
+  ./internal/app/` PASS, `make check` PASS (vet/build/full Go suite). `npm
+  test` could not run because `npm` is not installed in this environment.
+
 ---
 
 ## Phase 5: Project Storage Layout

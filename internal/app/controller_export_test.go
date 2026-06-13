@@ -219,6 +219,13 @@ func TestController_ExportRecording_UnknownRecordingReturnsError(t *testing.T) {
 	}
 }
 
+func TestController_ExportRecording_UninitializedReturnsError(t *testing.T) {
+	ctrl := New(filepath.Join(t.TempDir(), "test.db"), nil)
+	if err := ctrl.ExportRecording(context.Background(), 1, filepath.Join(t.TempDir(), "dest.mp4"), nil); err == nil {
+		t.Fatal("ExportRecording returned nil error before Initialize, want error")
+	}
+}
+
 func TestController_DeleteRecording_RoutesToDeleter(t *testing.T) {
 	fakeExp := &fakeExporter{}
 	fakeDel := &fakeDeleter{}
@@ -246,6 +253,13 @@ func TestController_DeleteRecording_PropagatesDeleterError(t *testing.T) {
 	err := ctrl.DeleteRecording(rec.ID, false)
 	if !errors.Is(err, sentinel) {
 		t.Errorf("DeleteRecording error = %v, want wraps %v", err, sentinel)
+	}
+}
+
+func TestController_DeleteRecording_UninitializedReturnsError(t *testing.T) {
+	ctrl := New(filepath.Join(t.TempDir(), "test.db"), nil)
+	if err := ctrl.DeleteRecording(1, false); err == nil {
+		t.Fatal("DeleteRecording returned nil error before Initialize, want error")
 	}
 }
 
@@ -290,6 +304,34 @@ func TestSmoke_ControllerExportLive(t *testing.T) {
 		if got[i] != payload[i] {
 			t.Fatalf("dest byte %d = %d, want %d", i, got[i], payload[i])
 		}
+	}
+}
+
+func TestSmoke_ControllerDefaultExporterCopiesOriginalFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+	srcPath := filepath.Join(tmpDir, "src.bin")
+	destPath := filepath.Join(tmpDir, "dest.bin")
+	payload := []byte("default-exporter-live-path")
+	if err := os.WriteFile(srcPath, payload, 0o644); err != nil {
+		t.Fatalf("WriteFile src: %v", err)
+	}
+
+	ctrl := New(dbPath, nil)
+	if err := ctrl.Initialize(); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+	rec := makeTestRecording(t, ctrl.Database(), srcPath)
+
+	if err := ctrl.ExportRecording(context.Background(), rec.ID, destPath, nil); err != nil {
+		t.Fatalf("ExportRecording with default exporter: %v", err)
+	}
+	got, err := os.ReadFile(destPath)
+	if err != nil {
+		t.Fatalf("ReadFile dest: %v", err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("dest bytes = %q, want %q", string(got), string(payload))
 	}
 }
 
