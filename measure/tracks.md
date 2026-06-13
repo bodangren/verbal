@@ -28,11 +28,6 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
   *Status: Planned.*
   *Link: [./tracks/mvp_playback_sync_20260612](./tracks/mvp_playback_sync_20260612/)*
 
-- [x] **Track: MVP Library & Export** [created: 2026-06-12] [completed: 2026-06-14] [archived: 2026-06-14]
-  *Focus: Library list/delete view and export of the original media file.*
-  *Status: Done. All five acceptance criteria satisfied at HEAD: `TestLibraryView_SetRecordings` (AC1), `TestRecordingRepository_Delete` + `TestController_DeleteRecording_*` (AC2), `TestExporter_HappyPath_CopiesFile` + `TestSmoke_ControllerExportLive` (AC3), `TestExporter_ProgressMonotonic` + `TestExporter_*Error` (AC4), and `make check` 18/18 green (AC5). FR2 status enum vocabulary drift resolved in `7aefac5` (`a22d48a`); one Low-severity UX polish item (library delete has no confirmation dialog) deferred to a post-MVP UX track and logged in `measure/tech-debt.md`.*
-  *Link: [./archive/mvp_library_export_20260612](./archive/mvp_library_export_20260612/)*
-
 - [ ] **Track: MVP Text-Driven Delete** [created: 2026-06-12]
   *Focus: Delete a single word from the transcript and export a new media file with that segment removed.*
   *Status: Planned.*
@@ -84,3 +79,10 @@ The following tracks are intentionally outside the MVP. They will be created aft
 Completed, superseded, and abandoned tracks are stored in [./archive](./archive/).
 
 Old active tracks from before the greenfield rewrite have been archived under the `superseded_greenfield_20260612_*` prefix.
+
+### Greenfield MVP
+
+- [x] **Track: MVP Library & Export** [created: 2026-06-12] [completed: 2026-06-14] [archived: 2026-06-14]
+  *Focus: Library list/delete view and export of the original media file.*
+  *Status: Done. All five acceptance criteria satisfied at HEAD: `TestLibraryView_SetRecordings` (AC1), `TestRecordingRepository_Delete` + `TestController_DeleteRecording_*` (AC2), `TestExporter_HappyPath_CopiesFile` + `TestSmoke_ControllerExportLive` (AC3), `TestExporter_ProgressMonotonic` + `TestExporter_*Error` (AC4), and `make check` 18/18 green (AC5). FR2 status enum vocabulary drift resolved in `7aefac5` (`a22d48a`); one Low-severity UX polish item (library delete has no confirmation dialog) deferred to a post-MVP UX track and logged in `measure/tech-debt.md`.*
+  *Link: [./archive/mvp_library_export_20260612](./archive/mvp_library_export_20260612/)*
