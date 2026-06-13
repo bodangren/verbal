@@ -191,7 +191,142 @@ out-of-scope artifacts; none are added to this commit.
 ## Phase 2: Library View Widget
 
 ### Red
-- [ ] Write failing tests for `ui.LibraryView`: renders list, emits selection and delete events.
+- [x] Write failing tests for `ui.LibraryView`: renders list, emits selection and delete events.
+
+**Red-phase state (mid, attempt 1, plan-only re-verification):**
+
+The Red contract described by the plan task — "renders list,
+emits selection and delete events" — is **already satisfied at HEAD**
+by an existing test suite and a working implementation. Per the brief's
+explicit escape hatch ("if the new tests pass at HEAD, ... mark the
+task as already satisfied with evidence instead of creating a false
+Red phase"), this attempt only updates `plan.md` and does not introduce
+new failing tests, redundant tests, or any non-Measure file edits.
+
+**Evidence (existing, in HEAD before this commit):**
+
+- **Source — `internal/ui/libraryview.go`:**
+  - `NewLibraryView()` at `libraryview.go:35` — constructor builds the
+    `*gtk.Box` container, header, search entry, `gtk.ListBox`, scrolled
+    window, and empty-state widget.
+  - `SetRecordings([]*db.Recording)` at `libraryview.go:159` — clears
+    existing rows, creates a `*RecordingListItem` per recording, indexes
+    each by `rec.ID` in `itemsByRecording`, and switches between empty
+    state and list view.
+  - `OnRecordingSelected(func(*db.Recording))` at `libraryview.go:276`
+    paired with `emitRecordingSelected(rec)` at `libraryview.go:283` —
+    selection-event emission (callback is invoked with the activated
+    recording pointer).
+  - `OnRecordingDelete(func(*db.Recording))` at `libraryview.go:295`
+    paired with `emitRecordingDelete(rec)` at `libraryview.go:302` —
+    delete-event emission (callback is invoked with the recording
+    pointer whose item's delete button was clicked).
+  - `*RecordingListItem` glue in `internal/ui/recordinglistitem.go`
+    (`OnActivated`/`emitActivated` at `recordinglistitem.go:183-200`
+    and `OnDelete`/`emitDelete` at `recordinglistitem.go:203-220`)
+    triggers the parent view's `emitRecordingSelected` /
+    `emitRecordingDelete` in `libraryview.go:179-184`.
+
+- **Tests — `internal/ui/libraryview_test.go`** (12 tests, all
+  display-gated by `if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == ""`):
+  - "Renders list" contract:
+    - `TestLibraryView_New` (`libraryview_test.go:11`) — `NewLibraryView()`
+      returns non-nil and `Widget()` returns non-nil.
+    - `TestLibraryView_SetRecordings` (`libraryview_test.go:25`) —
+      row count after `SetRecordings` (asserts `len(view.items) == 2`).
+    - `TestLibraryView_SetRecordings_ReplacesExistingRows`
+      (`libraryview_test.go:44`) — second `SetRecordings` call
+      replaces prior rows and rebuilds the `itemsByRecording` index.
+    - `TestLibraryView_SetRecordings_Empty` (`libraryview_test.go:69`)
+      — empty input yields `len(view.items) == 0` and triggers empty
+      state.
+  - "Emits selection events" contract:
+    - `TestLibraryView_OnRecordingSelected` (`libraryview_test.go:82`)
+      — registering a callback via `OnRecordingSelected` and calling
+      `items[0].emitActivated()` invokes the callback with the
+      recording pointer (asserts `selected.ID == 1`).
+  - "Emits delete events" contract:
+    - `TestLibraryView_OnRecordingDelete` (`libraryview_test.go:113`)
+      — registering a callback via `OnRecordingDelete` and calling
+      `items[0].emitDelete()` invokes the callback with the recording
+      pointer (asserts `deleted.ID == 1`).
+  - Surrounding coverage (not strictly required by the Red task but
+    already in HEAD): `TestLibraryView_OnOpenFile`,
+    `TestLibraryView_OnSearch`, `TestLibraryView_GetSelectedRecordings`,
+    `TestLibraryView_ClearSelection`, `TestLibraryView_ShowEmptyState`,
+    `TestLibraryView_UpdateThumbnailAndLoading`.
+
+**Targeted Red command (re-run on this attempt, no display-gate
+needed because GTK is initializable in this env):**
+
+```bash
+go test -count=1 -v -run TestLibraryView ./internal/ui/
+```
+
+Result: **12 PASS, 0 FAIL, 0 SKIP** (`ok verbal/internal/ui 1.050s`).
+The contract is met by the existing implementation; no further
+failing test is needed to prove it.
+
+**Aggregate gate (sanity):**
+
+```bash
+go test -count=1 ./internal/ui/
+```
+
+Result: **OK** (`ok verbal/internal/ui 4.456s`). No regressions
+introduced by this attempt; only `plan.md` is modified.
+
+**Contract divergence note (informational, not blocking):**
+
+The test-strategy document ([test-strategy.md §5 P2](./test-strategy.md))
+describes a more specific contract — "`connect("row-selected")`
+emitting an int64 ID, `connect("delete-requested")` emitting an
+int64 ID" — that does **not** match the current implementation
+(callsites use `func(*db.Recording)` callbacks, not signal-name +
+int64 ID). This is a contract drift between the strategy doc and
+the existing code, not a Red-phase failure of the plan task. The
+plan task wording ("emits selection and delete events") is met by
+the callback shape. The Green role is the appropriate place to
+reconcile the test-strategy's int64-ID contract with the existing
+`*db.Recording` callback shape if the team wants strict
+strategy-alignment; the Red role intentionally does not make that
+decision.
+
+**Dirty worktree classification (mid, attempt 1, Phase 2):**
+
+| Path | Classification | Rationale |
+|---|---|---|
+| `internal/db/repository_edge_test.go` | **unrelated to Phase 2** | Edge tests for `*Recording` / `*Database` / `*RecordingRepository`; touches Phase 1 contract only. Preserved as-is. |
+| `internal/db/service_edge_test.go` | **unrelated to Phase 2** | `RecordingService` edge tests. Phase 1 territory. Preserved as-is. |
+| `internal/db/settings_edge_test.go` | **unrelated to Phase 2** | `SettingsRepository` tests; Phase 5/UI scope. Preserved as-is. |
+| `internal/db/thumbnail_edge_test.go` | **unrelated to Phase 2** | `ThumbnailRepository` validation; spec.md lists thumbnails as a non-goal. Preserved as-is. |
+| `internal/ui/livecaptionwidget_test.go` | **unrelated to Phase 2** | `LiveCaptionWidget` tests for `mvp_transcription_20260612` (per `lessons-learned.md`); different track, different phase. Preserved as-is. |
+
+None of the 5 untracked test files reference `ui.LibraryView`,
+`LibraryView`, `SetRecordings`, `OnRecordingSelected`,
+`OnRecordingDelete`, `libraryview.go`, `libraryview_test.go`, or
+any other Phase 2 symbol. They are not added to this commit, and
+their presence does not affect the Red-phase outcome.
+
+The remaining `measure/archive/...`, `measure/runs/...`,
+`measure/automation-script.sh`, `measure/automation-supervisor.py`,
+`measure/tracks/greenfield_project_setup_20260612/spec.md`,
+`measure/tracks/mvp_library_export_20260612/{metadata.json,spec.md,
+test-strategy.md}`, `measure/tracks/mvp_playback_sync_20260612/`,
+`measure/tracks/mvp_recording_import_20260612/`,
+`measure/tracks/mvp_text_delete_20260612/`, and
+`measure/tracks/mvp_transcription_20260612/` are all
+Measure-internal or sibling-track scaffolding, out of scope for
+this attempt. None are added to this commit.
+
+**Phase-end Red boundary (mid, attempt 1):**
+
+- Only `measure/tracks/mvp_library_export_20260612/plan.md` is
+  touched (a Measure doc — explicitly allowed by the brief).
+- No test file is added, modified, or removed.
+- No non-test, non-Measure source is touched.
+- The Phase 2 Red task is flipped to `[x]` with evidence; Phase 2
+  Green tasks remain `[ ]` and are the next role's responsibility.
 
 ### Green
 - [ ] Implement `internal/ui/library_view.go`.
