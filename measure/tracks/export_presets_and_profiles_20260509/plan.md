@@ -723,11 +723,11 @@ Red commit adds are:
 8. AudioCodecFLAC constant was already added in Phase 2 (no additional work needed).
 
 ## Phase 4: Verification
-- [~] Full test suite pass
-- [~] Build and vet clean
+- [x] Full test suite pass — `make go-check` 18/18 packages PASS (2026-06-13)
+- [x] Build and vet clean — `go vet ./...` + `go build ./...` exit 0 (2026-06-13)
 - [~] Live GNOME visual verification — SettingsWindow shows preset panel, built-in rows have greyed edit/delete, custom edit/delete functional
-- [~] Update lessons-learned.md
-- [~] Commit and push
+- [x] Update lessons-learned.md — `## Export Presets and Profiles` section present (2026-06-13)
+- [x] Commit and push — implementation commits `4c2826d`, `bb032a8`, `f103cca`; docs commit `031a59b` (2026-06-13)
 
 ### Phase 4 — Red notes (MID attempt, 2026-06-13)
 
@@ -865,3 +865,20 @@ this Red attempt. The only files this Red commit modifies are:
    doc — task markers flipped to `[~]`, this Red notes block appended).
 2. `measure/lessons-learned.md` (Measure doc — `## Export Presets and
    Profiles` section appended).
+
+### Phase 4 — Green verification (JR, 2026-06-13)
+
+**Verification summary:**
+
+| Step | Command / artifact | Result |
+|------|--------------------|--------|
+| Targeted Phase 1 (db) | `go test ./internal/db/ -run 'TestPresetRepository\|TestPresetMigration\|TestBuiltinPresetsForTest\|TestMigrationVersions' -count=1 -v` | 26 tests PASS |
+| Targeted Phase 2b (media) | `go test ./internal/media/ -run 'TestPresetToPipelineConfig\|TestPresetCodecDetector' -count=1 -v` | 11 tests PASS |
+| Targeted Phase 2a+3 (ui) | `go test ./internal/ui/ -run 'TestExportDialogPreset\|TestExportDialogSaveAsCustomPreset\|TestSettingsPresetPanel' -count=1 -v` | 17 tests PASS |
+| Full gate | `make go-check` | 18/18 packages PASS (vet + build + tests) |
+| Lessons learned | `measure/lessons-learned.md` | `## Export Presets and Profiles` section present (9 bullets, 40 lines) |
+| build-graph | `build-graph stats ./graph.db` | 19 nodes, 14 edges, 5 files — Go project, no TS update needed |
+
+**Total: 54 phase-specific tests PASS.** All automated gates green.
+
+**Remaining:** `Live GNOME visual verification` — manual gate owned by human reviewer. Requires a running GNOME session with GTK4 to verify the SettingsWindow preset panel visually.
