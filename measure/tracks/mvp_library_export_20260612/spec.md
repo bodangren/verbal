@@ -83,14 +83,11 @@ All five acceptance criteria are satisfied at HEAD
   `internal/transcription`, `internal/transcription/batch`,
   `internal/ui`, `internal/waveform`.
 
-**Spec drift (informational, not blocking):**
+**Verification update (2026-06-14, adversarial Phase 6):**
 
-FR2 lists the UI vocabulary `New | Transcribing | Transcribed |
-Error`; the storage layer implements
-`pending | in_progress | completed | error`. The UI maps
-between the two via `formatStatus` in
-`internal/ui/recordinglistitem.go:286-297`. The display
-matches the spec for `Transcribed`/`Error`/`Pending`;
-`in_progress` is shown as the raw string rather than
-`Transcribing`. Logged as a Low-severity tech-debt item; see
-`measure/tech-debt.md`. Does not block this track.
+FR2 status vocabulary is now mapped explicitly in
+`internal/ui/recordinglistitem.go:286-299`: `pending` → `New`,
+`in_progress` → `Transcribing`, `completed` → `Transcribed`,
+`error` → `Error`. Covered by
+`TestRecordingListItem_FormatStatus_MatchesSpecVocabulary` in
+`internal/ui/libraryview_test.go`.

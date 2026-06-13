@@ -1670,3 +1670,18 @@ closeout commit that modified `plan.md`, `spec.md`, `metadata.json`,
 - HEAD unchanged at `cdb7dd9` — no new implementation needed; Phase 6
   is a verification-only phase with no source changes.
 - This commit only touches `plan.md` (a Measure doc).
+
+**Adversarial audit (2026-06-14):**
+
+- Re-inspected the diff since `f1333a63e9c24c10b7d9721bc91c1b5dc3b8b432`,
+  the Phase 6 plan/spec/test strategy, and the export/delete/path/status
+  implementation and tests.
+- Found the previously documented FR2 status-label drift was still live:
+  `pending` rendered as `Pending` rather than `New`, and `in_progress`
+  rendered as raw `in_progress` rather than `Transcribing`.
+- Added `TestRecordingListItem_FormatStatus_MatchesSpecVocabulary` and fixed
+  `formatStatus` to map `pending` → `New`, `in_progress` → `Transcribing`,
+  `completed` → `Transcribed`, and `error` → `Error`.
+- Verification: focused UI status test PASS; targeted track tests PASS;
+  `make check` PASS. `npm test` could not execute because `npm` is not
+  installed on PATH in this shell.
