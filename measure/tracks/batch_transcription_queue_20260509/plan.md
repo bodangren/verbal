@@ -57,10 +57,10 @@ tests cleanly in isolation.
 Commit: `0238aff` — feat(db): implement batch queue data model and repository
 
 ## Phase 2: Queue Processing Engine
-- [~] Write tests for BatchTranscriptionService
-- [~] Implement sequential processing with progress callbacks
-- [~] Wire existing TranscriptionService into batch runner
-- [~] Tests pass
+- [x] Write tests for BatchTranscriptionService — `07a6058` (Red) / `<sha>` (Green)
+- [x] Implement sequential processing with progress callbacks — `<sha>`
+- [x] Wire existing TranscriptionService into batch runner — `<sha>`
+- [x] Tests pass — `<sha>`
 
 ### Phase 2 — Red notes (MID attempt, 2026-06-13)
 
@@ -141,6 +141,26 @@ artifact and bounded gate were re-verified:
 No new commit is needed for the artifact itself; this retry note is
 appended in a separate trivial docs commit so the supervisor sees a
 fresh attempt-2 commit referencing the gate re-verification.
+
+### Phase 2 — Green notes (JR attempt, 2026-06-13)
+
+Implementation file:
+- `internal/transcription/batch/service.go` — new file with `ProgressEvent`, `ProgressCallback`, `TranscriptionRunner`, `LibraryWriter`, `Service`, `NewService`, `SetProgressCallback`, `Run`
+
+Run method FSM:
+1. Reconcile stale `processing` rows to `pending` on entry via `queue.ReconcileProcessingToPending()`
+2. Dequeue loop: atomically transitions pending→processing per item
+3. Emit `processing` ProgressEvent at start
+4. Invoke `runner.TranscribeFile(ctx, item.FilePath)`
+5. On ctx cancellation: mark item `cancelled`, emit event, return `ctx.Err()`
+6. On error: mark item `error`, emit event, continue to next item
+7. On success: mark item `completed` (progress=1.0), commit transcription JSON via `lib.GetByPath` + `lib.UpdateTranscriptionStatus`, emit `completed` event
+8. Return nil on clean drain
+
+Green gate: `go test ./internal/transcription/batch/ -run 'TestBatchTranscriptionService' -count=1` — 8/8 PASS
+Broader gate: `go test ./internal/transcription/... -count=1` — PASS
+DB regression: `go test ./internal/db/... -count=1` — PASS
+Vet: `go vet ./internal/transcription/...` — clean
 
 ## Phase 3: UI Integration
 - [ ] Add "Batch Transcribe" menu item and dialog
