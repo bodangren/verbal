@@ -362,7 +362,150 @@ Vet: `go vet ./internal/ui/ ./internal/app/` — clean
 Commit: `db6e9f3` — feat(ui): implement Phase 3 batch transcription queue UI
 
 ## Phase 4: Verification
-- [ ] Full test suite pass
-- [ ] Build and vet clean
-- [ ] Update lessons-learned.md
-- [ ] Commit and push
+- [~] Full test suite pass — `red-pending` (MID-attempt 3)
+- [~] Build and vet clean — `red-pending` (MID-attempt 3)
+- [~] Update lessons-learned.md — `red-pending` (MID-attempt 3)
+- [~] Commit and push — `red-pending` (MID-attempt 3)
+
+### Phase 4 — Red notes (MID attempt, 2026-06-13)
+
+**Targeted Red command** (per test-strategy §9, decomposed to avoid the
+CGo/GTK4 full-build timeout noted in Phase 1/2/3 plan notes):
+```
+go test ./internal/db/ -run 'TestBatchQueueLessonsLearned' -count=1
+```
+
+Per the user prompt: Phase 4 has no new feature logic, so the
+"Red tests" are (a) an artifact/contract test for the
+`Update lessons-learned.md` deliverable (test-strategy §7 allows
+markdown assertions when the phase deliverable is that artifact),
+and (b) the existing per-package test suites serve as the live gate
+for the `Full test suite pass` and `Build and vet clean` tasks —
+these are not new tests, so they are "already satisfied with
+evidence" per the user prompt ("If the new tests pass at HEAD…
+mark the task as already satisfied with evidence instead of
+creating a false Red phase") once the verification commands run
+green at HEAD. JR owns the substantive closeout (write the actual
+lessons-learned content, full-suite gate, push) during the Green
+phase.
+
+#### Tasks 1+2: full-suite pass + build/vet clean (already-satisfied gate)
+
+Per the user prompt, these tasks are verification gates whose
+"Red" is the existing test suite. They are run, not written. JR
+will re-run them during Green/closeout and mark `[x]` with
+evidence. Live behavior recorded in the JR Green notes will
+include the broader `go test ./...` and `go vet ./...` outputs.
+
+#### Task 3: Update lessons-learned.md (artifact Red contract)
+
+Added a single new test file
+`internal/db/batch_queue_lessons_test.go` with two tests pinning
+the Red contract:
+
+- `TestBatchQueueLessonsLearned_HasTrackSection` — requires a
+  markdown heading (level 2 or deeper) whose text contains
+  "Batch Transcription Queue" (case-insensitive). The Green
+  author chooses the exact heading text.
+- `TestBatchQueueLessonsLearned_DocumentsKeyLessons` — requires
+  the file to contain the track-specific lesson keywords
+  `reconcile` and `queue` (case-insensitive). `reconcile` is
+  track-specific (the `processing`→`pending` invariant on
+  runner entry — plan §Phase 2 invariant and test-strategy §4).
+  `queue` ties the section to the queue model that did not
+  exist before this track.
+
+The two existing `lessons-learned.md` lessons that touch adjacent
+territory (Thread Safety, Database Migrations) are
+heading-titled bullet lists under the existing `## Go + GTK4 +
+GStreamer` section. Neither contains the literal substring
+`reconcile`, and neither is a top-level section about the batch
+queue — so both new tests will fail Red at HEAD (the file as
+committed in `b5adef5` and earlier has no batch-queue section
+and no `reconcile` substring). JR will append the section in
+Green to flip them.
+
+This is an **artifact/contract test** (test-strategy §7), paired
+with a **live-behavior proof** (the test reads the file at
+runtime via `os.ReadFile`, not a build-time constant), and the
+**plan note** required by the user prompt: JR (the Green author)
+owns the actual prose content of the section during the
+Green/closeout step. The Red test pins only the heading
+existence and the must-have keywords — the prose is JR's call.
+
+#### Task 4: Commit and push
+
+No test. Git ops owned by JR during the closeout commit, which
+will be the `make`/JR `measure(checkpoint): Checkpoint end of
+Phase 4` per `workflow.md` §Phase Completion Verification and
+Checkpointing Protocol.
+
+#### Worktree note (MID start, 2026-06-13)
+
+Worktree is dirty; the untracked paths listed in the start-of-
+turn context are all unrelated to this track/phase (other db
+edge tests, an unrelated livecaption widget test, archive
+folders, automation scripts, sibling MVP track folders, empty
+`graph.db` from a prior build-graph attempt). Per the user
+prompt, they are preserved unmodified and excluded from the
+Red-phase commit. `graph.db` is empty (0 bytes) and irrelevant
+because the repo is pure Go and `build-graph` is TypeScript-
+only, as already documented in test-strategy §1 and earlier
+Phase plan notes.
+
+#### Red result evidence (MID attempt, 2026-06-13)
+
+**Targeted Red command** (the per-test slice used to confirm Red):
+```
+go test ./internal/db/ -run 'TestBatchQueueLessonsLearned' -count=1 -v
+```
+Output (abbreviated):
+```
+=== RUN   TestBatchQueueLessonsLearned_HasTrackSection
+    batch_queue_lessons_test.go:51: lessons-learned.md is missing a markdown heading about the batch transcription queue track
+--- FAIL: TestBatchQueueLessonsLearned_HasTrackSection (0.00s)
+=== RUN   TestBatchQueueLessonsLearned_DocumentsKeyLessons
+    batch_queue_lessons_test.go:75: lessons-learned.md missing batch-queue lesson keyword: "reconcile"
+    batch_queue_lessons_test.go:75: lessons-learned.md missing batch-queue lesson keyword: "queue"
+--- FAIL: TestBatchQueueLessonsLearned_DocumentsKeyLessons (0.00s)
+FAIL
+FAIL	verbal/internal/db	0.033s
+```
+
+Both new tests fail for the expected missing-content reason. The
+Red signal is real (the test reads the file at runtime, not a
+stale build-time constant), satisfies the user prompt's "Red
+tests must fail because the current implementation is missing
+or wrong" rule, and provides the live-behavior proof required
+for an artifact/contract assertion.
+
+**Broader verification gates (Phase 4 tasks 1 + 2, decomposed
+per package to avoid the CGo/GTK4 full-build timeout noted in
+Phase 1/2/3 plan notes):**
+
+| Command | Result |
+|---|---|
+| `go test ./internal/db/ -count=1` (full package, includes new Red tests) | FAIL — 103 PASS, 2 FAIL (only the 2 new Red tests fail; existing 22 `TestBatchQueue*` + 81 other db tests all pass) |
+| `go test ./internal/db/ -count=1 -skip 'TestBatchQueueLessonsLearned'` | Would be PASS (the 2 Red tests are the only failures; verified manually by `grep -cE '^--- PASS'` = 103 and `grep -cE '^--- FAIL'` = 2 in the unskipped run, with both FAILs being the new Red tests) |
+| `go test ./internal/transcription/... -count=1` | PASS — `ok verbal/internal/transcription 0.031s`; `ok verbal/internal/transcription/batch 0.820s` |
+| `go test ./internal/ui/ -count=1` | PASS — `ok verbal/internal/ui 3.193s` |
+| `go test ./internal/app/ -count=1` | PASS — `ok verbal/internal/app 1.083s` |
+| `go vet ./internal/db/... ./internal/transcription/... ./internal/ui/... ./internal/app/...` | clean (no output) |
+| `go build ./internal/db/... ./internal/transcription/...` | clean (no output; ui/app skipped due to known CGo/GTK4 full-build timeout — `go test ./internal/ui/` and `go test ./internal/app/` already exercise the compiler against these packages and both pass) |
+
+**Headline:** At HEAD, the existing per-package test suites
+(tasks 1 + 2 gates) are green. The user prompt allows
+"mark the task as already satisfied with evidence instead of
+creating a false Red phase" — so tasks 1 and 2 are recorded as
+"already satisfied" pending JR's full `make go-check` re-run
+during Green/closeout. Task 3 (lessons-learned update) has a
+real Red contract (this test). Task 4 (commit + push) is
+git-ops owned by JR at closeout.
+
+#### Files changed by this Red attempt
+
+- `internal/db/batch_queue_lessons_test.go` (new) — 2 Red contract tests.
+- `measure/tracks/batch_transcription_queue_20260509/plan.md` (this file) — task markers `[ ] → [~]`, Red notes, result evidence.
+
+No source code (non-test) was modified. No unrelated dirty
+files were staged.
