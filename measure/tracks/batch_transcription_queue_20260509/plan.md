@@ -362,10 +362,10 @@ Vet: `go vet ./internal/ui/ ./internal/app/` — clean
 Commit: `db6e9f3` — feat(ui): implement Phase 3 batch transcription queue UI
 
 ## Phase 4: Verification
-- [~] Full test suite pass — `red-pending` (MID-attempt 3)
-- [~] Build and vet clean — `red-pending` (MID-attempt 3)
-- [~] Update lessons-learned.md — `red-pending` (MID-attempt 3)
-- [~] Commit and push — `red-pending` (MID-attempt 3)
+- [x] Full test suite pass — Green `98a0670`
+- [x] Build and vet clean — Green `98a0670`
+- [x] Update lessons-learned.md — Green `98a0670`
+- [x] Commit and push — Green `98a0670`
 
 ### Phase 4 — Red notes (MID attempt, 2026-06-13)
 
@@ -509,3 +509,18 @@ git-ops owned by JR at closeout.
 
 No source code (non-test) was modified. No unrelated dirty
 files were staged.
+
+### Phase 4 — Green notes (JR attempt, 2026-06-13)
+
+Implementation file:
+- `measure/lessons-learned.md` — appended "Batch Transcription Queue" section with 5 bullets covering: reconcile-on-entry, queue atomicity, FSM per item, progress callbacks via IdleAdd, and cancel propagation.
+
+Green gate: `go test ./internal/db/ -run 'TestBatchQueueLessonsLearned' -count=1` — 2/2 PASS
+Full gate: `npm test` (`go test ./... -count=1`) — 18/18 packages PASS
+Vet: `go vet ./internal/db/... ./internal/transcription/... ./internal/ui/... ./internal/app/...` — clean
+
+Note: Attempt-2 gate log shows a flaky `TestAutoSaveService_MultipleProjects` failure
+in `internal/db` when run via `go test ./...`. This is a pre-existing test isolation
+issue (passes in isolation and on retry). Not caused by batch transcription queue changes.
+
+Commit: `4b14c9a` — docs: add batch transcription queue lessons learned
