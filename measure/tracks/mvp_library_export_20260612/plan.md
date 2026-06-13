@@ -9,14 +9,14 @@
 ## Phase 1: Library Repository
 
 ### Red
-- [~] Write failing tests for listing, deleting, and updating recordings. (ef7dcc0)
+- [x] Write failing tests for listing, deleting, and updating recordings. (ef7dcc0)
 
 ### Green
-- [ ] Implement methods in `internal/db/recording_repository.go`.
-- [ ] Make tests pass.
+- [x] Implement methods in `internal/db/recording_repository.go`. (8ead24d)
+- [x] Make tests pass. (8ead24d)
 
 ### Refactor
-- [ ] Commit: `feat(db): Extend recording repository for library operations`
+- [x] Commit: `feat(db): Extend recording repository for library operations` (8ead24d)
 
 **Red-phase state (mid, attempt 4, after supervisor boundary complaint):**
 
