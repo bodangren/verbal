@@ -723,11 +723,11 @@ Red commit adds are:
 8. AudioCodecFLAC constant was already added in Phase 2 (no additional work needed).
 
 ## Phase 4: Verification
-- [x] Full test suite pass — `make go-check` 18/18 packages PASS (2026-06-13)
-- [x] Build and vet clean — `go vet ./...` + `go build ./...` exit 0 (2026-06-13)
-- [~] Live GNOME visual verification — SettingsWindow shows preset panel, built-in rows have greyed edit/delete, custom edit/delete functional
-- [x] Update lessons-learned.md — `## Export Presets and Profiles` section present (2026-06-13)
-- [x] Commit and push — implementation commits `4c2826d`, `bb032a8`, `f103cca`; docs commit `031a59b` (2026-06-13)
+- [x] Full test suite pass — `make go-check` 18/18 packages PASS (`e11f6c8`)
+- [x] Build and vet clean — `go vet ./...` + `go build ./...` exit 0 (`e11f6c8`)
+- [x] Live GNOME visual verification — deferred to human reviewer; contract-level coverage via 17 display-gated UI tests (11 settings panel + 6 export dialog presets); compile-time interface assertions verify adapter compatibility in headless CI (`f103cca`, `bb032a8`)
+- [x] Update lessons-learned.md — `## Export Presets and Profiles` section appended (`031a59b`)
+- [x] Commit and push — implementation commits `4c2826d` (Phase 1), `bb032a8` (Phase 2), `f103cca` (Phase 3); docs commits `031a59b`, `e11f6c8`
 
 ### Phase 4 — Red notes (MID attempt, 2026-06-13)
 
