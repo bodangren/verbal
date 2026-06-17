@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
@@ -42,7 +43,9 @@ class Config:
     sr_model: str
     mid_model: str
     jr_model: str
-    review_model: str
+    review_a_model: str
+    review_b_model: str
+    review_c_model: str
     phase_acceptance_model: str
     adversarial_model: str
     ux_model: str
@@ -51,7 +54,9 @@ class Config:
     sr_agent: str
     mid_agent: str
     jr_agent: str
-    review_agent: str
+    review_a_agent: str
+    review_b_agent: str
+    review_c_agent: str
     phase_acceptance_agent: str
     adversarial_agent: str
     ux_agent: str
@@ -60,7 +65,9 @@ class Config:
     sr_runner: str
     mid_runner: str
     jr_runner: str
-    review_runner: str
+    review_a_runner: str
+    review_b_runner: str
+    review_c_runner: str
     phase_acceptance_runner: str
     adversarial_runner: str
     ux_runner: str
@@ -74,6 +81,7 @@ class Config:
     ux_required: str
     red_test_command: str
     green_test_command: str
+    project_gate_timeout_seconds: int
     max_agent_attempts: int
     max_infra_restarts: int
     session_cooldown_seconds: int
@@ -130,6 +138,7 @@ class GateResult:
 
 ACTIVE_PROCESS_GROUPS: set[int] = set()
 ACTIVE_LOCK_FILE: Path | None = None
+ACTIVE_CONFIG: Config | None = None
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -148,6 +157,14 @@ def env_int(name: str, default: int) -> int:
     except ValueError as exc:
         raise SystemExit(f"ERROR: {name} must be an integer") from exc
     return parsed
+
+
+def model_env(name: str, default: str) -> str:
+    value = os.environ.get(name, default).strip() or default
+    model_name = value.rsplit("/", 1)[-1]
+    if model_name in {"deepseek-v4-flash", "deepseek-v4-pro"}:
+        return f"deepseek/{model_name}"
+    return value
 
 
 def utc_stamp() -> str:
@@ -267,9 +284,15 @@ def release_active_lock() -> None:
     ACTIVE_LOCK_FILE = None
 
 
+def cleanup_owned_opencode_server() -> None:
+    if ACTIVE_CONFIG is not None and server_owned_by_this_run(ACTIVE_CONFIG):
+        stop_recorded_opencode_server(ACTIVE_CONFIG)
+
+
 def handle_signal(signum: int, _frame: object) -> None:
     print(f"\n>>> Received signal {signum}; cleaning up launched child processes only.", file=sys.stderr)
     cleanup_active_children()
+    cleanup_owned_opencode_server()
     release_active_lock()
     raise SystemExit(128 + signum)
 
@@ -410,7 +433,7 @@ def active_registry_contains_track(config: Config, track_id: str) -> bool:
     if not registry.exists():
         return False
     active_section = registry.read_text(encoding="utf-8", errors="ignore").split("## Archived Tracks", 1)[0]
-    return track_id in active_section
+    return re.search(rf"(?<![A-Za-z0-9_.-]){re.escape(track_id)}(?![A-Za-z0-9_.-])", active_section) is not None
 
 
 def parse_args() -> argparse.Namespace:
@@ -429,33 +452,46 @@ def load_config() -> Config:
     script_dir = Path(__file__).resolve().parent
     repo_root = Path(os.environ.get("MEASURE_REPO_ROOT", str(script_dir.parent))).resolve()
     measure_dir = repo_root / "measure"
-    port = env_int("OPENCODE_SERVER_PORT", 4096)
-    server_url = os.environ.get("OPENCODE_SERVER_URL", f"http://localhost:{port}")
+    explicit_server_url = os.environ.get("OPENCODE_SERVER_URL")
+    default_port = env_int("OPENCODE_SERVER_PORT", 4096)
+    server_url = explicit_server_url or f"http://localhost:{default_port}"
+    parsed_server_url = urllib.parse.urlparse(server_url)
+    try:
+        url_port = parsed_server_url.port
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: OPENCODE_SERVER_URL has an invalid port: {server_url}") from exc
+    scheme_default_port = 443 if parsed_server_url.scheme == "https" else 80 if parsed_server_url.scheme == "http" else default_port
+    port = env_int("OPENCODE_SERVER_PORT", url_port or (scheme_default_port if explicit_server_url else default_port))
+    hostname = os.environ.get("OPENCODE_SERVER_HOSTNAME", parsed_server_url.hostname or "127.0.0.1")
     run_id = os.environ.get("RUN_ID", utc_stamp())
     return Config(
         repo_root=repo_root,
         measure_dir=measure_dir,
         opencode_bin=os.environ.get("OPENCODE_BIN", "opencode"),
-        opencode_server_hostname=os.environ.get("OPENCODE_SERVER_HOSTNAME", "127.0.0.1"),
+        opencode_server_hostname=hostname,
         opencode_server_port=port,
         opencode_server_url=server_url,
         opencode_server_autostart=env_bool("OPENCODE_SERVER_AUTOSTART", False),
         opencode_server_log=Path(os.environ.get("OPENCODE_SERVER_LOG", str(measure_dir / "opencode-server.log"))),
         opencode_server_pid_file=Path(os.environ.get("OPENCODE_SERVER_PID_FILE", str(measure_dir / "opencode-server.pid"))),
         opencode_server_start_timeout=env_int("OPENCODE_SERVER_START_TIMEOUT", 30),
-        sr_model=os.environ.get("SR_MODEL", "vocengine-coding/glm-5.1"),
-        mid_model=os.environ.get("MID_MODEL", "minimax-cn-coding-plan/MiniMax-M3"),
-        jr_model=os.environ.get("JR_MODEL", "xiaomi/mimo-v2.5-pro"),
-        review_model=os.environ.get("REVIEW_MODEL", "kimi-for-coding/k2p7"),
-        phase_acceptance_model=os.environ.get("PHASE_ACCEPTANCE_MODEL", "opencode-go/qwen3.7-plus"),
-        adversarial_model=os.environ.get("ADVERSARIAL_MODEL", "vocengine-coding/ark-code-latest"),
-        ux_model=os.environ.get("UX_MODEL", "kimi-for-coding/k2p7"),
-        acceptance_model=os.environ.get("ACCEPTANCE_MODEL", "vocengine-coding/glm-5.1"),
-        closeout_model=os.environ.get("CLOSEOUT_MODEL", "minimax-cn-coding-plan/MiniMax-M3"),
-        sr_agent=os.environ.get("SR_AGENT", "opencode-go/qwen3.7-plus"),
+        sr_model=model_env("SR_MODEL", "vocengine-coding/glm-5.2"),
+        mid_model=model_env("MID_MODEL", "minimax-cn-coding-plan/MiniMax-M3"),
+        jr_model=model_env("JR_MODEL", "deepseek/deepseek-v4-pro"),
+        review_a_model=model_env("REVIEW_A_MODEL", "kimi-for-coding/k2p7"),
+        review_b_model=model_env("REVIEW_B_MODEL", "deepseek/deepseek-v4-pro"),
+        review_c_model=model_env("REVIEW_C_MODEL", "xiaomi/mimo-v2.5"),
+        phase_acceptance_model=model_env("PHASE_ACCEPTANCE_MODEL", "vocengine-coding/glm-5.2"),
+        adversarial_model=model_env("ADVERSARIAL_MODEL", "minimax-cn-coding-plan/MiniMax-M3"),
+        ux_model=model_env("UX_MODEL", "kimi-for-coding/k2p7"),
+        acceptance_model=model_env("ACCEPTANCE_MODEL", "opencode-go/qwen3.7-max"),
+        closeout_model=model_env("CLOSEOUT_MODEL", "deepseek/deepseek-v4-flash"),
+        sr_agent=os.environ.get("SR_AGENT", ""),
         mid_agent=os.environ.get("MID_AGENT", ""),
         jr_agent=os.environ.get("JR_AGENT", ""),
-        review_agent=os.environ.get("REVIEW_AGENT", ""),
+        review_a_agent=os.environ.get("REVIEW_A_AGENT", ""),
+        review_b_agent=os.environ.get("REVIEW_B_AGENT", ""),
+        review_c_agent=os.environ.get("REVIEW_C_AGENT", ""),
         phase_acceptance_agent=os.environ.get("PHASE_ACCEPTANCE_AGENT", ""),
         adversarial_agent=os.environ.get("ADVERSARIAL_AGENT", ""),
         ux_agent=os.environ.get("UX_AGENT", ""),
@@ -464,7 +500,9 @@ def load_config() -> Config:
         sr_runner=os.environ.get("SR_RUNNER", ""),
         mid_runner=os.environ.get("MID_RUNNER", ""),
         jr_runner=os.environ.get("JR_RUNNER", ""),
-        review_runner=os.environ.get("REVIEW_RUNNER", ""),
+        review_a_runner=os.environ.get("REVIEW_A_RUNNER", ""),
+        review_b_runner=os.environ.get("REVIEW_B_RUNNER", ""),
+        review_c_runner=os.environ.get("REVIEW_C_RUNNER", ""),
         phase_acceptance_runner=os.environ.get("PHASE_ACCEPTANCE_RUNNER", ""),
         adversarial_runner=os.environ.get("ADVERSARIAL_RUNNER", ""),
         ux_runner=os.environ.get("UX_RUNNER", ""),
@@ -478,13 +516,14 @@ def load_config() -> Config:
         ux_required=os.environ.get("UX_REQUIRED", "auto").strip().lower(),
         red_test_command=os.environ.get("RED_TEST_COMMAND", ""),
         green_test_command=os.environ.get("GREEN_TEST_COMMAND", os.environ.get("PROJECT_TESTS", "npm test")),
+        project_gate_timeout_seconds=env_int("PROJECT_GATE_TIMEOUT_SECONDS", env_int("ROLE_TIMEOUT_SECONDS", 3600)),
         max_agent_attempts=env_int("MAX_AGENT_ATTEMPTS", 3),
         max_infra_restarts=env_int("MAX_INFRA_RESTARTS", 3),
         session_cooldown_seconds=env_int("SESSION_COOLDOWN_SECONDS", 0),
         require_agent_result_block=env_bool("REQUIRE_AGENT_RESULT_BLOCK", True),
         run_root=Path(os.environ.get("RUN_ROOT", str(measure_dir / "runs"))),
         run_id=run_id,
-        role_timeout_seconds=env_int("ROLE_TIMEOUT_SECONDS", 900),
+        role_timeout_seconds=env_int("ROLE_TIMEOUT_SECONDS", 3600),
         supervisor_lock_file=Path(os.environ.get("SUPERVISOR_LOCK_FILE", f"/tmp/measure-supervisor-{hashlib.sha1(str(repo_root).encode()).hexdigest()[:12]}.lock")),
     )
 
@@ -502,6 +541,8 @@ def validate_config(config: Config, args: argparse.Namespace) -> None:
         raise SystemExit("ERROR: SESSION_COOLDOWN_SECONDS must be non-negative")
     if config.role_timeout_seconds < 1:
         raise SystemExit("ERROR: ROLE_TIMEOUT_SECONDS must be positive")
+    if config.project_gate_timeout_seconds < 1:
+        raise SystemExit("ERROR: PROJECT_GATE_TIMEOUT_SECONDS must be positive")
     if config.ux_required not in {"auto", "always", "never"}:
         raise SystemExit("ERROR: UX_REQUIRED must be auto, always, or never")
 
@@ -544,6 +585,10 @@ def print_plan(config: Config, tracks: list[str], phases: list[Phase], start: in
     print(f"OpenCode:   {config.opencode_server_url}")
     print(f"Models:     SR={config.sr_model} | MID={config.mid_model} | JR={config.jr_model}")
     print(
+        "Reviewers:  "
+        f"A={config.review_a_model} | B={config.review_b_model} | C={config.review_c_model}"
+    )
+    print(
         "Auditors:   "
         f"PHASE={config.phase_acceptance_model} | ADVERSARIAL={config.adversarial_model} | "
         f"UX={config.ux_model} | ACCEPTANCE={config.acceptance_model} | CLOSEOUT={config.closeout_model}"
@@ -572,19 +617,6 @@ def acquire_supervisor_lock(config: Config, args: argparse.Namespace) -> None:
     global ACTIVE_LOCK_FILE
     lock_file = config.supervisor_lock_file
     lock_file.parent.mkdir(parents=True, exist_ok=True)
-    if lock_file.exists():
-        try:
-            payload = json.loads(lock_file.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            payload = {}
-        pid = payload.get("pid")
-        if isinstance(pid, int) and pid_is_running(pid):
-            raise SystemExit(
-                f"ERROR: Supervisor lock is active at {lock_file} for pid {pid}. "
-                "Stop that run before starting another."
-            )
-        print(f">>> Removing stale supervisor lock at {lock_file}")
-        lock_file.unlink()
 
     payload = {
         "pid": os.getpid(),
@@ -595,9 +627,33 @@ def acquire_supervisor_lock(config: Config, args: argparse.Namespace) -> None:
         "run_id": config.run_id,
         "created_at": display_time(),
     }
-    lock_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    ACTIVE_LOCK_FILE = lock_file
+    payload_text = json.dumps(payload, indent=2) + "\n"
 
+    while True:
+        try:
+            fd = os.open(lock_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        except FileExistsError:
+            try:
+                existing_payload = json.loads(lock_file.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                existing_payload = {}
+            pid = existing_payload.get("pid")
+            if isinstance(pid, int) and pid_is_running(pid):
+                raise SystemExit(
+                    f"ERROR: Supervisor lock is active at {lock_file} for pid {pid}. "
+                    "Stop that run before starting another."
+                )
+            print(f">>> Removing stale supervisor lock at {lock_file}")
+            try:
+                lock_file.unlink()
+            except FileNotFoundError:
+                pass
+            continue
+
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(payload_text)
+        ACTIVE_LOCK_FILE = lock_file
+        return
 
 def server_owner_file(config: Config) -> Path:
     return config.opencode_server_pid_file.with_suffix(config.opencode_server_pid_file.suffix + ".owner")
@@ -618,7 +674,9 @@ def opencode_server_reachable(config: Config) -> bool:
     try:
         with urllib.request.urlopen(config.opencode_server_url, timeout=2) as response:
             return response.status != 0
-    except (OSError, urllib.error.URLError, urllib.error.HTTPError):
+    except urllib.error.HTTPError as exc:
+        return exc.code > 0
+    except (OSError, urllib.error.URLError):
         return False
 
 
@@ -831,10 +889,20 @@ def run_project_gate(config: Config, name: str, command: str, log_file: Path, ex
         append(log_file, f"SKIP: {name} (no command configured)")
         return True
     append(log_file, f"RUN: {name} -> {command}")
-    result = run_command(command, cwd=config.repo_root, shell=True)
+    gate_env = os.environ.copy()
+    gate_env["CI"] = "true"
+    result = run_command(
+        command,
+        cwd=config.repo_root,
+        shell=True,
+        env=gate_env,
+        timeout=config.project_gate_timeout_seconds,
+    )
     append(log_file, result.stdout)
     append(log_file, result.stderr)
     append(log_file, f"EXIT_STATUS: {result.returncode}")
+    if result.returncode == 124:
+        return False
     return result.returncode != 0 if expect_failure else result.returncode == 0
 
 
@@ -922,28 +990,48 @@ def gate_jr(config: Config, ctx: RoleContext) -> GateResult:
     return GateResult(not feedback, feedback)
 
 
-def gate_review(config: Config, ctx: RoleContext) -> GateResult:
-    feedback: list[str] = []
-    incomplete = track_incomplete_count(config.repo_root / ctx.plan_file)
-    if incomplete:
-        feedback.append(f"Track still has {incomplete} non-deferred incomplete task(s).")
-
-    if ctx.gate_log:
-        checks = [
-            ("Lint", config.project_lint),
-            ("Build/check", config.project_checks),
-            ("Tests", config.project_tests),
-        ]
-        doctor = config.repo_root / "measure" / "doctor.sh"
-        if doctor.exists() and os.access(doctor, os.X_OK):
-            checks.append(("Measure doctor", "./measure/doctor.sh"))
-        for name, command in checks:
-            if not run_project_gate(config, name, command, ctx.gate_log):
-                feedback.append(f"{name} failed: {command}")
-
+def gate_review_a(config: Config, ctx: RoleContext) -> GateResult:
+    """Correctness and architecture reviewer: audit-result based."""
+    feedback = read_passing_audit_result(ctx)
+    total, _complete, _in_progress, incomplete, _with_sha = phase_counts(
+        config.repo_root / ctx.plan_file, ctx.phase_heading
+    )
+    if total == 0:
+        feedback.append(f"Could not find phase '{ctx.phase_heading}' in {ctx.plan_file}.")
+    elif incomplete:
+        feedback.append(f"Current phase still has {incomplete} non-deferred incomplete task(s).")
     if ctx.log_file and not has_agent_result_block(ctx.log_file, config.require_agent_result_block):
         feedback.append("Missing required MEASURE_AGENT_RESULT block.")
+    return GateResult(not feedback, feedback)
 
+
+def gate_review_b(config: Config, ctx: RoleContext) -> GateResult:
+    """Security and data-handling reviewer: audit-result based."""
+    feedback = read_passing_audit_result(ctx)
+    total, _complete, _in_progress, incomplete, _with_sha = phase_counts(
+        config.repo_root / ctx.plan_file, ctx.phase_heading
+    )
+    if total == 0:
+        feedback.append(f"Could not find phase '{ctx.phase_heading}' in {ctx.plan_file}.")
+    elif incomplete:
+        feedback.append(f"Current phase still has {incomplete} non-deferred incomplete task(s).")
+    if ctx.log_file and not has_agent_result_block(ctx.log_file, config.require_agent_result_block):
+        feedback.append("Missing required MEASURE_AGENT_RESULT block.")
+    return GateResult(not feedback, feedback)
+
+
+def gate_review_c(config: Config, ctx: RoleContext) -> GateResult:
+    """UX/API E2E reviewer: audit-result based."""
+    feedback = read_passing_audit_result(ctx)
+    total, _complete, _in_progress, incomplete, _with_sha = phase_counts(
+        config.repo_root / ctx.plan_file, ctx.phase_heading
+    )
+    if total == 0:
+        feedback.append(f"Could not find phase '{ctx.phase_heading}' in {ctx.plan_file}.")
+    elif incomplete:
+        feedback.append(f"Current phase still has {incomplete} non-deferred incomplete task(s).")
+    if ctx.log_file and not has_agent_result_block(ctx.log_file, config.require_agent_result_block):
+        feedback.append("Missing required MEASURE_AGENT_RESULT block.")
     return GateResult(not feedback, feedback)
 
 
@@ -1028,7 +1116,9 @@ def gate_for_role(config: Config, ctx: RoleContext) -> GateResult:
         "strategy": gate_strategy,
         "mid": gate_mid,
         "jr": gate_jr,
-        "review": gate_review,
+        "review_a": gate_review_a,
+        "review_b": gate_review_b,
+        "review_c": gate_review_c,
         "phase_acceptance": gate_phase_acceptance,
         "adversarial": gate_adversarial,
         "ux": gate_ux,
@@ -1086,6 +1176,10 @@ def run_role_once(config: Config, ctx: RoleContext, prompt: str, session_file: P
     return result
 
 
+def role_label(ctx: RoleContext) -> str:
+    return f"{ctx.role.name}:{ctx.role.model}"
+
+
 def supervise_role(config: Config, ctx: RoleContext, initial_prompt: str) -> None:
     ctx.context_dir.mkdir(parents=True, exist_ok=True)
     session_file = ctx.context_dir / f"{ctx.role.name}.session"
@@ -1097,7 +1191,7 @@ def supervise_role(config: Config, ctx: RoleContext, initial_prompt: str) -> Non
     while attempts < config.max_agent_attempts:
         attempts += 1
         attempt_dir = ctx.context_dir / f"{ctx.role.name}-attempt-{attempts}"
-        print(f">>> [{ctx.role.name}] attempt {attempts}/{config.max_agent_attempts}")
+        print(f">>> [{role_label(ctx)}] attempt {attempts}/{config.max_agent_attempts}")
         result = run_role_once(config, ctx, prompt, session_file, attempt_dir)
 
         if config.session_cooldown_seconds:
@@ -1108,11 +1202,11 @@ def supervise_role(config: Config, ctx: RoleContext, initial_prompt: str) -> Non
             if infra_restarts < config.max_infra_restarts:
                 infra_restarts += 1
                 if server_owned_by_this_run(config):
-                    print(f">>> [{ctx.role.name}] infrastructure-looking failure; restarting owned OpenCode ({infra_restarts}/{config.max_infra_restarts})")
+                    print(f">>> [{role_label(ctx)}] infrastructure-looking failure; restarting owned OpenCode ({infra_restarts}/{config.max_infra_restarts})")
                     restart_opencode_server(config)
                     attempts -= 1
                     continue
-                print(f">>> [{ctx.role.name}] infrastructure-looking failure; shared OpenCode server will not be restarted")
+                print(f">>> [{role_label(ctx)}] infrastructure-looking failure; shared OpenCode server will not be restarted")
 
         if result.returncode != 0:
             gate = GateResult(False, [f"Agent command exited with status {result.returncode}. See {ctx.log_file}"])
@@ -1120,20 +1214,20 @@ def supervise_role(config: Config, ctx: RoleContext, initial_prompt: str) -> Non
             gate = gate_for_role(config, ctx)
 
         if gate.passed:
-            print(f">>> [{ctx.role.name}] supervisor gates passed")
+            print(f">>> [{role_label(ctx)}] supervisor gates passed")
             return
 
         prompt = feedback_prompt(ctx.role.name, ctx.track_id, ctx.phase_heading, gate.feedback, ctx.log_file or attempt_dir / "output.log", ctx.gate_log or attempt_dir / "gates.log")
         write(feedback_file, prompt)
         if attempts >= config.max_agent_attempts:
-            print(f"ERROR: [{ctx.role.name}] failed supervisor gates after {config.max_agent_attempts} attempts")
+            print(f"ERROR: [{role_label(ctx)}] failed supervisor gates after {config.max_agent_attempts} attempts")
             print(f"Feedback: {feedback_file}")
             raise SystemExit(1)
 
         if session_file.exists() and session_file.read_text(encoding="utf-8").strip():
-            print(f">>> [{ctx.role.name}] feeding supervisor feedback into original session {session_file.read_text(encoding='utf-8').strip()}")
+            print(f">>> [{role_label(ctx)}] feeding supervisor feedback into original session {session_file.read_text(encoding='utf-8').strip()}")
         else:
-            print(f">>> [{ctx.role.name}] no session id captured; retrying with supervisor feedback as a new session")
+            print(f">>> [{role_label(ctx)}] no session id captured; retrying with supervisor feedback as a new session")
 
 
 def has_more_phases(phases: list[Phase], current: Phase) -> bool:
@@ -1141,10 +1235,12 @@ def has_more_phases(phases: list[Phase], current: Phase) -> bool:
 
 
 def main() -> int:
+    global ACTIVE_CONFIG
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
     args = parse_args()
     config = load_config()
+    ACTIVE_CONFIG = config
     validate_config(config, args)
 
     tracks = discover_tracks(config, args.track)
@@ -1184,7 +1280,9 @@ def main() -> int:
         "strategy": RoleConfig("strategy", config.sr_model, config.sr_agent, config.sr_runner),
         "mid": RoleConfig("mid", config.mid_model, config.mid_agent, config.mid_runner),
         "jr": RoleConfig("jr", config.jr_model, config.jr_agent, config.jr_runner),
-        "review": RoleConfig("review", config.review_model, config.review_agent, config.review_runner),
+        "review_a": RoleConfig("review_a", config.review_a_model, config.review_a_agent, config.review_a_runner),
+        "review_b": RoleConfig("review_b", config.review_b_model, config.review_b_agent, config.review_b_runner),
+        "review_c": RoleConfig("review_c", config.review_c_model, config.review_c_agent, config.review_c_runner),
         "phase_acceptance": RoleConfig("phase_acceptance", config.phase_acceptance_model, config.phase_acceptance_agent, config.phase_acceptance_runner),
         "adversarial": RoleConfig("adversarial", config.adversarial_model, config.adversarial_agent, config.adversarial_runner),
         "ux": RoleConfig("ux", config.ux_model, config.ux_agent, config.ux_runner),
@@ -1291,6 +1389,70 @@ def main() -> int:
             + agent_result_contract("jr")
         )
         supervise_role(config, RoleContext(roles["jr"], phase.track_id, phase.heading, plan_file, strategy_file, phase_dir), jr_prompt)
+
+        review_a_ctx = RoleContext(
+            roles["review_a"],
+            phase.track_id,
+            phase.heading,
+            plan_file,
+            strategy_file,
+            phase_dir / "review-a",
+            baseline_sha=phase_base_sha,
+        )
+        review_a_prompt = (
+            f"Load the measure skill and the build-graph skill. You are Reviewer A for {phase.track_id}, {phase.heading}. "
+            "Your focus is correctness and architecture. Read ONLY the current phase section of "
+            f"{plan_file} (skip older attempt history), the track spec, and {strategy_file} if it exists. "
+            "Use build-graph to inspect changed symbols, callers, and dependencies for this phase. "
+            "Verify the implementation is correct, follows existing patterns, introduces no unnecessary abstractions, "
+            "and that tests prove live behavior. If you find blocking issues, add focused tests or fixes and commit. "
+            "Be concise; do not re-read the full plan history."
+            + audit_result_contract(review_a_ctx)
+            + agent_result_contract("review_a")
+        )
+        supervise_role(config, review_a_ctx, review_a_prompt)
+
+        review_b_ctx = RoleContext(
+            roles["review_b"],
+            phase.track_id,
+            phase.heading,
+            plan_file,
+            strategy_file,
+            phase_dir / "review-b",
+            baseline_sha=phase_base_sha,
+        )
+        review_b_prompt = (
+            f"Load the measure skill and the build-graph skill. You are Reviewer B for {phase.track_id}, {phase.heading}. "
+            "Your focus is security and data handling. Read ONLY the current phase section of "
+            f"{plan_file} (skip older attempt history), the track spec, and the changed source/test files. "
+            "Audit for input validation, injection risks, auth/z boundaries, secret handling, sensitive data exposure, "
+            "and data-flow integrity. Use build-graph to trace changed symbols. If you find blocking issues, "
+            "add focused tests or fixes and commit. Be concise; do not re-read the full plan history."
+            + audit_result_contract(review_b_ctx)
+            + agent_result_contract("review_b")
+        )
+        supervise_role(config, review_b_ctx, review_b_prompt)
+
+        review_c_ctx = RoleContext(
+            roles["review_c"],
+            phase.track_id,
+            phase.heading,
+            plan_file,
+            strategy_file,
+            phase_dir / "review-c",
+            baseline_sha=phase_base_sha,
+        )
+        review_c_prompt = (
+            f"Load the measure skill and the kimi-webbridge skill if browser behavior applies. You are Reviewer C for "
+            f"{phase.track_id}, {phase.heading}. Your focus is UX/API end-to-end experience. Read ONLY the current phase "
+            f"section of {plan_file} (skip older attempt history), the track spec, and the changed source files. "
+            "For API changes, verify endpoint contracts and error responses. For UX changes, use Kimi WebBridge to "
+            f"inspect changed flows at {config.project_dev_url}. Do not duplicate the dedicated UX auditor or adversarial "
+            "Playwright tests; focus on gaps. If you find blocking issues, fix them or report clearly. Be concise."
+            + audit_result_contract(review_c_ctx)
+            + agent_result_contract("review_c")
+        )
+        supervise_role(config, review_c_ctx, review_c_prompt)
 
         phase_acceptance_ctx = RoleContext(
             roles["phase_acceptance"],
@@ -1429,4 +1591,5 @@ if __name__ == "__main__":
         raise SystemExit(main())
     finally:
         cleanup_active_children()
+        cleanup_owned_opencode_server()
         release_active_lock()
