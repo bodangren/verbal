@@ -16,6 +16,7 @@ import json
 import os
 import re
 import selectors
+import shutil
 import shlex
 import signal
 import subprocess
@@ -139,6 +140,67 @@ class GateResult:
 ACTIVE_PROCESS_GROUPS: set[int] = set()
 ACTIVE_LOCK_FILE: Path | None = None
 ACTIVE_CONFIG: Config | None = None
+
+AUDIT_RESULT_SCHEMA_VERSION = 1
+AUDIT_RESULT_STATUSES = {"pass", "fail", "inconclusive"}
+AUDIT_RESULT_RETRY_RECOMMENDATIONS = {
+    "none",
+    "retry_tests",
+    "retry_implementation",
+    "retry_audit",
+    "escalate_human",
+    "create_remediation_track",
+    "infrastructure_retry",
+}
+AUDIT_RESULT_CONFIDENCE_LEVELS = {"low", "medium", "high"}
+AUDIT_RESULT_LIST_FIELDS = (
+    "blocking_findings",
+    "nonblocking_findings",
+    "evidence",
+    "commands",
+    "changed_files",
+)
+CLOSEOUT_MANIFEST_NAME = "automation-supervisor-closeout-manifest.json"
+
+UX_AUTO_INCLUDE_EXACT = {
+    "app/index.html",
+    "app/tailwind.config.js",
+    "app/tailwind.config.ts",
+    "app/vite.config.js",
+    "app/vite.config.ts",
+    "clients/mediarr-client/pubspec.yaml",
+}
+UX_AUTO_INCLUDE_PREFIXES = (
+    "app/src/",
+    "app/public/",
+    "clients/mediarr-client/lib/",
+    "clients/mediarr-client/assets/",
+)
+UX_AUTO_INCLUDE_SUFFIXES = (".tsx", ".jsx", ".ts", ".js", ".css", ".scss", ".html", ".dart")
+UX_AUTO_EXCLUDE_PREFIXES = (
+    "measure/",
+    "docs/",
+    "server/",
+    "scripts/",
+    "tests/",
+    ".github/",
+)
+UX_AUTO_EXCLUDE_PARTS = ("/__tests__/", "/tests/", "/test/", "/__mocks__/")
+UX_AUTO_EXCLUDE_SUFFIXES = (
+    ".test.ts",
+    ".test.tsx",
+    ".test.js",
+    ".test.jsx",
+    ".spec.ts",
+    ".spec.tsx",
+    ".spec.js",
+    ".spec.jsx",
+    "_test.dart",
+    ".stories.tsx",
+    ".stories.jsx",
+    ".md",
+    ".mdx",
+)
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -381,6 +443,30 @@ def non_test_source_changes_since(config: Config, base_sha: str) -> list[str]:
     return result
 
 
+def normalize_repo_path(path: str) -> str:
+    return path.replace("\\", "/").lstrip("./")
+
+
+def ux_auto_excluded_path(path: str) -> bool:
+    normalized = normalize_repo_path(path)
+    if normalized.startswith(UX_AUTO_EXCLUDE_PREFIXES):
+        return True
+    if any(part in f"/{normalized}" for part in UX_AUTO_EXCLUDE_PARTS):
+        return True
+    return normalized.endswith(UX_AUTO_EXCLUDE_SUFFIXES)
+
+
+def ux_auto_relevant_path(path: str) -> bool:
+    normalized = normalize_repo_path(path)
+    if ux_auto_excluded_path(normalized):
+        return False
+    if normalized in UX_AUTO_INCLUDE_EXACT:
+        return True
+    if not normalized.endswith(UX_AUTO_INCLUDE_SUFFIXES):
+        return False
+    return normalized.startswith(UX_AUTO_INCLUDE_PREFIXES)
+
+
 def ux_audit_applicable(config: Config, base_sha: str) -> bool:
     if config.ux_required == "never":
         return False
@@ -388,22 +474,66 @@ def ux_audit_applicable(config: Config, base_sha: str) -> bool:
         return True
     if not config.project_dev_url:
         return False
-
-    frontend_markers = (
-        "app/src/",
-        "app/index.html",
-        "app/vite.config.",
-        "app/tailwind.config.",
-    )
-    frontend_suffixes = (".tsx", ".jsx", ".css", ".scss", ".html")
-    return any(
-        path.startswith(frontend_markers) or path.endswith(frontend_suffixes)
-        for path in changed_files_since(config, base_sha)
-    )
+    return any(ux_auto_relevant_path(path) for path in changed_files_since(config, base_sha))
 
 
 def audit_result_path(ctx: RoleContext) -> Path:
     return ctx.context_dir / f"{ctx.role.name}-result.json"
+
+
+def validate_string_list(payload: dict[str, object], field: str) -> list[str]:
+    value = payload.get(field)
+    if not isinstance(value, list):
+        return [f"Audit result field {field!r} must be a list of strings."]
+    if not all(isinstance(item, str) and item.strip() for item in value):
+        return [f"Audit result field {field!r} must contain only non-empty strings."]
+    return []
+
+
+def validate_audit_payload(payload: object, role: str) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["Audit result must be a JSON object."]
+
+    feedback: list[str] = []
+    if payload.get("schema_version") != AUDIT_RESULT_SCHEMA_VERSION:
+        feedback.append(f"Audit result schema_version must be {AUDIT_RESULT_SCHEMA_VERSION}.")
+    if payload.get("status") not in AUDIT_RESULT_STATUSES:
+        feedback.append("Audit result status must be one of pass, fail, or inconclusive.")
+    if not isinstance(payload.get("summary"), str) or not payload["summary"].strip():
+        feedback.append("Audit result must include a non-empty summary.")
+    if "findings" in payload:
+        feedback.append("Audit result must use blocking_findings and nonblocking_findings, not legacy findings.")
+
+    for field in AUDIT_RESULT_LIST_FIELDS:
+        feedback.extend(validate_string_list(payload, field))
+
+    retry = payload.get("retry_recommendation")
+    if retry not in AUDIT_RESULT_RETRY_RECOMMENDATIONS:
+        feedback.append(
+            "Audit result retry_recommendation must be one of "
+            + ", ".join(sorted(AUDIT_RESULT_RETRY_RECOMMENDATIONS))
+            + "."
+        )
+    confidence = payload.get("confidence")
+    if confidence not in AUDIT_RESULT_CONFIDENCE_LEVELS:
+        feedback.append("Audit result confidence must be low, medium, or high.")
+
+    if role == "ux":
+        if payload.get("webbridge_status") not in {"healthy", "unhealthy"}:
+            feedback.append("UX audit must record webbridge_status as healthy or unhealthy.")
+        webbridge_evidence = payload.get("webbridge_evidence")
+        if not isinstance(webbridge_evidence, dict):
+            feedback.append("UX audit must include webbridge_evidence as an object.")
+        else:
+            evidence_fields = ("screenshots", "accessibility_snapshots", "interactions")
+            for field in evidence_fields:
+                value = webbridge_evidence.get(field)
+                if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+                    feedback.append(f"UX webbridge_evidence.{field} must be a list of non-empty strings.")
+            if all(not webbridge_evidence.get(field) for field in evidence_fields):
+                feedback.append("UX audit must include at least one screenshot, accessibility snapshot, or interaction.")
+
+    return feedback
 
 
 def read_passing_audit_result(ctx: RoleContext) -> list[str]:
@@ -414,10 +544,16 @@ def read_passing_audit_result(ctx: RoleContext) -> list[str]:
         payload = json.loads(result_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         return [f"Audit result is not valid JSON: {exc}"]
+
+    feedback = validate_audit_payload(payload, ctx.role.name)
+    if feedback:
+        return feedback
+
     if payload.get("status") != "pass":
-        return [f"Audit result status must be 'pass', got {payload.get('status')!r}."]
-    if not isinstance(payload.get("summary"), str) or not payload["summary"].strip():
-        return ["Audit result must include a non-empty summary."]
+        blocking = payload.get("blocking_findings") or []
+        retry = payload.get("retry_recommendation")
+        detail = "; ".join(blocking) if blocking else "no blocking_findings provided"
+        return [f"Audit result status must be 'pass', got {payload.get('status')!r}; retry_recommendation={retry}; {detail}."]
     return []
 
 
@@ -434,6 +570,91 @@ def active_registry_contains_track(config: Config, track_id: str) -> bool:
         return False
     active_section = registry.read_text(encoding="utf-8", errors="ignore").split("## Archived Tracks", 1)[0]
     return re.search(rf"(?<![A-Za-z0-9_.-]){re.escape(track_id)}(?![A-Za-z0-9_.-])", active_section) is not None
+
+
+def closeout_track_dir(config: Config, track_id: str) -> Path:
+    archived = config.measure_dir / "archive" / track_id
+    if archived.exists():
+        return archived
+    return config.measure_dir / "tracks" / track_id
+
+
+def closeout_manifest_path(config: Config, track_id: str) -> Path:
+    return config.measure_dir / "archive" / track_id / CLOSEOUT_MANIFEST_NAME
+
+
+def closeout_plan_path(config: Config, track_id: str) -> Path:
+    return closeout_track_dir(config, track_id) / "plan.md"
+
+
+def closeout_metadata_path(config: Config, track_id: str) -> Path:
+    return closeout_track_dir(config, track_id) / "metadata.json"
+
+
+def plan_closeout_feedback(plan_path: Path) -> list[str]:
+    if not plan_path.exists():
+        return [f"Closeout plan file is missing: {plan_path}."]
+
+    text = plan_path.read_text(encoding="utf-8", errors="ignore")
+    feedback: list[str] = []
+    for full_line, status, task in re.findall(r"^(\s*- \[([ ~x])\] (.+))$", text, re.MULTILINE):
+        if "deferred" in task.lower():
+            continue
+        if status != "x":
+            feedback.append(f"Closeout plan task is not complete: {full_line.strip()}")
+        elif not re.search(r"\b[0-9a-f]{7,40}\b", task):
+            feedback.append(f"Completed closeout plan task lacks commit SHA: {full_line.strip()}")
+
+    phase_headings = re.findall(r"^## Phase .+$", text, re.MULTILINE)
+    if not phase_headings:
+        feedback.append("Closeout plan has no Phase headings.")
+    for heading in phase_headings:
+        if "[checkpoint:" not in heading and "[final-verification:" not in heading:
+            feedback.append(f"Closeout phase heading lacks checkpoint evidence: {heading}")
+    return feedback
+
+
+def metadata_closeout_feedback(metadata_path: Path) -> list[str]:
+    if not metadata_path.exists():
+        return [f"Closeout metadata file is missing: {metadata_path}."]
+    try:
+        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"Closeout metadata is not valid JSON: {exc}"]
+    feedback: list[str] = []
+    if payload.get("status") != "done":
+        feedback.append("Closeout metadata status must be 'done'.")
+    if not isinstance(payload.get("completed"), str) or not payload["completed"].strip():
+        feedback.append("Closeout metadata must include a completed date.")
+    return feedback
+
+
+def artifact_closeout_feedback(config: Config, ctx: RoleContext) -> list[str]:
+    feedback: list[str] = []
+    manifest = closeout_manifest_path(config, ctx.track_id)
+    if not manifest.exists():
+        feedback.append(f"Closeout manifest is missing: {manifest}.")
+
+    track_artifact_dir = config.run_root / config.run_id / sanitize_id(ctx.track_id)
+    if track_artifact_dir.exists():
+        stale = sorted(child for child in track_artifact_dir.iterdir() if child.name != "closeout")
+        if stale:
+            feedback.append("Closeout must delete bulky phase/run artifacts before passing; remaining paths:")
+            feedback.extend(f"- {path}" for path in stale[:20])
+            if len(stale) > 20:
+                feedback.append(f"- ... {len(stale) - 20} more")
+    return feedback
+
+
+def cleanup_remaining_track_artifacts(config: Config, track_id: str) -> bool:
+    run_id_dir = config.run_root / config.run_id
+    track_artifact_dir = run_id_dir / sanitize_id(track_id)
+    if not track_artifact_dir.exists():
+        return False
+    if track_artifact_dir.parent != run_id_dir or track_artifact_dir == run_id_dir:
+        raise SystemExit(f"ERROR: Refusing unsafe artifact cleanup path: {track_artifact_dir}")
+    shutil.rmtree(track_artifact_dir)
+    return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -484,7 +705,7 @@ def load_config() -> Config:
         phase_acceptance_model=model_env("PHASE_ACCEPTANCE_MODEL", "vocengine-coding/glm-5.2"),
         adversarial_model=model_env("ADVERSARIAL_MODEL", "minimax-cn-coding-plan/MiniMax-M3"),
         ux_model=model_env("UX_MODEL", "kimi-for-coding/k2p7"),
-        acceptance_model=model_env("ACCEPTANCE_MODEL", "opencode-go/qwen3.7-max"),
+        acceptance_model=model_env("ACCEPTANCE_MODEL", "openai/gpt-5.5"),
         closeout_model=model_env("CLOSEOUT_MODEL", "deepseek/deepseek-v4-flash"),
         sr_agent=os.environ.get("SR_AGENT", ""),
         mid_agent=os.environ.get("MID_AGENT", ""),
@@ -854,12 +1075,29 @@ def audit_result_contract(ctx: RoleContext, extra_fields: str = "") -> str:
 
 Write a machine-readable audit result to {audit_result_path(ctx)} using this JSON shape:
 {{
-  "status": "pass|fail",
+  "schema_version": {AUDIT_RESULT_SCHEMA_VERSION},
+  "status": "pass|fail|inconclusive",
   "summary": "concise evidence-based conclusion",
-  "findings": ["specific remaining issue, or an empty list"],
-  "evidence": ["commands, files, screenshots, or logs reviewed"]{extra_fields}
+  "blocking_findings": ["specific issue that blocks this role from passing, or empty"],
+  "nonblocking_findings": ["specific follow-up that does not block, or empty"],
+  "evidence": ["files, logs, screenshots, or artifacts reviewed"],
+  "commands": ["commands run with pass/fail result, or explicit not-run reason"],
+  "changed_files": ["files changed by this role, or empty"],
+  "retry_recommendation": "none|retry_tests|retry_implementation|retry_audit|escalate_human|create_remediation_track|infrastructure_retry",
+  "confidence": "low|medium|high"{extra_fields}
 }}
-Only use status "pass" when no blocking findings remain.
+Only use status "pass" when blocking_findings is empty and the role has enough evidence.
+Use "inconclusive" for infrastructure/tooling failures that should not be treated as acceptance.
+"""
+
+
+def retry_policy_text() -> str:
+    return """Retry and escalation policy:
+- If the failure is a clear test or implementation gap, fix only that gap and rerun the smallest relevant command first.
+- If the failure is a clear audit-evidence/schema gap, rewrite the audit result without changing product code.
+- If the finding requires product judgment, scope tradeoffs, or acceptance of degraded UX, stop with status blocked/partial and request human input.
+- If the same blocking class recurs after bounded retries, preserve evidence and recommend a remediation track instead of looping.
+- If infrastructure, network, or tool instability prevents a reliable result, mark the audit inconclusive; do not archive the track.
 """
 
 
@@ -875,6 +1113,7 @@ Fix only the issues listed below. Preserve valid work from the previous attempt.
 After fixing, rerun the relevant checks, update Measure docs, commit required changes,
 and end with the required MEASURE_AGENT_RESULT block.
 
+{retry_policy_text()}
 Supervisor feedback:
 {feedback_text}
 
@@ -1060,17 +1299,6 @@ def gate_adversarial(config: Config, ctx: RoleContext) -> GateResult:
 
 def gate_ux(config: Config, ctx: RoleContext) -> GateResult:
     feedback = read_passing_audit_result(ctx)
-    result_path = audit_result_path(ctx)
-    if result_path.exists():
-        try:
-            payload = json.loads(result_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            payload = {}
-        evidence = payload.get("evidence")
-        if not isinstance(evidence, list) or not evidence:
-            feedback.append("UX audit result must include screenshot, accessibility, or interaction evidence.")
-        if payload.get("webbridge_status") != "healthy":
-            feedback.append("UX audit must record webbridge_status as 'healthy'.")
     if ctx.log_file and not has_agent_result_block(ctx.log_file, config.require_agent_result_block):
         feedback.append("Missing required MEASURE_AGENT_RESULT block.")
     return GateResult(not feedback, feedback)
@@ -1106,6 +1334,9 @@ def gate_closeout(config: Config, ctx: RoleContext) -> GateResult:
         )
     if active_registry_contains_track(config, ctx.track_id):
         feedback.append("measure/tracks.md still lists the track in its active section.")
+    feedback.extend(plan_closeout_feedback(closeout_plan_path(config, ctx.track_id)))
+    feedback.extend(metadata_closeout_feedback(closeout_metadata_path(config, ctx.track_id)))
+    feedback.extend(artifact_closeout_feedback(config, ctx))
     if ctx.log_file and not has_agent_result_block(ctx.log_file, config.require_agent_result_block):
         feedback.append("Missing required MEASURE_AGENT_RESULT block.")
     return GateResult(not feedback, feedback)
@@ -1370,7 +1601,7 @@ def main() -> int:
         supervise_role(config, RoleContext(roles["mid"], phase.track_id, phase.heading, plan_file, strategy_file, phase_dir), mid_prompt)
 
         jr_prompt = (
-            f"Load the measure skill and the build-graph skill. Read {plan_file} and the tests just written for phase "
+            f"/goal Load the measure skill and the build-graph skill. Read {plan_file} and the tests just written for phase "
             f"{phase.heading}. Use build-graph before implementation: run build-graph stats ./graph.db when available, "
             "inspect the symbols/files touched by the failing tests, and use build-graph callers/deps to understand blast "
             "radius before changing exported functions, schemas, routes, or components. If graph.db is missing or stale "
@@ -1464,7 +1695,7 @@ def main() -> int:
             baseline_sha=phase_base_sha,
         )
         phase_acceptance_prompt = (
-            f"Load the measure skill and build-graph skill. You are the independent Phase Acceptance Auditor for "
+            f"/goal Load the measure skill and build-graph skill. You are the independent Phase Acceptance Auditor for "
             f"{phase.track_id}, {phase.heading}. Read measure/index.md, the track spec, {plan_file}, and {strategy_file} "
             "if it exists. Compare every phase task and applicable acceptance criterion against the implementation, tests, "
             f"and git changes since {phase_base_sha}. Use build-graph callers/deps for changed exported contracts. Look for "
@@ -1487,9 +1718,10 @@ def main() -> int:
             baseline_sha=phase_base_sha,
         )
         adversarial_prompt = (
-            f"Load the measure skill. You are the Adversarial Test Auditor for {phase.track_id}, {phase.heading}. "
-            f"Read the spec, {plan_file}, {strategy_file} if present, and inspect changes since {phase_base_sha}. Try to "
-            "disprove correctness with boundary, failure-path, integration, concurrency, and regression tests. Inspect existing "
+            f"/goal Load the measure skill and the build-graph skill. You are the Adversarial Test Auditor for {phase.track_id}, {phase.heading}. "
+            f"Read the spec, {plan_file}, {strategy_file} if present, and inspect changes since {phase_base_sha}. Use "
+            "build-graph to inspect changed symbols, callers, dependencies, and exported contracts. Try to disprove "
+            "correctness with boundary, failure-path, integration, concurrency, and regression tests. Inspect existing "
             "tests for weak assertions, excessive mocking, substring assertions that match negated text, fake harnesses that do "
             "not intercept the real command, and documentation assertions standing in for live gate proof. When browser behavior "
             "is applicable, own durable Playwright E2E coverage and run it. Add and commit valuable tests and any tightly scoped fixes they expose. Run the relevant "
@@ -1510,14 +1742,17 @@ def main() -> int:
                 baseline_sha=phase_base_sha,
             )
             ux_prompt = (
-                f"Load the kimi-webbridge skill and follow it exactly. You are the multimodal UI/UX Auditor for "
+                f"Load the measure skill and the kimi-webbridge skill and follow both exactly. You are the multimodal UI/UX Auditor for "
                 f"{phase.track_id}, {phase.heading}. First run the required Kimi WebBridge health check. Use the real browser "
                 f"to inspect and exercise the changed user-facing flows at {config.project_dev_url}. Review relevant spec "
                 "acceptance criteria, visual hierarchy, spacing, responsiveness, loading/empty/error states, labels, keyboard "
                 "usability, and accessibility semantics. Do not duplicate Playwright ownership. Capture screenshots using the "
                 "skill helper, record interaction/accessibility evidence, correct proven UX defects, commit fixes, and re-audit. "
                 "Close the WebBridge session at the end."
-                + audit_result_contract(ux_ctx, ',\n  "webbridge_status": "healthy|unhealthy"')
+                + audit_result_contract(
+                    ux_ctx,
+                    ',\n  "webbridge_status": "healthy|unhealthy",\n  "webbridge_evidence": {"screenshots": [], "accessibility_snapshots": [], "interactions": []}'
+                )
                 + agent_result_contract("ux")
             )
             supervise_role(config, ux_ctx, ux_prompt)
@@ -1535,7 +1770,7 @@ def main() -> int:
                 baseline_sha=phase_base_sha,
             )
             acceptance_prompt = (
-                f"Load the measure skill and build-graph skill. You are the Final Acceptance Auditor for track "
+                f"/goal Load the measure skill and build-graph skill. You are the Final Acceptance Auditor for track "
                 f"{phase.track_id}. Read measure/index.md, the complete spec, {plan_file}, {strategy_file} if it exists, "
                 "measure/lessons-learned.md, and measure/tech-debt.md. Independently verify every non-deferred acceptance "
                 "criterion and task, changed callers and contracts, test quality, and the complete track outcome. Treat recorded "
@@ -1559,18 +1794,24 @@ def main() -> int:
                 baseline_sha=phase_base_sha,
             )
             closeout_prompt = (
-                f"Load the measure skill. You are the Measure Closeout Steward for {phase.track_id}. The final acceptance "
+                f"/goal Load the measure skill and the build-graph skill. You are the Measure Closeout Steward for {phase.track_id}. The final acceptance "
                 "audit has passed. Verify all tasks and phase headings are complete with required commit/checkpoint evidence. "
+                "Use build-graph when closeout touches generated graph artifacts, exported contracts, or changed TypeScript structure. "
                 "Before archiving, rerun the required closeout gates in real mode (for example, use env -u VERIFY_FAKE_GATE_DIR "
                 "for verify-style commands) and do not rely only on closeout-verification.md or plan.md PASS text. Confirm there "
                 "are no intentionally-red test files in aggregate suites unless the track remains active and the plan names the "
                 "owner. Update metadata.json to status done with today's date, update measure/tracks.md, update lessons-learned.md or "
-                "tech-debt.md only when warranted, move the track directory from measure/tracks/ to measure/archive/, and commit "
-                "the closeout. Do not leave the completed track active."
+                "tech-debt.md only when warranted, move the track directory from measure/tracks/ to measure/archive/, and write "
+                f"a compact closeout manifest at measure/archive/{phase.track_id}/{CLOSEOUT_MANIFEST_NAME}. The manifest must summarize "
+                "audit statuses, commands, commit/checkpoint SHAs, retained evidence, and deleted artifact directories. Delete bulky "
+                f"run artifacts under {config.run_root / config.run_id / safe_track} before passing, but keep the current closeout "
+                "context long enough for the supervisor to read your audit result. Commit the closeout and manifest. Do not leave the completed track active."
                 + audit_result_contract(closeout_ctx)
                 + agent_result_contract("closeout")
             )
             supervise_role(config, closeout_ctx, closeout_prompt)
+            if cleanup_remaining_track_artifacts(config, phase.track_id):
+                print(f">>> Removed remaining supervisor artifacts for {phase.track_id}")
             print(f">>> Final acceptance and Measure closeout complete for {phase.track_id}")
 
         enforce_clean_worktree(config, f"{phase.track_id} -- {phase.heading}")

@@ -47,3 +47,7 @@ Make targets:
 - `make clean` - Remove artifacts and cache
 
 First build may take >2 minutes due to CGo/GTK4 dependencies. Subsequent builds use cached objects and complete in <10s.
+
+## Automation Supervisor
+
+Do NOT modify measure/automation-supervisor.py. This file is centrally managed and hardlinked across all projects.
