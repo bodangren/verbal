@@ -6,6 +6,8 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
 
 ---
 
+> ⚠️ **Backlog/codebase integrity flag (raised 2026-06-21, needs human decision).** This file presents a clean-slate "greenfield rewrite" where the MVP tracks are *Planned* and roadmap features come *after* MVP. The codebase does not match that narrative: the repo carries the **full pre-rewrite implementation** tracked at HEAD, predating the 2026-06-13 greenfield setup — e.g. `internal/ui/waveformwidget.go` (2026-04-08), `internal/ui/livecaptionwidget.go` (2026-05-07), `internal/ui/editabletranscriptionview.go` (2026-04-05), `internal/ui/importdialog.go` (2026-04-11), `internal/transcription/service.go` (2026-03-26) — covering Recording/Import, Transcription, Text-Delete, and the *Waveform*, *Live-caption/Real-time*, and *Batch-queue* **roadmap** features. The greenfield setup re-architected the domain/schema/controller layer in-place but did not delete this prior art. Net effect: several "Planned" MVP/roadmap tracks have substantial salvageable implementations that are either orphaned (need rewrite-to-new-architecture or deletion) or partially live. **A reconcile-or-delete pass is owed before these statuses can be trusted** — file existence ≠ track complete, so the tracks below are left as-is pending that decision rather than auto-promoted.
+
 ## Active Tracks
 
 - [x] **Track: Greenfield Project Setup** [created: 2026-06-12] [completed: 2026-06-12]
@@ -23,9 +25,9 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
   *Status: Planned.*
   *Link: [./tracks/mvp_transcription_20260612](./tracks/mvp_transcription_20260612/)*
 
-- [ ] **Track: MVP Playback & Sync** [created: 2026-06-12]
+- [~] **Track: MVP Playback & Sync** [created: 2026-06-12]
   *Focus: Embedded GStreamer playback, clickable transcript, and current-word highlighting.*
-  *Status: Planned.*
+  *Status: In progress — 21/36 plan tasks done, 2 in progress. GStreamer player implemented (`2c7fc9a`), Phase 2 state-machine transition tests green (`ebb6fae`, `fe771b1`), Phase 3 TranscriptView widget complete (`a42ac38`, `67195df`). Remaining: current-word sync/highlighting and Phase 4 acceptance.*
   *Link: [./tracks/mvp_playback_sync_20260612](./tracks/mvp_playback_sync_20260612/)*
 
 - [ ] **Track: MVP Text-Driven Delete** [created: 2026-06-12]
