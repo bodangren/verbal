@@ -41,8 +41,10 @@ Active tracks implement the MVP defined in [product.md](./product.md). Roadmap t
 
 The following tracks are intentionally outside the MVP. They will be created after the MVP is complete and manually verified.
 
-- [ ] **Track: Multi-Range Delete & Reorder**
-  *Delete sentences, reorder paragraphs, insert silence, and split segments.*
+- [ ] **Track: Multi-Range Delete & Reorder** [created: 2026-07-05]
+  *Focus: Delete sentences, reorder paragraphs, insert silence, and split segments.*
+  *Status: Planned.*
+  *Link: [./tracks/multi_range_delete_and_reorder_20260705](./tracks/multi_range_delete_and_reorder_20260705)*
 
 - [ ] **Track: Undo/Redo System**
   *Full history stack for text-driven editing operations with Ctrl+Z / Ctrl+Y.*
