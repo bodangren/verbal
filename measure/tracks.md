@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Timeline Waveform** [created: 2026-11-21]
+  *Focus: Render a cached waveform from showwavespic, show it beside the playback video, and seek where it is clicked.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/timeline_waveform_20261121](./tracks/timeline_waveform_20261121/)*
+
 - [x] **Track: Reorder Text** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Move an inclusive word block, keep segments consistent, and expose the action on the selected range as one undo step.*
   *Status: Complete. `moveRange` moves a clamped block (a target at or inside the block is a no-op), gives moved words to the segment they land beside, drops emptied segments, and leaves ids, texts, and timings untouched. It is exposed on the editing hook as one undo step and as Move earlier/Move later on the selection. `npm run check` green (567 tests); `npm run e2e` moves a word, checks the order, and undoes it.*
