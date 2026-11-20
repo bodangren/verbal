@@ -465,7 +465,7 @@ export default function Home() {
       </section>
 
       {transcript !== null && (
-        <section className="panel" aria-label="Transcript">
+        <section className="panel" aria-label="Transcript editor">
           <h2>Transcript</h2>
           <TranscriptEditor transcript={transcript} />
         </section>
@@ -476,6 +476,7 @@ export default function Home() {
         {transcript === null && <p className="muted">Open a project with a transcript first.</p>}
         <textarea
           className="editor"
+          aria-label="Storyboard JSON"
           value={storyboardText}
           onChange={(event) => setStoryboardText(event.target.value)}
           spellCheck={false}
@@ -579,6 +580,7 @@ export default function Home() {
         <h2>Feedback</h2>
         <textarea
           className="editor"
+          aria-label="Patch JSON"
           value={patchText}
           onChange={(event) => setPatchText(event.target.value)}
           placeholder='{"patches":[{"type":"remove","sceneId":"s1"}]}'

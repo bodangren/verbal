@@ -32,7 +32,7 @@ export function CapturePanel({
   onStop,
 }: CapturePanelProps) {
   return (
-    <section className="capture" aria-label="Capture">
+    <section className="capture" aria-label="Capture controls">
       {!cameraAvailable && (
         <p className="status status--error">No camera available in this browser.</p>
       )}
