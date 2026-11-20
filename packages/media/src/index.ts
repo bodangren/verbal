@@ -7,3 +7,4 @@ export * from "./probe";
 export * from "./system";
 export * from "./thumbnail";
 export * from "./presets";
+export * from "./waveform";

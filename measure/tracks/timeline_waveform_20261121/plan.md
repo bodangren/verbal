@@ -29,10 +29,10 @@ npx vitest run packages/media/src/waveform.test.ts
 
 ## Phase 2: Endpoint
 
-- [ ] Add `apps/web/server/waveform-api.ts` with a content-keyed cache under `cache/`.
-- [ ] Add `GET /api/media/waveform`.
-- [ ] Route tests: render, cache hit, missing media, bad root, wrong method.
-- [ ] Commit: `feat(api): Serve a cached waveform image`
+- [x] Add `apps/web/server/waveform-api.ts` with a content-keyed cache under `cache/`.
+- [x] Add `GET /api/media/waveform`.
+- [x] Route tests: render, cache hit, missing media, bad root, wrong method.
+- [x] Commit: `feat(api): Serve a cached waveform image`
 
 ---
 
