@@ -37,9 +37,9 @@ npx vitest run packages/ai/src/local.test.ts
 
 ## Phase 3: Selection
 
-- [ ] `VERBAL_ASR=local` in `createTranscribeService`, with the key check skipped for local.
-- [ ] Tests for both switch values.
-- [ ] Commit: `feat(api): Select the local provider by environment`
+- [x] `VERBAL_ASR=local` in `createTranscribeService`, with the key check skipped for local.
+- [x] Tests for both switch values.
+- [x] Commit: `feat(api): Select the local provider by environment`
 
 ---
 

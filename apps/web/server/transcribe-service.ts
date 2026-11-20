@@ -1,4 +1,9 @@
-import { createWhisperProvider, AiError, type TranscriptionProvider } from "@verbal/ai";
+import {
+  createLocalWhisperProvider,
+  createWhisperProvider,
+  AiError,
+  type TranscriptionProvider,
+} from "@verbal/ai";
 import {
   ProjectError,
   createTranscript,
@@ -20,6 +25,10 @@ export type TranscribeServiceDeps = {
   apiKey: () => string;
   baseUrl: () => string | undefined;
   createProvider: (config: { apiKey: string; baseUrl?: string }) => TranscriptionProvider;
+  /** "local" runs a whisper CLI; anything else uses the cloud provider. */
+  asrMode: () => string | undefined;
+  whisperModelPath: () => string | undefined;
+  createLocalProvider: (config: { modelPath: string }) => TranscriptionProvider;
 };
 
 /**
@@ -36,8 +45,41 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     apiKey: () => process.env.OPENAI_API_KEY ?? "",
     baseUrl: () => process.env.OPENAI_BASE_URL,
     createProvider: (config) => createWhisperProvider(config),
+    asrMode: () => process.env.VERBAL_ASR,
+    whisperModelPath: () => process.env.VERBAL_WHISPER_MODEL,
+    createLocalProvider: (config) => createLocalWhisperProvider(config),
     ...overrides,
   };
+
+  /**
+   * The provider this request should use.
+   *
+   * Local mode deliberately does not require an API key — requiring one to run
+   * an offline binary would defeat the point — and names its model, because a
+   * whisper CLI without a model is a configuration error worth reporting.
+   */
+  function providerFor(config: { apiKey: string; baseUrl?: string }): TranscriptionProvider {
+    if (deps.asrMode() === "local") {
+      const modelPath = deps.whisperModelPath();
+      if (modelPath === undefined || modelPath.trim() === "") {
+        throw new AiError("not-configured", "VERBAL_WHISPER_MODEL is not set");
+      }
+      return deps.createLocalProvider({ modelPath });
+    }
+
+    return deps.createProvider(config);
+  }
+
+  /** The cloud credentials, which local mode never reads. */
+  function cloudConfig(): { apiKey: string; baseUrl?: string } {
+    const apiKey = deps.apiKey();
+    if (deps.asrMode() !== "local" && apiKey.trim() === "") {
+      // Mapped to 503 by the API error layer, like any unconfigured provider.
+      throw new AiError("not-configured", "OPENAI_API_KEY is not set");
+    }
+    const baseUrl = deps.baseUrl();
+    return { apiKey, ...(baseUrl === undefined ? {} : { baseUrl }) };
+  }
 
   return {
     /** Resolves the media file a project would transcribe. */
@@ -53,21 +95,12 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
      * rather than a job record to poll.
      */
     async transcribeNow(root: string): Promise<number> {
-      const apiKey = deps.apiKey();
-      if (apiKey.trim() === "") {
-        throw new AiError("not-configured", "OPENAI_API_KEY is not set");
-      }
+      const provider = providerFor(cloudConfig());
 
       const mediaPath = await this.mediaPathFor(root);
       if (mediaPath === null) {
         throw new ProjectError("invalid-document", "project has no media");
       }
-
-      const baseUrl = deps.baseUrl();
-      const provider = deps.createProvider({
-        apiKey,
-        ...(baseUrl === undefined ? {} : { baseUrl }),
-      });
 
       const result = await provider.transcribe({ filePath: mediaPath });
 
@@ -81,22 +114,12 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     },
 
     async start(root: string): Promise<JobRecord> {
-      const apiKey = deps.apiKey();
-      if (apiKey.trim() === "") {
-        // Mapped to 503 by the API error layer, like any unconfigured provider.
-        throw new AiError("not-configured", "OPENAI_API_KEY is not set");
-      }
+      const provider = providerFor(cloudConfig());
 
       const mediaPath = await this.mediaPathFor(root);
       if (mediaPath === null) {
         throw new ProjectError("invalid-document", "project has no media");
       }
-
-      const baseUrl = deps.baseUrl();
-      const provider = deps.createProvider({
-        apiKey,
-        ...(baseUrl === undefined ? {} : { baseUrl }),
-      });
 
       const registry = await deps.registry();
       const job = await registry.create("transcribe");
