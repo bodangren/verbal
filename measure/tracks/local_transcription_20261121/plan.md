@@ -11,7 +11,7 @@
 ## Phase 1: Parser
 
 ### Red
-- [ ] Failing tests: offsets become seconds, empty text is skipped, a bad offset fails, an empty transcription yields no words.
+- [x] Failing tests: offsets become seconds, empty text is skipped, a bad offset fails, an empty transcription yields no words.
 
 **Targeted Red command:**
 ```bash
@@ -19,11 +19,11 @@ npx vitest run packages/ai/src/local.test.ts
 ```
 
 ### Green
-- [ ] Implement `parseWhisperJson` in `packages/ai/src/local.ts`.
-- [ ] Make tests pass.
+- [x] Implement `parseWhisperJson` in `packages/ai/src/local.ts`.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(ai): Parse whisper CLI word output`
+- [x] Commit: `feat(ai): Parse whisper CLI word output`
 
 ---
 
