@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { searchTranscript, type JobRecord, type ProjectDocument, type TranscriptDocument } from "@verbal/core";
+import {
+  searchTranscript,
+  type JobRecord,
+  type ProjectDocument,
+  type ProjectSummary,
+  type TranscriptDocument,
+} from "@verbal/core";
 import {
   applyAcceptedPatches,
   parsePatchResponse,
@@ -81,6 +87,8 @@ export default function Home() {
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
   const [batchRoots, setBatchRoots] = useState("");
+  const [libraryFolder, setLibraryFolder] = useState("");
+  const [library, setLibrary] = useState<ProjectSummary[]>([]);
   const [batchOutcomes, setBatchOutcomes] = useState<
     { root: string; status: string; detail?: string }[]
   >([]);
@@ -170,6 +178,27 @@ export default function Home() {
     return guard(async () => {
       const opened = await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`);
       await loadProjectFiles(opened);
+    });
+  }
+
+  /** Opens a project by path, for callers that already know which one. */
+  function openProjectAt(target: string) {
+    return guard(async () => {
+      const opened = await request<ProjectDocument>(
+        `/api/projects?root=${encodeURIComponent(target)}`,
+      );
+      setRoot(target);
+      await loadProjectFiles(opened);
+    });
+  }
+
+  function scanForProjects() {
+    return guard(async () => {
+      const result = await request<{ projects: ProjectSummary[] }>(
+        `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
+      );
+      setLibrary(result.projects);
+      setMessage(`${result.projects.length} projects found`);
     });
   }
 
@@ -816,6 +845,41 @@ export default function Home() {
                 {outcome.detail !== undefined && (
                   <span className="muted">{outcome.detail}</span>
                 )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="panel" aria-label="Library">
+        <h2>Library</h2>
+        <label className="field">
+          Library folder
+          <input
+            value={libraryFolder}
+            onChange={(event) => setLibraryFolder(event.target.value)}
+            placeholder="/home/you/Verbal"
+          />
+        </label>
+        <div className="row">
+          <button
+            type="button"
+            onClick={scanForProjects}
+            disabled={libraryFolder.trim() === ""}
+          >
+            Scan
+          </button>
+        </div>
+        {library.length > 0 && (
+          <ul className="cleanup__proposals" aria-label="Library projects">
+            {library.map((entry) => (
+              <li key={entry.root} className="cleanup__proposal">
+                <span>{entry.name}</span>
+                <span className="cleanup__reason">{entry.transcriptWords} words</span>
+                <span className="muted">{entry.hasMedia ? "media" : "no media"}</span>
+                <button type="button" onClick={() => openProjectAt(entry.root)}>
+                  Open {entry.name}
+                </button>
               </li>
             ))}
           </ul>

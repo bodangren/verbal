@@ -537,6 +537,19 @@ try {
     console.log("transcription: ran a batch across two projects");
   }
 
+  // Library: a folder containing one project lists it and opens it.
+  const libraryParent = await mkdtemp(path.join(os.tmpdir(), "verbal-library-"));
+  const libraryProject = path.join(libraryParent, "take-one");
+  await api("POST", "/api/projects", { root: libraryProject, name: "Take One" });
+
+  await page.getByLabel("Library folder").fill(libraryParent);
+  await page.getByRole("button", { name: "Scan", exact: true }).click();
+  await page.getByText(/1 projects found/).waitFor();
+  await page.getByLabel("Library projects").getByText("Take One").waitFor();
+  await page.getByRole("button", { name: "Open Take One" }).click();
+  await page.getByText("Opened Take One").waitFor();
+  console.log("library: scanned a folder and opened a project");
+
   assert(errors.length === 0, `browser errors:\n${errors.join("\n")}`);
   console.log("browser: no console or page errors");
   console.log("walkthrough: PASS");

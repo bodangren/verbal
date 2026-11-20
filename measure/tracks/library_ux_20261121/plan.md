@@ -36,8 +36,8 @@ npx vitest run packages/core/src/library.test.ts
 
 ## Phase 3: Page
 
-- [ ] Library panel with a folder field, Scan, and Open per row.
-- [ ] Commit: `feat(ui): List and open projects from the library`
+- [x] Library panel with a folder field, Scan, and Open per row.
+- [x] Commit: `feat(ui): List and open projects from the library`
 
 ---
 
