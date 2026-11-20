@@ -220,11 +220,26 @@ npx vitest run packages/core apps/web
 
 ## Phase 7: Local API and jobs
 
-- [ ] Red: route-handler tests invoking handlers directly (no server).
-- [ ] Red: job lifecycle tests (queued → running → done/failed/cancelled).
-- [ ] Green: `pages/api/` handlers for project, import, probe, export, and job status.
-- [ ] Green: job registry with progress events, persisting job records to disk and reconciling stale jobs on startup (dev HMR resets module state; a killed server orphans its children).
-- [ ] Refactor + commit: `feat(api): Add local API and job registry`
+- [x] Red: endpoint tests invoking service functions directly (no server, no HTTP objects).
+- [x] Red: job lifecycle tests (queued → running → done/failed/cancelled, including illegal transitions).
+- [x] Green: `pages/api/` handlers for project, import, probe, export, and job status.
+- [x] Green: job registry with progress events, persisted to disk and reconciled on startup (dev HMR resets module state; a killed server orphans its children).
+- [x] Refactor + commit: `feat(api): Add job registry and local job endpoints` — `fc1750c`, `1a5bc9c`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/core apps/web
+```
+
+**Red result:** job and endpoint tests failed on missing modules (`./jobs`, `./jobs-api`, `./project-api`, `./media-api`, `./export-job`); the existing suites stayed green.
+
+**Green result:** 25 core job tests + 24 server tests; full suite 163/163; `npm run check` exits 0.
+- `JobRegistry` persists every change through a `JobStore` (memory for tests, atomic JSON file for production), notifies subscribers, and rejects illegal transitions with a typed `JobError`.
+- On open, jobs left `running` by a previous process become `failed` with "interrupted by restart". The child process is gone, and silently re-running an export is worse than reporting it.
+- `runExportJob` owns the lifecycle: progress writes are serialised through a promise chain, so completion cannot overtake the last progress update. Cancellation is reported as `cancelled`, not `failed`.
+- Endpoints: `/api/jobs` (list/create), `/api/jobs/[id]` (get/delete), `/api/projects` (create/open), `/api/media/probe`, `/api/media/import`, `/api/export` (enqueues a job, returns 202).
+- Error mapping is centralised: `ProjectError`/`MediaError`/`ProbeError`/`CutListError` → 400, `not-found` → 404, `already-exists` → 409, FFmpeg failure → 502.
+- Progress reaches the client by polling `/api/jobs/[id]`. The job event shape is transport-independent, so SSE can replace polling later without an API change.
 
 ---
 
