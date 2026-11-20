@@ -30,10 +30,10 @@ npx vitest run packages/cleanup/src/freeze.test.ts
 
 ## Phase 2: Freeze endpoint
 
-- [ ] Add `apps/web/server/freeze-api.ts` computing the master from the stored transcript and probed duration.
-- [ ] Add `POST /api/cleanup/freeze`.
-- [ ] Red/Green route tests for 200/404/400/405.
-- [ ] Commit: `feat(api): Freeze the cleaned master`
+- [x] Add `apps/web/server/freeze-api.ts` computing the master from the stored transcript and probed duration.
+- [x] Add `POST /api/cleanup/freeze`.
+- [x] Red/Green route tests for 200/404/400/405.
+- [x] Commit: `feat(api): Freeze the cleaned master`
 
 ---
 
