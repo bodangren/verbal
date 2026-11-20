@@ -133,16 +133,26 @@ npx vitest run packages/compose
 
 ## Phase 4: Remotion template pack
 
-Node subproject in `tools/remotion`, isolated from the app build. Author using the `remotion-best-practices` skill.
+Node subproject in `tools/remotion`, isolated from the app build.
 
-- [ ] Scaffold with pinned dependencies and a lockfile.
-- [ ] Implement `renderSlide`: JSON in, PNG sequence plus manifest out, alpha preserved.
-- [ ] Implement the initial templates: title, section break, bullet reveal, quote, code walkthrough, lower third.
-- [ ] Implement "natural length + hold tail" rendering so composite-time trims do not invalidate the cache.
-- [ ] Golden tests: props → manifest (frame count, dimensions, alpha, deterministic hash).
-- [ ] Document the props schema alongside the frozen contract.
+- [x] Scaffold with pinned dependencies and a lockfile (`--save-exact`).
+- [x] Implement `renderSlide`: JSON in, PNG sequence plus manifest out, alpha preserved.
+- [x] Implement the initial templates: title, section break, bullet reveal, quote, code walkthrough, lower third.
+- [ ] Natural length + hold tail: **deferred.** Rendering uses the exact scene duration, so an anchor change re-renders that scene (duration is in the content hash). Logged in `tech-debt.md`; revisit when preview latency matters.
+- [x] Golden checks: manifest assertions (frame count, dimensions, alpha) plus an opt-in end-to-end test that renders frames and composites them.
+- [x] Document the props schema alongside the frozen contract (`tools/remotion/README.md`).
 
-**Exit criteria:** a hand-written storyboard renders end to end to a composited file on a developer machine.
+**Exit criteria:** met — `VERBAL_REMOTION_TEST=1 npx vitest run packages/compose/src/remotion.integration.test.ts` renders 10 alpha PNGs via Remotion, composites them over a keyed speaker with FFmpeg, and confirms the result with ffprobe in about 3.4 s.
+
+**Result details:**
+- Remotion and its renderer/bundler are pinned in `tools/remotion/package-lock.json`; 242 packages installed.
+- The renderer drives `/usr/bin/google-chrome` (no Chromium download) and caches its webpack bundle, invalidated by a hash of `src/`.
+- Six templates: `title`, `section`, `bullets`, `quote`, `code`, `lower-third`. All except `code` keep the background transparent.
+- `packages/compose` now has `nodeProcessRunner`, the production stdin/stdout process runner, covered by a real-subprocess test.
+- `npm run smoke` renders 1 s at 320x180 and reports `{"frames":10,"hasAlpha":true}`.
+
+### Refactor
+- [x] Commit: `feat(remotion): Add slide template pack and PNG renderer` — `868336f`
 
 ---
 

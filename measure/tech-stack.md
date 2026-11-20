@@ -54,7 +54,7 @@ Transcripts, storyboards, and edit lists are **documents**: versioned, diffable,
 
 Remotion compositions live in `tools/remotion` and are rendered to alpha-preserving PNG sequences. The renderer runs as a Node child process, so a long render cannot block the API server, and Remotion is imported only inside that subproject — no Remotion type appears in application code.
 
-`@remotion/renderer` downloads and caches a headless Chromium on first use (roughly 150 MB). That is the cost of the motion-graphics capability; it is recorded here rather than discovered at packaging time.
+`@remotion/renderer` drives the system Chrome (`/usr/bin/google-chrome` by default, `VERBAL_CHROME` to override), so the project does not download its own Chromium. That matters here: the development machine runs close to full, and a per-project browser download would be ~150 MB. If the system browser is ever absent, record the download cost before relying on it.
 
 Licensing: personal use only, so Remotion's free tier applies (storyboard spec, OD2). Revisit if distribution ever becomes a goal.
 
