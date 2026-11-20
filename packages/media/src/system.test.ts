@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { checkTools, describeMissingTools, type CommandRunner } from "./system";
+import type { CommandRunner } from "./exec";
+import { checkTools, describeMissingTools } from "./system";
 
 /** Builds a runner that answers only for the binaries in `versions`. */
 function fakeRunner(versions: Record<string, string>): CommandRunner {

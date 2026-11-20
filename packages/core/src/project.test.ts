@@ -196,3 +196,42 @@ describe("openProject", () => {
     await expect(openProject(fs, "/projects/missing")).rejects.toMatchObject({ code: "not-found" });
   });
 });
+
+describe("reference media", () => {
+  it("accepts an absolute external path", () => {
+    const document = parseProjectDocument(
+      JSON.stringify({ ...validDocument(), media: { externalPath: "/media/take.mp4" } }),
+    );
+
+    expect(document.media).toEqual({ externalPath: "/media/take.mp4" });
+  });
+
+  it("rejects a relative external path", () => {
+    expect(
+      errorCode(() =>
+        parseProjectDocument(
+          JSON.stringify({ ...validDocument(), media: { externalPath: "media/take.mp4" } }),
+        ),
+      ),
+    ).toBe("invalid-path");
+  });
+
+  it("rejects media that specifies both a copy and a reference", () => {
+    expect(
+      errorCode(() =>
+        parseProjectDocument(
+          JSON.stringify({
+            ...validDocument(),
+            media: { assetPath: "assets/take.mp4", externalPath: "/media/take.mp4" },
+          }),
+        ),
+      ),
+    ).toBe("invalid-document");
+  });
+
+  it("rejects media that specifies neither path", () => {
+    expect(
+      errorCode(() => parseProjectDocument(JSON.stringify({ ...validDocument(), media: {} }))),
+    ).toBe("invalid-document");
+  });
+});

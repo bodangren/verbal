@@ -11,8 +11,10 @@ export type { ProjectErrorCode } from "./errors";
 export const PROJECT_SCHEMA_VERSION = 1;
 
 export type ProjectMedia = {
-  /** Project-relative path to the source media. */
-  assetPath: string;
+  /** Project-relative path for a copied asset. */
+  assetPath?: string;
+  /** Absolute path for an asset referenced in place. */
+  externalPath?: string;
 };
 
 export type ProjectDocument = {
@@ -102,7 +104,31 @@ export function validateProjectDocument(value: unknown): ProjectDocument {
     if (!isRecord(media)) {
       throw new ProjectError("invalid-document", "media must be an object");
     }
-    document.media = { assetPath: assertRelativePath(nonEmptyString(media.assetPath, "media.assetPath")) };
+
+    const hasAsset = media.assetPath !== undefined && media.assetPath !== null;
+    const hasExternal = media.externalPath !== undefined && media.externalPath !== null;
+
+    if (hasAsset === hasExternal) {
+      throw new ProjectError(
+        "invalid-document",
+        "media must specify exactly one of assetPath or externalPath",
+      );
+    }
+
+    if (hasAsset) {
+      document.media = {
+        assetPath: assertRelativePath(nonEmptyString(media.assetPath, "media.assetPath")),
+      };
+    } else {
+      const external = nonEmptyString(media.externalPath, "media.externalPath");
+      if (!path.isAbsolute(external) || external.includes("\0")) {
+        throw new ProjectError(
+          "invalid-path",
+          `external media paths must be absolute: ${external}`,
+        );
+      }
+      document.media = { externalPath: path.normalize(external) };
+    }
   }
 
   return document;
