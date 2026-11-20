@@ -1,37 +1,103 @@
 # Technology Stack: Verbal
 
+> **Decision record — 2026-11-20.** The GTK4 + GStreamer + Go implementation is retired and will be rewritten. Rationale and the rejected alternatives are recorded at the bottom of this file.
+
 ## Core Architecture
-- **Language:** Go
-- **UI Framework:** GTK4 + Libadwaita (via `gotk4` bindings)
-- **Media Engine:** GStreamer (via `gotk4-gstreamer` or custom bindings)
-- **Platform:** Native Linux (GNOME/Ubuntu focus)
 
-## UI Layer (GTK)
-- **Editor:** GTK TextView or custom structured buffer for transcript editing.
-- **Timeline:** Custom GTK DrawingArea or composite widget for visual timeline representation.
-- **Preview:** GStreamer video sink integrated into GTK window (e.g., `gtksink`).
-- **Design:** Libadwaita for modern, GNOME-native aesthetics (Dark mode focus).
+- **Language:** TypeScript, `strict` mode, ESM only
+- **Runtime:** Node.js 24 (LTS)
+- **Meta-framework:** vinext (Next.js API surface on Vite), **Pages Router**, client-first
+- **UI:** React 19
+- **Routing/API:** file-system routes under `pages/` and `pages/api/`
+- **Server:** Node, built as a vinext `output: "standalone"` bundle (`node dist/standalone/server.js`)
+- **Media engine:** FFmpeg + ffprobe, invoked as subprocesses with argv arrays
+- **Slides/motion graphics:** Remotion compositions, previewed with `@remotion/player`
+- **Storage:** JSON project documents + optional `node:sqlite` index
+- **Tests:** Vitest + Testing Library
 
-## Backend & Media Processing
-- **Recording:** 
-    - Webcam: `v4l2src` (Video4Linux2)
-    - Audio: `pulsesrc` / `pipewiresrc` (PulseAudio / PipeWire)
-- **Playback:** GStreamer `playbin` or custom pipeline for frame-accurate seeking and text-synced cursor updates.
-- **Transcoding & Export:** GStreamer `encodebin` using:
-    - Video: H.264 (`x264enc`) or VP9 (`vp9enc`)
-    - Audio: WAV or AAC
-    - Optimization: Stream-copy (`copy` muxing) where possible for fast, lossless cuts.
-- **Storage:** 
-    - Database: SQLite (via `modernc.org/sqlite` or `mattn/go-sqlite3`) for project and media metadata.
-    - File System: Local project structure for storing transcripts (JSON) and original/edited media files.
+## Why These Choices
 
-## AI Integration Layer
-- **Providers:** 
-    - OpenAI (Whisper API)
-    - Google (Speech-to-Text)
-- **Architecture:** Go-based async job system for handling cloud API requests and processing responses into word-level timestamped objects.
+### vinext over Next.js or TanStack Start
+The app is a local, single-user, client-heavy editor. SSR, RSC, streaming, and edge deployment buy nothing. vinext keeps the Next.js routing model on Vite, builds fast, emits a standalone Node server, and uses Vitest — which is the same toolchain the media and storyboard packages need. TanStack Start and Next.js both add server-rendering machinery this app never uses.
+
+**Constraint:** use the **Pages Router**, not the App Router. vinext's App Router development environment can fail on native Node modules (`sharp`, `@napi-rs/canvas`, and similar). The Pages Router avoids that environment entirely, and the app needs nothing RSC provides.
+
+### Process model: there is no separate backend
+
+`pages/api/*` handlers run in the **same Node process** as the application. `vite dev` mounts them as dev-server middleware; `node dist/standalone/server.js` serves both the app and the API in production. No second port, no IPC, no CORS layer, no separate service to start.
+
+Handlers stay thin — parse input, call a `packages/*` function, respond. The seam is the package boundary, not HTTP, so a future CLI or Electron main process can reuse the same code without going through the network.
+
+### React over a native toolkit
+Remotion is React. A React UI means `@remotion/player` renders storyboard previews from the *same* components that render the final video — no render-then-watch round trip, and no second description of the visual. It also makes transcript editing (word spans, selection, highlighting) a solved problem instead of 8,000 lines of widget plumbing.
+
+### FFmpeg over GStreamer
+FFmpeg's filtergraph language covers everything this product needs as declarative, testable configuration rather than imperative pipeline construction:
+
+| Need | FFmpeg |
+| --- | --- |
+| Chroma key | `chromakey`, `despill` |
+| Speaker over slide / inset / side-by-side | `scale`, `overlay` |
+| Music bed with ducking | `amix`, `sidechaincompress` |
+| Loudness target | `loudnorm` |
+| Transitions | `xfade` |
+| Cuts and concatenation | `segment` + `concat`, `-c copy` where possible |
+| Preview thumbnails / waveforms | `thumbnail`, `showwavespic` |
+
+Filtergraphs are built by **pure TypeScript functions** that return an argv array. They are unit-testable with no display, no hardware, and no CGo.
+
+### Storage: JSON documents + optional SQLite
+Transcripts, storyboards, and edit lists are **documents**: versioned, diffable, patchable. They live as JSON in the project folder. A SQLite index (`node:sqlite`, built into Node) is optional and only for library-wide queries, caches, and job state. If `node:sqlite` proves too experimental, `better-sqlite3` is the fallback — but it must never be imported into a component or RSC path.
+
+## Package Layout
+
+```
+apps/web            vinext app: pages/, pages/api/, UI components
+packages/core       project format, storage, migrations, atomic writes
+packages/media      ffprobe parsing, filtergraph builders, FFmpeg runner
+packages/storyboard storyboard IR, anchor resolution, patches/diff
+packages/slides     Remotion compositions + Player wrappers
+packages/ai         ASR + LLM provider abstraction (no vendor SDKs outside)
+tools/remotion      Remotion render entry point (Node CLI, frames out)
+```
 
 ## Non-Functional Requirements
-- **Display Server:** Wayland (primary) + X11 (compatibility).
-- **Concurrency:** Go routines for non-blocking media processing and UI events.
-- **Latency:** Seek response < 100ms.
+
+- **Local-first:** every render and every media operation is local. Cloud is used only for ASR, LLM planning, and (later) generated assets.
+- **No shell interpolation:** FFmpeg is invoked with `execFile`/`spawn` and an argv array. `shell: true` is forbidden. All paths are validated before they reach a subprocess.
+- **Determinism:** identical inputs produce identical filtergraphs and, modulo encoder metadata, identical output. Filtergraph builders are pure and snapshot-tested.
+- **Test speed:** the full unit suite runs in seconds. Nothing needs a display, a GPU, or CGo.
+- **Failure isolation:** a missing FFmpeg, a missing Remotion sidecar, or a failed render degrades to a clear error, never a hang.
+
+## Security Rules (carried forward, adapted)
+
+- Sanitize and validate every user-supplied path before passing it to FFmpeg.
+- Filtergraph values are escaped with a dedicated escaper — filtergraph syntax has its own quoting rules and is a genuine injection surface.
+- No hardcoded secrets. Provider keys come from environment or a local keychain.
+- The Remotion sidecar runs with pinned dependencies and no ambient credentials.
+
+## Licensing
+
+Personal use only. Remotion's free tier covers individuals, FFmpeg's GPL/LGPL builds are fine without distribution, and vinext/Vite/React are permissive. If distribution ever becomes a goal, revisit the Remotion *Automators* tier and FFmpeg build flags first.
+
+## Superseded (2026-11-20)
+
+### What was retired
+- Go 1.25 application core (`cmd/`, `internal/`)
+- GTK4 + Libadwaita via `gotk4`
+- GStreamer pipelines via `gotk4-gstreamer`
+- SQLite via `modernc.org/sqlite`
+
+### Why
+1. **Go ↔ C boundary.** ~2 min/package CGo rebuilds, `gotk4` API drift, `gstreamer1.0-plugins-bad` as a runtime dependency.
+2. **GTK as an application framework.** `internal/ui` reached 8,318 LOC — more than every other package combined — almost entirely widget plumbing.
+3. **GStreamer as an editor.** It is a streaming engine, not a timeline or compositing toolkit.
+4. **Duplicated runtime.** Remotion already required Node and Chromium, so the Go/GTK shell was a third platform to maintain.
+
+### Alternatives rejected
+- **Tauri / Wails + React:** on Linux both render through WebKitGTK, which is built on GTK and uses GStreamer for media. That reintroduces the retired stack and weakens H.264/AAC support.
+- **Rust + egui/iced:** rebuilds text editing, layout, and video preview from scratch.
+- **Next.js:** SSR/RSC machinery with no local application.
+- **TanStack Start:** same, plus a server model that does not fit long-running local jobs.
+- **Keep the Go core behind a React UI:** viable, but it means two languages and a process boundary for ~4.5k LOC that is faster to re-express than to port.
+- **Native Lottie/SVG renderer (ThorVG/rlottie):** would avoid Node and Chromium, but has weaker authoring ergonomics than Remotion and no React ecosystem. Revisit only if packaging becomes painful.

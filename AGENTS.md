@@ -18,35 +18,38 @@ Key reference files:
 
 Never start significant work without an active track. Always update `measure/tracks.md` and the current track's `plan.md` before and after work.
 
-
-
 ## Architectural Mandates
-- **Language:** Go is the primary language for the entire application.
-- **UI Framework:** GTK4 + Libadwaita. Adhere to GNOME Human Interface Guidelines (HIG).
-- **Media Engine:** GStreamer. All media capture, playback, and editing MUST use GStreamer pipelines. Direct FFmpeg calls should be avoided unless GStreamer lacks a specific capability.
-- **Local-First Media:** All media processing happens locally. Cloud APIs (OpenAI/Google) are ONLY for transcription and LLM-based analysis.
-- **Provider Agnostic:** AI features MUST use an abstraction layer. No direct imports of OpenAI/Google SDKs outside the designated AI provider module.
-- **Safety:** Sanitize all user-provided strings before passing to GStreamer pipelines or shell commands.
+
+> The GTK4 + GStreamer + Go implementation was retired on 2026-11-20. Rationale and rejected alternatives are recorded in `measure/tech-stack.md`.
+
+- **Language:** TypeScript, `strict`, ESM only. Go, CGo, GTK, and GStreamer must not appear in new code.
+- **Runtime:** Node.js 24.
+- **Meta-framework:** vinext with the **Pages Router**, client-first. Do not use the App Router or React Server Components — vinext's RSC development environment can fail on native Node modules.
+- **UI:** React 19, styled per `DESIGN.md`.
+- **Media Engine:** FFmpeg and ffprobe as subprocesses. Build invocations as **argv arrays** in pure functions. Never use `shell: true`, never interpolate values into a shell string.
+- **Slides / Motion Graphics:** Remotion compositions in `tools/remotion`, previewed with `@remotion/player`. Remotion emits frames; FFmpeg composites.
+- **Local-First Media:** All media processing happens locally. Cloud APIs are ONLY for transcription, LLM planning, and (later) generated assets.
+- **Provider Agnostic:** AI features MUST use the abstraction in `packages/ai`. No vendor SDK imports outside that package.
+- **Safety:** Validate and resolve every user-supplied path before it reaches a subprocess. Escape all values placed in an FFmpeg filtergraph with the dedicated escaper.
 - **Measure Workflow:** Use the Measure skill. Always update `measure/tracks.md` and the current track's `plan.md` before starting work.
-- **Performance:** UI updates for transcription/sync MUST be efficient to prevent blocking the GTK main loop. Use Go routines for async tasks.
-- **Linux Focus:** Optimize for Ubuntu/GNOME environment. Ensure compatibility with both Wayland and X11.
-- **Project Structure:** Maintain a clean Go project structure (e.g., `cmd/`, `internal/`, `pkg/`).
+- **Performance:** Long-running media work runs in the job registry, never in a request handler or a React render. Progress reaches the UI through the job events, not polling inside components.
+- **Linux Focus:** Optimise for Ubuntu/GNOME. Wayland and X11 must both work.
+- **Project Structure:** `apps/web` (vinext app), `packages/{core,media,storyboard,slides,ai}`, `tools/remotion`.
+- **Legacy code:** `cmd/`, `internal/`, `go.mod`, and `go.sum` are retired reference only. Do not add features there. They are deleted once the rewrite reaches export parity.
 
 ## Build System
 
-Use `make check` for CI validation. Configure GOCACHE for faster incremental builds:
+Prerequisites: Node.js 24, pnpm, and `ffmpeg` + `ffprobe` on `PATH`.
+
 ```bash
-export GOCACHE=~/.cache/go-build
+pnpm install
+pnpm dev      # vinext dev server with HMR
+pnpm build    # production build
+pnpm start    # serve the standalone Node build
+pnpm check    # typecheck + lint + test + build (CI gate)
 ```
 
-Make targets:
-- `make go-build` - Build all packages
-- `make go-vet` - Run go vet
-- `make go-test` - Run all tests
-- `make go-check` - Run vet, build, and tests (optimal for CI)
-- `make clean` - Remove artifacts and cache
-
-First build may take >2 minutes due to CGo/GTK4 dependencies. Subsequent builds use cached objects and complete in <10s.
+`pnpm check` replaces the old `make check` and is the required pre-commit validation.
 
 ## Automation Supervisor
 
