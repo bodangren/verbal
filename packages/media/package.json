@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./key-quality": "./src/key-quality.ts"
+    "./key-quality": "./src/key-quality.ts",
+    "./presets": "./src/presets.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {
