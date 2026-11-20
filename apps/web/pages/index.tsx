@@ -9,6 +9,7 @@ import {
 } from "@verbal/storyboard";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
+import { DEFAULT_PRESET_ID, EXPORT_PRESETS, type ExportPresetId } from "@verbal/media/presets";
 import {
   DEFAULT_ACCEPTANCE,
   resolveAccepted,
@@ -91,6 +92,7 @@ export default function Home() {
   const [accepted, setAccepted] = useState<boolean[]>([]);
   const [importPath, setImportPath] = useState("");
   const [outputPath, setOutputPath] = useState("");
+  const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
   const [brand, setBrand] = useState({
     title: "Untitled",
     outro: "Thanks for watching",
@@ -521,6 +523,7 @@ export default function Home() {
       const record = await postJson<JobRecord>("/api/storyboard/export", {
         root,
         outputPath,
+        preset: presetId,
         brand: {
           title: { text: brand.title },
           outro: { text: brand.outro },
@@ -986,6 +989,19 @@ export default function Home() {
             onChange={(event) => setOutputPath(event.target.value)}
             placeholder="/home/you/Verbal/demo/exports/final.mp4"
           />
+        </label>
+        <label className="field">
+          Preset
+          <select
+            value={presetId}
+            onChange={(event) => setPresetId(event.target.value as ExportPresetId)}
+          >
+            {EXPORT_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           Title
