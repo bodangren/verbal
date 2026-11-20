@@ -50,10 +50,10 @@ npx vitest run packages/cleanup/src/detect.test.ts
 
 ## Phase 3: Review and removal in the page
 
-- [ ] Make `onFreeze` optional and render the freeze button only when it exists.
-- [ ] Load proposals for the open project and render `CleanupReview` in a *Cleanup* panel.
-- [ ] Add *Remove accepted*, applying `resolveAccepted` through `useTranscriptDocument` and reporting the count.
-- [ ] Commit: `feat(ui): Review and apply cleanup proposals`
+- [x] Make `onFreeze` optional and render the freeze button only when it exists.
+- [x] Load proposals for the open project and render `CleanupReview` in a *Cleanup* panel.
+- [x] Add *Remove accepted*, applying `resolveAccepted` through `useTranscriptDocument` and reporting the count.
+- [x] Commit: `feat(ui): Review and apply cleanup proposals`
 
 ---
 

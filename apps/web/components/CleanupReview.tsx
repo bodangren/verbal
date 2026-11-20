@@ -31,7 +31,8 @@ export type CleanupReviewProps = {
   audioFixes: readonly AudioFix[];
   acceptance: Acceptance;
   onAcceptanceChange: (acceptance: Acceptance) => void;
-  onFreeze: () => void;
+  /** Omitted when freezing the master is not wired up yet; hides the control. */
+  onFreeze?: () => void;
 };
 
 /**
@@ -123,9 +124,11 @@ export function CleanupReview({
         </article>
       ))}
 
-      <button type="button" className="cleanup__freeze" onClick={onFreeze}>
-        Freeze master
-      </button>
+      {onFreeze !== undefined && (
+        <button type="button" className="cleanup__freeze" onClick={onFreeze}>
+          Freeze master
+        </button>
+      )}
     </section>
   );
 }

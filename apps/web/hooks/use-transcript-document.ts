@@ -11,6 +11,12 @@ import {
   type TranscriptDocument,
 } from "@verbal/core";
 
+/** An inclusive range of word indices. */
+export type IndexRange = {
+  fromIndex: number;
+  toIndex: number;
+};
+
 /** The editable transcript and the actions that change it. */
 export type TranscriptDocumentController = {
   /** The current document, or null when no project is open. */
@@ -21,6 +27,8 @@ export type TranscriptDocumentController = {
   canRedo: boolean;
   /** Removes an inclusive range of words. Out-of-range ranges are ignored. */
   removeRange: (fromIndex: number, toIndex: number) => void;
+  /** Removes several ranges as one edit, so one undo restores them all. */
+  removeRanges: (ranges: readonly IndexRange[]) => void;
   undo: () => void;
   redo: () => void;
   /** Records that the current document has been written to disk. */
@@ -80,6 +88,27 @@ export function useTranscriptDocument(
     });
   }, []);
 
+  const removeRanges = useCallback((ranges: readonly IndexRange[]) => {
+    setState((current) => {
+      const present = current.history.present;
+      if (present === null) {
+        return current;
+      }
+
+      let next = present;
+      for (const { fromIndex, toIndex } of ranges) {
+        if (!isValidRange(next, fromIndex, toIndex)) {
+          continue;
+        }
+        next = removeTranscriptRange(next, fromIndex, toIndex);
+      }
+
+      const history = commit(current.history, next);
+
+      return history === current.history ? current : { ...current, history };
+    });
+  }, []);
+
   const undo = useCallback(() => {
     setState((current) => ({ ...current, history: historyUndo(current.history) }));
   }, []);
@@ -103,11 +132,12 @@ export function useTranscriptDocument(
       canUndo: historyCanUndo(state.history),
       canRedo: historyCanRedo(state.history),
       removeRange,
+      removeRanges,
       undo,
       redo,
       markSaved,
       reset,
     }),
-    [state, removeRange, undo, redo, markSaved, reset],
+    [state, removeRange, removeRanges, undo, redo, markSaved, reset],
   );
 }

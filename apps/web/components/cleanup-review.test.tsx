@@ -102,4 +102,18 @@ describe("CleanupReview", () => {
 
     expect(props.onFreeze).toHaveBeenCalledTimes(1);
   });
+
+  it("hides the freeze control when freezing is not wired up", () => {
+    render(
+      <CleanupReview
+        transcript={transcript}
+        proposals={proposals}
+        audioFixes={audioFixes}
+        acceptance={DEFAULT_ACCEPTANCE}
+        onAcceptanceChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /freeze master/i })).toBeNull();
+  });
 });

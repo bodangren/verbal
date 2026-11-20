@@ -112,6 +112,36 @@ describe("useTranscriptDocument", () => {
     expect(result.current.canRedo).toBe(false);
   });
 
+  it("removes several ranges as a single undoable edit", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    act(() =>
+      result.current.removeRanges([
+        { fromIndex: 0, toIndex: 0 },
+        { fromIndex: 2, toIndex: 2 },
+      ]),
+    );
+
+    expect(removedWordIds(result.current.document)).toEqual(["w0", "w2"]);
+
+    act(() => result.current.undo());
+    expect(removedWordIds(result.current.document)).toEqual([]);
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("ignores out-of-range entries when removing several ranges", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    act(() =>
+      result.current.removeRanges([
+        { fromIndex: 1, toIndex: 1 },
+        { fromIndex: 9, toIndex: 12 },
+      ]),
+    );
+
+    expect(removedWordIds(result.current.document)).toEqual(["w1"]);
+  });
+
   it("reset(null) empties the document", () => {
     const { result } = renderHook(() => useTranscriptDocument(transcript));
 

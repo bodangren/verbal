@@ -9,7 +9,14 @@ import {
 } from "@verbal/storyboard";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
+import {
+  DEFAULT_ACCEPTANCE,
+  resolveAccepted,
+  type Acceptance,
+  type CleanupProposal,
+} from "@verbal/cleanup";
 import { CapturePanel } from "../components/CapturePanel";
+import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
@@ -70,6 +77,8 @@ export default function Home() {
   const { undo: undoEdit, redo: redoEdit } = editing;
   const transcript = editing.document;
   const [selection, setSelection] = useState<WordSelection | null>(null);
+  const [proposals, setProposals] = useState<CleanupProposal[]>([]);
+  const [acceptance, setAcceptance] = useState<Acceptance>(DEFAULT_ACCEPTANCE);
   const [storyboardText, setStoryboardText] = useState("");
   const [tier, setTier] = useState<PreviewTier>("fast");
   const [plan, setPlan] = useState<PreviewPlan | null>(null);
@@ -123,6 +132,16 @@ export default function Home() {
       editing.reset(null);
     }
     setSelection(null);
+
+    try {
+      const cleanup = await request<{ proposals: CleanupProposal[] }>(
+        `/api/cleanup?root=${encodeURIComponent(root)}`,
+      );
+      setProposals(cleanup.proposals);
+    } catch {
+      setProposals([]);
+    }
+    setAcceptance(DEFAULT_ACCEPTANCE);
 
     const storyboard = await request<StoryboardDocument>(
       `/api/storyboard?root=${encodeURIComponent(root)}`,
@@ -185,6 +204,28 @@ export default function Home() {
 
     editing.removeRange(selection.fromIndex, selection.toIndex);
     setSelection(null);
+  }
+
+  const acceptedProposals = resolveAccepted(proposals, acceptance);
+
+  function removeAcceptedProposals() {
+    if (acceptedProposals.length === 0) {
+      return;
+    }
+
+    // One edit, so a single undo puts every accepted word back.
+    editing.removeRanges(
+      acceptedProposals.map(({ fromIndex, toIndex }) => ({ fromIndex, toIndex })),
+    );
+
+    const removed = new Set(acceptedProposals.map((proposal) => proposal.id));
+    setProposals((current) => current.filter((proposal) => !removed.has(proposal.id)));
+    setSelection(null);
+    setMessage(
+      `Removed ${acceptedProposals.length} cleanup ${
+        acceptedProposals.length === 1 ? "proposal" : "proposals"
+      }. Save the transcript to keep it.`,
+    );
   }
 
   // Undo/redo shortcuts are global, so they are ignored while a text field has
@@ -538,6 +579,37 @@ export default function Home() {
             mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
             transcriptLabel="Playback transcript"
           />
+        </section>
+      )}
+
+      {transcript !== null && (
+        <section className="panel" aria-label="Cleanup">
+          <h2>Cleanup</h2>
+          {proposals.length === 0 ? (
+            <p className="muted">No filler words, stutters, or repetitions found.</p>
+          ) : (
+            <>
+              <p className="muted">
+                {acceptedProposals.length} of {proposals.length} proposals accepted
+              </p>
+              <div className="row">
+                <button
+                  type="button"
+                  onClick={removeAcceptedProposals}
+                  disabled={acceptedProposals.length === 0}
+                >
+                  Remove accepted
+                </button>
+              </div>
+              <CleanupReview
+                transcript={transcript}
+                proposals={proposals}
+                audioFixes={[]}
+                acceptance={acceptance}
+                onAcceptanceChange={setAcceptance}
+              />
+            </>
+          )}
         </section>
       )}
 
