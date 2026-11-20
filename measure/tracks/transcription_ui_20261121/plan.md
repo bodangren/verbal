@@ -11,8 +11,8 @@
 ## Phase 1: Route verified against a fake ASR server
 
 ### Red
-- [ ] Failing test: with `OPENAI_BASE_URL` pointed at a fake server and a key set, `POST /api/transcribe` returns 202, the job reaches `done`, and `transcript.json` holds the returned words.
-- [ ] Failing test: with no key the route returns 503 and the message names `OPENAI_API_KEY`.
+- [x] Failing test: with `OPENAI_BASE_URL` pointed at a fake server and a key set, `POST /api/transcribe` returns 202, the job reaches `done`, and `transcript.json` holds the returned words.
+- [x] Failing test: with no key the route returns 503 and the message names `OPENAI_API_KEY`.
 
 **Targeted Red command:**
 ```bash
@@ -20,12 +20,12 @@ npx vitest run apps/web/server/transcribe-api.test.ts
 ```
 
 ### Green
-- [ ] Add the test against the real route handler with an in-memory job registry.
-- [ ] Fix whatever the route needs to satisfy the contract.
-- [ ] Make tests pass.
+- [x] Add the test against the real route handler with an in-memory job registry.
+- [x] Fix whatever the route needs to satisfy the contract.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `test(api): Verify transcription against a fake ASR server`
+- [x] Commit: `test(api): Verify transcription against a fake ASR server`
 
 ---
 
