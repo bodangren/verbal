@@ -1,6 +1,6 @@
 # Plan: Library UX
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Scan a folder, serve summaries, list and open from the page.
 
@@ -43,6 +43,6 @@ npx vitest run packages/core/src/library.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e` to open a project from the library.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover opening from the library`
+- [x] Extend `npm run e2e` to open a project from the library.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover opening from the library`

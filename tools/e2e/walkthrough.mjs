@@ -227,7 +227,7 @@ try {
   await page.goto(BASE, { waitUntil: "networkidle" });
   console.log("page: loaded");
 
-  await page.getByLabel("Folder").fill(projectRoot);
+  await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Walkthrough").waitFor();
   console.log("project: opened from the UI");
@@ -413,7 +413,7 @@ try {
   console.log("transcript: undo, redo, and autosaved the result");
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByLabel("Folder").fill(projectRoot);
+  await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Walkthrough").waitFor();
   assert(
@@ -489,7 +489,7 @@ try {
       mode: "copy",
     });
 
-    await page.getByLabel("Folder").fill(transcribedRoot);
+    await page.getByLabel("Folder", { exact: true }).fill(transcribedRoot);
     await page.getByRole("button", { name: "Open", exact: true }).click();
     await page.getByText("Opened Transcribed").waitFor();
 
@@ -545,7 +545,7 @@ try {
   await page.getByLabel("Library folder").fill(libraryParent);
   await page.getByRole("button", { name: "Scan", exact: true }).click();
   await page.getByText(/1 projects found/).waitFor();
-  await page.getByLabel("Library projects").getByText("Take One").waitFor();
+  await page.getByLabel("Library projects").getByText("Take One", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Open Take One" }).click();
   await page.getByText("Opened Take One").waitFor();
   console.log("library: scanned a folder and opened a project");
