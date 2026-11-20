@@ -37,7 +37,7 @@ npx vitest run packages/core/src/batch.test.ts
 ## Phase 3: Endpoint and page
 
 - [x] `POST /api/transcribe/batch` returning the plan and a job.
-- [x] Page: batch field, start action, per-item summary.
+- [ ] Page: batch field, start action, per-item summary.
 - [x] Commit: `feat(ui): Start a transcription batch`
 
 ---
