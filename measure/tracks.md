@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Cleanup Detection and Review** [created: 2026-11-21]
+  *Focus: Detect filler words, stutters, and repetitions from the transcript, serve them, review them on the page, and remove only the accepted proposals.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/cleanup_detection_20261121](./tracks/cleanup_detection_20261121/)*
+
 - [x] **Track: Playback and Sync** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Serve project media over HTTP with byte ranges, render the playback screen, and keep the transcript highlighted and click-to-seek in sync.*
   *Status: Complete. `GET /api/media/file` streams the project's media with 200/206/416 and HEAD; the page renders a Playback panel; the active word follows playback and clicking one seeks. `npm run check` green (470 tests); `npm run e2e` plays a real generated clip in Chromium, sees the highlight advance, and seeks to a word.*
