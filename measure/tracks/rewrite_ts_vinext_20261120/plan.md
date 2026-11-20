@@ -41,25 +41,29 @@ cd apps/web && PORT=3000 node dist/standalone/server.js
 Package: `packages/core`.
 
 ### Red
-- [ ] Failing tests: `project.json` validates against its schema; missing required fields are rejected.
-- [ ] Failing tests: unknown `schemaVersion` is rejected with a typed error.
-- [ ] Failing tests: atomic write leaves the previous file intact when the write fails midway.
-- [ ] Failing tests: corrupt JSON produces a typed parse error, not a crash.
-- [ ] Failing tests: persisted paths are relative and reject absolute paths and `..` traversal.
+- [x] Failing tests: `project.json` validates against its schema; missing required fields are rejected.
+- [x] Failing tests: unknown `schemaVersion` is rejected with a typed error.
+- [x] Failing tests: atomic write leaves the previous file intact when the write fails midway.
+- [x] Failing tests: corrupt JSON produces a typed parse error, not a crash.
+- [x] Failing tests: persisted paths are relative and reject absolute paths and `..` traversal.
 
 **Targeted Red command:**
 ```bash
 npx vitest run packages/core
 ```
 
+**Red result:** 3 test files, 29 tests — all failed on missing modules (`./paths`, `./atomic`, `./project`).
+
 ### Green
-- [ ] Implement document schemas and validators.
-- [ ] Implement atomic write (`temp` + `fsync` + `rename`).
-- [ ] Implement project creation and open.
-- [ ] Make tests pass.
+- [x] Implement document schemas and validators (`project.ts`, `errors.ts`).
+- [x] Implement atomic write (`temp` + `fsync` + `rename`) with an injectable `FileSystem`.
+- [x] Implement project creation and open.
+- [x] Make tests pass.
+
+**Green result:** 29/29 pass in `packages/core`; full suite 34/34; `npm run check` exits 0. `ProjectError` carries a typed `code` (`invalid-json`, `unsupported-version`, `invalid-document`, `invalid-path`, `not-found`, `already-exists`). Paths are normalised and proven to stay inside the project root. `createProject` refuses to overwrite an existing project.
 
 ### Refactor
-- [ ] Commit: `feat(core): Add project documents and atomic storage`
+- [x] Commit: `feat(core): Add project documents and atomic storage` — `672dfd4`
 
 ---
 
