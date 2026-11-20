@@ -158,12 +158,26 @@ Node subproject in `tools/remotion`, isolated from the app build.
 
 ## Phase 5: Two-tier preview
 
-- [ ] Red: fast preview never starts the renderer.
-- [ ] Red: both tiers derive from the same IR version and are labelled consistently.
-- [ ] Green: fast preview (cut list + static and cached layers).
-- [ ] Green: full preview (complete composite to a temp file).
-- [ ] Green: monotonic preview versions exposed by the project.
-- [ ] Commit: `feat(ui): Add two-tier storyboard preview`
+- [x] Red: fast preview never starts the renderer.
+- [x] Red: both tiers derive from the same IR version and are labelled consistently.
+- [x] Green: fast preview planning (cached frames, static assets, placeholders) — no render calls.
+- [ ] Green: full preview to a file — **moved to Phase 8.** Phase 5 executes the renders; assembling scenes into one file is the same multi-scene concat the export needs, so it is built once there instead of twice.
+- [x] Green: monotonic preview versions exposed by the project.
+- [x] Commit: `feat(ui): Add two-tier storyboard preview` — `0d92664`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/compose/src/preview.test.ts apps/web/components/storyboard-preview.test.tsx
+```
+
+**Red result:** `preview.test.ts` and `storyboard-preview.test.tsx` failed on missing modules.
+
+**Green result:** 14 preview tests + 4 component tests; full suite 255/255; `npm run check` exits 0.
+- `planPreview` is pure planning: it resolves anchors, hashes slide requests, and labels each scene `talk`, `asset`, `cached`, `placeholder`, or `render`. The fast tier can only produce `cached`/`placeholder`, so a fast preview has no path to Chromium.
+- Both tiers carry the same `storyboardHash` and scene order, so they are provably derived from the same IR.
+- `executePreviewPlan` renders only `render` entries, reuses the cache afterwards, and turns renderer failures into placeholders.
+- `createPreviewVersionTracker` yields monotonic versions; the panel displays the version and the tier.
+- `StoryboardPreview` exposes scene sources as `data-source` and marks the active tier with `aria-pressed`.
 
 ---
 
@@ -190,6 +204,7 @@ Node subproject in `tools/remotion`, isolated from the app build.
 ## Phase 8: Export and brand kit
 
 - [ ] Red: brand-kit template validation rejects missing required elements.
+- [ ] Green: assemble scenes into one file — the multi-scene concat deferred from Phase 5 — and use the same path for full preview and export.
 - [ ] Green: title, outro, contact card, and lower-third layers.
 - [ ] Green: music bed with ducking and a loudness target.
 - [ ] Green: provenance manifest written with the export.
