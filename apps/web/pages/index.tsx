@@ -320,6 +320,26 @@ export default function Home() {
     });
   }
 
+  /** Moves the selected block by one word, keeping the selection on it. */
+  function moveSelection(direction: 1 | -1) {
+    return guard(async () => {
+      if (selection === null || transcript === null) {
+        return;
+      }
+
+      const blockLength = selection.toIndex - selection.fromIndex + 1;
+      const target = selection.fromIndex + direction * blockLength;
+      const maxTarget = transcript.words.length - blockLength;
+
+      if (target < 0 || target > maxTarget) {
+        return;
+      }
+
+      editing.moveRange(selection.fromIndex, selection.toIndex, target);
+      setSelection({ fromIndex: target, toIndex: target + blockLength - 1 });
+    });
+  }
+
   function deleteSelection() {
     if (selection === null) {
       return;
@@ -834,6 +854,16 @@ export default function Home() {
             </button>
             <button type="button" onClick={splitAtSelection} disabled={selection === null}>
               Split segment
+            </button>
+            <button
+              type="button"
+              onClick={() => moveSelection(-1)}
+              disabled={selection === null}
+            >
+              Move earlier
+            </button>
+            <button type="button" onClick={() => moveSelection(1)} disabled={selection === null}>
+              Move later
             </button>
           </div>
           <div className="row">

@@ -37,8 +37,8 @@ npx vitest run packages/core/src/transcript-reorder.test.ts
 
 ## Phase 3: Page
 
-- [ ] Add *Move earlier* / *Move later* for the selection, moving by one word and keeping the selection on the block.
-- [ ] Commit: `feat(ui): Reorder words from the page`
+- [x] Add *Move earlier* / *Move later* for the selection, moving by one word and keeping the selection on the block.
+- [x] Commit: `feat(ui): Reorder words from the page`
 
 ---
 
