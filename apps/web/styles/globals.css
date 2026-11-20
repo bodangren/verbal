@@ -288,6 +288,11 @@ code {
   width: 100%;
 }
 
+.playback__waveform {
+  cursor: pointer;
+  width: 100%;
+}
+
 .playback__controls {
   display: flex;
   gap: var(--space-2);

@@ -38,8 +38,8 @@ npx vitest run packages/media/src/waveform.test.ts
 
 ## Phase 3: Page
 
-- [ ] Show the waveform in the playback panel and seek on click.
-- [ ] Commit: `feat(ui): Seek from the waveform`
+- [x] Show the waveform in the playback panel and seek on click.
+- [x] Commit: `feat(ui): Seek from the waveform`
 
 ---
 

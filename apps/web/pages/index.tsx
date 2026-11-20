@@ -759,6 +759,7 @@ export default function Home() {
             transcript={transcript}
             mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
             transcriptLabel="Playback transcript"
+            waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
           />
         </section>
       )}

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { TranscriptDocument } from "@verbal/core";
 import { useActiveWord, type PlaybackScheduler } from "../hooks/use-playback-sync";
+import { timeFromClick } from "./waveform-seek";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 export type PlaybackScreenProps = {
@@ -8,6 +9,8 @@ export type PlaybackScreenProps = {
   mediaUrl: string;
   /** Accessible name of the transcript region inside the screen. */
   transcriptLabel?: string;
+  /** Waveform strip for the media, when one could be rendered. */
+  waveformUrl?: string;
   /** Injectable scheduler for deterministic tests. */
   scheduler?: PlaybackScheduler;
 };
@@ -23,6 +26,7 @@ export function PlaybackScreen({
   transcript,
   mediaUrl,
   transcriptLabel,
+  waveformUrl,
   scheduler,
 }: PlaybackScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -82,6 +86,28 @@ export function PlaybackScreen({
           Media could not be loaded from {mediaUrl}. Re-import it, or check that
           the referenced file still exists.
         </p>
+      )}
+
+      {waveformUrl !== undefined && (
+        <img
+          className="playback__waveform"
+          src={waveformUrl}
+          alt="Waveform"
+          onClick={(event) => {
+            const video = videoRef.current;
+            if (video === null) {
+              return;
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            video.currentTime = timeFromClick({
+              clientX: event.clientX,
+              left: rect.left,
+              width: rect.width,
+              durationSeconds: video.duration,
+            });
+          }}
+        />
       )}
 
       <div className="playback__controls">
