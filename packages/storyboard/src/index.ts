@@ -1,3 +1,6 @@
-// @verbal/storyboard — storyboard IR, anchors, and patches.
-// Implemented after the rewrite reaches cut-list export.
-export {};
+// @verbal/storyboard — storyboard IR, word-span anchors, patches, and hashing.
+export * from "./anchors";
+export * from "./hash";
+export * from "./parse";
+export * from "./patches";
+export * from "./types";
