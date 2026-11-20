@@ -1,6 +1,6 @@
 # Plan: TypeScript Rewrite
 
-**Status:** PLANNED
+**Status:** COMPLETE (2026-11-20)
 **Created:** 2026-11-20
 **Focus:** Replace the GTK/GStreamer/Go application with vinext + React + FFmpeg.
 
