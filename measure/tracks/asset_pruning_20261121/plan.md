@@ -44,5 +44,5 @@ npx vitest run packages/compose/src/prune.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Run `npm run check` and `npm run e2e`; note the tech-debt entry as resolved.
-- [ ] Commit: `test(e2e): Cover asset pruning`
+- [x] Run `npm run check` and `npm run e2e`; note the tech-debt entry as resolved.
+- [x] Commit: `test(e2e): Cover asset pruning`

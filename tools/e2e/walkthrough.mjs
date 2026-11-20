@@ -439,6 +439,11 @@ try {
   await preset.selectOption("web-h264");
   console.log("export: selected a preset");
 
+  // Pruning reports before deleting; this project has no generated assets.
+  await page.getByRole("button", { name: "Check prunable assets" }).click();
+  await page.getByText("No generated assets are prunable").waitFor();
+  console.log("assets: reported that nothing is prunable");
+
   // Transcription runs on a second project, so the hand-written fixture used by
   // the earlier checks stays untouched.
   const transcribedRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-transcribed-"));
