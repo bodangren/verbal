@@ -11,7 +11,7 @@
 ## Phase 1: Scanner
 
 ### Red
-- [ ] Failing tests: a project summary, a folder without a project skipped, an invalid project skipped, an invalid transcript, and newest-first ordering.
+- [x] Failing tests: a project summary, a folder without a project skipped, an invalid project skipped, an invalid transcript, and newest-first ordering.
 
 **Targeted Red command:**
 ```bash
@@ -19,11 +19,11 @@ npx vitest run packages/core/src/library.test.ts
 ```
 
 ### Green
-- [ ] Implement `scanLibrary` in `packages/core/src/library.ts` and export it.
-- [ ] Make tests pass.
+- [x] Implement `scanLibrary` in `packages/core/src/library.ts` and export it.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Scan a folder for projects`
+- [x] Commit: `feat(core): Scan a folder for projects`
 
 ---
 

@@ -5,6 +5,7 @@ export * from "./byte-range";
 export * from "./errors";
 export * from "./history";
 export * from "./jobs";
+export * from "./library";
 export * from "./media-path";
 export * from "./paths";
 export * from "./project";
