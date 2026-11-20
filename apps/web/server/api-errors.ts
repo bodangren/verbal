@@ -1,3 +1,4 @@
+import { AiError } from "@verbal/ai";
 import { JobError, ProjectError } from "@verbal/core";
 import { CutListError, ExportError, MediaError, ProbeError } from "@verbal/media";
 import type { ApiResponse } from "./jobs-api";
@@ -21,6 +22,10 @@ export function statusFor(error: unknown): number {
 
   if (error instanceof JobError) {
     return error.code === "not-found" ? 404 : 409;
+  }
+
+  if (error instanceof AiError) {
+    return error.code === "not-configured" ? 503 : 502;
   }
 
   if (error instanceof MediaError || error instanceof ProbeError || error instanceof CutListError) {

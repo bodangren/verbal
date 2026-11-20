@@ -1,3 +1,5 @@
+import { writeFileAtomic, type FileSystem } from "./atomic";
+
 /** Schema version written by this build. Newer versions are refused, not guessed at. */
 export const TRANSCRIPT_SCHEMA_VERSION = 1;
 
@@ -175,6 +177,15 @@ export function keptWords(transcript: TranscriptDocument): TranscriptWord[] {
 /** Serialises a transcript with a stable, diff-friendly layout. */
 export function serializeTranscript(transcript: TranscriptDocument): string {
   return `${JSON.stringify(transcript, null, 2)}\n`;
+}
+
+/** Writes a transcript document atomically. */
+export async function saveTranscript(
+  fs: FileSystem,
+  filePath: string,
+  transcript: TranscriptDocument,
+): Promise<void> {
+  await writeFileAtomic(fs, filePath, serializeTranscript(transcript));
 }
 
 function parseWord(value: unknown): TranscriptWord {
