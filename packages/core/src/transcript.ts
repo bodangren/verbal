@@ -165,6 +165,12 @@ export function removeRange(
     }
   }
 
+  // Like removeWord, re-removing an already removed range is "no change" so
+  // callers can commit unconditionally without recording empty history entries.
+  if (removed.size === transcript.removedWordIds.length) {
+    return transcript;
+  }
+
   return withRemovals(transcript, removed);
 }
 

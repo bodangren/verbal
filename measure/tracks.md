@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Transcript Editing** [created: 2026-11-21]
+  *Focus: Delete words and shift-click ranges from the transcript editor, undo/redo, and save the edited document with a dirty indicator.*
+  *Status: In progress — Phase 1 complete (editing hook); Phase 2 next.*
+  *Link: [./tracks/transcript_editing_20261121](./tracks/transcript_editing_20261121/)*
+
 - [x] **Track: TypeScript Rewrite** [created: 2026-11-20] [completed: 2026-11-20]
   *Focus: Replace the GTK/GStreamer/Go application with vinext + React + TypeScript, a local Node server, FFmpeg media engine, and JSON project documents.*
   *Status: Complete. All nine phases implemented; `npm run check` green with 175 tests, including a real FFmpeg export round trip and an end-to-end import → transcript → delete → export test. The Go implementation has been removed and its tracks archived.*

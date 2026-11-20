@@ -102,6 +102,12 @@ describe("removeRange", () => {
     expect(both.removedWordIds).toEqual(["w0", "w2"]);
   });
 
+  it("returns the same document when every word is already removed", () => {
+    const once = removeRange(createTranscript(SPOKEN), 1, 2);
+
+    expect(removeRange(once, 1, 2)).toBe(once);
+  });
+
   it("rejects an out-of-range selection", () => {
     expect(() => removeRange(createTranscript(SPOKEN), 2, 1)).toThrow(TranscriptError);
     expect(() => removeRange(createTranscript(SPOKEN), 0, 4)).toThrow(TranscriptError);
