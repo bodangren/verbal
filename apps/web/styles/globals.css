@@ -119,3 +119,43 @@ code {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.transcript__segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  line-height: 1.9;
+}
+
+.transcript__word {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 4px;
+}
+
+.transcript__word:hover:enabled {
+  background: var(--surface-elevated);
+}
+
+.transcript__word[data-active="true"] {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.transcript__word[data-removed="true"] {
+  color: var(--text-tertiary);
+  cursor: default;
+  text-decoration: line-through;
+}
