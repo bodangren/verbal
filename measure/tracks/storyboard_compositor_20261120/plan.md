@@ -273,6 +273,20 @@ npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.
 
 ---
 
+## Phase 9b: Application composition
+
+- [x] Storyboard documents load and save through `storyboard.json`; an absent file reads as an empty storyboard.
+- [x] `POST /api/storyboard/preview` plans fast and full tiers from the saved transcript and storyboard.
+- [x] `POST /api/storyboard/export` runs the concrete adapter (Remotion per step, FFmpeg composite, concat) as a job and writes provenance.
+- [x] `GET/PUT /api/transcript` loads and saves the transcript document.
+- [x] The composed page wires project create/open, media import, transcript display, storyboard save, preview tiers, patch parsing/apply, and export with job polling.
+- [x] Live HTTP verification: project → transcript → storyboard → import → fast preview → export produced a 7.0 s file (3 s title + 1 s scene + 3 s outro) with a provenance manifest.
+- [x] Commit: `feat(ui): Compose the storyboard application` — `81cc570`
+
+**Not done:** a browser interaction walkthrough (the flow was verified over HTTP against the real server), and green-screen capture.
+
+---
+
 ## Phase 10: Generated images (Stage 2)
 
 - [ ] Define the asset provider interface inside `packages/ai`.

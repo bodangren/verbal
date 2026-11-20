@@ -1,22 +1,16 @@
 # Current Directive
 
-**Completed (2026-11-20):** the storyboard compositor's first-release **pipeline** (Phases 0–9). A storyboard now renders end to end: Remotion slides → FFmpeg composite → stream-copy concat → one file, with brand bookends, ducked music, a loudness target, and a provenance manifest. `npm run check` is green with 346 tests, including two opt-in Remotion end-to-end tests.
+**Completed (2026-11-20):** application composition. One page now wires project create/open → media import → transcript → storyboard load/save → fast/full preview planning → patch parsing and apply → storyboard export with job polling. Verified over live HTTP against the standalone server: a real export produced a 7-second file (3 s title + 1 s scene + 3 s outro) with a provenance manifest. `npm run check` is green with 356 tests.
 
 ## Next
 
 **Active track:** `storyboard_compositor_20261120`.
 
-The remaining unit is **composition**, not more pipeline:
+Remaining units, in order:
 
-1. A page that wires the tested pieces together: project → import → transcript → storyboard → preview → export.
-2. Repository wiring for the storyboard: load/save `storyboard.json` and `comments.json` through `packages/storyboard`.
-3. An HTTP surface for storyboard preview and export jobs, reusing `runStoryboardExport`.
-
-Known gaps to keep visible:
-
-- The storyboard track is **not** complete: Phase 9's manual browser walkthrough was not performed because no composed page exists.
-- Green-screen capture (spec FR1) is specified but not built.
-- The Phase 10/11 asset ladder (generated images, generated video) is unstarted.
+1. **Browser interaction walkthrough.** The flow is verified over HTTP; nobody has clicked through it in a browser yet. Fix whatever that surfaces.
+2. **Green-screen capture (spec FR1).** Capture is specified and unimplemented: FFmpeg `v4l2`/`pulse` capture, a live canvas key preview, and a key-quality warning.
+3. **Phase 10/11 asset ladder** — generated images, then generated video, behind immutable content-addressed assets.
 
 ## Standing rules
 
@@ -25,4 +19,5 @@ Known gaps to keep visible:
 - **Pure builders.** Filtergraphs, anchors, patches, and hashing are pure functions with unit tests; subprocess and filesystem access are injected.
 - **No vendor SDKs outside `packages/ai`.**
 - **Browser-safe package roots.** Anything a React component imports must not pull `node:crypto`; hashing lives behind subpaths (`@verbal/storyboard/hash`, `@verbal/cleanup/freeze`).
+- **Prefer the parsed body.** vinext populates `req.body`; reading the request stream instead yields nothing.
 - **Measure.** Update `measure/tracks.md` and the active `plan.md` before and after work.

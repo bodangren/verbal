@@ -15,6 +15,7 @@
 - **Round timestamps to microseconds.** Floating-point noise otherwise makes serialised cut lists and storyboards differ across runs and defeats caching/diffing.
 - **npm workspaces need `workspaces` in `package.json` and `"*"` ranges** — npm does not accept pnpm's `workspace:*` protocol.
 - **A missing-module failure is a valid Red phase in TypeScript**, but pair it with a compile-time interface assertion (`const _x: SomeInterface = fake`) so a later refactor cannot quietly break the contract.
+- **vinext parses JSON bodies before the handler runs.** Reading `req` as a stream then yields nothing, so every handler saw an empty body and returned 400. Prefer `(req as { body?: unknown }).body` and fall back to the stream only when it is absent.
 
 ## Remotion / storyboard pipeline
 
