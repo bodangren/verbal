@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Local Offline Transcription** [created: 2026-11-21]
+  *Focus: Add a whisper-CLI provider so transcription can run locally, selected by environment, behind the existing provider abstraction.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/local_transcription_20261121](./tracks/local_transcription_20261121/)*
+
 - [x] **Track: Library UX** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Scan a folder for projects, serve the summaries, and list and open them from the page instead of typing a path.*
   *Status: Complete. `scanLibrary` summarises one level of a folder (newest first, skips non-projects and unreadable documents, counts kept vs removed words); `GET /api/projects/list` serves it and answers 400 for a missing folder; the Library panel lists projects and opens one through the same path as typing a path. `npm run check` green (607 tests); `npm run e2e` scans a folder and opens a project from the library.*
