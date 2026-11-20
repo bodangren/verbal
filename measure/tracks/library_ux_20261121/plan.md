@@ -29,8 +29,8 @@ npx vitest run packages/core/src/library.test.ts
 
 ## Phase 2: Endpoint
 
-- [ ] `GET /api/projects/list` with scanner wiring and route tests.
-- [ ] Commit: `feat(api): Serve the project library`
+- [x] `GET /api/projects/list` with scanner wiring and route tests.
+- [x] Commit: `feat(api): Serve the project library`
 
 ---
 
