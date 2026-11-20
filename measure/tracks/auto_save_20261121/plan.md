@@ -1,6 +1,6 @@
 # Plan: Auto-Save Transcript Edits
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Debounced, single-flight saving of settled transcript edits.
 
@@ -37,6 +37,6 @@ npx vitest run apps/web/hooks/use-auto-save.test.tsx
 
 ## Phase 3: Verification
 
-- [ ] Extend `npm run e2e`: make an edit, wait without clicking Save, and assert the status reaches *Saved* and survives a reload.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover transcript auto-save`
+- [x] Extend `npm run e2e`: make an edit, wait without clicking Save, and assert the status reaches *Saved* and survives a reload.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover transcript auto-save`

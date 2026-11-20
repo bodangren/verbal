@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Auto-Save Transcript Edits** [created: 2026-11-21]
+- [x] **Track: Auto-Save Transcript Edits** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Save settled transcript edits automatically, without overlapping writes, while keeping the explicit Save control.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `useAutoSave` debounces settled edits, cancels when the document returns to clean, and keeps saves single-flight with at most one queued follow-up; the status line reports Saving…/Unsaved changes/Saved. `npm run check` green (515 tests); `npm run e2e` deletes, undoes, and redoes, then reaches Saved with no Save click.*
   *Link: [./tracks/auto_save_20261121](./tracks/auto_save_20261121/)*
 
 - [x] **Track: Transcript Search and Navigation** [created: 2026-11-21] [completed: 2026-11-21]
