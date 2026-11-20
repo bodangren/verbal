@@ -33,10 +33,12 @@ Scope: personal, single-user, Linux. No accounts, no telemetry, no cloud sync.
 - Every document carries a `schemaVersion`.
 - Writes are atomic: write to a temp file in the same directory, `fsync`, then rename.
 - Opening a document with an unknown or newer `schemaVersion` fails loudly rather than attempting a lossy migration.
-- Relative paths only; no absolute paths persisted inside a project.
+- Relative paths only for anything inside the project. The single exception is a referenced asset's absolute `externalPath` (see FR2).
 
 ### FR2: Import and probe
 - The user imports a media file, choosing copy-into-project or reference-in-place.
+- Copy mode stores `media.assetPath` (project-relative) and copies the file under `assets/`.
+- Reference mode stores `media.externalPath` (absolute) and copies nothing. A document stores exactly one of the two.
 - `ffprobe` supplies duration, stream list, codecs, frame rate, audio channels, and rotation.
 - A thumbnail is extracted for the library view.
 - Probe failures are reported with the FFmpeg stderr excerpt, not a generic error.

@@ -72,17 +72,30 @@ npx vitest run packages/core
 Package: `packages/media`, plus a route handler.
 
 ### Red
-- [ ] Failing tests: `ffprobe -print_format json` output parses into a typed `MediaInfo` from recorded fixtures (video+audio, audio-only, odd frame rates, rotated).
-- [ ] Failing tests: a probe failure surfaces the FFmpeg stderr excerpt.
-- [ ] Failing tests: copy-import and reference-import produce the expected project layout.
+- [x] Failing tests: `ffprobe -print_format json` output parses into a typed `MediaInfo` from recorded fixtures (video+audio, audio-only, odd frame rates, rotated).
+- [x] Failing tests: a probe failure surfaces the FFmpeg stderr excerpt.
+- [x] Failing tests: copy-import and reference-import produce the expected project layout.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/media
+```
+
+**Red result:** 3 new test files (probe, import, thumbnail) failed on missing modules; the existing `system.test.ts` stayed green.
 
 ### Green
-- [ ] Implement the ffprobe runner behind an injected `Exec` interface.
-- [ ] Implement import (copy vs reference) and thumbnail extraction.
-- [ ] Make tests pass.
+- [x] Implement the ffprobe runner behind the injected `CommandRunner` interface (`exec.ts`).
+- [x] Implement import (copy vs reference) and thumbnail argv construction.
+- [x] Make tests pass.
+
+**Green result:** 56/56 tests pass (core 33, media 23); `npm run check` exits 0.
+- `probe.ts` parses duration, format, size, stream kinds, fractional frame rates (`30000/1001` → 29.97), channel counts, sample rates, and rotation from side data or tags. A probe failure carries ffprobe's stderr.
+- `import.ts` supports copy (writes under `assets/`, returns a project-relative `assetPath`, refuses to overwrite) and reference (copies nothing, returns an absolute `externalPath`, requires an absolute source). File names containing a path are rejected.
+- `thumbnail.ts` builds an argv array; paths are never joined into a shell string.
+- **Spec refinement:** `ProjectMedia` now accepts exactly one of `assetPath` (relative, copy) or `externalPath` (absolute, reference). The reference case is the single sanctioned absolute path in a project document; everything else stays relative.
 
 ### Refactor
-- [ ] Commit: `feat(media): Add import and ffprobe metadata`
+- [x] Commit: `feat(media): Add ffprobe parsing, media import, and thumbnail args` — `5ac23ca`
 
 ---
 
