@@ -119,6 +119,37 @@ body {
   width: 100%;
 }
 
+.capture__preview {
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+  margin-bottom: var(--space-3);
+  max-width: 420px;
+  width: 100%;
+}
+
+.key-quality {
+  border-left: 3px solid var(--border);
+  font-size: 12px;
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-3);
+}
+
+.key-quality[data-level="good"] {
+  border-left-color: var(--success);
+  color: var(--success);
+}
+
+.key-quality[data-level="warning"] {
+  border-left-color: var(--pending);
+  color: var(--text-secondary);
+}
+
+.key-quality[data-level="poor"] {
+  border-left-color: var(--error);
+  color: var(--error);
+}
+
 .header h1 {
   margin: 0;
   font-size: 22px;

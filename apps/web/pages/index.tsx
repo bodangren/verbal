@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { JobRecord, ProjectDocument, TranscriptDocument } from "@verbal/core";
 import {
   applyAcceptedPatches,
@@ -8,6 +8,8 @@ import {
   type StoryboardPatch,
 } from "@verbal/storyboard";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
+import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
+import { CapturePanel } from "../components/CapturePanel";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor } from "../components/TranscriptEditor";
@@ -45,6 +47,19 @@ function postJson<T>(url: string, body: unknown): Promise<T> {
   });
 }
 
+/** The camera capability never changes at runtime, so there is nothing to subscribe to. */
+function subscribeNever(): () => void {
+  return () => undefined;
+}
+
+function canUseCamera(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    navigator.mediaDevices !== undefined &&
+    typeof navigator.mediaDevices.getUserMedia === "function"
+  );
+}
+
 export default function Home() {
   const [root, setRoot] = useState("");
   const [name, setName] = useState("Untitled");
@@ -67,6 +82,14 @@ export default function Home() {
   const [job, setJob] = useState<JobRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [keyQuality, setKeyQuality] = useState<KeyQuality | null>(null);
+  const [captureSeconds, setCaptureSeconds] = useState(10);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Server snapshot is false, so the first render is hydration-safe.
+  const cameraAvailable = useSyncExternalStore(subscribeNever, canUseCamera, () => false);
 
   async function guard(run: () => Promise<void>) {
     setError(null);
@@ -176,6 +199,96 @@ export default function Home() {
     }
   }
 
+  function sampleKey() {
+    const video = videoRef.current;
+    if (video === null) {
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 36;
+    const context = canvas.getContext("2d");
+    if (context === null) {
+      return;
+    }
+
+    try {
+      context.drawImage(video, 0, 0, 64, 36);
+      const { data } = context.getImageData(0, 0, 64, 36);
+      const samples = [];
+
+      for (let index = 0; index < data.length; index += 32) {
+        samples.push({
+          r: data[index] ?? 0,
+          g: data[index + 1] ?? 0,
+          b: data[index + 2] ?? 0,
+        });
+      }
+
+      setKeyQuality(assessKeyQuality(samples));
+    } catch {
+      // The frame is not drawable yet; the next tick will try again.
+    }
+  }
+
+  useEffect(() => {
+    if (!previewing) {
+      return;
+    }
+
+    const handle = setInterval(() => sampleKey(), 1000);
+    return () => clearInterval(handle);
+  }, [previewing]);
+
+  function startPreview() {
+    return guard(async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
+
+      if (videoRef.current !== null) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      setPreviewing(true);
+    });
+  }
+
+  function stopPreview() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setPreviewing(false);
+  }
+
+  function record() {
+    return guard(async () => {
+      const started = await postJson<JobRecord>("/api/capture", {
+        projectRoot: root,
+        durationSeconds: captureSeconds,
+      });
+      setJob(started);
+      await pollJob(started.id);
+      stopPreview();
+
+      try {
+        setProject(await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`));
+      } catch {
+        // The project update is best-effort; the job result is authoritative.
+      }
+    });
+  }
+
+  function stopRecording() {
+    return guard(async () => {
+      if (job !== null && (job.status === "queued" || job.status === "running")) {
+        await request<JobRecord>(`/api/jobs/${job.id}`, { method: "DELETE" });
+        await pollJob(job.id);
+      }
+      stopPreview();
+    });
+  }
+
   function exportStoryboard() {
     return guard(async () => {
       const record = await postJson<JobRecord>("/api/storyboard/export", {
@@ -194,6 +307,11 @@ export default function Home() {
       await pollJob(record.id);
     });
   }
+
+  const captureRunning =
+    job !== null &&
+    job.kind === "capture" &&
+    (job.status === "queued" || job.status === "running");
 
   return (
     <main className="app">
@@ -233,6 +351,29 @@ export default function Home() {
             {project.media?.assetPath ?? project.media?.externalPath ?? "none"}
           </p>
         )}
+      </section>
+
+      <section className="panel" aria-label="Capture">
+        <h2>Green-screen capture</h2>
+        <video
+          ref={videoRef}
+          className="capture__preview"
+          muted
+          playsInline
+          aria-label="Camera preview"
+        />
+        <CapturePanel
+          cameraAvailable={cameraAvailable}
+          keyQuality={keyQuality}
+          previewing={previewing}
+          recording={captureRunning}
+          durationSeconds={captureSeconds}
+          onStartPreview={startPreview}
+          onStopPreview={stopPreview}
+          onDurationChange={setCaptureSeconds}
+          onRecord={record}
+          onStop={stopRecording}
+        />
       </section>
 
       <section className="panel" aria-label="Media">

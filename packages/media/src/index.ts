@@ -1,3 +1,4 @@
+export * from "./capture";
 export * from "./cutlist";
 export * from "./exec";
 export * from "./export";

@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./key-quality": "./src/key-quality.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {
