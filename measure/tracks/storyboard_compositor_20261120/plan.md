@@ -235,13 +235,28 @@ npx vitest run packages/storyboard apps/web/components/patch-review.test.tsx
 
 ## Phase 8: Export and brand kit
 
-- [ ] Red: brand-kit template validation rejects missing required elements.
-- [ ] Green: assemble scenes into one file — the multi-scene concat deferred from Phase 5 — and use the same path for full preview and export.
-- [ ] Green: title, outro, contact card, and lower-third layers.
-- [ ] Green: music bed with ducking and a loudness target.
-- [ ] Green: provenance manifest written with the export.
-- [ ] Green: export runs through the job registry.
-- [ ] Commit: `feat(export): Add brand-kit export with provenance`
+- [x] Red: brand-kit validation rejects missing required elements and out-of-range audio settings.
+- [x] Green: assemble scenes into one file — the multi-scene concat deferred from Phase 5 — through one path usable by full preview and export.
+- [x] Green: title, outro, and contact card travel in the assembly plan; the lower third is a brand field rendered by the per-scene composite.
+- [x] Green: music bed with ducking and a loudness target (`audioFromBrand` maps the kit onto the composite audio chain).
+- [x] Green: provenance manifest with per-scene hashes and a brand-kit hash.
+- [x] Green: export runs through the job registry (`runStoryboardExport` reuses `runExportJob`).
+- [x] Commit: `feat(export): Add brand-kit export with provenance` — `aba4c75`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.test.ts packages/compose/src/provenance.test.ts apps/web/server/storyboard-export.test.ts
+```
+
+**Red result:** 4 files failed on missing modules.
+
+**Green result:** 30 phase tests; full suite 341/341; `npm run check` exits 0.
+- `validateBrandKit` requires title, outro, contact, and lower-third content, a loudness target in −40..0 LUFS, and a music volume in 0..1.
+- `planAssembly` emits title → scenes → outro, carrying brand text; the contact card (`name · handle · url`) rides on the outro subtitle. Brand text travels with the steps so a renderer never re-reads the kit.
+- `buildConcatListContent` escapes single quotes per the concat demuxer's parser; `buildConcatArgs` stream-copies. Verified against real FFmpeg: two 1-second clips assemble to a ~2-second file with video and audio.
+- `assembleStoryboard` renders steps in order and concatenates only after every step succeeds, so a failure never yields a partial sequence that looks finished.
+- `buildProvenanceManifest` pins the brand kit and each scene by hash; `runStoryboardExport` writes it only after assembly succeeds.
+- **Remaining wiring (Phase 9):** `renderStep` is dependency-injected. The concrete adapter that renders brand/scene slides through Remotion and composites each scene with FFmpeg is not constructed yet, so nothing has run the full storyboard → file path end to end.
 
 ---
 
