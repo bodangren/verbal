@@ -300,6 +300,19 @@ npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.
 
 ---
 
+## Phase 9d: Browser walkthrough
+
+- [x] `npm run e2e` starts the standalone server, drives the real page in Chromium (`playwright-core` + the system Chrome), and fails on any page error, console error, failed request, or HTTP status ≥ 400.
+- [x] The walkthrough covers: open a project → transcript renders → fast preview plans a placeholder → patch JSON parsed, reviewed, and applied → image cost estimated → video cost estimated.
+- [x] **Fixed:** duplicate `Transcript` landmarks (page panel and editor both used the name) and duplicate `Capture` landmarks (page panel and controls).
+- [x] **Fixed:** the storyboard and patch textareas had no accessible names; both now carry `aria-label`s, so role+name locators work.
+- [x] Fixture corrected: the estimate forms need `generated-image` / `generated-video` scenes; the API's rejection of a slide scene is intended behaviour and is surfaced in the UI.
+- [x] Commit: `test(e2e): Add browser walkthrough and fix duplicate landmarks` — `e392325`
+
+**Result:** `npm run e2e` reports `walkthrough: PASS` with no console or page errors. `npm run check` stays green with 418 tests.
+
+---
+
 ## Phase 10: Generated images (Stage 2)
 
 - [x] Define the image asset provider interface inside `packages/ai` (`ImageProvider` with a local `estimateCost`).

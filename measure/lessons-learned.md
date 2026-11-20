@@ -26,6 +26,9 @@
 - **Long generation belongs in the job registry.** An HTTP request cannot outlive a two-minute model call; generation runs as a job, reports progress, and aborts through `DELETE /api/jobs/[id]`.
 - **Placeholders must be explicit.** A pending generated scene plans as `placeholder`, never `asset`, so the preview panel tells the truth before anything exists.
 - **Video assets are trimmed, images loop.** The step adapter needs `assetKind`; looping a clip or trimming a still are both wrong.
+- **Duplicate landmark names are a real bug.** Two regions both labelled `Transcript` (and two `Capture`) broke strict role+name locators *and* screen-reader navigation. Name each landmark for its role, not its topic.
+- **A browser walkthrough catches what unit tests cannot.** The first run found a duplicate-landmark collision, unnamed textareas, and a fixture mismatch — none of which any component test would have surfaced.
+- **Give testable controls accessible names.** `aria-label` on the storyboard and patch textareas made role+name locators possible; CSS-class locators would have been brittle.
 
 ## Remotion / storyboard pipeline
 

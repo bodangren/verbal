@@ -10,8 +10,9 @@
 ## What remains (not implementable here)
 
 1. **Capture on hardware.** This machine has no V4L2 camera; the failure path is live-tested, the success path is not.
-2. **Browser walkthrough.** Every flow is HTTP- and unit-verified; nobody has clicked through the page.
-3. **Real paid provider calls.** ASR, LLM, image, and video providers are tested against fakes and fake servers.
+2. **Real paid provider calls.** ASR, LLM, image, and video providers are tested against fakes and fake servers.
+
+The browser walkthrough is now verified: `npm run e2e` drives the real page in Chromium and passes with no console or page errors.
 
 ## Known debt
 

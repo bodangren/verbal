@@ -47,6 +47,7 @@ npm run dev      # vinext dev server with HMR
 npm run build    # production build
 npm run start    # serve the build
 npm run check    # typecheck + lint + test + build (CI gate)
+npm run e2e      # browser walkthrough (playwright-core + system Chrome; builds first)
 ```
 
 `npm run check` replaces the old `make check` and is the required pre-commit validation.
