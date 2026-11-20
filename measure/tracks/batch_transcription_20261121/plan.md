@@ -11,7 +11,7 @@
 ## Phase 1: Planner
 
 ### Red
-- [ ] Failing tests: skip when a transcript exists, transcribe otherwise, `force` overrides, no-media is skipped with a reason, duplicates collapse, order is preserved.
+- [x] Failing tests: skip when a transcript exists, transcribe otherwise, `force` overrides, no-media is skipped with a reason, duplicates collapse, order is preserved.
 
 **Targeted Red command:**
 ```bash
@@ -19,11 +19,11 @@ npx vitest run packages/core/src/batch.test.ts
 ```
 
 ### Green
-- [ ] Implement `planBatch` in `packages/core/src/batch.ts` and export it.
-- [ ] Make tests pass.
+- [x] Implement `planBatch` in `packages/core/src/batch.ts` and export it.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Plan a transcription batch`
+- [x] Commit: `feat(core): Plan a transcription batch`
 
 ---
 

@@ -1,5 +1,6 @@
 // @verbal/core — project documents, transcript model, storage, sync, and jobs.
 export * from "./atomic";
+export * from "./batch";
 export * from "./byte-range";
 export * from "./errors";
 export * from "./history";
