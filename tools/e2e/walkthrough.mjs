@@ -335,6 +335,19 @@ try {
     assert(seeked >= 0.6 && seeked <= 1.5, `clicking a word should seek to ~0.9s, got ${seeked}s`);
     await playback.getByRole("button", { name: "Pause" }).click();
     console.log("playback: click-to-seek");
+
+    // The waveform is rendered from the real clip and seeks where it is clicked.
+    const waveform = playback.getByAltText("Waveform");
+    await waveform.waitFor({ timeout: 20000 });
+    const box = await waveform.boundingBox();
+    assert(box !== null && box.width > 0, "the waveform should have a size");
+    await waveform.click({ position: { x: Math.floor(box.width * 0.75), y: 5 } });
+    const sought = await video.evaluate((media) => media.currentTime);
+    assert(
+      sought > duration * 0.5 && sought <= duration,
+      `a waveform click at 75% should seek past halfway, got ${sought}s of ${duration}s`,
+    );
+    console.log("playback: waveform seek");
   }
 
   // The fixture's "um" is the only proposal the detector should find.

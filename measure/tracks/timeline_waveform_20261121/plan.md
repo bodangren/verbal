@@ -45,6 +45,6 @@ npx vitest run packages/media/src/waveform.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e`: click the waveform and assert the media sought.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover waveform seeking`
+- [x] Extend `npm run e2e`: click the waveform and assert the media sought.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover waveform seeking`
