@@ -1,4 +1,5 @@
 import path from "node:path";
+import { promises as nodeFs } from "node:fs";
 import { projectPaths } from "@verbal/core";
 
 export type MediaErrorCode = "invalid-filename" | "invalid-source" | "already-exists";
@@ -22,6 +23,26 @@ export interface ImportFileSystem {
 }
 
 export type ImportMode = "copy" | "reference";
+
+/** Production file operations for import. */
+export const nodeImportFileSystem: ImportFileSystem = {
+  async mkdir(path: string): Promise<void> {
+    await nodeFs.mkdir(path, { recursive: true });
+  },
+
+  async copyFile(from: string, to: string): Promise<void> {
+    await nodeFs.copyFile(from, to);
+  },
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      await nodeFs.access(path);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
 
 export type ImportRequest = {
   mode: ImportMode;

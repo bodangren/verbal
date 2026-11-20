@@ -222,3 +222,14 @@ export async function openProject(fs: FileSystem, root: string): Promise<Project
 
   return parseProjectDocument(raw);
 }
+
+/** Writes a validated project document atomically. */
+export async function saveProject(
+  fs: FileSystem,
+  root: string,
+  document: ProjectDocument,
+): Promise<void> {
+  const paths = projectPaths(root);
+  await fs.mkdir(paths.root);
+  await writeFileAtomic(fs, paths.project, serializeProjectDocument(document));
+}
