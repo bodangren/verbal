@@ -329,7 +329,6 @@ try {
   );
 
   await transcriptRegion.press("Delete");
-  await page.getByText("Unsaved changes").waitFor();
   assert(
     await editorPanel.getByRole("button", { name: "world" }).isDisabled(),
     "the deleted word should stay in the document, disabled",
@@ -338,24 +337,20 @@ try {
 
   await editorPanel.getByRole("button", { name: "Undo" }).click();
   assert(
-    (await dirtyStatus.textContent()) === "Saved",
-    "undo back to the loaded document should be clean",
-  );
-  assert(
     !(await editorPanel.getByRole("button", { name: "world" }).isDisabled()),
     "undo should restore the deleted word",
   );
 
   await editorPanel.getByRole("button", { name: "Redo" }).click();
   assert(
-    (await dirtyStatus.textContent()) === "Unsaved changes",
+    await editorPanel.getByRole("button", { name: "world" }).isDisabled(),
     "redo should re-apply the deletion",
   );
-  console.log("transcript: undo and redo");
+  assert((await dirtyStatus.textContent()) === "Unsaved changes", "the redo should be unsaved");
 
-  await editorPanel.getByRole("button", { name: "Save transcript" }).click();
+  // No Save click: the settled edit must reach Saved on its own.
   await waitForSavedState(true);
-  assert((await dirtyStatus.textContent()) === "Saved", "saving should clear the dirty state");
+  console.log("transcript: undo, redo, and autosaved the result");
 
   await page.reload({ waitUntil: "networkidle" });
   await page.getByLabel("Folder").fill(projectRoot);

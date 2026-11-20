@@ -21,6 +21,7 @@ import { PlaybackScreen } from "../components/PlaybackScreen";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
+import { useAutoSave } from "../hooks/use-auto-save";
 import { useTranscriptDocument } from "../hooks/use-transcript-document";
 
 const GEOMETRY = { fps: 30, width: 1280, height: 720 };
@@ -191,6 +192,15 @@ export default function Home() {
       setMessage("Storyboard saved");
     });
   }
+
+  const autoSave = useAutoSave({
+    dirty: editing.dirty,
+    revision: editing.document,
+    save: async () => {
+      await saveTranscriptDocument();
+    },
+    onError: setError,
+  });
 
   function saveTranscriptDocument() {
     if (transcript === null) {
@@ -760,7 +770,7 @@ export default function Home() {
               Save transcript
             </button>
             <span className="muted" role="status">
-              {editing.dirty ? "Unsaved changes" : "Saved"}
+              {autoSave.saving ? "Saving…" : editing.dirty ? "Unsaved changes" : "Saved"}
             </span>
           </div>
           <TranscriptEditor

@@ -11,7 +11,7 @@
 ## Phase 1: Auto-save hook
 
 ### Red
-- [ ] Failing tests: a clean document schedules nothing; a dirty one saves after the delay; a further edit restarts the timer; becoming clean cancels; saves never overlap and queue one follow-up.
+- [x] Failing tests: a clean document schedules nothing; a dirty one saves after the delay; a further edit restarts the timer; becoming clean cancels; saves never overlap and queue one follow-up.
 
 **Targeted Red command:**
 ```bash
@@ -19,19 +19,19 @@ npx vitest run apps/web/hooks/use-auto-save.test.tsx
 ```
 
 ### Green
-- [ ] Implement `useAutoSave` over `setTimeout` with an injectable scheduler.
-- [ ] Make tests pass.
+- [x] Implement `useAutoSave` over `setTimeout` with an injectable scheduler.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(ui): Add debounced auto-save hook`
+- [x] Commit: `feat(ui): Add debounced auto-save hook`
 
 ---
 
 ## Phase 2: Page wiring
 
-- [ ] Auto-save the transcript and report *Saving…* in the status line.
-- [ ] Keep the explicit *Save transcript* control.
-- [ ] Commit: `feat(ui): Auto-save transcript edits`
+- [x] Auto-save the transcript and report *Saving…* in the status line.
+- [x] Keep the explicit *Save transcript* control.
+- [x] Commit: `feat(ui): Auto-save transcript edits`
 
 ---
 
