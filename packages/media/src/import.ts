@@ -2,7 +2,11 @@ import path from "node:path";
 import { promises as nodeFs } from "node:fs";
 import { projectPaths } from "@verbal/core";
 
-export type MediaErrorCode = "invalid-filename" | "invalid-source" | "already-exists";
+export type MediaErrorCode =
+  | "invalid-filename"
+  | "invalid-source"
+  | "invalid-option"
+  | "already-exists";
 
 /** Error raised by media import operations. */
 export class MediaError extends Error {
