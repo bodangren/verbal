@@ -31,10 +31,10 @@ npx vitest run apps/web/server/transcribe-api.test.ts
 
 ## Phase 2: Page wiring
 
-- [ ] Add a *Transcription* panel with **Transcribe media**, disabled without a project, media, or while a job runs.
-- [ ] Post to `/api/transcribe`, follow the job, and show status and percentage.
-- [ ] On success, reload the transcript and cleanup proposals and report the word count.
-- [ ] Commit: `feat(ui): Transcribe media from the page`
+- [x] Add a *Transcription* panel with **Transcribe media**, disabled without a project, media, or while a job runs.
+- [x] Post to `/api/transcribe`, follow the job, and show status and percentage.
+- [x] On success, reload the transcript and cleanup proposals and report the word count.
+- [x] Commit: `feat(ui): Transcribe media from the page`
 
 ---
 

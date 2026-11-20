@@ -121,9 +121,8 @@ export default function Home() {
     }
   }
 
-  async function loadProjectFiles(next: ProjectDocument) {
-    setProject(next);
-
+  /** Reloads the stored transcript and the proposals that describe it. */
+  async function loadTranscriptState() {
     try {
       editing.reset(
         await request<TranscriptDocument>(`/api/transcript?root=${encodeURIComponent(root)}`),
@@ -142,6 +141,12 @@ export default function Home() {
       setProposals([]);
     }
     setAcceptance(DEFAULT_ACCEPTANCE);
+  }
+
+  async function loadProjectFiles(next: ProjectDocument) {
+    setProject(next);
+
+    await loadTranscriptState();
 
     const storyboard = await request<StoryboardDocument>(
       `/api/storyboard?root=${encodeURIComponent(root)}`,
@@ -194,6 +199,32 @@ export default function Home() {
       await putJson<TranscriptDocument>("/api/transcript", { root, document: transcript });
       editing.markSaved();
       setMessage("Transcript saved");
+    });
+  }
+
+  const transcribing =
+    job !== null &&
+    job.kind === "transcribe" &&
+    (job.status === "queued" || job.status === "running");
+
+  function transcribeMedia() {
+    return guard(async () => {
+      const started = await postJson<JobRecord>("/api/transcribe", { projectRoot: root });
+      setJob(started);
+
+      const finished = await pollJob(started.id);
+      if (finished.status !== "done") {
+        throw new Error(finished.error ?? `transcription ${finished.status}`);
+      }
+
+      await loadTranscriptState();
+
+      const result = finished.result as { words?: number } | null;
+      setMessage(
+        result?.words === undefined
+          ? "Transcription finished"
+          : `Transcribed ${result.words} words`,
+      );
     });
   }
 
@@ -302,15 +333,20 @@ export default function Home() {
     });
   }
 
-  async function pollJob(id: string) {
+  async function pollJob(id: string): Promise<JobRecord> {
+    let record = await request<JobRecord>(`/api/jobs/${id}`);
+    setJob(record);
+
     for (let attempt = 0; attempt < 600; attempt += 1) {
-      const record = await request<JobRecord>(`/api/jobs/${id}`);
-      setJob(record);
       if (record.status !== "queued" && record.status !== "running") {
-        return;
+        return record;
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
+      record = await request<JobRecord>(`/api/jobs/${id}`);
+      setJob(record);
     }
+
+    return record;
   }
 
   function sampleKey() {
@@ -569,6 +605,25 @@ export default function Home() {
         <button type="button" onClick={importMedia} disabled={project === null}>
           Import copy
         </button>
+      </section>
+
+      <section className="panel" aria-label="Transcription">
+        <h2>Transcription</h2>
+        <p className="muted">Transcribing replaces this project&apos;s stored transcript.</p>
+        <div className="row">
+          <button
+            type="button"
+            onClick={transcribeMedia}
+            disabled={project === null || project.media === undefined || transcribing}
+          >
+            Transcribe media
+          </button>
+        </div>
+        {transcribing && job !== null && (
+          <p className="muted">
+            {job.status === "queued" ? "Queued" : `Transcribing ${Math.round(job.progress * 100)}%`}
+          </p>
+        )}
       </section>
 
       {transcript !== null && project?.media !== undefined && (
