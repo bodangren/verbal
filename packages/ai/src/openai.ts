@@ -24,13 +24,13 @@ export type OpenAiConfig = {
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
-function requireApiKey(apiKey: string): void {
+export function requireApiKey(apiKey: string): void {
   if (typeof apiKey !== "string" || apiKey.trim() === "") {
     throw new AiError("not-configured", "an API key is required");
   }
 }
 
-function resolveBaseUrl(baseUrl: string | undefined): string {
+export function resolveBaseUrl(baseUrl: string | undefined): string {
   return (baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
 }
 

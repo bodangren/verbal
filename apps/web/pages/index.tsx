@@ -85,6 +85,9 @@ export default function Home() {
   const [previewing, setPreviewing] = useState(false);
   const [keyQuality, setKeyQuality] = useState<KeyQuality | null>(null);
   const [captureSeconds, setCaptureSeconds] = useState(10);
+  const [imageSceneId, setImageSceneId] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [imageCost, setImageCost] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -308,6 +311,36 @@ export default function Home() {
     });
   }
 
+  function estimateImage() {
+    return guard(async () => {
+      const result = await postJson<{ estimate: number; provider: string }>(
+        "/api/storyboard/generate-image",
+        { root, sceneId: imageSceneId, prompt: imagePrompt, dryRun: true },
+      );
+      setImageCost(result.estimate);
+      setMessage(`Estimated cost: $${result.estimate.toFixed(2)} (${result.provider})`);
+    });
+  }
+
+  function generateImage() {
+    return guard(async () => {
+      const result = await postJson<{
+        assetId: string;
+        cost: number;
+        document: StoryboardDocument;
+      }>("/api/storyboard/generate-image", {
+        root,
+        sceneId: imageSceneId,
+        prompt: imagePrompt,
+      });
+      setStoryboardText(JSON.stringify(result.document, null, 2));
+      setImageCost(result.cost);
+      setMessage(
+        `Generated image ${result.assetId.slice(0, 8)} for $${result.cost.toFixed(2)}`,
+      );
+    });
+  }
+
   const captureRunning =
     job !== null &&
     job.kind === "capture" &&
@@ -418,6 +451,41 @@ export default function Home() {
             Full preview
           </button>
         </div>
+
+        <div className="row">
+          <label className="field">
+            Image scene
+            <input
+              value={imageSceneId}
+              onChange={(event) => setImageSceneId(event.target.value)}
+              placeholder="g1"
+            />
+          </label>
+          <label className="field">
+            Image prompt
+            <input
+              value={imagePrompt}
+              onChange={(event) => setImagePrompt(event.target.value)}
+              placeholder="A diagram of the pipeline"
+            />
+          </label>
+        </div>
+        <div className="row">
+          <button type="button" onClick={estimateImage} disabled={project === null}>
+            Estimate image
+          </button>
+          <button
+            type="button"
+            onClick={generateImage}
+            disabled={project === null || imageCost === null}
+          >
+            Generate image
+          </button>
+        </div>
+        {imageCost !== null && (
+          <p className="muted">Cost per image: ${imageCost.toFixed(2)}</p>
+        )}
+
         {plan !== null && (
           <StoryboardPreview plan={plan} tier={tier} onTierChange={preview} />
         )}

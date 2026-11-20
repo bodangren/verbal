@@ -106,4 +106,21 @@ describe("createStepRenderer", () => {
 
     expect(renderer.render).toHaveBeenCalledTimes(1);
   });
+
+  it("uses an asset image without rendering a slide", async () => {
+    const { deps, renderer, run } = makeDeps({
+      scenes: new Map([
+        ["s1", { template: "bullets", props: { title: "Point" } }],
+        ["img", { assetPath: "/project/assets/generated/abc" }],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "img", durationSeconds: 1 }, 0);
+
+    expect(renderer.render).not.toHaveBeenCalled();
+    const args = argsOf(run);
+    expect(args).toContain("-loop");
+    expect(args).toContain("/project/assets/generated/abc");
+  });
 });

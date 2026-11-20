@@ -1,6 +1,8 @@
-// @verbal/compose — slide render contract, content-addressed cache, composite
-// builder, assembly, brand kit, provenance, preview planning, and step rendering.
+// @verbal/compose — slide render contract, content-addressed cache, assets,
+// composite builder, assembly, brand kit, provenance, preview planning, and
+// step rendering.
 export * from "./assemble";
+export * from "./assets";
 export * from "./brand";
 export * from "./cache";
 export * from "./composite";

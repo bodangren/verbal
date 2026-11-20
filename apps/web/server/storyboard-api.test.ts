@@ -228,4 +228,56 @@ describe("storyboard export API", () => {
     });
     expect(fs.files.has("/out/final.mp4.provenance.json")).toBe(true);
   });
+
+  it("renders a generated-image scene from its asset", async () => {
+    const { fs, root, registry, renderer, run } = await setup({
+      media: true,
+      storyboard: {
+        schemaVersion: 1,
+        scenes: [
+          {
+            id: "g1",
+            anchor: { startWordId: "w0", endWordId: "w1" },
+            visual: "generated-image",
+            layer: "full-frame",
+            assetId: "asset-1",
+          },
+        ],
+      },
+    });
+
+    const response = await startStoryboardExport(
+      {
+        fs,
+        registry,
+        renderer,
+        run,
+        now,
+      },
+      {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        geometry: { fps: 10, width: 320, height: 180 },
+      },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(jobId)?.status).toBe("done");
+    const calls = run.mock.calls as unknown as [string, string[]][];
+    const usedAsset = calls.some(([, args]) =>
+      args.includes("/projects/demo/assets/generated/asset-1"),
+    );
+    expect(usedAsset).toBe(true);
+  });
 });

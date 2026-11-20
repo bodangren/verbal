@@ -196,20 +196,32 @@ export async function startStoryboardExport(
     const resolved: { sceneId: string; startSeconds: number; endSeconds: number }[] = [];
 
     for (const scene of storyboard.scenes) {
-      if (scene.visual !== "slide" || scene.template === undefined) {
+      if (scene.visual === "slide" && scene.template !== undefined) {
+        const times = resolveScene(scene, anchors);
+        scenes.set(scene.id, { template: scene.template, props: scene.props ?? {} });
+        resolved.push({
+          sceneId: scene.id,
+          startSeconds: times.startSeconds,
+          endSeconds: times.endSeconds,
+        });
         continue;
       }
-      const times = resolveScene(scene, anchors);
-      scenes.set(scene.id, { template: scene.template, props: scene.props ?? {} });
-      resolved.push({
-        sceneId: scene.id,
-        startSeconds: times.startSeconds,
-        endSeconds: times.endSeconds,
-      });
+
+      if (scene.visual === "generated-image" && scene.assetId !== undefined) {
+        const times = resolveScene(scene, anchors);
+        scenes.set(scene.id, {
+          assetPath: path.join(root, "assets", "generated", scene.assetId),
+        });
+        resolved.push({
+          sceneId: scene.id,
+          startSeconds: times.startSeconds,
+          endSeconds: times.endSeconds,
+        });
+      }
     }
 
     if (resolved.length === 0) {
-      return { status: 400, body: { error: "storyboard has no slide scenes to render" } };
+      return { status: 400, body: { error: "storyboard has no renderable scenes" } };
     }
 
     const plan = planAssembly({ scenes: resolved, brand });

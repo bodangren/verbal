@@ -68,10 +68,7 @@ function parseScene(value: unknown, seenIds: Set<string>): Scene {
     scene.props = { ...value.props };
   }
 
-  const needsAsset =
-    scene.visual === "static" ||
-    scene.visual === "generated-image" ||
-    scene.visual === "generated-video";
+  const needsAsset = scene.visual === "static";
 
   if (needsAsset && scene.assetId === undefined) {
     throw new StoryboardError(

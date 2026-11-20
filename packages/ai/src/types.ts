@@ -46,7 +46,11 @@ export type LlmProvider = {
   complete(request: LlmRequest, options?: ProviderOptions): Promise<LlmResult>;
 };
 
-export type AiErrorCode = "not-configured" | "request-failed" | "invalid-response";
+export type AiErrorCode =
+  | "not-configured"
+  | "invalid-request"
+  | "request-failed"
+  | "invalid-response";
 
 /** Error raised by a provider adapter. */
 export class AiError extends Error {

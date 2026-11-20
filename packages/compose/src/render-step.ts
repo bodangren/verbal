@@ -7,10 +7,12 @@ import type { PreviewGeometry } from "./preview";
 import { renderSceneSlide } from "./slides";
 import type { SlideRenderer } from "./types";
 
-/** Template and props for one scene, as recorded in the storyboard. */
+/** Template and props for one scene, or an already-rendered asset image. */
 export type StepScene = {
-  template: string;
-  props: Record<string, unknown>;
+  template?: string;
+  props?: Record<string, unknown>;
+  /** Absolute path to a generated or user asset used as the slide. */
+  assetPath?: string;
 };
 
 export type RenderStepDeps = {
@@ -60,8 +62,14 @@ function slideFor(
   if (scene === undefined) {
     throw new StepAdapterError("missing-scene", `unknown scene: ${step.sceneId}`);
   }
+  if (scene.template === undefined) {
+    throw new StepAdapterError(
+      "missing-scene",
+      `scene ${step.sceneId} has neither a template nor an asset`,
+    );
+  }
 
-  return { sceneId: step.sceneId, template: scene.template, props: scene.props };
+  return { sceneId: step.sceneId, template: scene.template, props: scene.props ?? {} };
 }
 
 /**
@@ -77,6 +85,33 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
       deps.workDirectory,
       `step-${String(index).padStart(3, "0")}.mp4`,
     );
+
+    const scene = step.kind === "scene" ? deps.scenes.get(step.sceneId) : undefined;
+
+    if (step.kind === "scene" && scene === undefined) {
+      throw new StepAdapterError("missing-scene", `unknown scene: ${step.sceneId}`);
+    }
+
+    // An asset-backed scene skips the renderer entirely: the image already
+    // exists, so it only needs the composite.
+    if (scene?.assetPath !== undefined) {
+      const assetRequest: CompositeRequest = {
+        outputPath,
+        width: deps.geometry.width,
+        height: deps.geometry.height,
+        fps: deps.geometry.fps,
+        durationSeconds: step.durationSeconds,
+        layout: deps.sceneLayout ?? "speaker-inset",
+        slide: { input: scene.assetPath, loop: true },
+        speaker: { input: deps.speaker.input },
+        key: {},
+        audio: deps.audio,
+        ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),
+      };
+
+      await deps.run("ffmpeg", buildCompositeArgs(assetRequest));
+      return outputPath;
+    }
 
     const slide = slideFor(step, deps.scenes);
 
