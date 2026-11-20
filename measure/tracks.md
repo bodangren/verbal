@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Local Offline Transcription** [created: 2026-11-21]
+- [x] **Track: Local Offline Transcription** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Add a whisper-CLI provider so transcription can run locally, selected by environment, behind the existing provider abstraction.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `createLocalWhisperProvider` shells out with an argv array (missing binary → 503, missing output → error, never a silent empty transcript), `parseWhisperJson` converts millisecond offsets once, and `VERBAL_ASR=local` selects it in the shared service without requiring `OPENAI_API_KEY`. `npm run check` green (621 tests); `npm run e2e` still passes on the cloud fake-ASR path. **Unverified:** the real CLI invocation — this machine has no whisper binary (tracked as tech debt).*
   *Link: [./tracks/local_transcription_20261121](./tracks/local_transcription_20261121/)*
 
 - [x] **Track: Library UX** [created: 2026-11-21] [completed: 2026-11-21]

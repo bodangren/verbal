@@ -1,6 +1,6 @@
 # Plan: Local Offline Transcription
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** A CLI-backed provider, its JSON parser, and the environment switch.
 
@@ -45,6 +45,6 @@ npx vitest run packages/ai/src/local.test.ts
 
 ## Phase 4: Verification
 
-- [ ] `npm run check` and `npm run e2e` (cloud path unchanged).
-- [ ] Record in tech-debt that the real binary path is unverified on this machine.
-- [ ] Commit: `test(ai): Cover local transcription selection`
+- [x] `npm run check` and `npm run e2e` (cloud path unchanged).
+- [x] Record in tech-debt that the real binary path is unverified on this machine.
+- [x] Commit: `test(ai): Cover local transcription selection`

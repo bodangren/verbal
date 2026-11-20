@@ -6,6 +6,7 @@
 
 ### Low Severity
 
+- **Local transcription is unverified against a real CLI** — `createLocalWhisperProvider` shells out to a whisper-class binary with an argv array and parses its `transcription[]`/`offsets` JSON, but this machine has no such binary, so only the fake runner and fixture output are tested. The real invocation, the model flag, and fork-specific JSON shapes are unconfirmed. [severity: medium, tracked: local_transcription_20261121]
 - ~~**No composed application page yet**~~ — [resolved: 2026-11-20 — the page now wires project → import → transcript → storyboard → preview → patch → export, verified over live HTTP.] [severity: medium, tracked: storyboard_compositor_20261120]
 - **Export always re-encodes** — `buildExportArgs` trims and concatenates every kept range in one filter graph. That is frame-exact, but it re-encodes the whole output. Stream copy (`-c copy`) can only cut on keyframes, so it needs keyframe probing (`ffprobe -skip_frame nokey`) plus a segment-and-concat path. Deferred until export speed matters; correctness first. [severity: low, tracked: rewrite_ts_vinext_20261120]
 - **Slide renders use the exact scene duration** — the slide content hash includes `durationSeconds`, so nudging an anchor re-renders that scene even when the visual is unchanged. The intended fix is to render a natural length plus a hold tail and trim at composite time. Deferred until preview latency matters. [severity: low, tracked: storyboard_compositor_20261120]
