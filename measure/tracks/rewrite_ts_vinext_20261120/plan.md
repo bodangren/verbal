@@ -6,22 +6,33 @@
 
 > **Rule for this track:** port concepts, not code. The Go implementation is a specification.
 
-> **Check command:** `pnpm check` (typecheck + lint + test + build). This replaces `make check`.
+> **Check command:** `npm run check` (typecheck + lint + test + build). This replaces `make check`.
 
 ---
 
 ## Phase 0: Scaffold and decision lock
 
-- [ ] Rewrite `AGENTS.md` for the new stack (TypeScript, vinext Pages Router, FFmpeg argv, Measure workflow retained). Do this **before** any code, so future sessions stop being told to use Go/GTK.
-- [ ] Scaffold with `pnpm create vinext-app`, selecting the **Pages Router**.
-- [ ] Enable TypeScript `strict`, ESM, and path aliases for `packages/*`.
-- [ ] Add Vitest, Testing Library, ESLint, and Prettier.
-- [ ] Add `pnpm check` = `tsc --noEmit && eslint . && vitest run && vite build`.
-- [ ] Create the empty package layout: `apps/web`, `packages/{core,media,storyboard,slides,ai}`, `tools/remotion`.
-- [ ] Add a startup FFmpeg/ffprobe presence check with actionable output.
-- [ ] Record the dev and prod commands in this plan.
+- [x] Rewrote `AGENTS.md` for the new stack (TypeScript, vinext Pages Router, FFmpeg argv, Measure workflow retained) **before** any code.
+- [x] Scaffolded the Pages Router app manually at `apps/web`. `create-vinext-app` only emits the App Router, so the app was built by hand with `pages/`, `pages/api/`, `vite.config.ts`, and `next.config.mjs` (`output: "standalone"`).
+- [x] Enabled TypeScript `strict`, ESM, and path aliases for `packages/*`.
+- [x] Added Vitest 5, Testing Library, jsdom, ESLint 10 (flat config), and Prettier 3.
+- [x] Added `npm run check` = `tsc --noEmit && eslint . && vitest run && vite build`.
+- [x] Created the package layout: `apps/web`, `packages/{core,media,storyboard,slides,ai}`. (`tools/remotion` arrives with the storyboard track.)
+- [x] Added an FFmpeg/ffprobe presence check (`packages/media/src/system.ts`) surfaced at `/api/system` with actionable UI guidance.
+- [x] Recorded the dev and prod commands below.
 
-**Exit criteria:** `pnpm check` is green on an empty app; `node dist/standalone/server.js` serves it.
+**Commands:**
+```bash
+npm install
+npm run dev      # vinext dev server with HMR
+npm run check    # typecheck + lint + test + build
+npm run build    # emits apps/web/dist/standalone/
+cd apps/web && PORT=3000 node dist/standalone/server.js
+```
+
+**Package manager:** npm workspaces. pnpm could not create its store in the sandbox used for this phase; `package.json` `workspaces` is the source of truth and `pnpm-workspace.yaml` is retained for compatibility.
+
+**Exit criteria:** met — `npm run check` exits 0 with 5 tests passing, and the standalone server served `/` and `/api/system` with FFmpeg 8.0.1 detected. Commit: `feat(scaffold)` (see git history).
 
 ---
 
@@ -38,7 +49,7 @@ Package: `packages/core`.
 
 **Targeted Red command:**
 ```bash
-pnpm vitest run packages/core
+npx vitest run packages/core
 ```
 
 ### Green

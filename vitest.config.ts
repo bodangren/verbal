@@ -1,0 +1,18 @@
+import { defineConfig } from "vitest/config";
+import { workspaceAliases } from "./aliases.ts";
+
+export default defineConfig({
+  resolve: {
+    alias: workspaceAliases,
+  },
+  test: {
+    include: [
+      "packages/**/*.test.ts",
+      "packages/**/*.test.tsx",
+      "apps/**/*.test.ts",
+      "apps/**/*.test.tsx",
+    ],
+    environment: "node",
+    passWithNoTests: false,
+  },
+});

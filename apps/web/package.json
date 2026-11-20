@@ -1,0 +1,28 @@
+{
+  "name": "@verbal/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vinext start",
+    "start:standalone": "node dist/standalone/server.js"
+  },
+  "dependencies": {
+    "@verbal/ai": "*",
+    "@verbal/core": "*",
+    "@verbal/media": "*",
+    "@verbal/slides": "*",
+    "@verbal/storyboard": "*",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "vinext": "^1.4.6",
+    "vite": "^8.3.8"
+  }
+}

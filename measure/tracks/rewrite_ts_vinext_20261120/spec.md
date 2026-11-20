@@ -82,7 +82,7 @@ Scope: personal, single-user, Linux. No accounts, no telemetry, no cloud sync.
 
 ## Acceptance Criteria
 
-- [ ] `pnpm check` (typecheck + lint + test + build) passes.
+- [ ] `npm run check` (typecheck + lint + test + build) passes.
 - [ ] A project can be created, imported into, and reopened after a simulated crash with no data loss.
 - [ ] An unknown `schemaVersion` refuses to open with a clear message.
 - [ ] Deleting words produces a cut list whose kept ranges sum to the expected duration.
@@ -104,7 +104,7 @@ Scope: personal, single-user, Linux. No accounts, no telemetry, no cloud sync.
 
 ## Dependencies
 
-- Node.js 24 and pnpm.
+- Node.js 24 and npm.
 - `ffmpeg` and `ffprobe` on `PATH` (detected at startup; a missing binary produces actionable guidance).
 - Remotion is **not** a dependency of this track.
 

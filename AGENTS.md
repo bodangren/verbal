@@ -39,17 +39,19 @@ Never start significant work without an active track. Always update `measure/tra
 
 ## Build System
 
-Prerequisites: Node.js 24, pnpm, and `ffmpeg` + `ffprobe` on `PATH`.
+Prerequisites: Node.js 24, npm, and `ffmpeg` + `ffprobe` on `PATH`.
 
 ```bash
-pnpm install
-pnpm dev      # vinext dev server with HMR
-pnpm build    # production build
-pnpm start    # serve the standalone Node build
-pnpm check    # typecheck + lint + test + build (CI gate)
+npm install
+npm run dev      # vinext dev server with HMR
+npm run build    # production build
+npm run start    # serve the build
+npm run check    # typecheck + lint + test + build (CI gate)
 ```
 
-`pnpm check` replaces the old `make check` and is the required pre-commit validation.
+`npm run check` replaces the old `make check` and is the required pre-commit validation.
+
+The repository also carries `pnpm-workspace.yaml`, so pnpm works if it is available; the npm workspace definition in `package.json` is the source of truth.
 
 ## Automation Supervisor
 

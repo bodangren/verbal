@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "paths": {
+      "@verbal/core": ["./packages/core/src/index.ts"],
+      "@verbal/media": ["./packages/media/src/index.ts"],
+      "@verbal/storyboard": ["./packages/storyboard/src/index.ts"],
+      "@verbal/slides": ["./packages/slides/src/index.ts"],
+      "@verbal/ai": ["./packages/ai/src/index.ts"]
+    }
+  },
+  "include": ["*.ts", "apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx"],
+  "exclude": ["node_modules", "dist", ".next", "legacy", "cmd", "internal", "measure"]
+}

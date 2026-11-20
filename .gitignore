@@ -44,3 +44,9 @@ coverage/
 # Go build artifacts
 /verbal
 *.exe
+
+# vinext generated
+.next/
+.vinext/
+*.tsbuildinfo
+next-env.d.ts

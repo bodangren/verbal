@@ -14,6 +14,7 @@
 - **Slides/motion graphics:** Remotion compositions, previewed with `@remotion/player`
 - **Storage:** JSON project documents + optional `node:sqlite` index
 - **Tests:** Vitest + Testing Library
+- **Package manager:** npm workspaces (`package.json` `workspaces` is the source of truth; `pnpm-workspace.yaml` is kept for compatibility)
 
 ## Why These Choices
 
