@@ -134,17 +134,31 @@ npx vitest run packages/core apps/web
 ## Phase 4: Cut list
 
 ### Red
-- [ ] Failing tests: adjacent kept ranges merge.
-- [ ] Failing tests: handles and a minimum-gap threshold are applied at boundaries.
-- [ ] Failing tests: an all-deleted transcript produces an explicit empty result, not a zero-length range.
-- [ ] Failing tests: serialisation is deterministic across runs.
+- [x] Failing tests: adjacent kept ranges merge.
+- [x] Failing tests: handles and a minimum-gap threshold are applied at boundaries.
+- [x] Failing tests: an all-deleted transcript produces an explicit empty result, not a zero-length range.
+- [x] Failing tests: serialisation is deterministic across runs.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/media
+```
+
+**Red result:** `cutlist.test.ts` failed on a missing module; the other 23 media tests stayed green.
 
 ### Green
-- [ ] Implement `buildCutList(transcript, edit, options)` as a pure function.
-- [ ] Make tests pass.
+- [x] Implement `buildCutList` as a pure function.
+- [x] Make tests pass.
+
+**Green result:** 34/34 in `packages/media`; full suite 96/96; `npm run check` exits 0.
+- Signature is `buildCutList({ transcript, durationSeconds, handleSeconds?, minKeepGapSeconds? })`; defaults are a 50 ms handle and a 20 ms minimum kept fragment.
+- Removed word intervals expand by the handle (clamped to the media), merge, and the kept list is their complement — so adjacent kept ranges merge for free.
+- Kept fragments at or below `minKeepGapSeconds` are folded into the surrounding cut, and `removed` is recomputed from the result so the two lists always agree.
+- If every word is removed, the result is an empty `kept` list and one `removed` range covering the media; leaving a trail of inter-word silences would be dead air.
+- Every timestamp is rounded to microseconds, so repeated serialisation is byte-stable.
 
 ### Refactor
-- [ ] Commit: `feat(media): Add deterministic cut list builder`
+- [x] Commit: `feat(media): Add deterministic cut list builder` — `c48d814`
 
 ---
 
