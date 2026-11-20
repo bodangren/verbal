@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Reorder Text** [created: 2026-11-21]
+  *Focus: Move an inclusive word block, keep segments consistent, and expose the action on the selected range as one undo step.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/reorder_text_20261121](./tracks/reorder_text_20261121/)*
+
 - [x] **Track: Asset Pruning** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Plan which generated assets are still referenced, report the plan, and delete only on explicit confirmation.*
   *Status: Complete. `planAssetPrune` keeps referenced assets and user uploads, retains unreferenced generations under the age threshold, and prunes only past it; `POST /api/storyboard/prune` reports the plan and deletes only with `apply`; the page reports first and offers deletion as a second click. `npm run check` green (554 tests); `npm run e2e` reports that nothing is prunable for a project with no generated assets.*
