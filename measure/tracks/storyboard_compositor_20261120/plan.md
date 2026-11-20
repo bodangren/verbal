@@ -209,11 +209,27 @@ npx vitest run packages/cleanup apps/web/components/cleanup-review.test.tsx
 
 ## Phase 7: Feedback, patches, and versioning
 
-- [ ] Red: chat message → patch conversion is a pure function with recorded fixtures; malformed output is rejected, never applied.
-- [ ] Red: anchored comments round-trip through the project file.
-- [ ] Green: diff view with per-hunk accept/reject.
-- [ ] Green: version history with revert.
-- [ ] Commit: `feat(ui): Add storyboard feedback and version history`
+- [x] Red: chat message → patch conversion is a pure function with fixtures; malformed output is rejected, never applied.
+- [x] Red: anchored comments round-trip through the project file.
+- [x] Green: diff view with per-hunk accept/reject.
+- [x] Green: version history with revert.
+- [x] Commit: `feat(ui): Add storyboard feedback and version history` — `6dd4b2d`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/storyboard apps/web/components/patch-review.test.tsx
+```
+
+**Red result:** 4 files failed on missing modules.
+
+**Green result:** 55 storyboard tests + 6 component tests; full suite 311/311; `npm run check` exits 0.
+- `parsePatchResponse` accepts only the patch vocabulary (`add`, `remove`, `move`, `replace-asset`, `update-props`). Invalid JSON, a missing `patches` array, an unknown type, an `add` without a valid scene, and a non-integer index are all rejected before anything is applied.
+- `applyAcceptedPatches` applies a user-chosen subset, so per-hunk accept/reject is a data operation rather than UI state.
+- `describePatch` gives each hunk a stable one-line label for the review surface.
+- `parseComments`/`serializeComments` round-trip anchored comments (`time`, `scene`, `word`) with duplicate-id, unknown-kind, negative-time, and empty-text validation.
+- `createStoryboardHistory` is append-only: reverting to version 1 appends a new version carrying the old document, so every decision stays auditable and a revert can itself be reverted.
+- The storyboard package now exposes a browser-safe root and puts `node:crypto` hashing behind `@verbal/storyboard/hash`; compose and cleanup imports were updated accordingly.
+- `PatchReview` lists each hunk with a checkbox, a live selection count, and Apply/Discard actions.
 
 ---
 
