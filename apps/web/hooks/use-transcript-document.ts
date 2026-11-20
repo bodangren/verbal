@@ -6,6 +6,7 @@ import {
   createHistory,
   redo as historyRedo,
   insertSilence as insertTranscriptSilence,
+  moveRange as moveTranscriptRange,
   removeRange as removeTranscriptRange,
   splitSegment as splitTranscriptSegment,
   undo as historyUndo,
@@ -35,6 +36,8 @@ export type TranscriptDocumentController = {
   insertSilence: (afterWordId: string, seconds: number) => void;
   /** Starts a new segment at a word. */
   splitSegment: (beforeWordId: string) => void;
+  /** Moves an inclusive word block so it starts at targetIndex. */
+  moveRange: (fromIndex: number, toIndex: number, targetIndex: number) => void;
   undo: () => void;
   redo: () => void;
   /** Records that the current document has been written to disk. */
@@ -126,6 +129,15 @@ export function useTranscriptDocument(
     [applyStructuralEdit],
   );
 
+  const moveRange = useCallback(
+    (fromIndex: number, toIndex: number, targetIndex: number) => {
+      applyStructuralEdit((document) =>
+        moveTranscriptRange(document, fromIndex, toIndex, targetIndex),
+      );
+    },
+    [applyStructuralEdit],
+  );
+
   const splitSegment = useCallback(
     (beforeWordId: string) => {
       applyStructuralEdit((document) => splitTranscriptSegment(document, beforeWordId));
@@ -180,11 +192,23 @@ export function useTranscriptDocument(
       removeRanges,
       insertSilence,
       splitSegment,
+      moveRange,
       undo,
       redo,
       markSaved,
       reset,
     }),
-    [state, removeRange, removeRanges, insertSilence, splitSegment, undo, redo, markSaved, reset],
+    [
+      state,
+      removeRange,
+      removeRanges,
+      insertSilence,
+      splitSegment,
+      moveRange,
+      undo,
+      redo,
+      markSaved,
+      reset,
+    ],
   );
 }

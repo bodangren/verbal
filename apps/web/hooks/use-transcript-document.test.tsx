@@ -170,6 +170,20 @@ describe("useTranscriptDocument", () => {
     expect(result.current.document?.segments.length).toBe(before);
   });
 
+  it("reorders words as one undoable edit", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    act(() => result.current.moveRange(0, 0, 2));
+
+    const order = result.current.document?.words.map((word) => word.text) ?? [];
+    expect(order.slice(0, 3)).toEqual(["cut", "this", "keep"]);
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.document?.words[0]?.text).toBe("keep");
+    expect(result.current.canUndo).toBe(false);
+  });
+
   it("ignores structural edits while the document is empty", () => {
     const { result } = renderHook(() => useTranscriptDocument(null));
 

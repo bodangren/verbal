@@ -30,8 +30,8 @@ npx vitest run packages/core/src/transcript-reorder.test.ts
 
 ## Phase 2: Editing hook
 
-- [ ] Add `moveRange(fromIndex, toIndex, targetIndex)` to `useTranscriptDocument` as one history entry.
-- [ ] Commit: `feat(ui): Reorder the document through the hook`
+- [x] Add `moveRange(fromIndex, toIndex, targetIndex)` to `useTranscriptDocument` as one history entry.
+- [x] Commit: `feat(ui): Reorder the document through the hook`
 
 ---
 
