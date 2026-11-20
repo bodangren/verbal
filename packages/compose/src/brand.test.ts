@@ -1,0 +1,71 @@
+import { describe, expect, it } from "vitest";
+import { audioFromBrand, BrandError, validateBrandKit } from "./brand";
+
+const KIT = {
+  title: { text: "Verbal", subtitle: "Explained" },
+  outro: { text: "Thanks for watching" },
+  contact: { name: "Daniel", handle: "@daniel" },
+  lowerThird: { name: "Daniel", role: "Host" },
+  loudnessLufs: -16,
+};
+
+describe("validateBrandKit", () => {
+  it("accepts a complete kit", () => {
+    expect(validateBrandKit(KIT)).toEqual(KIT);
+  });
+
+  it("accepts music", () => {
+    const kit = { ...KIT, music: { assetPath: "assets/music.mp3", volume: 0.25 } };
+
+    expect(validateBrandKit(kit)).toEqual(kit);
+  });
+
+  it("rejects a missing title text", () => {
+    expect(() => validateBrandKit({ ...KIT, title: {} })).toThrow(BrandError);
+  });
+
+  it("rejects a missing outro text", () => {
+    expect(() => validateBrandKit({ ...KIT, outro: { text: "  " } })).toThrow(BrandError);
+  });
+
+  it("rejects a missing contact name", () => {
+    expect(() => validateBrandKit({ ...KIT, contact: {} })).toThrow(/contact/i);
+  });
+
+  it("rejects a missing lower-third name", () => {
+    expect(() => validateBrandKit({ ...KIT, lowerThird: {} })).toThrow(/lower/i);
+  });
+
+  it("rejects an out-of-range loudness target", () => {
+    expect(() => validateBrandKit({ ...KIT, loudnessLufs: 3 })).toThrow(/loudness/i);
+  });
+
+  it("rejects an out-of-range music volume", () => {
+    expect(() =>
+      validateBrandKit({ ...KIT, music: { assetPath: "m.mp3", volume: 2 } }),
+    ).toThrow(/volume/i);
+  });
+
+  it("rejects a non-object kit", () => {
+    expect(() => validateBrandKit(null)).toThrow(BrandError);
+  });
+});
+
+describe("audioFromBrand", () => {
+  it("maps music and the loudness target", () => {
+    const kit = validateBrandKit({
+      ...KIT,
+      music: { assetPath: "assets/music.mp3", volume: 0.3 },
+    });
+
+    expect(audioFromBrand(kit)).toEqual({
+      musicInput: "assets/music.mp3",
+      musicVolume: 0.3,
+      loudnessLufs: -16,
+    });
+  });
+
+  it("omits music when the kit has none", () => {
+    expect(audioFromBrand(validateBrandKit(KIT))).toEqual({ loudnessLufs: -16 });
+  });
+});
