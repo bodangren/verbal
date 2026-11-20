@@ -23,6 +23,9 @@
 - **Address assets by content hash.** Identical bytes are a no-op, so a scene can never silently point at different content, and deduplication is free.
 - **Asset-backed scenes skip the renderer.** A generated image composites directly with `-loop 1`; it should never enter the Remotion cache, which is keyed to templates and props.
 - **Allow pending generated scenes.** A `generated-image` scene is valid before it has an asset; only `static` requires one. Otherwise generation could never create the first asset for its own scene.
+- **Long generation belongs in the job registry.** An HTTP request cannot outlive a two-minute model call; generation runs as a job, reports progress, and aborts through `DELETE /api/jobs/[id]`.
+- **Placeholders must be explicit.** A pending generated scene plans as `placeholder`, never `asset`, so the preview panel tells the truth before anything exists.
+- **Video assets are trimmed, images loop.** The step adapter needs `assetKind`; looping a clip or trimming a still are both wrong.
 
 ## Remotion / storyboard pipeline
 

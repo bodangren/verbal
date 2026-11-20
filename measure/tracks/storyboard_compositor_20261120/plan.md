@@ -328,7 +328,23 @@ npx vitest run packages/ai/src/images.test.ts packages/compose/src/assets.test.t
 
 ## Phase 11: Generated video (Stage 3)
 
-- [ ] Implement queued, cancellable clip generation with placeholders.
-- [ ] Wire `generated-video` scenes through the existing renderer unchanged.
-- [ ] Define retain/prune policy for generated assets.
-- [ ] Detailed task list when Phase 10 closes.
+- [x] Video provider in `packages/ai` with a local cost estimate (per-second with a minimum charge).
+- [x] Generation runs as a `generate-video` job: progress reported, failures recorded, and `DELETE /api/jobs/[id]` aborts the in-flight request.
+- [x] Clips are stored through the same content-addressed asset store as images.
+- [x] Pending generated scenes plan as `placeholder`; once an asset exists they plan as `asset`.
+- [x] `generated-video` scenes composite the stored clip with the step adapter — trimmed, not looped.
+- [ ] Retain/prune policy for generated assets — **deferred.** The asset directory grows monotonically; logged in `tech-debt.md`.
+- [x] Commit: `feat(video): Add generated video clips as content-addressed assets` — `dee0c87`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/ai/src/videos.test.ts packages/compose/src/preview.test.ts packages/compose/src/render-step.test.ts apps/web/server/video-api.test.ts
+```
+
+**Red result:** 9 assertions failed across 4 files.
+
+**Green result:** 35 phase tests; full suite 418/418; `npm run check` exits 0.
+- `createOpenAiVideoProvider` estimates locally (`max(minimum, seconds × rate)`) and rejects a duration outside 1..60 before any call.
+- `runVideoJob` owns the lifecycle: start → progress → generate → store asset → complete; failure fails the job, cancellation cancels it.
+- The dry run creates no job; the page keeps **Generate video** disabled until an estimate exists.
+- **Live verification:** fake video endpoint → estimate 0.40 → job done → asset on disk → scene updated → export produced a 7.0 s file with the clip trimmed into a 1 s scene.
