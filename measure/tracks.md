@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Playback and Sync** [created: 2026-11-21]
+  *Focus: Serve project media over HTTP with byte ranges, render the playback screen, and keep the transcript highlighted and click-to-seek in sync.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/playback_sync_20261121](./tracks/playback_sync_20261121/)*
+
 - [x] **Track: Transcript Editing** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Delete words and shift-click ranges from the transcript editor, undo/redo, and save the edited document with a dirty indicator.*
   *Status: Complete. Selection, keyboard/mouse delete, undo/redo with Ctrl/Cmd shortcuts, explicit save through `PUT /api/transcript`, and reload persistence. `npm run check` green (425 tests); `npm run e2e` deletes, undoes, redoes, saves, reloads, and confirms the struck-through words.*
