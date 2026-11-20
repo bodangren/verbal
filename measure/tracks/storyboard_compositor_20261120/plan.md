@@ -287,6 +287,19 @@ npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.
 
 ---
 
+## Phase 9c: Green-screen capture (FR1)
+
+- [x] `buildCaptureArgs` builds V4L2 + PulseAudio argv; the source is written **un-keyed** so a take can be re-keyed later.
+- [x] The capture job runs through the job registry, reports progress, and removes a partial file on failure or cancellation.
+- [x] `POST /api/capture` records into `assets/capture-*.mp4` and records it as project media only on success.
+- [x] "Stop recording" aborts the process through a capture abort registry, wired into `DELETE /api/jobs/[id]`.
+- [x] `assessKeyQuality` judges the background from sampled pixels (green dominance + uniformity); the page samples the camera canvas once a second.
+- [x] `CapturePanel` shows the controls and a key-quality warning (`good` / `warning` / `poor`).
+- [x] Live failure-path verification: no camera → job failed with an FFmpeg error, **no partial file**, project media unchanged, page renders the capture section.
+- [ ] Live success-path verification: **not possible here** — this machine has no V4L2 camera. The argv is unit-tested and the failure path is live-tested.
+
+---
+
 ## Phase 10: Generated images (Stage 2)
 
 - [ ] Define the asset provider interface inside `packages/ai`.

@@ -16,6 +16,9 @@
 - **npm workspaces need `workspaces` in `package.json` and `"*"` ranges** — npm does not accept pnpm's `workspace:*` protocol.
 - **A missing-module failure is a valid Red phase in TypeScript**, but pair it with a compile-time interface assertion (`const _x: SomeInterface = fake`) so a later refactor cannot quietly break the contract.
 - **vinext parses JSON bodies before the handler runs.** Reading `req` as a stream then yields nothing, so every handler saw an empty body and returned 400. Prefer `(req as { body?: unknown }).body` and fall back to the stream only when it is absent.
+- **Read browser-only capabilities with `useSyncExternalStore`.** A synchronous `setState` inside `useEffect` trips the React Compiler lint rule and creates a hydration mismatch; `useSyncExternalStore(subscribe, clientSnapshot, () => false)` is both lint-clean and hydration-safe.
+- **Record un-keyed.** Capture writes the raw source; keying happens at composite time so a take can be re-keyed with different settings without re-recording.
+- **A failed capture must leave no partial file.** Unlink on every error path, including cancellation, or a broken take will look like a finished one.
 
 ## Remotion / storyboard pipeline
 
