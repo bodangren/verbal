@@ -302,11 +302,27 @@ npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.
 
 ## Phase 10: Generated images (Stage 2)
 
-- [ ] Define the asset provider interface inside `packages/ai`.
-- [ ] Implement content-addressed image assets with provenance.
-- [ ] Wire `generated-image` scenes through the existing renderer unchanged.
-- [ ] Add cost display and approval before generation.
-- [ ] Detailed task list when Phase 9 closes.
+- [x] Define the image asset provider interface inside `packages/ai` (`ImageProvider` with a local `estimateCost`).
+- [x] Implement content-addressed image assets with provenance (`sha256` ids, sidecar metadata).
+- [x] Wire `generated-image` scenes through the existing step adapter: an asset-backed scene composites the stored image and never starts the renderer.
+- [x] Add cost display and approval before generation: a dry run returns the price and touches nothing; the page keeps **Generate** disabled until an estimate exists.
+- [x] Commit: `feat(images): Add generated image assets with cost-gated generation` — `eb2b815`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/ai/src/images.test.ts packages/compose/src/assets.test.ts packages/compose/src/render-step.test.ts apps/web/server/image-api.test.ts apps/web/server/storyboard-api.test.ts
+```
+
+**Red result:** 10 assertions failed across 5 files on missing modules and unsupported asset paths.
+
+**Green result:** 35 phase tests; full suite 403/403; `npm run check` exits 0.
+- `createOpenAiImageProvider` posts to `/images/generations`, decodes `b64_json`, and rejects empty prompts before any network call. `estimateCost` is local and defaults to $0.04.
+- `createFileAssetStore` addresses assets by the SHA-256 of their bytes; writing the same image twice is a no-op, and metadata (prompt, model, source, timestamp) travels beside the blob.
+- `createStepRenderer` composites an `assetPath` scene directly with `-loop 1`, skipping Remotion entirely.
+- `POST /api/storyboard/generate-image` with `dryRun` returns the price; otherwise it generates, stores the asset, and writes the new `assetId` into `storyboard.json`.
+- `startStoryboardExport` now includes `generated-image` scenes from `assets/generated/<assetId>`.
+- A `generated-image` scene is valid before it has an asset; only `static` requires one.
+- **Live verification:** a fake OpenAI-compatible server → estimate 0.04 → generate (asset on disk, scene updated) → import → export produced a 7.0 s file.
 
 ---
 

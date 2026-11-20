@@ -19,6 +19,10 @@
 - **Read browser-only capabilities with `useSyncExternalStore`.** A synchronous `setState` inside `useEffect` trips the React Compiler lint rule and creates a hydration mismatch; `useSyncExternalStore(subscribe, clientSnapshot, () => false)` is both lint-clean and hydration-safe.
 - **Record un-keyed.** Capture writes the raw source; keying happens at composite time so a take can be re-keyed with different settings without re-recording.
 - **A failed capture must leave no partial file.** Unlink on every error path, including cancellation, or a broken take will look like a finished one.
+- **Price before you generate.** `estimateCost` must be local (no network), and the UI keeps generation disabled until an estimate exists. An estimate that costs money to obtain is not an estimate.
+- **Address assets by content hash.** Identical bytes are a no-op, so a scene can never silently point at different content, and deduplication is free.
+- **Asset-backed scenes skip the renderer.** A generated image composites directly with `-loop 1`; it should never enter the Remotion cache, which is keyed to templates and props.
+- **Allow pending generated scenes.** A `generated-image` scene is valid before it has an asset; only `static` requires one. Otherwise generation could never create the first asset for its own scene.
 
 ## Remotion / storyboard pipeline
 

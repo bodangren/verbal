@@ -13,7 +13,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Storyboard Compositor** [created: 2026-11-20]
   *Focus: Green-screen capture, reviewed cleanup, storyboard IR, Remotion motion slides, composited preview, chat-driven patch feedback, brand-kit export. Asset ladder: motion slides → generated images → generated video.*
-  *Status: First-release features complete (Phases 0–9c) — project/import/transcript/storyboard/preview/patch/export wired in one page and verified over live HTTP, plus green-screen capture with key-quality feedback. Remaining: hardware success-path check for capture, a browser interaction walkthrough, and the Phase 10/11 asset ladder.*
+  *Status: Stage 2 complete (Phases 0–10) — first-release features plus cost-gated generated images with content-addressed assets, verified live against a fake image server and a 7 s export. Remaining: Phase 11 generated video, a hardware capture check, and a browser walkthrough.*
   *Link: [./tracks/storyboard_compositor_20261120](./tracks/storyboard_compositor_20261120/)*
 
 ---
