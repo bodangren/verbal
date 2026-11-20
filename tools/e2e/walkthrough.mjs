@@ -431,6 +431,14 @@ try {
   await page.getByText(/Estimated clip cost: \$0\.40/).waitFor();
   console.log("video: cost estimated before generation");
 
+  // The export preset is a visible choice, not a hard-coded codec bundle.
+  const preset = page.getByLabel("Preset");
+  assert((await preset.inputValue()) === "web-h264", "the web preset should be the default");
+  await preset.selectOption("webm-vp9");
+  assert((await preset.inputValue()) === "webm-vp9", "the preset choice should stick");
+  await preset.selectOption("web-h264");
+  console.log("export: selected a preset");
+
   // Transcription runs on a second project, so the hand-written fixture used by
   // the earlier checks stays untouched.
   const transcribedRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-transcribed-"));

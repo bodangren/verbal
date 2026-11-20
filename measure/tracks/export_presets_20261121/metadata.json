@@ -1,8 +1,9 @@
 {
   "id": "export_presets_20261121",
   "title": "Export Presets",
-  "status": "in_progress",
+  "status": "complete",
   "priority": "medium",
   "type": "feature",
-  "created": "2026-11-21"
+  "created": "2026-11-21",
+  "completed": "2026-11-21"
 }

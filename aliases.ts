@@ -13,6 +13,7 @@ export const workspaceAliases: Record<string, string> = {
   "@verbal/compose": fromRoot("./packages/compose/src/index.ts"),
   "@verbal/core": fromRoot("./packages/core/src/index.ts"),
   "@verbal/media/key-quality": fromRoot("./packages/media/src/key-quality.ts"),
+  "@verbal/media/presets": fromRoot("./packages/media/src/presets.ts"),
   "@verbal/media": fromRoot("./packages/media/src/index.ts"),
   "@verbal/slides": fromRoot("./packages/slides/src/index.ts"),
   "@verbal/storyboard/hash": fromRoot("./packages/storyboard/src/hash.ts"),

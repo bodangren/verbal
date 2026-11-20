@@ -1,6 +1,6 @@
 # Plan: Export Presets
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Named export bundles, threaded from the UI to FFmpeg.
 
@@ -44,5 +44,5 @@ npx vitest run packages/media/src/presets.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Assert the selector in the walkthrough; run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover the export preset selector`
+- [x] Assert the selector in the walkthrough; run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover the export preset selector`

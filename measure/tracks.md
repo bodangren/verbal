@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Export Presets** [created: 2026-11-21]
+- [x] **Track: Export Presets** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Name the export codec bundles, thread the choice through POST /api/export, and offer a selector on the page.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `EXPORT_PRESETS` names web H.264, WebM VP9, archive H.264, and podcast audio as codec bundles plus a container; an unknown id falls back to the default and the extension is forced so FFmpeg picks the right muxer. The route applies the preset's codecs and echoes the id; the Export panel offers a selector. `npm run check` green (540 tests); `npm run e2e` selects a preset in Chromium.*
   *Link: [./tracks/export_presets_20261121](./tracks/export_presets_20261121/)*
 
 - [x] **Track: Insert Silence and Split Segment** [created: 2026-11-21] [completed: 2026-11-21]
