@@ -37,8 +37,8 @@ npx vitest run packages/compose/src/prune.test.ts
 
 ## Phase 3: Page
 
-- [ ] Prune assets action with a report-then-confirm step.
-- [ ] Commit: `feat(ui): Prune generated assets from the page`
+- [x] Prune assets action with a report-then-confirm step.
+- [x] Commit: `feat(ui): Prune generated assets from the page`
 
 ---
 

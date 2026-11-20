@@ -93,6 +93,7 @@ export default function Home() {
   const [importPath, setImportPath] = useState("");
   const [outputPath, setOutputPath] = useState("");
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
+  const [prunable, setPrunable] = useState<string[] | null>(null);
   const [brand, setBrand] = useState({
     title: "Untitled",
     outro: "Thanks for watching",
@@ -204,6 +205,31 @@ export default function Home() {
     },
     onError: setError,
   });
+
+  function checkPrunableAssets() {
+    return guard(async () => {
+      const result = await postJson<{ plan: { prune: string[] } }>("/api/storyboard/prune", {
+        root,
+      });
+      setPrunable(result.plan.prune);
+      setMessage(
+        result.plan.prune.length === 0
+          ? "No generated assets are prunable"
+          : `${result.plan.prune.length} generated assets are prunable`,
+      );
+    });
+  }
+
+  function deletePrunableAssets() {
+    return guard(async () => {
+      const result = await postJson<{ deleted: string[] }>("/api/storyboard/prune", {
+        root,
+        apply: true,
+      });
+      setPrunable(null);
+      setMessage(`Deleted ${result.deleted.length} generated assets`);
+    });
+  }
 
   function saveTranscriptDocument() {
     if (transcript === null) {
@@ -862,6 +888,17 @@ export default function Home() {
           <button type="button" onClick={() => preview("full")} disabled={project === null}>
             Full preview
           </button>
+        </div>
+
+        <div className="row">
+          <button type="button" onClick={checkPrunableAssets} disabled={project === null}>
+            Check prunable assets
+          </button>
+          {prunable !== null && prunable.length > 0 && (
+            <button type="button" onClick={deletePrunableAssets}>
+              Delete {prunable.length} assets
+            </button>
+          )}
         </div>
 
         <div className="row">
