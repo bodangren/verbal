@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Reorder Text** [created: 2026-11-21]
+- [x] **Track: Reorder Text** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Move an inclusive word block, keep segments consistent, and expose the action on the selected range as one undo step.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `moveRange` moves a clamped block (a target at or inside the block is a no-op), gives moved words to the segment they land beside, drops emptied segments, and leaves ids, texts, and timings untouched. It is exposed on the editing hook as one undo step and as Move earlier/Move later on the selection. `npm run check` green (567 tests); `npm run e2e` moves a word, checks the order, and undoes it.*
   *Link: [./tracks/reorder_text_20261121](./tracks/reorder_text_20261121/)*
 
 - [x] **Track: Asset Pruning** [created: 2026-11-21] [completed: 2026-11-21]

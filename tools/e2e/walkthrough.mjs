@@ -289,6 +289,26 @@ try {
   );
   console.log("structure: split a segment, inserted silence, and undid both");
 
+  // Reorder: move a word earlier, check the order, then undo it.
+  const words = () => editorPanel.locator(".transcript__word").allTextContents();
+  await editorPanel.getByRole("button", { name: "world" }).click();
+  await editorPanel.getByRole("button", { name: "Move earlier" }).click();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[aria-label="Transcript"] .transcript__word')]
+        .map((word) => word.textContent)
+        .join(" ") === "hello world um",
+  );
+  await editorPanel.getByRole("button", { name: "Undo" }).click();
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[aria-label="Transcript"] .transcript__word')]
+        .map((word) => word.textContent)
+        .join(" ") === "hello um world",
+  );
+  assert((await words()).join(" ") === "hello um world", "undo should restore the order");
+  console.log("reorder: moved a word and undid it");
+
   if (mediaImported) {
     const playback = page.getByRole("region", { name: "Playback", exact: true });
     await playback.waitFor();

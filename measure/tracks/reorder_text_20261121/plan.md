@@ -44,6 +44,6 @@ npx vitest run packages/core/src/transcript-reorder.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e`: move a word, assert the new order, undo it.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover reordering`
+- [x] Extend `npm run e2e`: move a word, assert the new order, undo it.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover reordering`
