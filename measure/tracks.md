@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Transcript Search and Navigation** [created: 2026-11-21]
+  *Focus: Search the transcript for phrases, highlight matches in the editor, and step between them from the page.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/transcript_search_20261121](./tracks/transcript_search_20261121/)*
+
 - [x] **Track: Freeze Master and Cut List** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Freeze the cleaned master from the document's removals, expose it over HTTP, and wire the review's Freeze master control.*
   *Status: Complete. `freezeMaster` now honours `removedWordIds` already saved (it used to resurrect deleted words); `POST /api/cleanup/freeze` returns the cut list, anchors, and fingerprint and persists them in `edit.json`; the review's Freeze master control reports duration, anchor count, and fingerprint. `npm run check` green (500 tests); `npm run e2e` freezes the project in Chromium.*
