@@ -11,11 +11,11 @@
 ## Phase 1: Proposal detector
 
 ### Red
-- [ ] Failing tests: a filler word becomes a proposal with category `filler`, confidence `0.95`, and a reason naming the word.
-- [ ] Failing tests: a stutter ("I I I") proposes the repeats, not the first word.
-- [ ] Failing tests: a repeated bigram is proposed once as `repetition`.
-- [ ] Failing tests: proposals are ordered by index, a word is proposed at most once, and already-removed words are skipped.
-- [ ] Failing tests: a custom filler list replaces the default.
+- [x] Failing tests: a filler word becomes a proposal with category `filler`, confidence `0.95`, and a reason naming the word.
+- [x] Failing tests: a stutter ("I I I") proposes the repeats, not the first word.
+- [x] Failing tests: a repeated bigram is proposed once as `repetition`.
+- [x] Failing tests: proposals are ordered by index, a word is proposed at most once, and already-removed words are skipped.
+- [x] Failing tests: a custom filler list replaces the default.
 
 **Targeted Red command:**
 ```bash
@@ -23,12 +23,12 @@ npx vitest run packages/cleanup/src/detect.test.ts
 ```
 
 ### Green
-- [ ] Implement `detectProposals` and the default filler list in `packages/cleanup/src/detect.ts`.
-- [ ] Export it from the package root (browser-safe).
-- [ ] Make tests pass.
+- [x] Implement `detectProposals` and the default filler list in `packages/cleanup/src/detect.ts`.
+- [x] Export it from the package root (browser-safe).
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(cleanup): Detect filler words, stutters, and repetitions`
+- [x] Commit: `feat(cleanup): Detect filler words, stutters, and repetitions`
 
 ---
 
