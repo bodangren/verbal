@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Transcript Search and Navigation** [created: 2026-11-21]
+- [x] **Track: Transcript Search and Navigation** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Search the transcript for phrases, highlight matches in the editor, and step between them from the page.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `searchTranscript` matches phrases across word boundaries, ignoring case and punctuation, and treats removed words as hard breaks; the editor marks matches with `data-match`; the panel has a Find field, match count, and wrapping Previous/Next that selects the match. `npm run check` green (509 tests); `npm run e2e` finds a word, sees it highlighted, and steps to it.*
   *Link: [./tracks/transcript_search_20261121](./tracks/transcript_search_20261121/)*
 
 - [x] **Track: Freeze Master and Cut List** [created: 2026-11-21] [completed: 2026-11-21]
