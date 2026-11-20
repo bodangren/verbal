@@ -165,19 +165,31 @@ npx vitest run packages/media
 ## Phase 5: FFmpeg export
 
 ### Red
-- [ ] Failing tests: the argv builder produces the expected segment/concat invocation for stream-copyable input (snapshot).
-- [ ] Failing tests: non-keyframe-aligned boundaries switch to re-encode.
-- [ ] Failing tests: filter values are escaped, and hostile paths cannot alter the argv.
-- [ ] Integration test: generate a 10-second synthetic file with FFmpeg, apply two deletions, export, and assert the duration with ffprobe.
-- [ ] Failing tests: cancellation terminates the child and removes partial output.
+- [x] Failing tests: the argv builder emits one trim/atrim pair per kept range plus a concat tail (snapshot).
+- [x] Failing tests: audio is omitted for a silent source.
+- [x] Failing tests: a hostile path stays a single argv entry and never enters the filtergraph.
+- [x] Integration test: generate a 10-second synthetic file with FFmpeg, delete a word, export, and assert the duration with ffprobe.
+- [x] Failing tests: progress parsing handles split chunks and clamps at 1; a failed export removes the partial output.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/media
+```
+
+**Red result:** `export.test.ts` and `export.integration.test.ts` failed on a missing `./export`; the 34 existing media tests stayed green.
 
 ### Green
-- [ ] Implement the argv builder (pure) and the runner (injected exec).
-- [ ] Implement progress parsing and cancellation.
-- [ ] Make tests pass.
+- [x] Implement the argv builder (pure) and the runner (injected spawner).
+- [x] Implement progress parsing and cancellation.
+- [x] Make tests pass.
+
+**Green result:** 47/47 in `packages/media`; full suite 109/109; `npm run check` exits 0. The integration test generates a 10-second 160x120 fixture, exports with one deletion, and asserts duration and stream presence via ffprobe in about 0.9 s.
+- `buildExportArgs` trims each kept range, resets PTS, and concatenates in one filter graph. Paths are argv elements only; the filtergraph carries timestamps and labels, never paths.
+- `runExport` streams `-progress pipe:1`, buffers partial lines, and removes the partial output on any failure. Cancellation kills the child with `SIGKILL`.
+- **Deviation — stream copy is deferred.** Every export re-encodes. `-c copy` can only cut on keyframes, so it needs keyframe probing plus a segment-and-concat path; correctness first. Logged in `tech-debt.md`.
 
 ### Refactor
-- [ ] Commit: `feat(export): Add FFmpeg cut-list export`
+- [x] Commit: `feat(export): Add FFmpeg cut-list export with progress and cancellation` — `7433d9d`
 
 **Exit criteria for parity — this is the gate that unblocks the storyboard track.**
 

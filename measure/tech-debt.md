@@ -1,5 +1,13 @@
 # Tech Debt
 
+> The Go/GTK4 sections below describe the retired implementation (see `tech-stack.md`). They are kept as a record of what was learned; they are not open work.
+
+## TypeScript Implementation (current)
+
+### Low Severity
+
+- **Export always re-encodes** — `buildExportArgs` trims and concatenates every kept range in one filter graph. That is frame-exact, but it re-encodes the whole output. Stream copy (`-c copy`) can only cut on keyframes, so it needs keyframe probing (`ffprobe -skip_frame nokey`) plus a segment-and-concat path. Deferred until export speed matters; correctness first. [severity: low, tracked: rewrite_ts_vinext_20261120]
+
 ## Go + GTK4 Implementation (Current)
 
 ### High Severity
