@@ -1,6 +1,6 @@
 # Plan: Playback and Sync
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Serve project media, render the playback screen, sync the transcript.
 
@@ -57,6 +57,6 @@ npx vitest run packages/core/src/byte-range.test.ts packages/core/src/media-path
 
 ## Phase 4: Browser verification
 
-- [ ] Generate a short real clip, import it, and extend `npm run e2e`: play, assert the active word advances, click a word to seek, and assert the seek position.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover playback and sync`
+- [x] Generate a short real clip, import it, and extend `npm run e2e`: play, assert the active word advances, click a word to seek, and assert the seek position.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover playback and sync`

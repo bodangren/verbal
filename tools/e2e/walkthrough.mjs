@@ -80,8 +80,8 @@ try {
     document: {
       schemaVersion: 1,
       words: [
-        { id: "w0", text: "hello", start: 0, end: 0.5 },
-        { id: "w1", text: "world", start: 0.5, end: 1 },
+        { id: "w0", text: "hello", start: 0, end: 1 },
+        { id: "w1", text: "world", start: 1, end: 2 },
       ],
       segments: [{ id: "s0", wordIds: ["w0", "w1"] }],
       removedWordIds: [],
@@ -117,6 +117,39 @@ try {
   });
   console.log("fixture: project + transcript + storyboard");
 
+  // A real clip, so playback is exercised against real bytes and real ranges.
+  const clips = await mkdtemp(path.join(os.tmpdir(), "verbal-clip-"));
+  const clipPath = path.join(clips, "take.webm");
+  let mediaImported = false;
+
+  try {
+    execFileSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-f", "lavfi",
+        "-i", "testsrc=size=320x180:rate=30",
+        "-f", "lavfi",
+        "-i", "sine=frequency=440",
+        "-t", "2",
+        "-c:v", "libvpx-vp9",
+        "-b:v", "200k",
+        "-c:a", "libopus",
+        clipPath,
+      ],
+      { stdio: "ignore" },
+    );
+    await api("POST", "/api/media/import", {
+      projectRoot,
+      sourcePath: clipPath,
+      mode: "copy",
+    });
+    mediaImported = true;
+    console.log("fixture: imported a 2s clip");
+  } catch {
+    console.log("fixture: ffmpeg unavailable, playback checks skipped");
+  }
+
   browser = await chromium.launch({ executablePath: CHROME, headless: true });
   const page = await browser.newPage();
 
@@ -149,47 +182,79 @@ try {
   await page.getByText("Opened Walkthrough").waitFor();
   console.log("project: opened from the UI");
 
-  await page.getByRole("region", { name: "Transcript editor" }).waitFor();
-  await page.getByRole("button", { name: "hello" }).waitFor();
+  const editorPanel = page.getByRole("region", { name: "Transcript editor" });
+  await editorPanel.waitFor();
+  await editorPanel.getByRole("button", { name: "hello" }).waitFor();
   console.log("transcript: rendered");
 
+  if (mediaImported) {
+    const playback = page.getByRole("region", { name: "Playback", exact: true });
+    await playback.waitFor();
+
+    await page.waitForFunction(
+      () => {
+        const media = document.querySelector("video[aria-label='Media preview']");
+        return media !== null && media.readyState >= 1 && media.duration > 0;
+      },
+      null,
+      { timeout: 15000 },
+    );
+
+    const video = page.getByLabel("Media preview");
+    const duration = await video.evaluate((media) => media.duration);
+    assert(duration > 1.5, `expected a ~2s clip, got ${duration}s`);
+
+    await playback.getByRole("button", { name: "Play" }).click();
+    await page.locator('[data-active="true"]').first().waitFor({ timeout: 5000 });
+    console.log("playback: the active word follows playback");
+
+    await playback.getByRole("button", { name: "world" }).click();
+    const seeked = await video.evaluate((media) => media.currentTime);
+    assert(seeked >= 0.7 && seeked <= 1.6, `clicking a word should seek to ~1s, got ${seeked}s`);
+    await playback.getByRole("button", { name: "Pause" }).click();
+    console.log("playback: click-to-seek");
+  }
+
   // Select a range, delete it with the keyboard, undo, redo, and save.
+  // The playback panel renders its own transcript, so editor steps are scoped.
   const transcriptRegion = page.getByRole("region", { name: "Transcript", exact: true });
   const dirtyStatus = page.getByRole("status");
 
-  await page.getByRole("button", { name: "hello" }).click();
-  await page.getByRole("button", { name: "world" }).click({ modifiers: ["Shift"] });
+  await editorPanel.getByRole("button", { name: "hello" }).click();
+  await editorPanel.getByRole("button", { name: "world" }).click({ modifiers: ["Shift"] });
   assert(
-    (await page.getByRole("button", { name: "world" }).getAttribute("data-selected")) === "true",
+    (await editorPanel
+      .getByRole("button", { name: "world" })
+      .getAttribute("data-selected")) === "true",
     "shift-click should mark the range as selected",
   );
 
   await transcriptRegion.press("Delete");
   await page.getByText("Unsaved changes").waitFor();
   assert(
-    await page.getByRole("button", { name: "world" }).isDisabled(),
+    await editorPanel.getByRole("button", { name: "world" }).isDisabled(),
     "the deleted word should stay in the document, disabled",
   );
   console.log("transcript: deleted the selection with the keyboard");
 
-  await page.getByRole("button", { name: "Undo" }).click();
+  await editorPanel.getByRole("button", { name: "Undo" }).click();
   assert(
     (await dirtyStatus.textContent()) === "Saved",
     "undo back to the loaded document should be clean",
   );
   assert(
-    !(await page.getByRole("button", { name: "world" }).isDisabled()),
+    !(await editorPanel.getByRole("button", { name: "world" }).isDisabled()),
     "undo should restore the deleted word",
   );
 
-  await page.getByRole("button", { name: "Redo" }).click();
+  await editorPanel.getByRole("button", { name: "Redo" }).click();
   assert(
     (await dirtyStatus.textContent()) === "Unsaved changes",
     "redo should re-apply the deletion",
   );
   console.log("transcript: undo and redo");
 
-  await page.getByRole("button", { name: "Save transcript" }).click();
+  await editorPanel.getByRole("button", { name: "Save transcript" }).click();
   await page.getByText("Transcript saved").waitFor();
   assert((await dirtyStatus.textContent()) === "Saved", "saving should clear the dirty state");
 
@@ -198,7 +263,7 @@ try {
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Walkthrough").waitFor();
   assert(
-    (await page
+    (await editorPanel
       .getByRole("button", { name: "world" })
       .getAttribute("data-removed")) === "true",
     "the removal should survive a reload",

@@ -1,8 +1,9 @@
 {
   "id": "playback_sync_20261121",
   "title": "Playback and Sync",
-  "status": "in_progress",
+  "status": "complete",
   "priority": "high",
   "type": "feature",
-  "created": "2026-11-21"
+  "created": "2026-11-21",
+  "completed": "2026-11-21"
 }
