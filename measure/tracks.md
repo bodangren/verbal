@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Batch Transcription** [created: 2026-11-21]
+  *Focus: Plan which projects still need transcribing, run them one at a time, and report each outcome in the UI.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/batch_transcription_20261121](./tracks/batch_transcription_20261121/)*
+
 - [x] **Track: Timeline Waveform** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Render a cached waveform from showwavespic, show it beside the playback video, and seek where it is clicked.*
   *Status: Complete. `buildWaveformArgs` builds the showwavespic argv with clamped size and a validated colour; `GET /api/media/waveform` caches the PNG keyed on source path, size, mtime, and options; the playback panel shows the waveform and seeks proportionally on click, with the arithmetic in a pure helper. `npm run check` green (585 tests); `npm run e2e` clicks the waveform and asserts the media sought past halfway.*
