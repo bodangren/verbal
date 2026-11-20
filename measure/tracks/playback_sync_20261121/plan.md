@@ -32,17 +32,17 @@ npx vitest run packages/core/src/byte-range.test.ts packages/core/src/media-path
 ## Phase 2: Media file route
 
 ### Red
-- [ ] Failing tests: a plain GET returns 200 with `Content-Type`, `Content-Length`, and `Accept-Ranges`.
-- [ ] Failing tests: a range request returns 206 with the exact bytes and `Content-Range`; a past-the-end range returns 416; HEAD returns headers and no body.
-- [ ] Failing tests: no media is 404, a relative root is 400, another method is 405.
+- [x] Failing tests: a plain GET returns 200 with `Content-Type`, `Content-Length`, and `Accept-Ranges`.
+- [x] Failing tests: a range request returns 206 with the exact bytes and `Content-Range`; a past-the-end range returns 416; HEAD returns headers and no body.
+- [x] Failing tests: no media is 404, a relative root is 400, another method is 405.
 
 ### Green
-- [ ] Add `apps/web/server/media-file.ts` streaming through `fs.createReadStream`.
-- [ ] Add `apps/web/pages/api/media/file.ts` delegating to it.
-- [ ] Make tests pass.
+- [x] Add `apps/web/server/media-file.ts` streaming through `fs.createReadStream`.
+- [x] Add `apps/web/pages/api/media/file.ts` delegating to it.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(api): Serve project media with byte ranges`
+- [x] Commit: `feat(api): Serve project media with byte ranges`
 
 ---
 
