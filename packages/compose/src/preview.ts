@@ -99,7 +99,7 @@ export async function planPreview(input: PlanPreviewInput): Promise<PreviewPlan>
     if (isAsset || scene.template === undefined) {
       scenes.push({
         ...base,
-        source: "asset",
+        source: scene.assetId === undefined ? "placeholder" : "asset",
         ...(scene.assetId === undefined ? {} : { assetId: scene.assetId }),
       });
       continue;

@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { methodNotAllowed, sendJson } from "../../../server/http";
 import { createJobApi } from "../../../server/jobs-api";
 import { abortCapture } from "../../../server/capture-registry";
+import { abortJob } from "../../../server/job-aborts";
 import { getJobRegistry } from "../../../server/registry";
 
 function jobIdFromUrl(url: string | undefined): string {
@@ -25,6 +26,7 @@ export default async function handler(
 
   if (method === "DELETE") {
     abortCapture(id);
+    abortJob(id);
     sendJson(response, await api.cancel(id));
     return;
   }

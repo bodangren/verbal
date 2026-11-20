@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { writeFileAtomic, type FileSystem } from "./atomic";
 
-export type JobKind = "probe" | "import" | "export" | "transcribe" | "capture";
+export type JobKind =
+  | "probe"
+  | "import"
+  | "export"
+  | "transcribe"
+  | "capture"
+  | "generate-video";
 
 export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
 

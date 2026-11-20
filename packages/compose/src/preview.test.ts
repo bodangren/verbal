@@ -124,6 +124,31 @@ describe("planPreview", () => {
     expect(plan.scenes.map((entry) => entry.source)).toEqual(["talk", "asset"]);
   });
 
+  it("marks pending generated scenes as placeholders", async () => {
+    const storyboard = documentOf(
+      scene("g1", { visual: "generated-image", template: undefined }),
+      scene("g2", { visual: "generated-video", template: undefined }),
+    );
+
+    const plan = await planPreview({
+      ...input("full"),
+      storyboard,
+    });
+
+    expect(plan.scenes.map((entry) => entry.source)).toEqual(["placeholder", "placeholder"]);
+  });
+
+  it("uses the asset when a generated scene has one", async () => {
+    const storyboard = documentOf(
+      scene("g1", { visual: "generated-image", template: undefined, assetId: "asset-1" }),
+      scene("g2", { visual: "generated-video", template: undefined, assetId: "asset-2" }),
+    );
+
+    const plan = await planPreview({ ...input("fast"), storyboard });
+
+    expect(plan.scenes.map((entry) => entry.source)).toEqual(["asset", "asset"]);
+  });
+
   it("derives both tiers from the same storyboard hash and order", async () => {
     const cache = createMemorySlideCache("/cache");
     const fast = await planPreview({

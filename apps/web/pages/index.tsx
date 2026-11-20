@@ -88,6 +88,10 @@ export default function Home() {
   const [imageSceneId, setImageSceneId] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageCost, setImageCost] = useState<number | null>(null);
+  const [videoSceneId, setVideoSceneId] = useState("");
+  const [videoPrompt, setVideoPrompt] = useState("");
+  const [videoSeconds, setVideoSeconds] = useState(4);
+  const [videoCost, setVideoCost] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -341,6 +345,42 @@ export default function Home() {
     });
   }
 
+  function estimateVideo() {
+    return guard(async () => {
+      const result = await postJson<{ estimate: number; provider: string }>(
+        "/api/storyboard/generate-video",
+        {
+          root,
+          sceneId: videoSceneId,
+          prompt: videoPrompt,
+          durationSeconds: videoSeconds,
+          dryRun: true,
+        },
+      );
+      setVideoCost(result.estimate);
+      setMessage(`Estimated clip cost: $${result.estimate.toFixed(2)} (${result.provider})`);
+    });
+  }
+
+  function generateVideo() {
+    return guard(async () => {
+      const record = await postJson<JobRecord>("/api/storyboard/generate-video", {
+        root,
+        sceneId: videoSceneId,
+        prompt: videoPrompt,
+        durationSeconds: videoSeconds,
+      });
+      setJob(record);
+      await pollJob(record.id);
+
+      const storyboard = await request<StoryboardDocument>(
+        `/api/storyboard?root=${encodeURIComponent(root)}`,
+      );
+      setStoryboardText(JSON.stringify(storyboard, null, 2));
+      setMessage("Clip generated");
+    });
+  }
+
   const captureRunning =
     job !== null &&
     job.kind === "capture" &&
@@ -484,6 +524,50 @@ export default function Home() {
         </div>
         {imageCost !== null && (
           <p className="muted">Cost per image: ${imageCost.toFixed(2)}</p>
+        )}
+
+        <div className="row">
+          <label className="field">
+            Video scene
+            <input
+              value={videoSceneId}
+              onChange={(event) => setVideoSceneId(event.target.value)}
+              placeholder="v1"
+            />
+          </label>
+          <label className="field">
+            Video prompt
+            <input
+              value={videoPrompt}
+              onChange={(event) => setVideoPrompt(event.target.value)}
+              placeholder="A rotating 3D diagram"
+            />
+          </label>
+          <label className="field">
+            Clip seconds
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={videoSeconds}
+              onChange={(event) => setVideoSeconds(Number(event.target.value))}
+            />
+          </label>
+        </div>
+        <div className="row">
+          <button type="button" onClick={estimateVideo} disabled={project === null}>
+            Estimate video
+          </button>
+          <button
+            type="button"
+            onClick={generateVideo}
+            disabled={project === null || videoCost === null}
+          >
+            Generate video
+          </button>
+        </div>
+        {videoCost !== null && (
+          <p className="muted">Clip cost: ${videoCost.toFixed(2)}</p>
         )}
 
         {plan !== null && (

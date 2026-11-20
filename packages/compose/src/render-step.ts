@@ -7,12 +7,14 @@ import type { PreviewGeometry } from "./preview";
 import { renderSceneSlide } from "./slides";
 import type { SlideRenderer } from "./types";
 
-/** Template and props for one scene, or an already-rendered asset image. */
+/** Template and props for one scene, or an already-rendered asset. */
 export type StepScene = {
   template?: string;
   props?: Record<string, unknown>;
   /** Absolute path to a generated or user asset used as the slide. */
   assetPath?: string;
+  /** Image assets loop for the scene duration; video assets are trimmed. */
+  assetKind?: "image" | "video";
 };
 
 export type RenderStepDeps = {
@@ -102,7 +104,10 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
         fps: deps.geometry.fps,
         durationSeconds: step.durationSeconds,
         layout: deps.sceneLayout ?? "speaker-inset",
-        slide: { input: scene.assetPath, loop: true },
+        slide:
+          scene.assetKind === "video"
+            ? { input: scene.assetPath }
+            : { input: scene.assetPath, loop: true },
         speaker: { input: deps.speaker.input },
         key: {},
         audio: deps.audio,

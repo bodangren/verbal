@@ -5,7 +5,14 @@ export type ApiResponse = {
   body: unknown;
 };
 
-const KINDS: readonly JobKind[] = ["probe", "import", "export", "transcribe", "capture"];
+const KINDS: readonly JobKind[] = [
+  "probe",
+  "import",
+  "export",
+  "transcribe",
+  "capture",
+  "generate-video",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

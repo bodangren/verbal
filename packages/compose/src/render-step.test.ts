@@ -123,4 +123,20 @@ describe("createStepRenderer", () => {
     expect(args).toContain("-loop");
     expect(args).toContain("/project/assets/generated/abc");
   });
+
+  it("composites a video asset without looping it", async () => {
+    const { deps, renderer, run } = makeDeps({
+      scenes: new Map([
+        ["vid", { assetPath: "/project/assets/generated/clip", assetKind: "video" }],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "vid", durationSeconds: 1 }, 0);
+
+    expect(renderer.render).not.toHaveBeenCalled();
+    const args = argsOf(run);
+    expect(args).not.toContain("-loop");
+    expect(args).toContain("/project/assets/generated/clip");
+  });
 });

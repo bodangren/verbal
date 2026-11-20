@@ -207,10 +207,14 @@ export async function startStoryboardExport(
         continue;
       }
 
-      if (scene.visual === "generated-image" && scene.assetId !== undefined) {
+      if (
+        (scene.visual === "generated-image" || scene.visual === "generated-video") &&
+        scene.assetId !== undefined
+      ) {
         const times = resolveScene(scene, anchors);
         scenes.set(scene.id, {
           assetPath: path.join(root, "assets", "generated", scene.assetId),
+          assetKind: scene.visual === "generated-video" ? "video" : "image",
         });
         resolved.push({
           sceneId: scene.id,
