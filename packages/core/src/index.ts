@@ -7,5 +7,6 @@ export * from "./jobs";
 export * from "./media-path";
 export * from "./paths";
 export * from "./project";
+export * from "./search";
 export * from "./sync";
 export * from "./transcript";

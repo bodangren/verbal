@@ -11,7 +11,7 @@
 ## Phase 1: Search function
 
 ### Red
-- [ ] Failing tests: a single word, a phrase spanning words, case and punctuation insensitivity, blank query, no match, and removed words.
+- [x] Failing tests: a single word, a phrase spanning words, case and punctuation insensitivity, blank query, no match, and removed words.
 
 **Targeted Red command:**
 ```bash
@@ -19,11 +19,11 @@ npx vitest run packages/core/src/search.test.ts
 ```
 
 ### Green
-- [ ] Implement `searchTranscript` in `packages/core/src/search.ts` and export it.
-- [ ] Make tests pass.
+- [x] Implement `searchTranscript` in `packages/core/src/search.ts` and export it.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Search the transcript for phrases`
+- [x] Commit: `feat(core): Search the transcript for phrases`
 
 ---
 
