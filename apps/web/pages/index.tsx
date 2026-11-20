@@ -80,6 +80,10 @@ export default function Home() {
   const transcript = editing.document;
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
+  const [batchRoots, setBatchRoots] = useState("");
+  const [batchOutcomes, setBatchOutcomes] = useState<
+    { root: string; status: string; detail?: string }[]
+  >([]);
   const [silenceSeconds, setSilenceSeconds] = useState(1);
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
@@ -337,6 +341,40 @@ export default function Home() {
 
       editing.moveRange(selection.fromIndex, selection.toIndex, target);
       setSelection({ fromIndex: target, toIndex: target + blockLength - 1 });
+    });
+  }
+
+  function startBatch() {
+    return guard(async () => {
+      const roots = batchRoots
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line !== "");
+
+      const started = await postJson<{
+        plan: { items: unknown[] };
+        job: JobRecord;
+      }>("/api/transcribe/batch", { roots });
+
+      setJob(started.job);
+      setBatchOutcomes([]);
+      setMessage(`${started.plan.items.length} projects planned`);
+
+      const finished = await pollJob(started.job.id);
+      const result = finished.result as {
+        outcomes?: { root: string; status: string; detail?: string }[];
+      } | null;
+      const outcomes = result?.outcomes ?? [];
+      setBatchOutcomes(outcomes);
+
+      // The open project may be one of the batch, so refresh what the page shows.
+      await loadTranscriptState();
+
+      setMessage(
+        `Batch ${finished.status}: ${
+          outcomes.filter((outcome) => outcome.status === "transcribed").length
+        } transcribed, ${outcomes.filter((outcome) => outcome.status === "failed").length} failed`,
+      );
     });
   }
 
@@ -749,6 +787,38 @@ export default function Home() {
           <p className="muted">
             {job.status === "queued" ? "Queued" : `Transcribing ${Math.round(job.progress * 100)}%`}
           </p>
+        )}
+
+        <label className="field">
+          Batch projects (one project root per line)
+          <textarea
+            className="editor"
+            value={batchRoots}
+            onChange={(event) => setBatchRoots(event.target.value)}
+            spellCheck={false}
+          />
+        </label>
+        <div className="row">
+          <button
+            type="button"
+            onClick={startBatch}
+            disabled={batchRoots.trim() === "" || transcribing}
+          >
+            Start batch
+          </button>
+        </div>
+        {batchOutcomes.length > 0 && (
+          <ul className="cleanup__proposals" aria-label="Batch outcomes">
+            {batchOutcomes.map((outcome) => (
+              <li key={outcome.root} className="cleanup__proposal" data-status={outcome.status}>
+                <span>{outcome.root}</span>
+                <span className="cleanup__reason">{outcome.status}</span>
+                {outcome.detail !== undefined && (
+                  <span className="muted">{outcome.detail}</span>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

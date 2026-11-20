@@ -511,6 +511,32 @@ try {
     console.log("transcription: transcribed the clip from the page");
   }
 
+  if (mediaImported) {
+    // A batch over an already-transcribed project and a fresh one: the plan
+    // should skip the first and transcribe the second.
+    const batchRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-batch-"));
+    await api("POST", "/api/projects", { root: batchRoot, name: "Batched" });
+    await api("POST", "/api/media/import", {
+      projectRoot: batchRoot,
+      sourcePath: clipPath,
+      mode: "copy",
+    });
+
+    await page.getByLabel(/Batch projects/).fill(`${transcribedRoot}\n${batchRoot}`);
+    await page.getByRole("button", { name: "Start batch" }).click();
+    await page.getByText(/Batch done/).waitFor({ timeout: 30000 });
+
+    const outcomes = page.getByLabel("Batch outcomes");
+    await outcomes.waitFor();
+    const rows = await outcomes.locator("li").allTextContents();
+    assert(
+      rows.some((row) => row.includes("transcribed")) &&
+        rows.some((row) => row.includes("skipped")),
+      `a batch should report both outcomes, got ${JSON.stringify(rows)}`,
+    );
+    console.log("transcription: ran a batch across two projects");
+  }
+
   assert(errors.length === 0, `browser errors:\n${errors.join("\n")}`);
   console.log("browser: no console or page errors");
   console.log("walkthrough: PASS");
