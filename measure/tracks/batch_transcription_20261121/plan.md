@@ -29,8 +29,8 @@ npx vitest run packages/core/src/batch.test.ts
 
 ## Phase 2: Runner
 
-- [ ] `runBatch` transcribing items in order, continuing past a failure, reporting a summary.
-- [ ] Commit: `feat(api): Run a transcription batch`
+- [x] `runBatch` transcribing items in order, continuing past a failure, reporting a summary.
+- [x] Commit: `feat(api): Run a transcription batch`
 
 ---
 
