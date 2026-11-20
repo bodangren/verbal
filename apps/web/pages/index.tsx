@@ -79,6 +79,7 @@ export default function Home() {
   const transcript = editing.document;
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
+  const [silenceSeconds, setSilenceSeconds] = useState(1);
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
   const [acceptance, setAcceptance] = useState<Acceptance>(DEFAULT_ACCEPTANCE);
@@ -256,6 +257,38 @@ export default function Home() {
           ? "Transcription finished"
           : `Transcribed ${result.words} words`,
       );
+    });
+  }
+
+  /** The word the structural edits act on: the start of the selection. */
+  function selectedWordId(): string | undefined {
+    if (selection === null || transcript === null) {
+      return undefined;
+    }
+    return transcript.words[selection.fromIndex]?.id;
+  }
+
+  function insertSilenceAtSelection() {
+    return guard(async () => {
+      const wordId = selectedWordId();
+      if (wordId === undefined) {
+        return;
+      }
+
+      editing.insertSilence(wordId, silenceSeconds);
+      setMessage(`Inserted ${silenceSeconds}s of silence`);
+    });
+  }
+
+  function splitAtSelection() {
+    return guard(async () => {
+      const wordId = selectedWordId();
+      if (wordId === undefined) {
+        return;
+      }
+
+      editing.splitSegment(wordId);
+      setMessage("Started a new segment");
     });
   }
 
@@ -751,6 +784,28 @@ export default function Home() {
                 </button>
               </>
             )}
+          </div>
+          <div className="row">
+            <label className="field">
+              Silence (seconds)
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={silenceSeconds}
+                onChange={(event) => setSilenceSeconds(Number(event.target.value))}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={insertSilenceAtSelection}
+              disabled={selection === null}
+            >
+              Insert silence
+            </button>
+            <button type="button" onClick={splitAtSelection} disabled={selection === null}>
+              Split segment
+            </button>
           </div>
           <div className="row">
             <button type="button" onClick={deleteSelection} disabled={selection === null}>

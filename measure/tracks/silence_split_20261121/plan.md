@@ -11,8 +11,8 @@
 ## Phase 1: Core operations
 
 ### Red
-- [ ] Failing tests: silence shifts only later words; zero or negative seconds is a no-op; an unknown anchor throws.
-- [ ] Failing tests: splitting starts a new segment at the word; splitting at a segment head is a no-op; ids stay unique across repeated splits.
+- [x] Failing tests: silence shifts only later words; zero or negative seconds is a no-op; an unknown anchor throws.
+- [x] Failing tests: splitting starts a new segment at the word; splitting at a segment head is a no-op; ids stay unique across repeated splits.
 
 **Targeted Red command:**
 ```bash
@@ -20,18 +20,18 @@ npx vitest run packages/core/src/transcript-edit.test.ts
 ```
 
 ### Green
-- [ ] Implement `insertSilence` and `splitSegment` in `packages/core/src/transcript.ts`.
-- [ ] Export and make tests pass.
+- [x] Implement `insertSilence` and `splitSegment` in `packages/core/src/transcript.ts`.
+- [x] Export and make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Add insert silence and split segment`
+- [x] Commit: `feat(core): Add insert silence and split segment`
 
 ---
 
 ## Phase 2: Editing hook
 
-- [ ] Add `insertSilence(afterWordId, seconds)` and `splitSegment(beforeWordId)` to `useTranscriptDocument`, each one history entry.
-- [ ] Commit: `feat(ui): Edit document structure through the hook`
+- [x] Add `insertSilence(afterWordId, seconds)` and `splitSegment(beforeWordId)` to `useTranscriptDocument`, each one history entry.
+- [x] Commit: `feat(ui): Edit document structure through the hook`
 
 ---
 
