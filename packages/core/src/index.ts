@@ -1,3 +1,5 @@
 // @verbal/core — project documents, storage, and atomic writes.
-// Implemented in Phase 1.
-export {};
+export * from "./atomic";
+export * from "./errors";
+export * from "./paths";
+export * from "./project";
