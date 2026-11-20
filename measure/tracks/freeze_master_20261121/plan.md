@@ -1,6 +1,6 @@
 # Plan: Freeze Master and Cut List
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Honour stored removals when freezing, expose freeze over HTTP, wire the control.
 
@@ -47,6 +47,6 @@ npx vitest run packages/cleanup/src/freeze.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e` to freeze the project and assert the reported duration.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover freezing the master`
+- [x] Extend `npm run e2e` to freeze the project and assert the reported duration.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover freezing the master`
