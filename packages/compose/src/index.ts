@@ -12,3 +12,4 @@ export * from "./render-step";
 export * from "./slides";
 export * from "./types";
 export * from "./worker";
+export * from "./prune";

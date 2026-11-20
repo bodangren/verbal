@@ -11,7 +11,7 @@
 ## Phase 1: Retention planner
 
 ### Red
-- [ ] Failing tests: referenced, user, recent, and prunable assets, plus stable ordering.
+- [x] Failing tests: referenced, user, recent, and prunable assets, plus stable ordering.
 
 **Targeted Red command:**
 ```bash
@@ -19,11 +19,11 @@ npx vitest run packages/compose/src/prune.test.ts
 ```
 
 ### Green
-- [ ] Implement `planAssetPrune` in `packages/compose/src/prune.ts`.
-- [ ] Make tests pass.
+- [x] Implement `planAssetPrune` in `packages/compose/src/prune.ts`.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(compose): Plan generated-asset retention`
+- [x] Commit: `feat(compose): Plan generated-asset retention`
 
 ---
 
