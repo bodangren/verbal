@@ -2,13 +2,13 @@ import { createHash } from "node:crypto";
 import type { Scene } from "./types";
 
 /** Canonical JSON: object keys sorted, undefined values dropped. */
-function canonical(value: unknown): string {
+export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== "object") {
     return JSON.stringify(value) ?? "null";
   }
 
   if (Array.isArray(value)) {
-    return `[${value.map(canonical).join(",")}]`;
+    return `[${value.map(canonicalJson).join(",")}]`;
   }
 
   const record = value as Record<string, unknown>;
@@ -16,7 +16,7 @@ function canonical(value: unknown): string {
     .filter((key) => record[key] !== undefined)
     .sort();
 
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`).join(",")}}`;
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
 }
 
 /**
@@ -33,5 +33,5 @@ export function hashScene(scene: Scene, durationSeconds?: number): string {
   const payload =
     durationSeconds === undefined ? content : { ...content, durationSeconds };
 
-  return createHash("sha256").update(canonical(payload)).digest("hex");
+  return createHash("sha256").update(canonicalJson(payload)).digest("hex");
 }

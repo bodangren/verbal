@@ -21,6 +21,7 @@
       "@verbal/core": ["./packages/core/src/index.ts"],
       "@verbal/media": ["./packages/media/src/index.ts"],
       "@verbal/storyboard": ["./packages/storyboard/src/index.ts"],
+      "@verbal/compose": ["./packages/compose/src/index.ts"],
       "@verbal/slides": ["./packages/slides/src/index.ts"],
       "@verbal/ai": ["./packages/ai/src/index.ts"]
     }
