@@ -1,6 +1,6 @@
 # Plan: Transcription in the UI
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Start transcription from the page, follow the job, refresh the transcript.
 
@@ -40,7 +40,7 @@ npx vitest run apps/web/server/transcribe-api.test.ts
 
 ## Phase 3: Browser verification
 
-- [ ] Start a fake ASR server in `npm run e2e` and pass `OPENAI_API_KEY`/`OPENAI_BASE_URL` to the app server.
-- [ ] Transcribe a second project's clip in the browser; assert the words appear in the editor and in the cleanup panel.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover transcription from the page`
+- [x] Start a fake ASR server in `npm run e2e` and pass `OPENAI_API_KEY`/`OPENAI_BASE_URL` to the app server.
+- [x] Transcribe a second project's clip in the browser; assert the words appear in the editor and in the cleanup panel.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover transcription from the page`

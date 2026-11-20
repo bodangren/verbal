@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createServer } from "node:http";
 import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -54,13 +55,50 @@ if (process.env.E2E_SKIP_BUILD !== "1") {
   execFileSync("npm", ["run", "build"], { stdio: "inherit" });
 }
 
+const asrWords = [
+  { word: "hello", start: 0, end: 0.6 },
+  { word: "um", start: 0.6, end: 0.9 },
+  { word: "world", start: 0.9, end: 2 },
+];
+let asrCalls = 0;
+
+const asr = createServer((request, response) => {
+  if (request.method !== "POST" || request.url !== "/v1/audio/transcriptions") {
+    response.statusCode = 404;
+    response.end("{}");
+    return;
+  }
+
+  request.resume();
+  request.on("end", () => {
+    asrCalls += 1;
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify({
+        text: asrWords.map((word) => word.word).join(" "),
+        language: "en",
+        words: asrWords,
+      }),
+    );
+  });
+});
+
+await new Promise((resolve) => asr.listen(0, "127.0.0.1", resolve));
+const asrBaseUrl = `http://127.0.0.1:${asr.address().port}/v1`;
+
 const home = await mkdtemp(path.join(os.tmpdir(), "verbal-home-"));
 const projectRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-e2e-"));
 const serverLog = [];
 
 const server = spawn(process.execPath, ["dist/standalone/server.js"], {
   cwd: path.resolve("apps/web"),
-  env: { ...process.env, PORT: String(PORT), HOME: home },
+  env: {
+    ...process.env,
+    PORT: String(PORT),
+    HOME: home,
+    OPENAI_API_KEY: "e2e-fake-key",
+    OPENAI_BASE_URL: asrBaseUrl,
+  },
   stdio: ["ignore", "pipe", "pipe"],
 });
 
@@ -164,10 +202,21 @@ try {
       errors.push(`console: ${message.text()}`);
     }
   });
+  // A project without a transcript answers 404 for these probes; the page reads
+  // that as "nothing transcribed yet", so it is not a browser error.
+  const EXPECTED_MISSING = ["/api/transcript", "/api/cleanup"];
+
   page.on("response", (response) => {
-    if (response.status() >= 400 && !response.url().includes("favicon")) {
-      errors.push(`http ${response.status()}: ${response.url()}`);
+    if (response.status() < 400 || response.url().includes("favicon")) {
+      return;
     }
+
+    const { pathname } = new URL(response.url());
+    if (response.status() === 404 && EXPECTED_MISSING.includes(pathname)) {
+      return;
+    }
+
+    errors.push(`http ${response.status()}: ${response.url()}`);
   });
   page.on("requestfailed", (request) => {
     if (!request.url().includes("favicon")) {
@@ -337,6 +386,40 @@ try {
   await page.getByText(/Estimated clip cost: \$0\.40/).waitFor();
   console.log("video: cost estimated before generation");
 
+  // Transcription runs on a second project, so the hand-written fixture used by
+  // the earlier checks stays untouched.
+  const transcribedRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-transcribed-"));
+  await api("POST", "/api/projects", { root: transcribedRoot, name: "Transcribed" });
+
+  if (mediaImported) {
+    await api("POST", "/api/media/import", {
+      projectRoot: transcribedRoot,
+      sourcePath: clipPath,
+      mode: "copy",
+    });
+
+    await page.getByLabel("Folder").fill(transcribedRoot);
+    await page.getByRole("button", { name: "Open", exact: true }).click();
+    await page.getByText("Opened Transcribed").waitFor();
+
+    await page.getByRole("button", { name: "Transcribe media" }).click();
+    await page.getByText(/Transcribed 3 words/).waitFor();
+
+    const transcribedWords = page.getByRole("region", {
+      name: "Transcript editor",
+      exact: true,
+    });
+    await transcribedWords.getByRole("button", { name: "hello" }).waitFor();
+    assert(asrCalls >= 1, "the fake ASR server should have been called");
+
+    // The fake transcript contains a filler, so cleanup offers to remove it.
+    await page
+      .getByRole("region", { name: "Cleanup", exact: true })
+      .getByText("0 of 1 proposals accepted")
+      .waitFor();
+    console.log("transcription: transcribed the clip from the page");
+  }
+
   assert(errors.length === 0, `browser errors:\n${errors.join("\n")}`);
   console.log("browser: no console or page errors");
   console.log("walkthrough: PASS");
@@ -354,4 +437,5 @@ try {
 } finally {
   await browser?.close();
   server.kill("SIGTERM");
+  await new Promise((resolve) => asr.close(resolve));
 }

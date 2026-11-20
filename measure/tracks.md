@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Transcription in the UI** [created: 2026-11-21]
+- [x] **Track: Transcription in the UI** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Start transcription from the page, follow the job, and refresh the transcript, playback, and cleanup proposals on success.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. A Transcription panel starts `/api/transcribe`, follows the job, and reloads the transcript and proposals on success. The route is verified against a fake OpenAI-compatible ASR (job completes, words stored, 503 without a key). `npm run check` green (492 tests); `npm run e2e` transcribes a real clip in Chromium against the fake ASR and shows both the words and the filler proposal.*
   *Link: [./tracks/transcription_ui_20261121](./tracks/transcription_ui_20261121/)*
 
 - [x] **Track: Cleanup Detection and Review** [created: 2026-11-21] [completed: 2026-11-21]
