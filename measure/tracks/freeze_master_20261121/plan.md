@@ -39,9 +39,9 @@ npx vitest run packages/cleanup/src/freeze.test.ts
 
 ## Phase 3: Page wiring
 
-- [ ] Pass `onFreeze` from the page and report duration, anchors, and fingerprint.
-- [ ] Surface failures.
-- [ ] Commit: `feat(ui): Freeze the master from the review`
+- [x] Pass `onFreeze` from the page and report duration, anchors, and fingerprint.
+- [x] Surface failures.
+- [x] Commit: `feat(ui): Freeze the master from the review`
 
 ---
 

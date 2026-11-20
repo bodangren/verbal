@@ -259,6 +259,19 @@ export default function Home() {
     );
   }
 
+  function freezeMaster() {
+    return guard(async () => {
+      const { master } = await postJson<{
+        master: { masterDurationSeconds: number; anchorWords: unknown[]; fingerprint: string };
+      }>("/api/cleanup/freeze", { root });
+
+      setMessage(
+        `Frozen master: ${master.masterDurationSeconds.toFixed(2)}s · ` +
+          `${master.anchorWords.length} anchors · ${master.fingerprint.slice(0, 8)}`,
+      );
+    });
+  }
+
   // Undo/redo shortcuts are global, so they are ignored while a text field has
   // focus — otherwise typing in the storyboard editor would undo transcript cuts.
   useEffect(() => {
@@ -656,15 +669,16 @@ export default function Home() {
                   Remove accepted
                 </button>
               </div>
-              <CleanupReview
-                transcript={transcript}
-                proposals={proposals}
-                audioFixes={[]}
-                acceptance={acceptance}
-                onAcceptanceChange={setAcceptance}
-              />
             </>
           )}
+          <CleanupReview
+            transcript={transcript}
+            proposals={proposals}
+            audioFixes={[]}
+            acceptance={acceptance}
+            onAcceptanceChange={setAcceptance}
+            onFreeze={freezeMaster}
+          />
         </section>
       )}
 

@@ -291,6 +291,10 @@ try {
   await page.getByText("Transcript saved").waitFor();
   console.log("cleanup: reviewed, removed, and saved");
 
+  await cleanup.getByRole("button", { name: "Freeze master" }).click();
+  await page.getByText(/Frozen master: \d+\.\d{2}s · \d+ anchors/).waitFor();
+  console.log("cleanup: froze the master");
+
   // Select a range, delete it with the keyboard, undo, redo, and save.
   // The playback panel renders its own transcript, so editor steps are scoped.
   const transcriptRegion = page.getByRole("region", { name: "Transcript", exact: true });
