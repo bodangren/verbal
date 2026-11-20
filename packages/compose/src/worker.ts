@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
   SlideError,
   type SlideManifest,
@@ -12,6 +13,57 @@ export type ProcessRunner = (
   args: readonly string[],
   options: { input: string; signal?: AbortSignal },
 ) => Promise<{ stdout: string; stderr: string }>;
+
+/** Production runner: no shell, stdin written once, SIGKILL on abort. */
+export const nodeProcessRunner: ProcessRunner = (file, args, options) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(file, [...args], { stdio: ["pipe", "pipe", "pipe"] });
+
+    let stdout = "";
+    let stderr = "";
+
+    const onAbort = () => {
+      child.kill("SIGKILL");
+    };
+
+    if (options.signal?.aborted === true) {
+      onAbort();
+    } else {
+      options.signal?.addEventListener("abort", onAbort, { once: true });
+    }
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("error", (error) => {
+      cleanup();
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      cleanup();
+
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+
+      reject(
+        new Error(`renderer exited with code ${String(code)}: ${stderr.trim()}`),
+      );
+    });
+
+    child.stdin.end(options.input);
+
+    function cleanup(): void {
+      options.signal?.removeEventListener("abort", onAbort);
+    }
+  });
 
 export type ProcessRendererConfig = {
   command: string;

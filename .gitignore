@@ -50,3 +50,7 @@ coverage/
 .vinext/
 *.tsbuildinfo
 next-env.d.ts
+
+# Remotion renderer output
+tools/remotion/.bundle/
+tools/remotion/out/

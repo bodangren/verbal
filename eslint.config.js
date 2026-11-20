@@ -9,6 +9,8 @@ export default tseslint.config(
       "**/.next/**",
       "**/.vinext/**",
       "**/.vite/**",
+      "**/.bundle/**",
+      "tools/remotion/out/**",
       "coverage/**",
       "measure/**",
     ],

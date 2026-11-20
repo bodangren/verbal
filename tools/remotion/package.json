@@ -1,0 +1,19 @@
+{
+  "name": "@verbal/remotion",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Remotion slide renderer for Verbal. Runs as a child process and emits PNG frames plus a manifest.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.545",
+    "@remotion/cli": "4.0.545",
+    "@remotion/renderer": "4.0.545",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.545"
+  }
+}
