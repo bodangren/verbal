@@ -33,17 +33,17 @@ npx vitest run apps/web/hooks/use-transcript-document.test.tsx
 ## Phase 2: Selection and deletion in the editor
 
 ### Red
-- [ ] Failing tests: a selected range marks its words with `data-selected`.
-- [ ] Failing tests: `Delete` and `Backspace` on the focused region call `onDeleteSelection`.
-- [ ] Failing tests: with no selection, the keys do nothing.
+- [x] Failing tests: a selected range marks its words with `data-selected`.
+- [x] Failing tests: `Delete` and `Backspace` on the focused region call `onDeleteSelection`.
+- [x] Failing tests: with no selection, the keys do nothing.
 
 ### Green
-- [ ] Add `selectedRange` and `onDeleteSelection` props.
-- [ ] Make the region focusable and handle the keys.
-- [ ] Make tests pass.
+- [x] Add `selectedRange` and `onDeleteSelection` props.
+- [x] Make the region focusable and handle the keys.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(ui): Add transcript selection and delete`
+- [x] Commit: `feat(ui): Add transcript selection and delete`
 
 ---
 

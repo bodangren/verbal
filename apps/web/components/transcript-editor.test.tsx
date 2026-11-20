@@ -62,4 +62,64 @@ describe("TranscriptEditor", () => {
     const button = screen.getByRole("button", { name: "world" });
     expect(button.getAttribute("aria-current")).toBe("true");
   });
+
+  it("marks every word in the selected range with data-selected", () => {
+    render(<TranscriptEditor transcript={transcript} selectedRange={{ fromIndex: 0, toIndex: 1 }} />);
+
+    expect(screen.getByRole("button", { name: "hello" }).getAttribute("data-selected")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "world" }).getAttribute("data-selected")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "again" }).hasAttribute("data-selected")).toBe(
+      false,
+    );
+  });
+
+  it("deletes the selection when Delete is pressed on the focused region", () => {
+    const onDeleteSelection = vi.fn();
+    render(
+      <TranscriptEditor
+        transcript={transcript}
+        selectedRange={{ fromIndex: 0, toIndex: 1 }}
+        onDeleteSelection={onDeleteSelection}
+      />,
+    );
+
+    const region = screen.getByRole("region", { name: /transcript/i });
+    region.focus();
+    fireEvent.keyDown(region, { key: "Delete" });
+
+    expect(onDeleteSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes the selection when Backspace is pressed on the focused region", () => {
+    const onDeleteSelection = vi.fn();
+    render(
+      <TranscriptEditor
+        transcript={transcript}
+        selectedRange={{ fromIndex: 1, toIndex: 2 }}
+        onDeleteSelection={onDeleteSelection}
+      />,
+    );
+
+    const region = screen.getByRole("region", { name: /transcript/i });
+    region.focus();
+    fireEvent.keyDown(region, { key: "Backspace" });
+
+    expect(onDeleteSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores the delete keys when nothing is selected", () => {
+    const onDeleteSelection = vi.fn();
+    render(<TranscriptEditor transcript={transcript} onDeleteSelection={onDeleteSelection} />);
+
+    const region = screen.getByRole("region", { name: /transcript/i });
+    region.focus();
+    fireEvent.keyDown(region, { key: "Delete" });
+    fireEvent.keyDown(region, { key: "Backspace" });
+
+    expect(onDeleteSelection).not.toHaveBeenCalled();
+  });
 });

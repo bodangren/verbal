@@ -11,10 +11,14 @@ export type TranscriptEditorProps = {
   transcript: TranscriptDocument;
   /** Word to mark as currently spoken, if any. */
   activeWordId?: string | null;
+  /** Range of words the page is treating as selected, if any. */
+  selectedRange?: WordSelection | null;
   /** Called when a word is activated without a modifier. */
   onWordClick?: (wordId: string, index: number) => void;
   /** Called when a shift-click produces a range. */
   onSelectionChange?: (selection: WordSelection, wordIds: string[]) => void;
+  /** Called when Delete or Backspace is pressed on the region with a selection. */
+  onDeleteSelection?: () => void;
 };
 
 /**
@@ -27,8 +31,10 @@ export type TranscriptEditorProps = {
 export function TranscriptEditor({
   transcript,
   activeWordId = null,
+  selectedRange = null,
   onWordClick,
   onSelectionChange,
+  onDeleteSelection,
 }: TranscriptEditorProps) {
   const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
 
@@ -63,7 +69,20 @@ export function TranscriptEditor({
   };
 
   return (
-    <section className="transcript" aria-label="Transcript">
+    <section
+      className="transcript"
+      aria-label="Transcript"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (selectedRange === null) {
+          return;
+        }
+        if (event.key === "Delete" || event.key === "Backspace") {
+          event.preventDefault();
+          onDeleteSelection?.();
+        }
+      }}
+    >
       {transcript.segments.map((segment) => (
         <p className="transcript__segment" key={segment.id}>
           {segment.wordIds.map((wordId) => {
@@ -75,6 +94,10 @@ export function TranscriptEditor({
             const index = indexById.get(wordId) ?? -1;
             const isRemoved = removed.has(wordId);
             const isActive = wordId === activeWordId;
+            const isSelected =
+              selectedRange !== null &&
+              index >= selectedRange.fromIndex &&
+              index <= selectedRange.toIndex;
 
             return (
               <button
@@ -84,6 +107,7 @@ export function TranscriptEditor({
                 data-word-id={word.id}
                 data-removed={isRemoved ? "true" : undefined}
                 data-active={isActive ? "true" : undefined}
+                data-selected={isSelected ? "true" : undefined}
                 aria-current={isActive ? "true" : undefined}
                 disabled={isRemoved}
                 onClick={(event) => activate(word, index, event.shiftKey)}
