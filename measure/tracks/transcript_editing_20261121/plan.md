@@ -1,6 +1,6 @@
 # Plan: Transcript Editing
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Make the transcript editable — delete, undo/redo, save.
 
@@ -59,6 +59,6 @@ npx vitest run apps/web/hooks/use-transcript-document.test.tsx
 
 ## Phase 4: Browser verification
 
-- [ ] Extend `npm run e2e`: select a range, delete, undo, redo, save, reload, and confirm the words stay removed.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover transcript editing`
+- [x] Extend `npm run e2e`: select a range, delete, undo, redo, save, reload, and confirm the words stay removed.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover transcript editing`

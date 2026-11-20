@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Transcript Editing** [created: 2026-11-21]
+- [x] **Track: Transcript Editing** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Delete words and shift-click ranges from the transcript editor, undo/redo, and save the edited document with a dirty indicator.*
-  *Status: In progress — Phase 1 complete (editing hook); Phase 2 next.*
+  *Status: Complete. Selection, keyboard/mouse delete, undo/redo with Ctrl/Cmd shortcuts, explicit save through `PUT /api/transcript`, and reload persistence. `npm run check` green (425 tests); `npm run e2e` deletes, undoes, redoes, saves, reloads, and confirms the struck-through words.*
   *Link: [./tracks/transcript_editing_20261121](./tracks/transcript_editing_20261121/)*
 
 - [x] **Track: TypeScript Rewrite** [created: 2026-11-20] [completed: 2026-11-20]

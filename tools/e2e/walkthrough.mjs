@@ -153,6 +153,58 @@ try {
   await page.getByRole("button", { name: "hello" }).waitFor();
   console.log("transcript: rendered");
 
+  // Select a range, delete it with the keyboard, undo, redo, and save.
+  const transcriptRegion = page.getByRole("region", { name: "Transcript", exact: true });
+  const dirtyStatus = page.getByRole("status");
+
+  await page.getByRole("button", { name: "hello" }).click();
+  await page.getByRole("button", { name: "world" }).click({ modifiers: ["Shift"] });
+  assert(
+    (await page.getByRole("button", { name: "world" }).getAttribute("data-selected")) === "true",
+    "shift-click should mark the range as selected",
+  );
+
+  await transcriptRegion.press("Delete");
+  await page.getByText("Unsaved changes").waitFor();
+  assert(
+    await page.getByRole("button", { name: "world" }).isDisabled(),
+    "the deleted word should stay in the document, disabled",
+  );
+  console.log("transcript: deleted the selection with the keyboard");
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  assert(
+    (await dirtyStatus.textContent()) === "Saved",
+    "undo back to the loaded document should be clean",
+  );
+  assert(
+    !(await page.getByRole("button", { name: "world" }).isDisabled()),
+    "undo should restore the deleted word",
+  );
+
+  await page.getByRole("button", { name: "Redo" }).click();
+  assert(
+    (await dirtyStatus.textContent()) === "Unsaved changes",
+    "redo should re-apply the deletion",
+  );
+  console.log("transcript: undo and redo");
+
+  await page.getByRole("button", { name: "Save transcript" }).click();
+  await page.getByText("Transcript saved").waitFor();
+  assert((await dirtyStatus.textContent()) === "Saved", "saving should clear the dirty state");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByLabel("Folder").fill(projectRoot);
+  await page.getByRole("button", { name: "Open", exact: true }).click();
+  await page.getByText("Opened Walkthrough").waitFor();
+  assert(
+    (await page
+      .getByRole("button", { name: "world" })
+      .getAttribute("data-removed")) === "true",
+    "the removal should survive a reload",
+  );
+  console.log("transcript: saved edit survives a reload");
+
   const storyboardText = page.getByLabel("Storyboard JSON");
   assert((await storyboardText.inputValue()).includes("Walkthrough"), "storyboard should load");
 
