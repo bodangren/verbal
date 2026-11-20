@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Insert Silence and Split Segment** [created: 2026-11-21]
+- [x] **Track: Insert Silence and Split Segment** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Add the last two v1 text operations — insert air after a word and start a new caption segment — and make them undoable from the page.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `insertSilence` shifts later word timestamps (silence is a gap, so no media work), `splitSegment` starts a new segment with a free `s<n>` id, and both are no-ops at zero duration and at a segment head. Both are exposed on the editing hook as single undo steps and as panel actions on the selected word. `npm run check` green (529 tests); `npm run e2e` splits a segment, inserts silence, and undoes both.*
   *Link: [./tracks/silence_split_20261121](./tracks/silence_split_20261121/)*
 
 - [x] **Track: Auto-Save Transcript Edits** [created: 2026-11-21] [completed: 2026-11-21]
