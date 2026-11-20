@@ -67,20 +67,34 @@ npx vitest run packages/storyboard
 Package: `packages/compose`. No Chromium required for tests.
 
 ### Red
-- [ ] Failing tests for the `SlideRenderer` interface using a fake: request marshalling matches the frozen schema, and the manifest parses into a typed result.
-- [ ] Failing tests: cache hit returns the existing sequence without starting the renderer; cache miss starts it exactly once.
-- [ ] Failing tests: two scenes differing only in duration have different cache keys; identical scenes reuse a key.
-- [ ] Failing tests: a renderer error yields a placeholder plus an error, and the caller continues.
-- [ ] Failing tests: cancellation and timeout are honoured.
+- [x] Failing tests for the `SlideRenderer` interface using a fake: request marshalling matches the frozen schema, and the manifest parses into a typed result.
+- [x] Failing tests: cache hit returns the existing sequence without starting the renderer; cache miss starts it exactly once.
+- [x] Failing tests: two scenes differing only in duration have different cache keys; identical scenes reuse a key.
+- [x] Failing tests: a renderer error yields a placeholder plus an error, and the caller continues.
+- [x] Failing tests: cancellation and timeout are honoured.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/compose
+```
+
+**Red result:** 3 files failed on missing modules (`./types`, `./cache`, `./slides`, `./worker`).
 
 ### Green
-- [ ] Implement the scene-contract types and JSON marshalling.
-- [ ] Implement the content-addressed on-disk cache.
-- [ ] Implement the worker client (child process, timeout, cancellation).
-- [ ] Make tests pass.
+- [x] Implement the scene-contract types and JSON marshalling.
+- [x] Implement the content-addressed on-disk cache.
+- [x] Implement the worker client (child process, timeout, cancellation).
+- [x] Make tests pass.
+
+**Green result:** 19/19 in `packages/compose`; full suite 223/223; `npm run check` exits 0.
+- `SlideRenderRequest` is the frozen contract: scene id, template, props, duration, fps, width, height. `SlideManifest` describes the produced frames.
+- `slideRequestHash` reuses `canonicalJson` from `@verbal/storyboard`; it covers template, props, duration, and geometry but excludes the scene id, so reordering keeps cached frames.
+- `renderSceneSlide` serves a cache hit without invoking the renderer, records the manifest on a miss, turns renderer failures into placeholders, and propagates cancellation/timeouts rather than masking them.
+- `createFileSlideCache` stores one directory and one atomically written manifest per hash; corrupt manifests read as a miss.
+- `createProcessRenderer` serialises the request to the child's stdin, parses the manifest from stdout, and enforces a timeout and caller cancellation. The process runner is injected, so the real spawner can land with Remotion in Phase 4.
 
 ### Refactor
-- [ ] Commit: `feat(compose): Add slide renderer contract and cache`
+- [x] Commit: `feat(compose): Add slide renderer contract and content-addressed cache` — `a9b06be`
 
 ---
 
