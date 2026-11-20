@@ -13,7 +13,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Storyboard Compositor** [created: 2026-11-20]
   *Focus: Green-screen capture, reviewed cleanup, storyboard IR, Remotion motion slides, composited preview, chat-driven patch feedback, brand-kit export. Asset ladder: motion slides → generated images → generated video.*
-  *Status: In progress — Phases 0–2 complete (stack refresh, storyboard IR + anchors + patches + hashing, slide render contract + content-addressed cache). `npm run check` green with 223 tests. Phase 3 (FFmpeg composite filtergraph builder) next.*
+  *Status: In progress — Phases 0–3 complete (stack refresh, storyboard IR, slide render contract + cache, FFmpeg composite filtergraph builder). `npm run check` green with 234 tests. Phase 4 (Remotion template pack) next.*
   *Link: [./tracks/storyboard_compositor_20261120](./tracks/storyboard_compositor_20261120/)*
 
 ---

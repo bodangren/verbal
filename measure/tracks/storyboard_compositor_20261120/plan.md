@@ -101,19 +101,33 @@ npx vitest run packages/compose
 ## Phase 3: FFmpeg composite builder
 
 ### Red
-- [ ] Failing tests: keyed speaker plus full-frame slide, speaker-inset, and side-by-side produce distinct, correct filtergraphs.
-- [ ] Failing tests: `chromakey`/`despill` appear with the configured key colour; layer ordering is deterministic.
-- [ ] Failing tests: a music bed adds `amix` and `sidechaincompress`; no music omits them.
-- [ ] Failing tests: paths never enter the filtergraph; only timestamps and labels do.
+- [x] Failing tests: keyed speaker plus full-frame slide, speaker-inset, and side-by-side produce distinct, correct filtergraphs.
+- [x] Failing tests: `chromakey`/`despill` appear with the configured key colour; layer ordering is deterministic.
+- [x] Failing tests: a music bed adds `amix` and `sidechaincompress`; no music omits them.
+- [x] Failing tests: paths never enter the filtergraph; only timestamps and labels do.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/compose
+```
+
+**Red result:** `composite.test.ts` failed on a missing module; the 19 existing compose tests stayed green.
 
 ### Green
-- [ ] Implement the filtergraph builder as a pure function returning argv.
-- [ ] Implement layer geometry for the three modes.
-- [ ] Implement the audio bed and ducking chain.
-- [ ] Make tests pass.
+- [x] Implement the filtergraph builder as a pure function returning argv.
+- [x] Implement layer geometry for the three modes.
+- [x] Implement the audio bed and ducking chain.
+- [x] Make tests pass.
+
+**Green result:** 30/30 in `packages/compose`; full suite 234/234; `npm run check` exits 0.
+- `buildCompositeArgs` takes inputs in a fixed order — slide (0), speaker (1), music (2) — so the filtergraph indices are stable.
+- `full-frame` scales and pads the slide and ignores the speaker video; `speaker-inset` runs `chromakey` + `despill` and overlays the keyed speaker in the bottom-right; `side-by-side` stacks the slide with the keyed speaker over a black half-frame.
+- Audio: without music, the programme audio goes through `loudnorm`; with music, the programme is split into voice and sidechain, the music is `volume`-scaled, `sidechaincompress` ducks it, and `amix` joins them before `loudnorm`.
+- Paths appear only as argv elements; the filtergraph contains labels, timestamps, and numbers. A hostile path cannot alter the graph.
+- Identical requests produce identical argv.
 
 ### Refactor
-- [ ] Commit: `feat(compose): Add composite filtergraph builder`
+- [x] Commit: `feat(compose): Add composite filtergraph builder` — `fab5ffe`
 
 ---
 
