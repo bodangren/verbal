@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@verbal/ai": "*",
+    "@verbal/cleanup": "*",
     "@verbal/compose": "*",
     "@verbal/core": "*",
     "@verbal/media": "*",

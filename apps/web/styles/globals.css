@@ -276,3 +276,126 @@ code {
   font-family: var(--mono);
   font-size: 11px;
 }
+
+.cleanup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cleanup__audio h2,
+.cleanup__group h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cleanup__audio-list,
+.cleanup__proposals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.cleanup__audio-fix {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 12px;
+  gap: var(--space-2);
+}
+
+.cleanup__badge {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+}
+
+.cleanup__aggressiveness {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 12px;
+  gap: var(--space-3);
+}
+
+.cleanup__aggressiveness input {
+  flex: 1;
+}
+
+.cleanup__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cleanup__group-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.cleanup__toggle {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 12px;
+  gap: var(--space-1);
+}
+
+.cleanup__proposal {
+  align-items: center;
+  background: var(--card);
+  border-left: 3px solid var(--border);
+  border-radius: 4px;
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr auto auto auto;
+  padding: var(--space-2);
+}
+
+.cleanup__proposal[data-category="filler"] {
+  border-left-color: var(--primary);
+}
+
+.cleanup__proposal s {
+  color: var(--text-tertiary);
+}
+
+.cleanup__reason {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.cleanup__confidence {
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.cleanup__cover {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.cleanup__freeze {
+  align-self: flex-start;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.cleanup__freeze:hover {
+  background: var(--primary-hover);
+}

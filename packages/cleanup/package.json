@@ -1,0 +1,16 @@
+{
+  "name": "@verbal/cleanup",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./freeze": "./src/freeze.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@verbal/core": "*",
+    "@verbal/media": "*",
+    "@verbal/storyboard": "*"
+  }
+}
