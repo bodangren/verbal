@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { JobRecord, ProjectDocument, TranscriptDocument } from "@verbal/core";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { searchTranscript, type JobRecord, type ProjectDocument, type TranscriptDocument } from "@verbal/core";
 import {
   applyAcceptedPatches,
   parsePatchResponse,
@@ -78,6 +78,8 @@ export default function Home() {
   const transcript = editing.document;
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
+  const [query, setQuery] = useState("");
+  const [matchCursor, setMatchCursor] = useState(0);
   const [acceptance, setAcceptance] = useState<Acceptance>(DEFAULT_ACCEPTANCE);
   const [storyboardText, setStoryboardText] = useState("");
   const [tier, setTier] = useState<PreviewTier>("fast");
@@ -200,6 +202,25 @@ export default function Home() {
       editing.markSaved();
       setMessage("Transcript saved");
     });
+  }
+
+  const matches = useMemo(
+    () => (transcript === null ? [] : searchTranscript(transcript, query)),
+    [transcript, query],
+  );
+
+  function stepMatch(direction: 1 | -1) {
+    if (matches.length === 0) {
+      return;
+    }
+
+    const next = (matchCursor + direction + matches.length) % matches.length;
+    setMatchCursor(next);
+
+    const match = matches[next];
+    if (match !== undefined) {
+      setSelection({ fromIndex: match.fromIndex, toIndex: match.toIndex });
+    }
   }
 
   const transcribing =
@@ -686,6 +707,42 @@ export default function Home() {
         <section className="panel" aria-label="Transcript editor">
           <h2>Transcript</h2>
           <div className="row">
+            <label className="field">
+              Find
+              <input
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setMatchCursor(0);
+                }}
+                placeholder="Search the transcript"
+              />
+            </label>
+            {query.trim() !== "" && (
+              <>
+                <span className="muted">
+                  {matches.length === 0
+                    ? "No matches"
+                    : `${matchCursor + 1} of ${matches.length}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => stepMatch(-1)}
+                  disabled={matches.length === 0}
+                >
+                  Previous match
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepMatch(1)}
+                  disabled={matches.length === 0}
+                >
+                  Next match
+                </button>
+              </>
+            )}
+          </div>
+          <div className="row">
             <button type="button" onClick={deleteSelection} disabled={selection === null}>
               Delete selection
             </button>
@@ -709,6 +766,7 @@ export default function Home() {
           <TranscriptEditor
             transcript={transcript}
             selectedRange={selection}
+            matchedRanges={matches}
             onWordClick={(_wordId, index) => setSelection({ fromIndex: index, toIndex: index })}
             onSelectionChange={setSelection}
             onDeleteSelection={deleteSelection}

@@ -243,6 +243,25 @@ try {
   await editorPanel.getByRole("button", { name: "hello" }).waitFor();
   console.log("transcript: rendered");
 
+  // Search: find a word, see it highlighted, and step to the match.
+  const search = editorPanel.getByLabel("Find");
+  await search.fill("world");
+  await editorPanel.getByText("1 of 1").waitFor();
+  assert(
+    (await editorPanel.getByRole("button", { name: "world" }).getAttribute("data-match")) ===
+      "true",
+    "a search match should be marked in the editor",
+  );
+  await editorPanel.getByRole("button", { name: "Next match" }).click();
+  assert(
+    (await editorPanel
+      .getByRole("button", { name: "world" })
+      .getAttribute("data-selected")) === "true",
+    "stepping to a match should select it",
+  );
+  await search.fill("");
+  console.log("search: found and stepped to a match");
+
   if (mediaImported) {
     const playback = page.getByRole("region", { name: "Playback", exact: true });
     await playback.waitFor();

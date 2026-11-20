@@ -36,8 +36,8 @@ npx vitest run packages/core/src/search.test.ts
 
 ## Phase 3: Search box and navigation
 
-- [ ] Add the field, count, and Previous/Next to the transcript panel; stepping selects the match.
-- [ ] Commit: `feat(ui): Navigate transcript search matches`
+- [x] Add the field, count, and Previous/Next to the transcript panel; stepping selects the match.
+- [x] Commit: `feat(ui): Navigate transcript search matches`
 
 ---
 
