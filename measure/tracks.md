@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: Freeze Master and Cut List** [created: 2026-11-21]
+  *Focus: Freeze the cleaned master from the document's removals, expose it over HTTP, and wire the review's Freeze master control.*
+  *Status: In progress — Phase 1 started.*
+  *Link: [./tracks/freeze_master_20261121](./tracks/freeze_master_20261121/)*
+
 - [x] **Track: Transcription in the UI** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Start transcription from the page, follow the job, and refresh the transcript, playback, and cleanup proposals on success.*
   *Status: Complete. A Transcription panel starts `/api/transcribe`, follows the job, and reloads the transcript and proposals on success. The route is verified against a fake OpenAI-compatible ASR (job completes, words stored, 503 without a key). `npm run check` green (492 tests); `npm run e2e` transcribes a real clip in Chromium against the fake ASR and shows both the words and the filler proposal.*
