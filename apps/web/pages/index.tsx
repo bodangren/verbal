@@ -12,7 +12,8 @@ import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
 import { CapturePanel } from "../components/CapturePanel";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
-import { TranscriptEditor } from "../components/TranscriptEditor";
+import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
+import { useTranscriptDocument } from "../hooks/use-transcript-document";
 
 const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 
@@ -64,7 +65,10 @@ export default function Home() {
   const [root, setRoot] = useState("");
   const [name, setName] = useState("Untitled");
   const [project, setProject] = useState<ProjectDocument | null>(null);
-  const [transcript, setTranscript] = useState<TranscriptDocument | null>(null);
+  const editing = useTranscriptDocument(null);
+  const { undo: undoEdit, redo: redoEdit } = editing;
+  const transcript = editing.document;
+  const [selection, setSelection] = useState<WordSelection | null>(null);
   const [storyboardText, setStoryboardText] = useState("");
   const [tier, setTier] = useState<PreviewTier>("fast");
   const [plan, setPlan] = useState<PreviewPlan | null>(null);
@@ -111,10 +115,13 @@ export default function Home() {
     setProject(next);
 
     try {
-      setTranscript(await request<TranscriptDocument>(`/api/transcript?root=${encodeURIComponent(root)}`));
+      editing.reset(
+        await request<TranscriptDocument>(`/api/transcript?root=${encodeURIComponent(root)}`),
+      );
     } catch {
-      setTranscript(null);
+      editing.reset(null);
     }
+    setSelection(null);
 
     const storyboard = await request<StoryboardDocument>(
       `/api/storyboard?root=${encodeURIComponent(root)}`,
@@ -157,6 +164,64 @@ export default function Home() {
       setMessage("Storyboard saved");
     });
   }
+
+  function saveTranscriptDocument() {
+    if (transcript === null) {
+      return Promise.resolve();
+    }
+
+    return guard(async () => {
+      await putJson<TranscriptDocument>("/api/transcript", { root, document: transcript });
+      editing.markSaved();
+      setMessage("Transcript saved");
+    });
+  }
+
+  function deleteSelection() {
+    if (selection === null) {
+      return;
+    }
+
+    editing.removeRange(selection.fromIndex, selection.toIndex);
+    setSelection(null);
+  }
+
+  // Undo/redo shortcuts are global, so they are ignored while a text field has
+  // focus — otherwise typing in the storyboard editor would undo transcript cuts.
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if (!event.ctrlKey && !event.metaKey) {
+        return;
+      }
+
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (
+        target !== null &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undoEdit();
+        return;
+      }
+
+      if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        redoEdit();
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [undoEdit, redoEdit]);
 
   function preview(nextTier: PreviewTier) {
     return guard(async () => {
@@ -467,7 +532,34 @@ export default function Home() {
       {transcript !== null && (
         <section className="panel" aria-label="Transcript editor">
           <h2>Transcript</h2>
-          <TranscriptEditor transcript={transcript} />
+          <div className="row">
+            <button type="button" onClick={deleteSelection} disabled={selection === null}>
+              Delete selection
+            </button>
+            <button type="button" onClick={undoEdit} disabled={!editing.canUndo}>
+              Undo
+            </button>
+            <button type="button" onClick={redoEdit} disabled={!editing.canRedo}>
+              Redo
+            </button>
+            <button
+              type="button"
+              onClick={saveTranscriptDocument}
+              disabled={project === null}
+            >
+              Save transcript
+            </button>
+            <span className="muted" role="status">
+              {editing.dirty ? "Unsaved changes" : "Saved"}
+            </span>
+          </div>
+          <TranscriptEditor
+            transcript={transcript}
+            selectedRange={selection}
+            onWordClick={(_wordId, index) => setSelection({ fromIndex: index, toIndex: index })}
+            onSelectionChange={setSelection}
+            onDeleteSelection={deleteSelection}
+          />
         </section>
       )}
 

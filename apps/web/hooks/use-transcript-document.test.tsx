@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createTranscript } from "@verbal/core";
+import { createTranscript, type TranscriptDocument } from "@verbal/core";
 import { useTranscriptDocument } from "./use-transcript-document";
 
 const SPOKEN = [
@@ -12,6 +12,14 @@ const SPOKEN = [
 ];
 
 const transcript = createTranscript(SPOKEN);
+
+/** Removed word ids, failing loudly if the document unexpectedly vanished. */
+function removedWordIds(document: TranscriptDocument | null): string[] {
+  if (document === null) {
+    throw new Error("expected an open document");
+  }
+  return document.removedWordIds;
+}
 
 describe("useTranscriptDocument", () => {
   it("starts clean, deletable, and with nothing to undo", () => {
@@ -28,7 +36,7 @@ describe("useTranscriptDocument", () => {
 
     act(() => result.current.removeRange(1, 2));
 
-    expect(result.current.document.removedWordIds).toEqual(["w1", "w2"]);
+    expect(removedWordIds(result.current.document)).toEqual(["w1", "w2"]);
     expect(result.current.dirty).toBe(true);
     expect(result.current.canUndo).toBe(true);
     // The original document is untouched: edits are immutable.
@@ -59,7 +67,7 @@ describe("useTranscriptDocument", () => {
     act(() => result.current.undo());
     act(() => result.current.removeRange(3, 3));
 
-    expect(result.current.document.removedWordIds).toEqual(["w3"]);
+    expect(removedWordIds(result.current.document)).toEqual(["w3"]);
     expect(result.current.canRedo).toBe(false);
   });
 

@@ -260,6 +260,10 @@ code {
   color: #ffffff;
 }
 
+.transcript__word[data-selected="true"] {
+  border-color: var(--primary);
+}
+
 .transcript__word[data-removed="true"] {
   color: var(--text-tertiary);
   cursor: default;

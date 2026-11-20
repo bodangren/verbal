@@ -49,11 +49,11 @@ npx vitest run apps/web/hooks/use-transcript-document.test.tsx
 
 ## Phase 3: Page wiring
 
-- [ ] Replace the read-only transcript state with the hook.
-- [ ] Add Delete selection / Undo / Redo / Save controls and a dirty label.
-- [ ] Wire `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Ctrl/Cmd+Y`, ignoring text inputs.
-- [ ] Save through `PUT /api/transcript` and mark the document saved on success.
-- [ ] Commit: `feat(ui): Wire transcript editing into the page`
+- [x] Replace the read-only transcript state with the hook.
+- [x] Add Delete selection / Undo / Redo / Save controls and a dirty label.
+- [x] Wire `Ctrl/Cmd+Z`, `Ctrl/Cmd+Shift+Z`, and `Ctrl/Cmd+Y`, ignoring text inputs.
+- [x] Save through `PUT /api/transcript` and mark the document saved on success.
+- [x] Commit: `feat(ui): Wire transcript editing into the page`
 
 ---
 
