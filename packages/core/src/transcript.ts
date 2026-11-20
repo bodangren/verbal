@@ -252,6 +252,78 @@ export function splitSegment(
   return changed ? { ...transcript, segments } : transcript;
 }
 
+/**
+ * Moves an inclusive block of words so it starts at `targetIndex`.
+ *
+ * The target is clamped to the array, and a target at or inside the block is a
+ * no-op, so a move always names a genuinely different order. Moved words join
+ * the segment of the word they land beside, which keeps a sentence a sentence
+ * across a boundary, and a segment left empty is dropped.
+ */
+export function moveRange(
+  transcript: TranscriptDocument,
+  fromIndex: number,
+  toIndex: number,
+  targetIndex: number,
+): TranscriptDocument {
+  if (
+    !Number.isInteger(fromIndex) ||
+    !Number.isInteger(toIndex) ||
+    fromIndex < 0 ||
+    toIndex < fromIndex ||
+    toIndex >= transcript.words.length
+  ) {
+    throw new TranscriptError("out-of-range", `invalid word range ${fromIndex}..${toIndex}`);
+  }
+
+  if (!Number.isInteger(targetIndex)) {
+    throw new TranscriptError("out-of-range", `invalid move target ${targetIndex}`);
+  }
+
+  const blockLength = toIndex - fromIndex + 1;
+  const maxTarget = transcript.words.length - blockLength;
+  const target = Math.min(Math.max(targetIndex, 0), maxTarget);
+
+  if (target === fromIndex || (target > fromIndex && target <= toIndex)) {
+    return transcript;
+  }
+
+  const words = [...transcript.words];
+  const block = words.splice(fromIndex, blockLength);
+  words.splice(target, 0, ...block);
+
+  const segmentOf = new Map<string, string>();
+  for (const segment of transcript.segments) {
+    for (const id of segment.wordIds) {
+      segmentOf.set(id, segment.id);
+    }
+  }
+
+  const moved = new Set(block.map((word) => word.id));
+  const anchor = block[0];
+  const before = target > 0 ? words[target - 1] : undefined;
+  const after = words[target + blockLength];
+  const joining =
+    (before === undefined ? undefined : segmentOf.get(before.id)) ??
+    (after === undefined ? undefined : segmentOf.get(after.id)) ??
+    (anchor === undefined ? undefined : segmentOf.get(anchor.id));
+
+  const owner = (id: string): string =>
+    moved.has(id) ? (joining ?? segmentOf.get(id) ?? "") : (segmentOf.get(id) ?? "");
+
+  const order = words.map((word) => word.id);
+  const ids = [...new Set(transcript.segments.map((segment) => segment.id))];
+  if (joining !== undefined && !ids.includes(joining)) {
+    ids.push(joining);
+  }
+
+  const segments = ids
+    .map((id) => ({ id, wordIds: order.filter((wordId) => owner(wordId) === id) }))
+    .filter((segment) => segment.wordIds.length > 0);
+
+  return { ...transcript, words, segments };
+}
+
 /** The words that survive the current removals, in order. */
 export function keptWords(transcript: TranscriptDocument): TranscriptWord[] {
   const removed = new Set(transcript.removedWordIds);

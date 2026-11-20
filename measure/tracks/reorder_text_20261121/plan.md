@@ -11,8 +11,8 @@
 ## Phase 1: Core move
 
 ### Red
-- [ ] Failing tests: move forward, move backward, clamp at the end, no-op for the same index and for an index inside the range, and `out-of-range` for bad ranges.
-- [ ] Failing tests: segments are rewritten in the new order, a moved word joins the anchor's segment across a boundary, and an emptied segment is dropped.
+- [x] Failing tests: move forward, move backward, clamp at the end, no-op for the same index and for an index inside the range, and `out-of-range` for bad ranges.
+- [x] Failing tests: segments are rewritten in the new order, a moved word joins the anchor's segment across a boundary, and an emptied segment is dropped.
 
 **Targeted Red command:**
 ```bash
@@ -20,11 +20,11 @@ npx vitest run packages/core/src/transcript-reorder.test.ts
 ```
 
 ### Green
-- [ ] Implement `moveRange` in `packages/core/src/transcript.ts`.
-- [ ] Make tests pass.
+- [x] Implement `moveRange` in `packages/core/src/transcript.ts`.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Add block reordering`
+- [x] Commit: `feat(core): Add block reordering`
 
 ---
 
