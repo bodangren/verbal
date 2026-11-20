@@ -23,6 +23,13 @@ export type CompositeAudio = {
   loudnessLufs?: number;
 };
 
+export type CompositeCodecs = {
+  videoCodec?: string;
+  videoArgs?: string[];
+  audioCodec?: string;
+  audioArgs?: string[];
+};
+
 export type CompositeRequest = {
   outputPath: string;
   width: number;
@@ -36,6 +43,7 @@ export type CompositeRequest = {
   slide: CompositeSource;
   key?: CompositeKey;
   audio: CompositeAudio;
+  codecs?: CompositeCodecs;
 };
 
 export type CompositeErrorCode = "invalid-request";
@@ -156,6 +164,8 @@ export function buildCompositeArgs(request: CompositeRequest): string[] {
     );
   }
 
+  const codecs = request.codecs ?? {};
+
   const args = [
     "-y",
     ...sourceArgs(request.slide),
@@ -172,15 +182,11 @@ export function buildCompositeArgs(request: CompositeRequest): string[] {
     "-t",
     duration,
     "-c:v",
-    "libx264",
-    "-crf",
-    "20",
-    "-preset",
-    "veryfast",
+    codecs.videoCodec ?? "libx264",
+    ...(codecs.videoArgs ?? ["-crf", "20", "-preset", "veryfast"]),
     "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
+    codecs.audioCodec ?? "aac",
+    ...(codecs.audioArgs ?? ["-b:a", "192k"]),
     "-progress",
     "pipe:1",
     "-nostats",
