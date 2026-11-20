@@ -245,10 +245,25 @@ npx vitest run packages/core apps/web
 
 ## Phase 8: Provider abstraction
 
-- [ ] Red: contract tests for the ASR and LLM interfaces using fakes.
-- [ ] Green: implement one ASR adapter and one LLM adapter inside `packages/ai`.
-- [ ] Green: wire transcription into the job registry.
-- [ ] Refactor + commit: `feat(ai): Add provider interfaces and one adapter each`
+- [x] Red: contract tests for the ASR and LLM interfaces using fakes.
+- [x] Green: implement one ASR adapter and one LLM adapter inside `packages/ai`.
+- [x] Green: wire transcription into the job registry.
+- [x] Refactor + commit: `feat(ai): Add provider interfaces and OpenAI-compatible adapters` — `87841d1`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/ai apps/web/server
+```
+
+**Red result:** 6 provider assertions failed on missing exports and `./transcribe-job` did not exist.
+
+**Green result:** 8 provider tests + 3 transcription-job tests; full suite 174/174; `npm run check` exits 0.
+- `TranscriptionProvider` and `LlmProvider` are the only provider contracts; both are implemented with `fetch` and no vendor SDK, so no SDK can leak past `packages/ai`.
+- `createWhisperProvider` posts multipart to `/audio/transcriptions` with `response_format=verbose_json` and `timestamp_granularities[]=word`, normalises `word`/`text`, and surfaces HTTP failures with their status.
+- `createChatProvider` posts to `/chat/completions` and rejects responses without message content.
+- Both adapters accept `baseUrl`, so any OpenAI-compatible server works; `fetch` and `readFile` are injectable for tests.
+- `runTranscriptionJob` stores the transcript only after the provider succeeds, so a failed job never leaves a partial transcript on disk.
+- `POST /api/transcribe` returns 503 when `OPENAI_API_KEY` is unset, 202 with a job when it is.
 
 ---
 
