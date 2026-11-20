@@ -35,16 +35,16 @@ npx vitest run packages/cleanup/src/detect.test.ts
 ## Phase 2: Cleanup API
 
 ### Red
-- [ ] Failing tests: `GET /api/cleanup` returns the proposals and an empty audio-fix list for a stored transcript.
-- [ ] Failing tests: no transcript is 404, a relative root is 400, another method is 405.
+- [x] Failing tests: `GET /api/cleanup` returns the proposals and an empty audio-fix list for a stored transcript.
+- [x] Failing tests: no transcript is 404, a relative root is 400, another method is 405.
 
 ### Green
-- [ ] Add `apps/web/server/cleanup-api.ts`.
-- [ ] Add `apps/web/pages/api/cleanup.ts`.
-- [ ] Make tests pass.
+- [x] Add `apps/web/server/cleanup-api.ts`.
+- [x] Add `apps/web/pages/api/cleanup.ts`.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(api): Serve cleanup proposals`
+- [x] Commit: `feat(api): Serve cleanup proposals`
 
 ---
 
