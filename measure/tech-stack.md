@@ -58,6 +58,8 @@ Remotion compositions live in `tools/remotion` and are rendered to alpha-preserv
 
 Licensing: personal use only, so Remotion's free tier applies (storyboard spec, OD2). Revisit if distribution ever becomes a goal.
 
+Measured (2026-11-20): three 1-second steps at 320×180 render, composite, and concatenate in about 10.6 s, dominated by bundle and browser startup. Re-measure at 1080p before making any preview-latency promise.
+
 ## Package Layout
 
 ```

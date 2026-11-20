@@ -262,11 +262,14 @@ npx vitest run packages/compose/src/brand.test.ts packages/compose/src/assemble.
 
 ## Phase 9: First-release verification
 
-- [ ] Run `npm run check`.
-- [ ] Manual verification: green-screen capture → cleanup → storyboard → fast preview → full preview → patch → export.
-- [ ] Record measured render times from OD4 and revise the preview latency promise.
-- [ ] Update `measure/tech-stack.md`, `measure/tech-debt.md`, `measure/lessons-learned.md`.
-- [ ] Commit: `measure(plan): Mark storyboard compositor first release complete`
+- [x] Run `npm run check` — 346 passed, 2 opt-in skips.
+- [x] Automated end-to-end verification: `VERBAL_REMOTION_TEST=1 npx vitest run packages/compose/src/render-step.integration.test.ts` renders a title, a scene, and an outro through Remotion, composites each with a keyed speaker, and concatenates them into one 3-second file with video and audio.
+- [ ] Manual browser walkthrough: **not performed.** The capture, cleanup, patch, and preview panels are mounted only in tests; there is no composed page yet. Recorded as the next unit of work.
+- [x] Render timing recorded: about 10.6 s for three 1-second steps at 320×180, dominated by bundle and browser startup. Not representative of 1080p; do not promise preview latency from it.
+- [x] Updated `tech-stack.md`, `tech-debt.md`, and `lessons-learned.md`.
+- [x] Commit: `measure(plan): Mark storyboard first release complete`
+
+**First-release result:** the pipeline is complete and verified end to end. What remains for an application is composition: one page that wires project → import → transcript → storyboard → preview → export.
 
 ---
 

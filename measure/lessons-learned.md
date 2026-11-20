@@ -16,6 +16,16 @@
 - **npm workspaces need `workspaces` in `package.json` and `"*"` ranges** — npm does not accept pnpm's `workspace:*` protocol.
 - **A missing-module failure is a valid Red phase in TypeScript**, but pair it with a compile-time interface assertion (`const _x: SomeInterface = fake`) so a later refactor cannot quietly break the contract.
 
+## Remotion / storyboard pipeline
+
+- **Drive the system Chrome.** Point `browserExecutable` at `/usr/bin/google-chrome` (overridable with `VERBAL_CHROME`). A per-project Chromium download is ~150 MB and pointless when the system already has a browser.
+- **Cache the webpack bundle by source hash.** Bundling dominates short renders; stamping `.bundle/source-hash.txt` turns repeat renders from seconds of bundling into near-zero.
+- **Hash scene content, not scene identity.** `slideRequestHash` excludes the scene id, so renaming or reordering a scene keeps its cached frames, and two brand steps with identical text share one render.
+- **Composite per step, then concat with `-c copy`.** Every step must share codec settings or the concat demuxer produces a broken file. Passing codec options through `CompositeRequest` makes that explicit.
+- **Keep the adapter thin and injected.** `assembleStoryboard` takes `renderStep` and `concat`; `createStepRenderer` is the only place that knows Remotion and FFmpeg, and both are testable with fakes.
+- **A failed step must fail the assembly.** Never concatenate a partial list: a shorter video that looks finished is worse than an error.
+- **Full-frame vs keyed steps.** Brand bookends render `full-frame`; storyboard scenes default to `speaker-inset`, which is what makes the green-screen workflow visible in the output.
+
 ## Go + GTK4 + GStreamer (retired 2026-11-20)
 
 - **Thread Safety:** Always route GTK UI updates through `glib.IdleAdd`. Direct widget access from goroutines causes crashes.
