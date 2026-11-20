@@ -183,11 +183,27 @@ npx vitest run packages/compose/src/preview.test.ts apps/web/components/storyboa
 
 ## Phase 6: Cleanup review UI
 
-- [ ] Red: proposal grouping, per-category acceptance, and aggressiveness application.
-- [ ] Green: proposal list with strikethrough words, gap markers, and audio-fix badges.
-- [ ] Green: visual-cover suggestion per deletion.
-- [ ] Green: freeze-master action producing master + anchor index, with re-anchoring when the master changes.
-- [ ] Commit: `feat(ui): Add cleanup review and master freeze`
+- [x] Red: proposal grouping, per-category acceptance, and aggressiveness application.
+- [x] Green: proposal list with strikethrough words, category markers, and audio-fix badges.
+- [x] Green: visual-cover suggestion per deletion.
+- [x] Green: freeze-master action producing the authoritative cut list, the master-time anchor index, and a fingerprint for re-anchoring.
+- [x] Commit: `feat(ui): Add cleanup review and master freeze` — `4d1a05d`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/cleanup apps/web/components/cleanup-review.test.tsx
+```
+
+**Red result:** 4 files failed on missing modules.
+
+**Green result:** 19 package tests + 5 component tests; full suite 279/279; `npm run check` exits 0.
+- `packages/cleanup` splits browser-safe logic (types, grouping, acceptance) from server-side freezing behind the `@verbal/cleanup/freeze` subpath. The review component imports only the root, so `node:crypto` and the media cut-list code never reach the client bundle.
+- `groupProposals` uses a canonical category order; empty categories disappear.
+- `resolveAccepted` requires a proposal to be enabled by category or id **and** to clear `1 - aggressiveness`; the default acceptance removes nothing.
+- `freezeMaster` marks accepted words, derives the cut list, and maps surviving words into **master** time. It returns a fingerprint of the exact cut; `requiresReanchor` compares a storyboard's recorded fingerprint against the current one.
+- Media rendering stays with the existing export path: the frozen cut list is what export consumes, so there is one cut-list implementation.
+- `CleanupReview` shows audio-fix badges, an aggressiveness slider, per-category and per-proposal checkboxes, struck-through word spans, confidence, and the suggested cover. Nothing is removed until it is enabled and frozen.
+- Gap markers are represented by the `dead-air` category and its reason rather than a separate inline marker; revisit if the transcript view needs an inline affordance.
 
 ---
 
