@@ -21,6 +21,7 @@
       "@verbal/core": ["./packages/core/src/index.ts"],
       "@verbal/media": ["./packages/media/src/index.ts"],
       "@verbal/storyboard": ["./packages/storyboard/src/index.ts"],
+      "@verbal/storyboard/hash": ["./packages/storyboard/src/hash.ts"],
       "@verbal/compose": ["./packages/compose/src/index.ts"],
       "@verbal/cleanup": ["./packages/cleanup/src/index.ts"],
       "@verbal/cleanup/freeze": ["./packages/cleanup/src/freeze.ts"],

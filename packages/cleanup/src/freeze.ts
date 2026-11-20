@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { TranscriptDocument, TranscriptWord } from "@verbal/core";
 import { buildCutList, type CutList, type CutRange } from "@verbal/media";
-import { canonicalJson } from "@verbal/storyboard";
+import { canonicalJson } from "@verbal/storyboard/hash";
 import type { CleanupProposal } from "./types";
 
 export type AnchorEntry = {

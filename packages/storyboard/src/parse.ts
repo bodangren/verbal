@@ -90,6 +90,11 @@ function parseScene(value: unknown, seenIds: Set<string>): Scene {
   return scene;
 }
 
+/** Validates one untrusted scene value. */
+export function validateScene(value: unknown): Scene {
+  return parseScene(value, new Set());
+}
+
 /** Validates an untrusted value and returns a typed storyboard document. */
 export function validateStoryboard(value: unknown): StoryboardDocument {
   if (!isRecord(value)) {

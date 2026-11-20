@@ -45,7 +45,8 @@ export type StoryboardErrorCode =
   | "unknown-anchor"
   | "invalid-anchor"
   | "unknown-scene"
-  | "invalid-patch";
+  | "invalid-patch"
+  | "unknown-version";
 
 /** Error raised when a storyboard document, anchor, or patch is invalid. */
 export class StoryboardError extends Error {

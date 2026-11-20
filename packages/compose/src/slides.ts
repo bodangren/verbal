@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { canonicalJson } from "@verbal/storyboard";
+import { canonicalJson } from "@verbal/storyboard/hash";
 import type { SlideCache } from "./cache";
 import {
   SlideError,

@@ -1,6 +1,10 @@
-// @verbal/storyboard — storyboard IR, word-span anchors, patches, and hashing.
+// @verbal/storyboard — storyboard IR, word-span anchors, patches, comments, and
+// version history (browser-safe). Hashing lives behind `@verbal/storyboard/hash`
+// because it uses node:crypto.
 export * from "./anchors";
-export * from "./hash";
+export * from "./comments";
+export * from "./feedback";
+export * from "./history";
 export * from "./parse";
 export * from "./patches";
 export * from "./types";

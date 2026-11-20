@@ -399,3 +399,88 @@ code {
 .cleanup__freeze:hover {
   background: var(--primary-hover);
 }
+
+.patches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.patches__header {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.patches__header h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.patches__count {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.patches__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.patches__item {
+  background: var(--card);
+  border-left: 3px solid var(--text-tertiary);
+  border-radius: 4px;
+  padding: var(--space-2);
+}
+
+.patches__item[data-accepted="true"] {
+  border-left-color: var(--primary);
+}
+
+.patches__hunk {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: var(--space-2);
+}
+
+.patches__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.patches__apply,
+.patches__discard {
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.patches__apply {
+  background: var(--primary);
+  border: none;
+  color: #ffffff;
+}
+
+.patches__apply:hover {
+  background: var(--primary-hover);
+}
+
+.patches__discard {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.patches__discard:hover {
+  color: var(--text-primary);
+}
