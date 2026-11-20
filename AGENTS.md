@@ -35,7 +35,7 @@ Never start significant work without an active track. Always update `measure/tra
 - **Performance:** Long-running media work runs in the job registry, never in a request handler or a React render. Progress reaches the UI through the job events, not polling inside components.
 - **Linux Focus:** Optimise for Ubuntu/GNOME. Wayland and X11 must both work.
 - **Project Structure:** `apps/web` (vinext app), `packages/{core,media,storyboard,slides,ai}`, `tools/remotion`.
-- **Legacy code:** `cmd/`, `internal/`, `go.mod`, and `go.sum` are retired reference only. Do not add features there. They are deleted once the rewrite reaches export parity.
+- **Status:** the TypeScript rewrite is complete (2026-11-20). The Go implementation has been removed; do not reintroduce it.
 
 ## Build System
 

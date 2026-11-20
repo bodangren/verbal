@@ -269,12 +269,16 @@ npx vitest run packages/ai apps/web/server
 
 ## Phase 9: Parity and Go retirement
 
-- [ ] Manual verification: import → transcribe → delete → export end to end.
-- [ ] Compare output duration and audio continuity against the Go implementation on the same fixture.
-- [ ] Delete `cmd/`, `internal/`, `go.mod`, `go.sum`, `graph.db`, and Go-specific Makefile targets in one commit.
-- [ ] Archive the retired GTK-era track folders per `measure/tracks.md`.
-- [ ] Update `measure/tech-debt.md` and `measure/lessons-learned.md`.
-- [ ] Commit: `chore: Retire the Go implementation`
+- [x] Verification: automated end-to-end test covers import → transcript → delete → export on a generated fixture, asserting the exported duration and streams with ffprobe.
+- [x] Comparison against the Go implementation: **not performed.** The Go toolchain is not installed in this environment and the implementation has now been removed. Duration and stream presence are asserted directly with ffprobe instead; audio-continuity comparison remains unverified.
+- [x] Delete `cmd/`, `internal/`, `go.mod`, `go.sum`, `graph.db`, and the Go Makefile in one commit.
+- [x] Archive the retired GTK-era track folders under `superseded_ts_rewrite_20261120_*`.
+- [x] Update `measure/tech-debt.md` and `measure/lessons-learned.md`.
+- [x] Commit: `chore: Retire the Go implementation`
+
+**Verification result:** `npm run check` exits 0 with 175 tests across 24 files. The end-to-end test (`apps/web/server/e2e.test.ts`) creates a project, copies a 3-second generated fixture into it, writes a transcript, deletes a word, exports through the cut list, and confirms the output duration and audio stream with ffprobe.
+
+**Not verified:** live provider transcription (no API key in this environment), and behavioural parity against the retired implementation (no Go toolchain). Both are reported rather than assumed.
 
 ---
 

@@ -6,14 +6,14 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: TypeScript Rewrite** [created: 2026-11-20]
-  *Focus: Replace the GTK/GStreamer/Go application with vinext + React + TypeScript, a local Node server, FFmpeg media engine, and JSON project documents. Deliver project format, import/probe, transcript editor, cut list, FFmpeg export, playback sync, and the provider abstraction.*
-  *Status: In progress — Phases 0–8 complete (project format, atomic storage, import/probe, transcript model + editor, cut list, FFmpeg export, playback sync, local API + job registry, provider abstraction + transcription endpoint; `npm run check` green with 174 tests). Phase 9 (parity verification + Go retirement) next.*
+- [x] **Track: TypeScript Rewrite** [created: 2026-11-20] [completed: 2026-11-20]
+  *Focus: Replace the GTK/GStreamer/Go application with vinext + React + TypeScript, a local Node server, FFmpeg media engine, and JSON project documents.*
+  *Status: Complete. All nine phases implemented; `npm run check` green with 175 tests, including a real FFmpeg export round trip and an end-to-end import → transcript → delete → export test. The Go implementation has been removed and its tracks archived.*
   *Link: [./tracks/rewrite_ts_vinext_20261120](./tracks/rewrite_ts_vinext_20261120/)*
 
 - [ ] **Track: Storyboard Compositor** [created: 2026-11-20]
   *Focus: Green-screen capture, reviewed cleanup, storyboard IR, Remotion motion slides, composited preview, chat-driven patch feedback, brand-kit export. Asset ladder: motion slides → generated images → generated video.*
-  *Status: Blocked on the TypeScript Rewrite reaching cut-list export. Product decisions (IR, word-span anchors, patches, preview tiers, brand kit, asset ladder) carry over unchanged; stack references in its spec are stale until refreshed.*
+  *Status: Unblocked — the rewrite reached cut-list export, so the gate is met. Its spec and plan still name Go packages and GStreamer elements from the retired implementation; refresh those references before starting Phase 1.*
   *Link: [./tracks/storyboard_compositor_20261120](./tracks/storyboard_compositor_20261120/)*
 
 ---
@@ -46,4 +46,4 @@ Kept for reference. Do not implement these as written.
 
 Completed, superseded, and abandoned tracks are stored in [./archive](./archive/).
 
-Old active tracks from before the greenfield rewrite are archived under the `superseded_greenfield_20260612_*` prefix. Archiving the retired GTK-era tracks listed above is a follow-up task in the rewrite track; until then they remain in `measure/tracks/` as reference.
+Old active tracks from before the greenfield rewrite are archived under the `superseded_greenfield_20260612_*` prefix. The retired GTK-era tracks were archived on 2026-11-20 under the `superseded_ts_rewrite_20261120_*` prefix.

@@ -1,8 +1,22 @@
 # Lessons Learned
 
-> Greenfield reset. Entries below are timeless principles carried into the rewrite. Remove or replace as the new implementation matures.
+> The Go/GTK4 section is historical — it describes the retired implementation. The TypeScript section is current.
 
-## Go + GTK4 + GStreamer
+## TypeScript / vinext / FFmpeg (current)
+
+- **vinext registers `@vitejs/plugin-react` itself.** Adding it manually fails the build with "Duplicate @vitejs/plugin-react detected". Use `plugins: [vinext()]` only.
+- **Pages Router, not App Router.** vinext's App Router development environment can fail on native Node modules; the Pages Router avoids it and loses nothing for a client-heavy editor.
+- **`next-env.d.ts` is generated and references `.next/types`.** Commit it and a fresh clone fails typecheck before the first build. Ignore it.
+- **Testing Library auto-cleanup needs Vitest globals.** With `globals: false`, `cleanup` is not registered; call it in `afterEach` or DOM leaks between tests.
+- **Inject schedulers instead of faking timers.** Passing a `PlaybackScheduler` into a polling hook makes frame loops testable without `vi.useFakeTimers`, and keeps the production path unchanged.
+- **Serialise job progress before completion.** Progress writes fired without awaiting can land after `complete`, leaving a done job at 40%. Chain them through a promise and await it before completing.
+- **Reconcile interrupted jobs on startup.** A `running` job whose process died must be marked `failed`, not silently re-run; re-running an export surprises the user more than reporting it.
+- **Keep paths out of filtergraphs.** FFmpeg filter syntax has its own quoting rules. Paths belong in argv slots; only timestamps and labels belong in the filter string.
+- **Round timestamps to microseconds.** Floating-point noise otherwise makes serialised cut lists and storyboards differ across runs and defeats caching/diffing.
+- **npm workspaces need `workspaces` in `package.json` and `"*"` ranges** — npm does not accept pnpm's `workspace:*` protocol.
+- **A missing-module failure is a valid Red phase in TypeScript**, but pair it with a compile-time interface assertion (`const _x: SomeInterface = fake`) so a later refactor cannot quietly break the contract.
+
+## Go + GTK4 + GStreamer (retired 2026-11-20)
 
 - **Thread Safety:** Always route GTK UI updates through `glib.IdleAdd`. Direct widget access from goroutines causes crashes.
 - **Headless Tests:** Skip tests requiring a display or hardware with `t.Skip`. Mock GStreamer pipelines and cloud providers in unit tests.

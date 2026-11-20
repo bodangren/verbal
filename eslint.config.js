@@ -10,8 +10,6 @@ export default tseslint.config(
       "**/.vinext/**",
       "**/.vite/**",
       "coverage/**",
-      "internal/**",
-      "cmd/**",
       "measure/**",
     ],
   },
