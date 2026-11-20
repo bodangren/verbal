@@ -29,9 +29,9 @@ npx vitest run packages/compose/src/prune.test.ts
 
 ## Phase 2: Endpoint
 
-- [ ] `POST /api/storyboard/prune` returning the plan, and deleting only with `apply: true`.
-- [ ] Route tests for both modes and the error cases.
-- [ ] Commit: `feat(api): Report and apply asset pruning`
+- [x] `POST /api/storyboard/prune` returning the plan, and deleting only with `apply: true`.
+- [x] Route tests for both modes and the error cases.
+- [x] Commit: `feat(api): Report and apply asset pruning`
 
 ---
 
