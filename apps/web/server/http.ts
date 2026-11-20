@@ -10,6 +10,13 @@ export function sendJson(response: ServerResponse, result: ApiResponse): void {
 
 /** Reads a JSON body; malformed or empty bodies become undefined. */
 export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  // vinext parses JSON bodies before invoking the handler. Reading the stream
+  // in that case yields nothing, so prefer an already-parsed body.
+  const parsedBody = (request as { body?: unknown }).body;
+  if (parsedBody !== undefined) {
+    return parsedBody;
+  }
+
   const chunks: Buffer[] = [];
 
   for await (const chunk of request) {

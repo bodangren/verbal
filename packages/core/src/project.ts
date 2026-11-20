@@ -30,6 +30,8 @@ export type ProjectPaths = {
   project: string;
   transcript: string;
   edit: string;
+  storyboard: string;
+  comments: string;
   assets: string;
   cache: string;
   exports: string;
@@ -42,6 +44,8 @@ export function projectPaths(root: string): ProjectPaths {
     project: path.join(root, "project.json"),
     transcript: path.join(root, "transcript.json"),
     edit: path.join(root, "edit.json"),
+    storyboard: path.join(root, "storyboard.json"),
+    comments: path.join(root, "comments.json"),
     assets: path.join(root, "assets"),
     cache: path.join(root, "cache"),
     exports: path.join(root, "exports"),

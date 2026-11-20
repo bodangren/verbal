@@ -44,6 +44,81 @@ body {
   gap: var(--space-4);
 }
 
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 auto;
+  max-width: 960px;
+  padding: var(--space-6) var(--space-5);
+}
+
+.app__header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.field {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.field input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font: inherit;
+  padding: var(--space-2);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.app button:not([class]) {
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+}
+
+.app button:not([class]):hover:enabled {
+  background: var(--primary-hover);
+}
+
+.app button:not([class]):disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.editor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--mono);
+  font-size: 12px;
+  margin-bottom: var(--space-2);
+  min-height: 160px;
+  padding: var(--space-3);
+  resize: vertical;
+  width: 100%;
+}
+
 .header h1 {
   margin: 0;
   font-size: 22px;
