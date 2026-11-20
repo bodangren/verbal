@@ -29,9 +29,9 @@ npx vitest run packages/ai/src/local.test.ts
 
 ## Phase 2: Provider
 
-- [ ] `createLocalWhisperProvider` with an argv builder and an injectable runner.
-- [ ] Tests: argv shape, missing binary → `not-configured`, non-zero exit → `request-failed`, and a fake binary script producing a transcript.
-- [ ] Commit: `feat(ai): Add a local whisper provider`
+- [x] `createLocalWhisperProvider` with an argv builder and an injectable runner.
+- [x] Tests: argv shape, missing binary → `not-configured`, non-zero exit → `request-failed`, and a fake binary script producing a transcript.
+- [x] Commit: `feat(ai): Add a local whisper provider`
 
 ---
 
