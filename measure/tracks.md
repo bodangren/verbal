@@ -8,7 +8,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: TypeScript Rewrite** [created: 2026-11-20]
   *Focus: Replace the GTK/GStreamer/Go application with vinext + React + TypeScript, a local Node server, FFmpeg media engine, and JSON project documents. Deliver project format, import/probe, transcript editor, cut list, FFmpeg export, playback sync, and the provider abstraction.*
-  *Status: In progress — Phases 0–5 complete, including the **export parity gate** (project format, atomic storage, import/probe, transcript model + editor, cut list, FFmpeg export with progress + cancellation; `npm run check` green with 109 tests, including a real FFmpeg round trip). Phase 6 (playback + word sync) next.*
+  *Status: In progress — Phases 0–6 complete (project format, atomic storage, import/probe, transcript model + editor, cut list, FFmpeg export with progress + cancellation, playback with word sync; `npm run check` green with 127 tests, including a real FFmpeg round trip). Phase 7 (local API + job registry) next.*
   *Link: [./tracks/rewrite_ts_vinext_20261120](./tracks/rewrite_ts_vinext_20261120/)*
 
 - [ ] **Track: Storyboard Compositor** [created: 2026-11-20]

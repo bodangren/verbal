@@ -197,11 +197,24 @@ npx vitest run packages/media
 
 ## Phase 6: Playback and synchronisation
 
-- [ ] Red: binary-search tests for word-at-time, including gaps and boundaries.
-- [ ] Red: sync hook tests with a fake clock (advance time → expected active word).
-- [ ] Green: `<video>` playback with click-to-seek.
-- [ ] Green: active-word highlighting that does not re-render the whole transcript.
-- [ ] Refactor + commit: `feat(ui): Add playback with word synchronisation`
+- [x] Red: binary-search tests for word-at-time, including gaps and boundaries.
+- [x] Red: sync hook tests driven by an injected scheduler (advance time → expected active word).
+- [x] Green: `<video>` playback with click-to-seek.
+- [x] Green: active-word highlighting that updates only when the active word changes.
+- [x] Refactor + commit: `feat(ui): Add playback with word synchronisation` — `229f84b`
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/core apps/web
+```
+
+**Red result:** 3 new files failed on missing modules (`./sync`, `./use-playback-sync`, `./PlaybackScreen`); the 62 existing tests stayed green.
+
+**Green result:** 80/80 targeted; full suite 127/127; `npm run check` exits 0.
+- `wordIndexAtTime` is an O(log n) binary search returning the last word whose start is at or before the playhead. A silence keeps the previous word active; positions before the first word return -1.
+- `useActiveWord` polls once per animation frame through an injectable scheduler, reads the clock through a ref (so an inline `getTime` cannot restart the loop), and only calls `setState` when the active word changes. The transcript is never rebuilt per frame.
+- `PlaybackScreen` renders the video and a play/pause control; clicking a word seeks to its start; the active word drives `aria-current` in the transcript.
+- Tests run under jsdom with `HTMLMediaElement.play`/`pause`/`currentTime` stubbed and the scheduler advanced manually.
 
 ---
 
