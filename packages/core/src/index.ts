@@ -1,7 +1,8 @@
-// @verbal/core — project documents, transcript model, storage, and sync.
+// @verbal/core — project documents, transcript model, storage, sync, and jobs.
 export * from "./atomic";
 export * from "./errors";
 export * from "./history";
+export * from "./jobs";
 export * from "./paths";
 export * from "./project";
 export * from "./sync";

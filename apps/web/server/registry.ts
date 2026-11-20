@@ -1,0 +1,25 @@
+import os from "node:os";
+import path from "node:path";
+import { JobRegistry, createFileJobStore, nodeFileSystem } from "@verbal/core";
+
+let registryPromise: Promise<JobRegistry> | undefined;
+
+/**
+ * The process-wide job registry.
+ *
+ * In development, module reloads reset this promise; the registry then reloads
+ * from disk and marks any job left running as interrupted.
+ */
+export function getJobRegistry(): Promise<JobRegistry> {
+  if (registryPromise === undefined) {
+    const file = path.join(os.homedir(), ".local", "share", "verbal", "jobs.json");
+    registryPromise = JobRegistry.open(createFileJobStore(nodeFileSystem, file));
+  }
+
+  return registryPromise;
+}
+
+/** Test seam: replace the registry instance. */
+export function setJobRegistry(registry: JobRegistry | undefined): void {
+  registryPromise = registry === undefined ? undefined : Promise.resolve(registry);
+}
