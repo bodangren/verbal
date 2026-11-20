@@ -174,6 +174,84 @@ export function removeRange(
   return withRemovals(transcript, removed);
 }
 
+/**
+ * Inserts air after a word by shifting every later word's timestamps.
+ *
+ * Silence needs no media work: a gap between words *is* silence, so the cut
+ * list and the anchor index see it without any new document state. A
+ * non-positive or non-finite duration is treated as "no change".
+ */
+export function insertSilence(
+  transcript: TranscriptDocument,
+  afterWordId: string,
+  seconds: number,
+): TranscriptDocument {
+  const index = transcript.words.findIndex((word) => word.id === afterWordId);
+
+  if (index === -1) {
+    throw new TranscriptError("unknown-word", `unknown word id: ${afterWordId}`);
+  }
+
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return transcript;
+  }
+
+  return {
+    ...transcript,
+    words: transcript.words.map((word, position) =>
+      position <= index
+        ? word
+        : { ...word, start: word.start + seconds, end: word.end + seconds },
+    ),
+  };
+}
+
+/** Returns the next free `s<n>` id, so repeated splits never collide. */
+function nextSegmentId(used: Set<string>): string {
+  let index = used.size;
+
+  while (used.has(`s${index}`)) {
+    index += 1;
+  }
+
+  used.add(`s${index}`);
+  return `s${index}`;
+}
+
+/**
+ * Starts a new segment at a word, keeping word ids, order, and timings.
+ *
+ * Splitting at a segment's first word changes nothing, which makes the action
+ * safe to press twice.
+ */
+export function splitSegment(
+  transcript: TranscriptDocument,
+  beforeWordId: string,
+): TranscriptDocument {
+  if (!transcript.words.some((word) => word.id === beforeWordId)) {
+    throw new TranscriptError("unknown-word", `unknown word id: ${beforeWordId}`);
+  }
+
+  const used = new Set(transcript.segments.map((segment) => segment.id));
+  const segments: TranscriptSegment[] = [];
+  let changed = false;
+
+  for (const segment of transcript.segments) {
+    const at = segment.wordIds.indexOf(beforeWordId);
+
+    if (at <= 0) {
+      segments.push(segment);
+      continue;
+    }
+
+    changed = true;
+    segments.push({ id: segment.id, wordIds: segment.wordIds.slice(0, at) });
+    segments.push({ id: nextSegmentId(used), wordIds: segment.wordIds.slice(at) });
+  }
+
+  return changed ? { ...transcript, segments } : transcript;
+}
+
 /** The words that survive the current removals, in order. */
 export function keptWords(transcript: TranscriptDocument): TranscriptWord[] {
   const removed = new Set(transcript.removedWordIds);
