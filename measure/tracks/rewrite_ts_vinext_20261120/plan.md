@@ -102,19 +102,32 @@ npx vitest run packages/media
 ## Phase 3: Transcript model and editor
 
 ### Red
-- [ ] Failing tests: word list parsing, stable IDs, and segment grouping.
-- [ ] Failing tests: deleting a word or a contiguous range produces the expected cut-list ranges.
-- [ ] Failing tests: undo/redo round-trips the document exactly.
-- [ ] Component tests: words render, a click emits its index, a selection spans the expected words.
+- [x] Failing tests: word list parsing, stable ids, and segment grouping by silence gap.
+- [x] Failing tests: removing a word or a contiguous range marks exactly those words, idempotently and in word order. (Export-range derivation is Phase 4.)
+- [x] Failing tests: undo/redo round-trips the document exactly, and a new edit clears the redo stack.
+- [x] Component tests: words render as a labelled region of buttons; a click emits its id and index; shift-click spans a range; removed words are disabled; the active word carries `aria-current`.
+
+**Targeted Red command:**
+```bash
+npx vitest run packages/core apps/web
+```
+
+**Red result:** 3 new files failed on missing modules (`./transcript`, `./history`, `./TranscriptEditor`); the existing 33 tests stayed green.
 
 ### Green
-- [ ] Implement the transcript document and edit operations (pure).
-- [ ] Implement the transcript editor component with word spans and selection.
-- [ ] Implement undo/redo.
-- [ ] Make tests pass.
+- [x] Implement the transcript document and edit operations (pure).
+- [x] Implement the transcript editor component with word spans and selection.
+- [x] Implement undo/redo.
+- [x] Make tests pass.
+
+**Green result:** 62/62 in the targeted run; full suite 85/85; `npm run check` exits 0.
+- `transcript.ts`: stable `w0…wN` ids, gap-based segment grouping (0.75 s), `removeWord`/`removeRange` that keep removals ordered and reversible, `keptWords`, and a versioned validating parser.
+- `history.ts`: generic `History<T>` with `commit`/`undo`/`redo`. Committing the same reference is a no-op; a new edit clears the redo stack.
+- `TranscriptEditor.tsx`: words are real `<button>`s inside a labelled region, so keyboard activation and accessible names come from the platform. Removed words stay in the DOM (disabled, `data-removed`), the active word sets `aria-current`, and shift-click reports an inclusive range.
+- Component tests run under jsdom with explicit `cleanup` (Vitest globals are off, so Testing Library's auto-cleanup is not registered).
 
 ### Refactor
-- [ ] Commit: `feat(ui): Add transcript editor with word-level editing`
+- [x] Commit: `feat(ui): Add transcript model and word-level editor` — `363c049`
 
 ---
 
