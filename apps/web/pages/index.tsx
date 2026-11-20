@@ -10,6 +10,7 @@ import {
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
 import { CapturePanel } from "../components/CapturePanel";
+import { PlaybackScreen } from "../components/PlaybackScreen";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
@@ -528,6 +529,17 @@ export default function Home() {
           Import copy
         </button>
       </section>
+
+      {transcript !== null && project?.media !== undefined && (
+        <section className="panel" aria-label="Playback">
+          <h2>Playback</h2>
+          <PlaybackScreen
+            transcript={transcript}
+            mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
+            transcriptLabel="Playback transcript"
+          />
+        </section>
+      )}
 
       {transcript !== null && (
         <section className="panel" aria-label="Transcript editor">

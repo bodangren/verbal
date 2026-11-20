@@ -48,10 +48,10 @@ npx vitest run packages/core/src/byte-range.test.ts packages/core/src/media-path
 
 ## Phase 3: Page wiring
 
-- [ ] Render a *Playback* panel with `PlaybackScreen` when `project.media` exists.
-- [ ] Point it at `/api/media/file?root=...` and surface a missing-media error.
-- [ ] Keep the editable transcript panel working alongside it.
-- [ ] Commit: `feat(ui): Wire playback into the page`
+- [x] Render a *Playback* panel with `PlaybackScreen` when `project.media` exists.
+- [x] Point it at `/api/media/file?root=...` and surface a missing-media error.
+- [x] Keep the editable transcript panel working alongside it.
+- [x] Commit: `feat(ui): Wire playback into the page`
 
 ---
 

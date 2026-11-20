@@ -6,6 +6,8 @@ import { TranscriptEditor } from "./TranscriptEditor";
 export type PlaybackScreenProps = {
   transcript: TranscriptDocument;
   mediaUrl: string;
+  /** Accessible name of the transcript region inside the screen. */
+  transcriptLabel?: string;
   /** Injectable scheduler for deterministic tests. */
   scheduler?: PlaybackScheduler;
 };
@@ -17,9 +19,15 @@ export type PlaybackScreenProps = {
  * transcript is not rebuilt per frame — only the active word's highlight
  * changes.
  */
-export function PlaybackScreen({ transcript, mediaUrl, scheduler }: PlaybackScreenProps) {
+export function PlaybackScreen({
+  transcript,
+  mediaUrl,
+  transcriptLabel,
+  scheduler,
+}: PlaybackScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const activeIndex = useActiveWord({
     words: transcript.words,
@@ -62,7 +70,19 @@ export function PlaybackScreen({ transcript, mediaUrl, scheduler }: PlaybackScre
         src={mediaUrl}
         aria-label="Media preview"
         playsInline
+        onError={() => {
+          setLoadFailed(true);
+          setPlaying(false);
+        }}
+        onLoadedData={() => setLoadFailed(false)}
       />
+
+      {loadFailed && (
+        <p className="status" role="alert">
+          Media could not be loaded from {mediaUrl}. Re-import it, or check that
+          the referenced file still exists.
+        </p>
+      )}
 
       <div className="playback__controls">
         <button
@@ -77,6 +97,7 @@ export function PlaybackScreen({ transcript, mediaUrl, scheduler }: PlaybackScre
 
       <TranscriptEditor
         transcript={transcript}
+        label={transcriptLabel}
         activeWordId={activeWord?.id ?? null}
         onWordClick={seekToWord}
       />

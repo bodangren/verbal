@@ -74,4 +74,37 @@ describe("PlaybackScreen", () => {
     expect(pause).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: /play/i })).toBeTruthy();
   });
+
+  it("labels its transcript so the page can tell it from the editor", () => {
+    render(
+      <PlaybackScreen
+        transcript={transcript}
+        mediaUrl="/media/take.mp4"
+        transcriptLabel="Playback transcript"
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Playback transcript" })).toBeTruthy();
+  });
+
+  it("surfaces a media that will not load instead of failing silently", () => {
+    render(<PlaybackScreen transcript={transcript} mediaUrl="/api/media/file?root=%2Ftmp%2Fgone" />);
+
+    fireEvent.error(screen.getByLabelText(/media preview/i));
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("could not be loaded");
+    expect(alert.textContent).toContain("/api/media/file?root=%2Ftmp%2Fgone");
+  });
+
+  it("clears the error when the media loads", () => {
+    render(<PlaybackScreen transcript={transcript} mediaUrl="/media/take.mp4" />);
+
+    const video = screen.getByLabelText(/media preview/i);
+    fireEvent.error(video);
+    expect(screen.getByRole("alert")).toBeTruthy();
+
+    fireEvent.loadedData(video);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

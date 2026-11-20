@@ -9,6 +9,8 @@ export type WordSelection = {
 
 export type TranscriptEditorProps = {
   transcript: TranscriptDocument;
+  /** Accessible name of the region. Distinct labels keep two editors apart. */
+  label?: string;
   /** Word to mark as currently spoken, if any. */
   activeWordId?: string | null;
   /** Range of words the page is treating as selected, if any. */
@@ -30,6 +32,7 @@ export type TranscriptEditorProps = {
  */
 export function TranscriptEditor({
   transcript,
+  label = "Transcript",
   activeWordId = null,
   selectedRange = null,
   onWordClick,
@@ -71,7 +74,7 @@ export function TranscriptEditor({
   return (
     <section
       className="transcript"
-      aria-label="Transcript"
+      aria-label={label}
       tabIndex={0}
       onKeyDown={(event) => {
         if (selectedRange === null) {
