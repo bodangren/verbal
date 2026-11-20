@@ -29,8 +29,8 @@ npx vitest run packages/core/src/search.test.ts
 
 ## Phase 2: Editor highlighting
 
-- [ ] Add `matchedRanges` and `data-match` to `TranscriptEditor`.
-- [ ] Commit: `feat(ui): Highlight transcript search matches`
+- [x] Add `matchedRanges` and `data-match` to `TranscriptEditor`.
+- [x] Commit: `feat(ui): Highlight transcript search matches`
 
 ---
 

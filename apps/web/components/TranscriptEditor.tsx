@@ -15,6 +15,8 @@ export type TranscriptEditorProps = {
   activeWordId?: string | null;
   /** Range of words the page is treating as selected, if any. */
   selectedRange?: WordSelection | null;
+  /** Word ranges that matched a search, marked with data-match. */
+  matchedRanges?: readonly WordSelection[];
   /** Called when a word is activated without a modifier. */
   onWordClick?: (wordId: string, index: number) => void;
   /** Called when a shift-click produces a range. */
@@ -35,6 +37,7 @@ export function TranscriptEditor({
   label = "Transcript",
   activeWordId = null,
   selectedRange = null,
+  matchedRanges = [],
   onWordClick,
   onSelectionChange,
   onDeleteSelection,
@@ -97,6 +100,9 @@ export function TranscriptEditor({
             const index = indexById.get(wordId) ?? -1;
             const isRemoved = removed.has(wordId);
             const isActive = wordId === activeWordId;
+            const isMatch = matchedRanges.some(
+              (range) => index >= range.fromIndex && index <= range.toIndex,
+            );
             const isSelected =
               selectedRange !== null &&
               index >= selectedRange.fromIndex &&
@@ -111,6 +117,7 @@ export function TranscriptEditor({
                 data-removed={isRemoved ? "true" : undefined}
                 data-active={isActive ? "true" : undefined}
                 data-selected={isSelected ? "true" : undefined}
+                data-match={isMatch ? "true" : undefined}
                 aria-current={isActive ? "true" : undefined}
                 disabled={isRemoved}
                 onClick={(event) => activate(word, index, event.shiftKey)}

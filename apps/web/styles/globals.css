@@ -264,6 +264,11 @@ code {
   border-color: var(--primary);
 }
 
+.transcript__word[data-match="true"] {
+  background: var(--surface-elevated);
+  text-decoration: underline;
+}
+
 .transcript__word[data-removed="true"] {
   color: var(--text-tertiary);
   cursor: default;

@@ -63,6 +63,14 @@ describe("TranscriptEditor", () => {
     expect(button.getAttribute("aria-current")).toBe("true");
   });
 
+  it("marks every word inside a search match with data-match", () => {
+    render(<TranscriptEditor transcript={transcript} matchedRanges={[{ fromIndex: 0, toIndex: 1 }]} />);
+
+    expect(screen.getByRole("button", { name: "hello" }).getAttribute("data-match")).toBe("true");
+    expect(screen.getByRole("button", { name: "world" }).getAttribute("data-match")).toBe("true");
+    expect(screen.getByRole("button", { name: "again" }).hasAttribute("data-match")).toBe(false);
+  });
+
   it("marks every word in the selected range with data-selected", () => {
     render(<TranscriptEditor transcript={transcript} selectedRange={{ fromIndex: 0, toIndex: 1 }} />);
 
