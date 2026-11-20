@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildExportArgs } from "./export";
 import { DEFAULT_PRESET_ID, EXPORT_PRESETS, resolvePreset, withPresetExtension } from "./presets";
 
 describe("EXPORT_PRESETS", () => {
@@ -57,5 +58,23 @@ describe("withPresetExtension", () => {
 
   it("is case-insensitive about the existing extension", () => {
     expect(withPresetExtension("/out/take.WEBM", resolvePreset("webm-vp9"))).toBe("/out/take.webm");
+  });
+});
+
+describe("preset wiring", () => {
+  it("carries each preset's codecs into FFmpeg's argv", () => {
+    for (const preset of EXPORT_PRESETS) {
+      const args = buildExportArgs({
+        inputPath: "/media/in.mp4",
+        outputPath: withPresetExtension("/out/take", preset),
+        kept: [{ start: 0, end: 1 }],
+        hasAudio: true,
+        codecs: preset.codecs,
+      });
+
+      expect(args).toContain(preset.codecs.videoCodec);
+      expect(args).toContain(preset.codecs.audioCodec);
+      expect(args.join(" ")).toContain(withPresetExtension("/out/take", preset));
+    }
   });
 });

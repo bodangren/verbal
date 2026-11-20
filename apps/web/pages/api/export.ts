@@ -7,6 +7,7 @@ import {
   resolveInsideProject,
 } from "@verbal/core";
 import { buildCutList, probeMedia, runCommand, runExport } from "@verbal/media";
+import { resolvePreset, withPresetExtension } from "@verbal/media/presets";
 import { failure } from "../../server/api-errors";
 import { runExportJob } from "../../server/export-job";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
@@ -25,7 +26,12 @@ export default async function handler(
   try {
     const body = asRecord(await readJsonBody(request));
     const projectRoot = requireAbsolutePath(body.projectRoot, "projectRoot");
-    const outputPath = requireAbsolutePath(body.outputPath, "outputPath");
+    // An unknown preset is not an error: a stale choice still exports.
+    const preset = resolvePreset(typeof body.preset === "string" ? body.preset : undefined);
+    const outputPath = withPresetExtension(
+      requireAbsolutePath(body.outputPath, "outputPath"),
+      preset,
+    );
 
     const project = await openProject(nodeFileSystem, projectRoot);
     const mediaPath =
@@ -57,13 +63,14 @@ export default async function handler(
         outputPath,
         kept: cutList.kept,
         hasAudio,
+        codecs: preset.codecs,
         signal,
         onProgress: (event) => {
           report(event.percent);
         },
       });
 
-      return { outputPath };
+      return { outputPath, preset: preset.id };
     });
 
     sendJson(response, { status: 202, body: job });

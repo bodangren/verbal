@@ -29,16 +29,16 @@ npx vitest run packages/media/src/presets.test.ts
 
 ## Phase 2: Endpoint
 
-- [ ] Accept `preset` in `POST /api/export`, apply its codecs and extension, and echo the id.
-- [ ] Route test proving the preset reaches FFmpeg's argv.
-- [ ] Commit: `feat(api): Export with a preset`
+- [x] Accept `preset` in `POST /api/export`, apply its codecs and extension, and echo the id.
+- [x] Route test proving the preset reaches FFmpeg's argv.
+- [x] Commit: `feat(api): Export with a preset`
 
 ---
 
 ## Phase 3: Page
 
-- [ ] Add the preset selector to the Export panel and send the choice.
-- [ ] Commit: `feat(ui): Choose an export preset`
+- [x] Add the preset selector to the Export panel and send the choice.
+- [x] Commit: `feat(ui): Choose an export preset`
 
 ---
 
