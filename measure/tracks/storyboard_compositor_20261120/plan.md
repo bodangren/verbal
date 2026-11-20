@@ -1,83 +1,82 @@
 # Plan: Storyboard Compositor
 
-**Status:** BLOCKED — awaits `rewrite_ts_vinext_20261120` Phase 5 (cut-list export)
+**Status:** IN PROGRESS
 **Created:** 2026-11-20
 **Focus:** Turn a cleaned green-screen talking head into a storyboard-driven explainer video.
 
-> **⚠️ Stale stack references (2026-11-20).** Phases 1–8 below name Go packages and GStreamer elements from the retired implementation. The phase *intent* is still correct; the implementation details are not. Refresh each phase's tasks when the rewrite track unblocks this one. Do not implement as written.
+> **Scope discipline.** Phases 1–9 are the first release (Remotion motion slides). Phases 10–11 (generated images and video) reuse the same IR and renderer and must not change the Phase 1–6 contracts.
 
-> **Scope discipline.** Phases 0–8 are the first release (Remotion motion slides). Phase 10 (generated images) and Phase 11 (generated video) reuse the same IR and renderer and must not change the Phase 1–6 contracts. Phases 9–11 are sketched only; they get detailed task lists when the preceding phases close.
-
-> **Prerequisite gate.** Phases 0–8 depend on `mvp_transcription_20260612` and `mvp_text_delete_20260612` being trustworthy (see the integrity flag in `measure/tracks.md`). Do not start Phase 1 until Phase 0 records that decision.
+> **Gate:** met. `rewrite_ts_vinext_20261120` is complete (project format, transcript model, cut list, FFmpeg runner, job registry, providers).
 
 ---
 
-## Phase 0: Prerequisites, contracts, and documented deviation
+## Phase 0: Stack refresh, contracts, and decisions
 
-No production code in this phase.
+- [x] Refresh this spec and plan to the TypeScript stack (`packages/storyboard`, `packages/compose`, `tools/remotion`, FFmpeg).
+- [x] Resolve OD2: personal use, so Remotion's free tier applies.
+- [x] Decide OD3: the renderer runs as a local Node child process from `tools/remotion`; Chromium is downloaded once by Remotion and cached.
+- [x] Freeze the scene-contract JSON schema between `packages/storyboard`, the worker, and `packages/compose`. Treat it as immutable once Phase 2 begins.
+- [x] Record the Remotion/Chromium deviation and its disk cost in `measure/tech-stack.md`.
 
-- [ ] Record the Remotion sidecar deviation in `measure/tech-stack.md` with a dated note (motion-graphics authoring is a capability GStreamer does not provide; final compositing stays in GStreamer; Remotion emits PNG frames, so Verbal never calls FFmpeg directly).
-- [ ] Resolve OD2 (Remotion licensing) and OD3 (sidecar packaging) as decisions in this plan; both are release blockers, not implementation details.
-- [ ] Decide the prerequisite gate: confirm whether `mvp_transcription_20260612` and `mvp_text_delete_20260612` are usable as-is, or whether the legacy implementations must be reconciled first.
-- [ ] Write the scene-contract schema (JSON) as the single interface between `internal/storyboard`, the sidecar, and `internal/compose`. Store it in `internal/compose/contracts/` and treat it as frozen once Phase 2 begins.
-- [ ] Define project-file additions: `storyboard.json`, `assets/`, `renders/`, and their retention policy.
-
-**Exit criteria:** deviation documented, OD2/OD3 decided, prerequisite gate recorded, contract schema committed.
+**Exit criteria:** the contract schema is committed; no Phase 2 code before it.
 
 ---
 
 ## Phase 1: Storyboard IR and anchor resolution
 
-Pure Go, no GTK, no Node. Package: `internal/storyboard`.
+Pure TypeScript, no GTK, no Node rendering. Package: `packages/storyboard`.
 
 ### Red
-- [ ] Failing tests: storyboard document parses and validates; unknown visual kind, duplicate scene ID, and missing required fields are rejected.
-- [ ] Failing tests: anchor resolution maps a word span to a time range via a frozen anchor index; unresolved word IDs are an error, never a silent clamp.
-- [ ] Failing tests: `talk` scenes ignore slide props; `slide` scenes require an asset or template.
-- [ ] Failing tests: patch application supports add, remove, reorder, and asset-swap, and `Apply` followed by `Revert` restores the document byte-for-byte.
-- [ ] Failing tests: scene content hash is stable across runs and independent of map iteration order; changing props, asset, or duration changes the hash.
+- [x] Failing tests: a storyboard document parses and validates; unknown visual kinds, duplicate scene IDs, and incomplete anchors are rejected.
+- [x] Failing tests: anchor resolution maps a word span to a time range against an anchor index; unknown word IDs and reversed anchors are errors, never silent clamps.
+- [x] Failing tests: patches support add, remove, move, replace-asset, and update-props; applying a patch then its inverse restores the document byte-for-byte.
+- [x] Failing tests: scene hashes are stable across runs, independent of key order and of the scene ID, and change when content changes.
 
 **Targeted Red command:**
 ```bash
-go test ./internal/storyboard -count=1
+npx vitest run packages/storyboard
 ```
 
+**Red result:** 3 files failed on missing modules (`./types`, `./parse`, `./anchors`, `./patches`, `./hash`).
+
 ### Green
-- [ ] Implement `storyboard.go` (document, scene, validation).
-- [ ] Implement `anchors.go` (word-span → time range against the frozen index, with padding).
-- [ ] Implement `patch.go` (apply, revert, diff).
-- [ ] Implement `hash.go` (canonical JSON + content hash).
-- [ ] Make tests pass.
+- [x] Implement `types.ts` (document, scene, enums, errors).
+- [x] Implement `anchors.ts` (word span → time range, plus an index builder from a transcript).
+- [x] Implement `patches.ts` (apply, invert, round-trip).
+- [x] Implement `hash.ts` (canonical JSON + SHA-256, excluding the scene ID).
+- [x] Implement `parse.ts` (validation and stable serialisation).
+- [x] Make tests pass.
+
+**Green result:** 29/29 in `packages/storyboard`; full suite 204/204; `npm run check` exits 0.
+- The scene contract is frozen as the `Scene` type plus parser validation: `static` and `generated-*` scenes require an `assetId`; `slide` requires a `template` or an `assetId`; `talk` needs neither.
+- `resolveScene` rejects unknown and reversed anchors rather than clamping — a silent clamp would move a scene without anyone asking.
+- Every patch has a computed inverse built from the pre-patch document, so add/remove/move/replace-asset/update-props all round-trip byte-for-byte.
+- Scene hashes use canonical JSON (sorted keys, undefined dropped) and exclude the scene ID, so renaming or reordering a scene keeps its cached frames.
 
 ### Refactor
-- [ ] Commit: `feat(storyboard): Add storyboard IR, anchors, and patches`
+- [x] Commit: `feat(storyboard): Add storyboard IR, anchors, and patches` — `d0a98ed`
 
 ### Adversarial Audit
-- [ ] Audit the LLM boundary: prove that no code path accepts a timecode from a model response.
-- [ ] Audit hash stability, patch invertibility, and concurrent read of a shared document.
+- [ ] Prove no code path accepts a timecode from a model response.
+- [ ] Audit hash stability, patch invertibility, and validation of untrusted documents.
 
 ---
 
 ## Phase 2: Slide render contract and cache
 
-Package: `internal/compose`. No Node required for tests.
+Package: `packages/compose`. No Chromium required for tests.
 
 ### Red
-- [ ] Failing tests for the `SlideRenderer` interface using a fake: request marshalling matches the frozen schema, and output manifest is parsed into a typed result.
-- [ ] Failing tests: cache hit returns the existing sequence without invoking the renderer; cache miss invokes it exactly once.
-- [ ] Failing tests: two scenes differing only in duration have different cache keys; a scene with identical content reuses its key.
-- [ ] Failing tests: a renderer error yields a placeholder result plus a non-nil error; the caller can continue.
-- [ ] Failing tests: renderer cancellation and timeout are honoured.
-
-**Targeted Red command:**
-```bash
-go test ./internal/compose -run 'TestSlide' -count=1
-```
+- [ ] Failing tests for the `SlideRenderer` interface using a fake: request marshalling matches the frozen schema, and the manifest parses into a typed result.
+- [ ] Failing tests: cache hit returns the existing sequence without starting the renderer; cache miss starts it exactly once.
+- [ ] Failing tests: two scenes differing only in duration have different cache keys; identical scenes reuse a key.
+- [ ] Failing tests: a renderer error yields a placeholder plus an error, and the caller continues.
+- [ ] Failing tests: cancellation and timeout are honoured.
 
 ### Green
 - [ ] Implement the scene-contract types and JSON marshalling.
 - [ ] Implement the content-addressed on-disk cache.
-- [ ] Implement the sidecar client as a subprocess with timeout and cancellation.
+- [ ] Implement the worker client (child process, timeout, cancellation).
 - [ ] Make tests pass.
 
 ### Refactor
@@ -85,75 +84,68 @@ go test ./internal/compose -run 'TestSlide' -count=1
 
 ---
 
-## Phase 3: Compositor pipeline builder
-
-Headless-testable pure functions first; actual rendering is display/hardware gated.
+## Phase 3: FFmpeg composite builder
 
 ### Red
-- [ ] Failing tests for the pipeline builder: keyed speaker plus full-frame slide, speaker-inset, and side-by-side produce distinct, correct element chains.
-- [ ] Failing tests: `alpha` keying element is present with the configured key colour; layer ordering is deterministic.
-- [ ] Failing tests: music bed adds `audiomixer` and `sidechaincompress`; absent music omits them.
-- [ ] Failing tests: all file paths are sanitised through the existing `internal/media` helpers.
-
-**Targeted Red command:**
-```bash
-go test ./internal/compose -run 'TestBuildComposite|TestLayer' -count=1
-```
+- [ ] Failing tests: keyed speaker plus full-frame slide, speaker-inset, and side-by-side produce distinct, correct filtergraphs.
+- [ ] Failing tests: `chromakey`/`despill` appear with the configured key colour; layer ordering is deterministic.
+- [ ] Failing tests: a music bed adds `amix` and `sidechaincompress`; no music omits them.
+- [ ] Failing tests: paths never enter the filtergraph; only timestamps and labels do.
 
 ### Green
-- [ ] Implement `render.go` pipeline builder.
+- [ ] Implement the filtergraph builder as a pure function returning argv.
 - [ ] Implement layer geometry for the three modes.
 - [ ] Implement the audio bed and ducking chain.
 - [ ] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(compose): Add GStreamer composite pipeline builder`
+- [ ] Commit: `feat(compose): Add composite filtergraph builder`
 
 ---
 
 ## Phase 4: Remotion template pack
 
-Node subproject, isolated from the Go build. Author using the `remotion-best-practices` skill.
+Node subproject in `tools/remotion`, isolated from the app build. Author using the `remotion-best-practices` skill.
 
-- [ ] Scaffold `tools/remotion/` with pinned dependencies and a lockfile.
-- [ ] Implement `renderSlide` entry point: stdin/JSON in, PNG sequence plus manifest out, alpha preserved.
-- [ ] Implement the initial template pack: title, section break, bullet reveal, quote, code walkthrough, lower third.
+- [ ] Scaffold with pinned dependencies and a lockfile.
+- [ ] Implement `renderSlide`: JSON in, PNG sequence plus manifest out, alpha preserved.
+- [ ] Implement the initial templates: title, section break, bullet reveal, quote, code walkthrough, lower third.
 - [ ] Implement "natural length + hold tail" rendering so composite-time trims do not invalidate the cache.
-- [ ] Golden tests: props → manifest (frame count, dimensions, alpha channel present, deterministic output hash).
-- [ ] Document the template props schema in the spec's contract file.
+- [ ] Golden tests: props → manifest (frame count, dimensions, alpha, deterministic hash).
+- [ ] Document the props schema alongside the frozen contract.
 
-**Exit criteria:** a hand-written storyboard renders end-to-end to a composited file on a developer machine.
+**Exit criteria:** a hand-written storyboard renders end to end to a composited file on a developer machine.
 
 ---
 
 ## Phase 5: Two-tier preview
 
-- [ ] Red: tests that fast preview never triggers a sidecar call.
-- [ ] Red: tests that both tiers derive from the same IR version and are labelled consistently.
-- [ ] Green: implement fast preview (cut list + static/cached layers).
-- [ ] Green: implement full preview (complete composite to a temp file).
-- [ ] Green: version previews monotonically and expose them in the project.
-- [ ] Refactor + commit: `feat(ui): Add two-tier storyboard preview`
+- [ ] Red: fast preview never starts the renderer.
+- [ ] Red: both tiers derive from the same IR version and are labelled consistently.
+- [ ] Green: fast preview (cut list + static and cached layers).
+- [ ] Green: full preview (complete composite to a temp file).
+- [ ] Green: monotonic preview versions exposed by the project.
+- [ ] Commit: `feat(ui): Add two-tier storyboard preview`
 
 ---
 
 ## Phase 6: Cleanup review UI
 
-- [ ] Red: tests for proposal grouping, per-category acceptance, and aggressiveness application.
-- [ ] Green: cleanup proposal list with strikethrough words, gap markers, and audio-fix badges.
+- [ ] Red: proposal grouping, per-category acceptance, and aggressiveness application.
+- [ ] Green: proposal list with strikethrough words, gap markers, and audio-fix badges.
 - [ ] Green: visual-cover suggestion per deletion.
-- [ ] Green: freeze-master action producing master + anchor index; re-anchoring prompt when the master changes.
-- [ ] Refactor + commit: `feat(ui): Add cleanup review and master freeze`
+- [ ] Green: freeze-master action producing master + anchor index, with re-anchoring when the master changes.
+- [ ] Commit: `feat(ui): Add cleanup review and master freeze`
 
 ---
 
 ## Phase 7: Feedback, patches, and versioning
 
-- [ ] Red: chat message → patch conversion is a pure function with a recorded fixture; malformed output is rejected, never applied.
-- [ ] Red: anchored comment round-trips through the project file.
+- [ ] Red: chat message → patch conversion is a pure function with recorded fixtures; malformed output is rejected, never applied.
+- [ ] Red: anchored comments round-trip through the project file.
 - [ ] Green: diff view with per-hunk accept/reject.
 - [ ] Green: version history with revert.
-- [ ] Refactor + commit: `feat(ui): Add storyboard feedback and version history`
+- [ ] Commit: `feat(ui): Add storyboard feedback and version history`
 
 ---
 
@@ -161,31 +153,30 @@ Node subproject, isolated from the Go build. Author using the `remotion-best-pra
 
 - [ ] Red: brand-kit template validation rejects missing required elements.
 - [ ] Green: title, outro, contact card, and lower-third layers.
-- [ ] Green: music bed with ducking and loudness target.
-- [ ] Green: provenance manifest written alongside the export.
-- [ ] Green: export preset integration.
-- [ ] Refactor + commit: `feat(export): Add brand-kit export with provenance`
+- [ ] Green: music bed with ducking and a loudness target.
+- [ ] Green: provenance manifest written with the export.
+- [ ] Green: export runs through the job registry.
+- [ ] Commit: `feat(export): Add brand-kit export with provenance`
 
 ---
 
 ## Phase 9: First-release verification
 
-- [ ] Run `make check`.
-- [ ] Manual verification: green-screen recording → cleanup → storyboard → fast preview → full preview → feedback patch → export.
-- [ ] Record the measured render times from OD4 and revise the preview latency promise if needed.
+- [ ] Run `npm run check`.
+- [ ] Manual verification: green-screen capture → cleanup → storyboard → fast preview → full preview → patch → export.
+- [ ] Record measured render times from OD4 and revise the preview latency promise.
 - [ ] Update `measure/tech-stack.md`, `measure/tech-debt.md`, `measure/lessons-learned.md`.
-- [ ] Update this `plan.md` and `measure/tracks.md`.
 - [ ] Commit: `measure(plan): Mark storyboard compositor first release complete`
 
 ---
 
 ## Phase 10: Generated images (Stage 2)
 
-- [ ] Define the asset provider interface behind `internal/ai` (no vendor SDK outside that module).
+- [ ] Define the asset provider interface inside `packages/ai`.
 - [ ] Implement content-addressed image assets with provenance.
 - [ ] Wire `generated-image` scenes through the existing renderer unchanged.
 - [ ] Add cost display and approval before generation.
-- [ ] Detailed task list to be written when Phase 9 closes.
+- [ ] Detailed task list when Phase 9 closes.
 
 ---
 
@@ -194,4 +185,4 @@ Node subproject, isolated from the Go build. Author using the `remotion-best-pra
 - [ ] Implement queued, cancellable clip generation with placeholders.
 - [ ] Wire `generated-video` scenes through the existing renderer unchanged.
 - [ ] Define retain/prune policy for generated assets.
-- [ ] Detailed task list to be written when Phase 10 closes.
+- [ ] Detailed task list when Phase 10 closes.

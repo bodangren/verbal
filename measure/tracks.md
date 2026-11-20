@@ -11,9 +11,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete. All nine phases implemented; `npm run check` green with 175 tests, including a real FFmpeg export round trip and an end-to-end import → transcript → delete → export test. The Go implementation has been removed and its tracks archived.*
   *Link: [./tracks/rewrite_ts_vinext_20261120](./tracks/rewrite_ts_vinext_20261120/)*
 
-- [ ] **Track: Storyboard Compositor** [created: 2026-11-20]
+- [~] **Track: Storyboard Compositor** [created: 2026-11-20]
   *Focus: Green-screen capture, reviewed cleanup, storyboard IR, Remotion motion slides, composited preview, chat-driven patch feedback, brand-kit export. Asset ladder: motion slides → generated images → generated video.*
-  *Status: Unblocked — the rewrite reached cut-list export, so the gate is met. Its spec and plan still name Go packages and GStreamer elements from the retired implementation; refresh those references before starting Phase 1.*
+  *Status: In progress — Phase 0 (stack refresh, decisions, frozen scene contract) and Phase 1 (storyboard IR, anchors, patches, hashing) complete. `npm run check` green with 204 tests. Phase 2 (slide render contract + cache) next.*
   *Link: [./tracks/storyboard_compositor_20261120](./tracks/storyboard_compositor_20261120/)*
 
 ---

@@ -50,6 +50,14 @@ Filtergraphs are built by **pure TypeScript functions** that return an argv arra
 ### Storage: JSON documents + optional SQLite
 Transcripts, storyboards, and edit lists are **documents**: versioned, diffable, patchable. They live as JSON in the project folder. A SQLite index (`node:sqlite`, built into Node) is optional and only for library-wide queries, caches, and job state. If `node:sqlite` proves too experimental, `better-sqlite3` is the fallback — but it must never be imported into a component or RSC path.
 
+### Motion graphics: Remotion as a local child process
+
+Remotion compositions live in `tools/remotion` and are rendered to alpha-preserving PNG sequences. The renderer runs as a Node child process, so a long render cannot block the API server, and Remotion is imported only inside that subproject — no Remotion type appears in application code.
+
+`@remotion/renderer` downloads and caches a headless Chromium on first use (roughly 150 MB). That is the cost of the motion-graphics capability; it is recorded here rather than discovered at packaging time.
+
+Licensing: personal use only, so Remotion's free tier applies (storyboard spec, OD2). Revisit if distribution ever becomes a goal.
+
 ## Package Layout
 
 ```
