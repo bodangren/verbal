@@ -11,8 +11,8 @@
 ## Phase 1: Range parsing and media path resolution
 
 ### Red
-- [ ] Failing tests: `parseByteRange` returns a closed range, an open-ended range, the tail for a suffix range, `null` for a malformed header, and `"unsatisfiable"` past the end.
-- [ ] Failing tests: `resolveMediaPath` prefers `assetPath`, falls back to `externalPath`, returns `null` with no media, and refuses a relative escape.
+- [x] Failing tests: `parseByteRange` returns a closed range, an open-ended range, the tail for a suffix range, `null` for a malformed header, and `"unsatisfiable"` past the end.
+- [x] Failing tests: `resolveMediaPath` prefers `assetPath`, falls back to `externalPath`, returns `null` with no media, and refuses a relative escape.
 
 **Targeted Red command:**
 ```bash
@@ -20,12 +20,12 @@ npx vitest run packages/core/src/byte-range.test.ts packages/core/src/media-path
 ```
 
 ### Green
-- [ ] Implement `parseByteRange` in `packages/core/src/byte-range.ts`.
-- [ ] Implement `resolveMediaPath` in `packages/core/src/media-path.ts` and export both.
-- [ ] Make tests pass.
+- [x] Implement `parseByteRange` in `packages/core/src/byte-range.ts`.
+- [x] Implement `resolveMediaPath` in `packages/core/src/media-path.ts` and export both.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `feat(core): Add byte-range parsing and media path resolution`
+- [x] Commit: `feat(core): Add byte-range parsing and media path resolution`
 
 ---
 
