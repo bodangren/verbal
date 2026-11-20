@@ -44,6 +44,6 @@ npx vitest run packages/core/src/transcript-edit.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e`: split at a word and insert silence, then undo both.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover silence and split`
+- [x] Extend `npm run e2e`: split at a word and insert silence, then undo both.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover silence and split`

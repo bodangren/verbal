@@ -262,6 +262,33 @@ try {
   await search.fill("");
   console.log("search: found and stepped to a match");
 
+  // Structural edits: split a segment at a word, insert silence, undo both.
+  const editorSegments = page.locator('[aria-label="Transcript"] .transcript__segment');
+  const segmentsBefore = await editorSegments.count();
+  // "world" is mid-segment; splitting at a segment head is a no-op by design.
+  await editorPanel.getByRole("button", { name: "world" }).click();
+
+  await editorPanel.getByRole("button", { name: "Split segment" }).click();
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelectorAll('[aria-label="Transcript"] .transcript__segment').length ===
+      expected,
+    segmentsBefore + 1,
+  );
+
+  await editorPanel.getByRole("button", { name: "Insert silence" }).click();
+  await page.getByText("Unsaved changes").waitFor();
+
+  await editorPanel.getByRole("button", { name: "Undo" }).click();
+  await editorPanel.getByRole("button", { name: "Undo" }).click();
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelectorAll('[aria-label="Transcript"] .transcript__segment').length ===
+      expected,
+    segmentsBefore,
+  );
+  console.log("structure: split a segment, inserted silence, and undid both");
+
   if (mediaImported) {
     const playback = page.getByRole("region", { name: "Playback", exact: true });
     await playback.waitFor();
