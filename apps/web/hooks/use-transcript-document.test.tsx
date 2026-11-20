@@ -142,6 +142,44 @@ describe("useTranscriptDocument", () => {
     expect(removedWordIds(result.current.document)).toEqual(["w1"]);
   });
 
+  it("inserts silence as one undoable edit", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    act(() => result.current.insertSilence("w0", 2));
+
+    const shifted = result.current.document;
+    expect(shifted?.words[1]?.start).toBeCloseTo(2.45);
+    expect(shifted?.words[0]?.start).toBe(0);
+    expect(result.current.dirty).toBe(true);
+
+    act(() => result.current.undo());
+    expect(removedWordIds(result.current.document)).toEqual([]);
+    expect(result.current.document?.words[1]?.start).toBeCloseTo(0.45);
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("splits a segment as one undoable edit", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    const before = result.current.document?.segments.length ?? 0;
+    act(() => result.current.splitSegment("w2"));
+
+    expect(result.current.document?.segments.length).toBe(before + 1);
+
+    act(() => result.current.undo());
+    expect(result.current.document?.segments.length).toBe(before);
+  });
+
+  it("ignores structural edits while the document is empty", () => {
+    const { result } = renderHook(() => useTranscriptDocument(null));
+
+    act(() => result.current.insertSilence("w0", 1));
+    act(() => result.current.splitSegment("w0"));
+
+    expect(result.current.document).toBeNull();
+    expect(result.current.canUndo).toBe(false);
+  });
+
   it("reset(null) empties the document", () => {
     const { result } = renderHook(() => useTranscriptDocument(transcript));
 

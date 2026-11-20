@@ -1,11 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   canRedo as historyCanRedo,
   canUndo as historyCanUndo,
   commit,
   createHistory,
   redo as historyRedo,
+  insertSilence as insertTranscriptSilence,
   removeRange as removeTranscriptRange,
+  splitSegment as splitTranscriptSegment,
   undo as historyUndo,
   type History,
   type TranscriptDocument,
@@ -29,6 +31,10 @@ export type TranscriptDocumentController = {
   removeRange: (fromIndex: number, toIndex: number) => void;
   /** Removes several ranges as one edit, so one undo restores them all. */
   removeRanges: (ranges: readonly IndexRange[]) => void;
+  /** Inserts air after a word by shifting every later word. */
+  insertSilence: (afterWordId: string, seconds: number) => void;
+  /** Starts a new segment at a word. */
+  splitSegment: (beforeWordId: string) => void;
   undo: () => void;
   redo: () => void;
   /** Records that the current document has been written to disk. */
@@ -88,6 +94,45 @@ export function useTranscriptDocument(
     });
   }, []);
 
+  // The document is mirrored in a ref so the structural edits can validate
+  // before touching state, which lets an unknown word surface as an error
+  // instead of a silent no-op inside a state updater.
+  const presentRef = useRef(state.history.present);
+  useEffect(() => {
+    presentRef.current = state.history.present;
+  });
+
+  const applyStructuralEdit = useCallback(
+    (edit: (document: TranscriptDocument) => TranscriptDocument) => {
+      const present = presentRef.current;
+      if (present === null) {
+        return;
+      }
+
+      const next = edit(present);
+
+      setState((current) => {
+        const history = commit(current.history, next);
+        return history === current.history ? current : { ...current, history };
+      });
+    },
+    [],
+  );
+
+  const insertSilence = useCallback(
+    (afterWordId: string, seconds: number) => {
+      applyStructuralEdit((document) => insertTranscriptSilence(document, afterWordId, seconds));
+    },
+    [applyStructuralEdit],
+  );
+
+  const splitSegment = useCallback(
+    (beforeWordId: string) => {
+      applyStructuralEdit((document) => splitTranscriptSegment(document, beforeWordId));
+    },
+    [applyStructuralEdit],
+  );
+
   const removeRanges = useCallback((ranges: readonly IndexRange[]) => {
     setState((current) => {
       const present = current.history.present;
@@ -133,11 +178,13 @@ export function useTranscriptDocument(
       canRedo: historyCanRedo(state.history),
       removeRange,
       removeRanges,
+      insertSilence,
+      splitSegment,
       undo,
       redo,
       markSaved,
       reset,
     }),
-    [state, removeRange, removeRanges, undo, redo, markSaved, reset],
+    [state, removeRange, removeRanges, insertSilence, splitSegment, undo, redo, markSaved, reset],
   );
 }
