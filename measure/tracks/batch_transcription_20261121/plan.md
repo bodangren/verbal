@@ -1,6 +1,6 @@
 # Plan: Batch Transcription
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Plan eligible projects, run them sequentially, report each outcome.
 
@@ -44,6 +44,6 @@ npx vitest run packages/core/src/batch.test.ts
 
 ## Phase 4: Verification
 
-- [ ] Extend `npm run e2e` to batch two projects against the fake ASR.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover batch transcription`
+- [x] Extend `npm run e2e` to batch two projects against the fake ASR.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover batch transcription`

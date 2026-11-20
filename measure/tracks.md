@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Batch Transcription** [created: 2026-11-21]
+- [x] **Track: Batch Transcription** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Plan which projects still need transcribing, run them one at a time, and report each outcome in the UI.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `planBatch` derives the plan (skip `transcribed` unless forced, `no-media` always, duplicates collapsed); `runBatch` runs items sequentially and continues past a failure; `createTranscribeService` is shared by the single and batch routes, with an awaitable `transcribeNow` for the batch; `POST /api/transcribe/batch` returns `{ plan, job }`; the page takes one root per line and lists outcomes. `npm run check` green (599 tests); `npm run e2e` batches two projects against the fake ASR and asserts both outcomes.*
   *Link: [./tracks/batch_transcription_20261121](./tracks/batch_transcription_20261121/)*
 
 - [x] **Track: Timeline Waveform** [created: 2026-11-21] [completed: 2026-11-21]
