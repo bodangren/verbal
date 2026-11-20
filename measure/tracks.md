@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: Cleanup Detection and Review** [created: 2026-11-21]
+- [x] **Track: Cleanup Detection and Review** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: Detect filler words, stutters, and repetitions from the transcript, serve them, review them on the page, and remove only the accepted proposals.*
-  *Status: In progress — Phase 1 started.*
+  *Status: Complete. `detectProposals` finds filler words, stutters, and repeated bigrams; `GET /api/cleanup` serves them; the page reviews, accepts by category or id, and removes accepted spans as one undoable edit. `npm run check` green (489 tests); `npm run e2e` reviews a filler, removes it, saves, and confirms it stays removed after a reload. Dead air, audio fixes, LLM proposals, and freezing the master stay out of scope.*
   *Link: [./tracks/cleanup_detection_20261121](./tracks/cleanup_detection_20261121/)*
 
 - [x] **Track: Playback and Sync** [created: 2026-11-21] [completed: 2026-11-21]

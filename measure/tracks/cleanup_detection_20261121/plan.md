@@ -1,6 +1,6 @@
 # Plan: Cleanup Detection and Review
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Created:** 2026-11-21
 **Focus:** Detect filler words, stutters, and repetitions; review them; remove the accepted ones.
 
@@ -59,6 +59,6 @@ npx vitest run packages/cleanup/src/detect.test.ts
 
 ## Phase 4: Browser verification
 
-- [ ] Extend `npm run e2e`: fixtures with fillers, review the panel, remove accepted, save, reload, and confirm the words stayed removed.
-- [ ] Run `npm run check` and `npm run e2e`.
-- [ ] Commit: `test(e2e): Cover cleanup review`
+- [x] Extend `npm run e2e`: fixtures with fillers, review the panel, remove accepted, save, reload, and confirm the words stayed removed.
+- [x] Run `npm run check` and `npm run e2e`.
+- [x] Commit: `test(e2e): Cover cleanup review`

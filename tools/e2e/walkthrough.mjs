@@ -80,10 +80,11 @@ try {
     document: {
       schemaVersion: 1,
       words: [
-        { id: "w0", text: "hello", start: 0, end: 1 },
-        { id: "w1", text: "world", start: 1, end: 2 },
+        { id: "w0", text: "hello", start: 0, end: 0.6 },
+        { id: "w1", text: "um", start: 0.6, end: 0.9 },
+        { id: "w2", text: "world", start: 0.9, end: 2 },
       ],
-      segments: [{ id: "s0", wordIds: ["w0", "w1"] }],
+      segments: [{ id: "s0", wordIds: ["w0", "w1", "w2"] }],
       removedWordIds: [],
     },
   });
@@ -183,6 +184,12 @@ try {
   console.log("project: opened from the UI");
 
   const editorPanel = page.getByRole("region", { name: "Transcript editor" });
+  const waitForSavedState = (saved) =>
+    page.waitForFunction(
+      (expected) => document.querySelector('[role="status"]')?.textContent === expected,
+      saved ? "Saved" : "Unsaved changes",
+      { timeout: 5000 },
+    );
   await editorPanel.waitFor();
   await editorPanel.getByRole("button", { name: "hello" }).waitFor();
   console.log("transcript: rendered");
@@ -210,10 +217,30 @@ try {
 
     await playback.getByRole("button", { name: "world" }).click();
     const seeked = await video.evaluate((media) => media.currentTime);
-    assert(seeked >= 0.7 && seeked <= 1.6, `clicking a word should seek to ~1s, got ${seeked}s`);
+    assert(seeked >= 0.6 && seeked <= 1.5, `clicking a word should seek to ~0.9s, got ${seeked}s`);
     await playback.getByRole("button", { name: "Pause" }).click();
     console.log("playback: click-to-seek");
   }
+
+  // The fixture's "um" is the only proposal the detector should find.
+  const cleanup = page.getByRole("region", { name: "Cleanup", exact: true });
+  await cleanup.waitFor();
+  await cleanup.getByText("0 of 1 proposals accepted").waitFor();
+
+  await cleanup.getByLabel("Accept all filler").check();
+  await cleanup.getByText("1 of 1 proposals accepted").waitFor();
+
+  await cleanup.getByRole("button", { name: "Remove accepted" }).click();
+  await page.getByText(/Removed 1 cleanup proposal/).waitFor();
+  assert(
+    await editorPanel.getByRole("button", { name: "um" }).isDisabled(),
+    "the accepted filler should be removed from the document",
+  );
+
+  await editorPanel.getByRole("button", { name: "Save transcript" }).click();
+  await waitForSavedState(true);
+  await page.getByText("Transcript saved").waitFor();
+  console.log("cleanup: reviewed, removed, and saved");
 
   // Select a range, delete it with the keyboard, undo, redo, and save.
   // The playback panel renders its own transcript, so editor steps are scoped.
@@ -255,7 +282,7 @@ try {
   console.log("transcript: undo and redo");
 
   await editorPanel.getByRole("button", { name: "Save transcript" }).click();
-  await page.getByText("Transcript saved").waitFor();
+  await waitForSavedState(true);
   assert((await dirtyStatus.textContent()) === "Saved", "saving should clear the dirty state");
 
   await page.reload({ waitUntil: "networkidle" });
@@ -267,6 +294,11 @@ try {
       .getByRole("button", { name: "world" })
       .getAttribute("data-removed")) === "true",
     "the removal should survive a reload",
+  );
+  assert(
+    (await editorPanel.getByRole("button", { name: "um" }).getAttribute("data-removed")) ===
+      "true",
+    "the accepted filler should stay removed after a reload",
   );
   console.log("transcript: saved edit survives a reload");
 
