@@ -11,8 +11,8 @@
 ## Phase 1: Stored removals reach the cut list
 
 ### Red
-- [ ] Failing tests: a saved removal alone produces a cut list that omits the removed range.
-- [ ] Failing tests: a saved removal and an accepted proposal covering different words both appear, once each.
+- [x] Failing tests: a saved removal alone produces a cut list that omits the removed range.
+- [x] Failing tests: a saved removal and an accepted proposal covering different words both appear, once each.
 
 **Targeted Red command:**
 ```bash
@@ -20,11 +20,11 @@ npx vitest run packages/cleanup/src/freeze.test.ts
 ```
 
 ### Green
-- [ ] Merge `transcript.removedWordIds` into the freeze's removal set.
-- [ ] Make tests pass.
+- [x] Merge `transcript.removedWordIds` into the freeze's removal set.
+- [x] Make tests pass.
 
 ### Refactor
-- [ ] Commit: `fix(cleanup): Freeze honours removals already saved in the document`
+- [x] Commit: `fix(cleanup): Freeze honours removals already saved in the document`
 
 ---
 

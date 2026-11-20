@@ -75,7 +75,9 @@ export type FreezeMasterInput = {
  * scenes can be anchored against the cleaned cut rather than the original.
  */
 export function freezeMaster(input: FreezeMasterInput): FrozenMaster {
-  const removed = new Set<string>();
+  // Removals already saved in the document count too: freezing must never
+  // resurrect a word the user deleted before opening the review.
+  const removed = new Set<string>(input.transcript.removedWordIds);
 
   for (const proposal of input.accepted) {
     for (let index = proposal.fromIndex; index <= proposal.toIndex; index += 1) {
