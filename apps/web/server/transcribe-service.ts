@@ -46,6 +46,40 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       return resolveMediaPath(project, root);
     },
 
+    /**
+     * Transcribes one project to completion without creating a job.
+     *
+     * The batch runner awaits each project, so it needs a call that settles
+     * rather than a job record to poll.
+     */
+    async transcribeNow(root: string): Promise<number> {
+      const apiKey = deps.apiKey();
+      if (apiKey.trim() === "") {
+        throw new AiError("not-configured", "OPENAI_API_KEY is not set");
+      }
+
+      const mediaPath = await this.mediaPathFor(root);
+      if (mediaPath === null) {
+        throw new ProjectError("invalid-document", "project has no media");
+      }
+
+      const baseUrl = deps.baseUrl();
+      const provider = deps.createProvider({
+        apiKey,
+        ...(baseUrl === undefined ? {} : { baseUrl }),
+      });
+
+      const result = await provider.transcribe({ filePath: mediaPath });
+
+      await saveTranscript(
+        deps.fs,
+        projectPaths(root).transcript,
+        createTranscript(result.words),
+      );
+
+      return result.words.length;
+    },
+
     async start(root: string): Promise<JobRecord> {
       const apiKey = deps.apiKey();
       if (apiKey.trim() === "") {
