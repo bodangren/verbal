@@ -1,12 +1,27 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ProjectError, projectPaths } from "@verbal/core";
+import {
+  parseProjectDocument,
+  parseTranscript,
+  ProjectError,
+  projectPaths,
+} from "@verbal/core";
+
+/** What a project row shows without opening it. */
+export type FsEntrySummary = {
+  /** Name from project.json, which can differ from the folder name. */
+  name: string;
+  transcriptWords: number;
+  hasMedia: boolean;
+  createdAt: string;
+};
 
 export type FsEntry = {
   name: string;
   path: string;
   isProject: boolean;
+  summary?: FsEntrySummary;
 };
 
 export type FsListing = {
@@ -25,13 +40,36 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-async function isProject(directory: string): Promise<boolean> {
+/**
+ * Reads a folder's project metadata, or null when it is not a project.
+ *
+ * The summary is best-effort: a damaged transcript costs the word count, not
+ * the row, because the project is still openable and transcribable.
+ */
+async function summariseProject(directory: string): Promise<FsEntrySummary | null> {
+  const paths = projectPaths(directory);
+
+  let project;
   try {
-    const info = await stat(projectPaths(directory).project);
-    return info.isFile();
+    project = parseProjectDocument(await readFile(paths.project, "utf8"));
   } catch {
-    return false;
+    return null;
   }
+
+  let transcriptWords = 0;
+  try {
+    const transcript = parseTranscript(await readFile(paths.transcript, "utf8"));
+    transcriptWords = transcript.words.length - transcript.removedWordIds.length;
+  } catch {
+    // No transcript yet.
+  }
+
+  return {
+    name: project.name,
+    transcriptWords,
+    hasMedia: project.media !== undefined,
+    createdAt: project.createdAt,
+  };
 }
 
 /**
@@ -53,10 +91,16 @@ export function createFsApi(
       const dirents = await readdir(directory, { withFileTypes: true });
       const directories = dirents.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
 
+      // Hidden folders are configuration, not work you came here to open.
+      const visible = directories.filter((name) => !name.startsWith("."));
+
       const entries = await Promise.all(
-        directories.map(async (name) => {
+        visible.map(async (name): Promise<FsEntry> => {
           const childPath = path.join(directory, name);
-          return { name, path: childPath, isProject: await isProject(childPath) };
+          const summary = await summariseProject(childPath);
+          return summary === null
+            ? { name, path: childPath, isProject: false }
+            : { name, path: childPath, isProject: true, summary };
         }),
       );
 

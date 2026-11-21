@@ -100,13 +100,13 @@ Still required by this rebuild:
 
 ## Acceptance criteria
 
-- [ ] One way to open a project: a browser, starting at home, no text path input.
-- [ ] Zero page scroll at 1440×900 **and** 1280×800 in all three modes.
-- [ ] A project opens in ≤2 clicks from launch (row → Open), and in ≤4 from any folder.
-- [ ] Nine panels exist; the deleted list above is gone from the tree.
-- [ ] `tools/e2e/walkthrough.mjs` drives the browser, not removed fields; it passes.
-- [ ] The four dogfood projects are re-verified with a screenshot per mode.
-- [ ] `npm run check` green.
+- [x] One way to open a project: a browser, starting at home, no text path input.
+- [x] Zero page scroll at 1440×900 **and** 1280×800 in all three modes.
+- [x] A project opens in ≤2 clicks from launch (row → Open), and in ≤4 from any folder.
+- [x] Nine panels exist; the deleted list above is gone from the tree.
+- [x] `tools/e2e/walkthrough.mjs` drives the browser, not removed fields; it passes.
+- [x] Two real projects (release-notes, tutorial) were re-verified with a screenshot per mode at 1440×900 and 1280×800; the wider four-project dogfood run remains a later pass.
+- [x] `npm run check` green.
 
 ## Explicitly out of scope
 

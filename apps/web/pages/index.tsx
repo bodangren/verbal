@@ -34,6 +34,9 @@ import { useTranscriptDocument } from "../hooks/use-transcript-document";
 
 const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 
+/** Remembers the folder you were browsing, so launch lands on your work. */
+const BROWSER_PATH_KEY = "verbal.browser.path";
+
 /** The three workspaces. Panels are hidden, never unmounted, so state survives. */
 const MODES = [
   { id: "ingest", label: "Ingest" },
@@ -87,9 +90,30 @@ function canUseCamera(): boolean {
   );
 }
 
+function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="empty">
+      <p className="empty__title">{title}</p>
+      <p className="empty__body">{body}</p>
+      {action !== undefined && (
+        <button type="button" className="button button--primary" onClick={action.onClick}>
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [root, setRoot] = useState("");
-  const [name, setName] = useState("Untitled");
   const [project, setProject] = useState<ProjectDocument | null>(null);
   const editing = useTranscriptDocument(null);
   const { undo: undoEdit, redo: redoEdit } = editing;
@@ -203,6 +227,8 @@ export default function Home() {
       );
       setRoot(target);
       await loadProjectFiles(opened, target);
+      setMode(opened.media === undefined ? "ingest" : "edit");
+      setBrowserError(null);
     });
   }
 
@@ -219,6 +245,13 @@ export default function Home() {
         setBrowserParent(listing.parent);
         setBrowserEntries(listing.entries);
         setBrowserError(null);
+
+        // Remember where you were, so the next launch opens your work, not home.
+        try {
+          window.localStorage.setItem(BROWSER_PATH_KEY, listing.path);
+        } catch {
+          // Storage can be unavailable; browsing still works without it.
+        }
       } catch (cause) {
         setBrowserError(cause instanceof Error ? cause.message : String(cause));
       }
@@ -226,26 +259,46 @@ export default function Home() {
   }
 
   useEffect(() => {
+    let remembered: string | undefined;
+    try {
+      remembered = window.localStorage.getItem(BROWSER_PATH_KEY) ?? undefined;
+    } catch {
+      remembered = undefined;
+    }
     void (async () => {
-      try {
-        const listing = await request<{
-          path: string;
-          parent: string | null;
-          entries: FsEntry[];
-        }>("/api/fs/list");
-        setBrowserPath(listing.path);
-        setBrowserParent(listing.parent);
-        setBrowserEntries(listing.entries);
-      } catch {
-        // The browser still offers Up/Home; the server reports its own errors.
-      }
+      await loadFolder(remembered);
     })();
+    // The browser loads once on mount; later navigation goes through loadFolder.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function createProject() {
+  // Leaving Ingest unmounts the camera element; stop the stream so the light
+  // does not stay on behind an invisible preview.
+  useEffect(() => {
+    if (mode !== "ingest") {
+      stopPreview();
+    }
+    // Only a mode change should stop capture; the stream functions are stable
+    // enough for this purpose and stopping twice is harmless.
+  }, [mode]);
+
+  function createProject(projectName: string) {
     return guard(async () => {
-      const created = await postJson<ProjectDocument>("/api/projects", { root, name });
-      await loadProjectFiles(created, root);
+      // A project is a folder of its own, created inside the folder being
+      // browsed. Slashes would nest it somewhere the user did not choose.
+      const folder = projectName.trim().replace(/[\\/]+/g, "-");
+      const createdRoot = `${browserPath.replace(/\/+$/, "")}/${folder}`;
+
+      const created = await postJson<ProjectDocument>("/api/projects", {
+        root: createdRoot,
+        name: projectName.trim(),
+      });
+
+      setRoot(createdRoot);
+      await loadProjectFiles(created, createdRoot);
+      setMode("ingest");
+      setMessage(`Created ${created.name}`);
+      void loadFolder(browserPath);
     });
   }
 
@@ -762,22 +815,48 @@ export default function Home() {
     job.kind === "capture" &&
     (job.status === "queued" || job.status === "running");
 
+  const saveState =
+    transcript === null
+      ? "No transcript"
+      : autoSave.saving
+        ? "Saving…"
+        : editing.dirty
+          ? "Unsaved changes"
+          : "Saved";
+
+  const hasMedia = project?.media !== undefined;
+  const liveWords =
+    transcript === null ? 0 : transcript.words.length - transcript.removedWordIds.length;
+
   return (
     <main className="app" data-mode={mode}>
-      <header className="app__titlebar">
-        <div className="app__identity">
-          <h1>Verbal</h1>
-          <p className="app__project">
-            {project === null ? "No project open" : project.name}
-          </p>
+      <header className="bar">
+        <div className="bar__brand">
+          <span className="bar__mark" aria-hidden="true">
+            V
+          </span>
+          <span className="bar__wordmark">Verbal</span>
         </div>
 
-        <nav className="modes" aria-label="Workspace mode">
+        <div className="bar__document">
+          {project === null ? (
+            <span className="bar__document-empty">No project open</span>
+          ) : (
+            <>
+              <span className="bar__document-name">{project.name}</span>
+              <span className="bar__document-path" title={root}>
+                {root}
+              </span>
+            </>
+          )}
+        </div>
+
+        <nav className="segmented" aria-label="Workspace mode">
           {MODES.map((entry) => (
             <button
               key={entry.id}
               type="button"
-              className="mode"
+              className="segmented__option"
               aria-pressed={mode === entry.id}
               onClick={() => setMode(entry.id)}
             >
@@ -786,538 +865,710 @@ export default function Home() {
           ))}
         </nav>
 
-        <p className="app__state" role="status">
-          {transcript === null
-            ? "No transcript"
-            : autoSave.saving
-              ? "Saving…"
-              : editing.dirty
-                ? "Unsaved changes"
-                : "Saved"}
+        <p className="bar__save" role="status" aria-live="polite">
+          {saveState}
         </p>
       </header>
 
-      <div className="app__body">
-        <aside className="pane pane--rail" aria-label="Setup">
-      <section className="panel" aria-label="Project" data-modes="ingest">
-        <h2>Project</h2>
-        {project === null ? (
-          <p className="muted">Choose a project in the browser on the left of the workspace.</p>
-        ) : (
-          <p className="muted">
-            {project.name} · media:{" "}
-            {project.media?.assetPath ?? project.media?.externalPath ?? "none"}
-          </p>
-        )}
-        <label className="field">
-          New project name
-          <input value={name} onChange={(event) => setName(event.target.value)} />
-        </label>
-        <div className="row">
-          <button
-            type="button"
-            onClick={createProject}
-            disabled={browserPath.trim() === "" || name.trim() === ""}
-          >
-            Create in {browserPath.split("/").filter(Boolean).slice(-1)[0] ?? "folder"}
-          </button>
-        </div>
-      </section>
-
-      <section className="panel" aria-label="Media" data-modes="ingest">
-        <h2>Media</h2>
-        <label className="field">
-          Source file
-          <input
-            value={importPath}
-            onChange={(event) => setImportPath(event.target.value)}
-            placeholder="/media/take.mp4"
-          />
-        </label>
-        <button type="button" onClick={importMedia} disabled={project === null}>
-          Import copy
-        </button>
-      </section>
-
-      <section className="panel" aria-label="Transcription" data-modes="ingest">
-        <h2>Transcription</h2>
-        <p className="muted">Transcribing replaces this project&apos;s stored transcript.</p>
-        <div className="row">
-          <button
-            type="button"
-            onClick={transcribeMedia}
-            disabled={project === null || project.media === undefined || transcribing}
-          >
-            Transcribe media
-          </button>
-        </div>
-        {transcribing && job !== null && (
-          <p className="muted">
-            {job.status === "queued" ? "Queued" : `Transcribing ${Math.round(job.progress * 100)}%`}
-          </p>
+      <div className="workspace">
+        {mode === "ingest" && (
+          <aside className="sidebar" aria-label="Project browser">
+            <ProjectBrowser
+              path={browserPath}
+              parent={browserParent}
+              entries={browserEntries}
+              loading={browserLoading}
+              error={browserError}
+              onCreate={(projectName) => void createProject(projectName)}
+              onHome={() => void loadFolder()}
+              onUp={() => {
+                if (browserParent !== null) {
+                  void loadFolder(browserParent);
+                }
+              }}
+              onNavigate={(target) => {
+                setBrowserLoading(true);
+                void loadFolder(target).finally(() => setBrowserLoading(false));
+              }}
+              onOpen={(target) => {
+                void openProjectAt(target);
+              }}
+            />
+          </aside>
         )}
 
-        <label className="field">
-          Batch projects (one project root per line)
-          <textarea
-            className="editor"
-            value={batchRoots}
-            onChange={(event) => setBatchRoots(event.target.value)}
-            spellCheck={false}
-          />
-        </label>
-        <div className="row">
-          <button
-            type="button"
-            onClick={startBatch}
-            disabled={batchRoots.trim() === "" || transcribing}
-          >
-            Start batch
-          </button>
-        </div>
-        {batchOutcomes.length > 0 && (
-          <ul className="cleanup__proposals" aria-label="Batch outcomes">
-            {batchOutcomes.map((outcome) => (
-              <li key={outcome.root} className="cleanup__proposal" data-status={outcome.status}>
-                <span>{outcome.root}</span>
-                <span className="cleanup__reason">{outcome.status}</span>
-                {outcome.detail !== undefined && (
-                  <span className="muted">{outcome.detail}</span>
+        <section className="stage" aria-label={`${mode} workspace`}>
+          {mode === "ingest" && (
+            <div className="stage__scroll">
+              <header className="stage__head">
+                <div>
+                  <h2>Capture</h2>
+                  <p className="stage__sub">
+                    {project === null
+                      ? "Open or create a project to record a take."
+                      : `Record a take into ${project.name}.`}
+                  </p>
+                </div>
+                <span className="pill">{hasMedia ? "Media loaded" : "No media"}</span>
+              </header>
+
+              {project === null ? (
+                <EmptyState
+                  title="No project open"
+                  body="Pick a project in the browser, or create one in the folder you are browsing."
+                />
+              ) : (
+                <div className="card">
+                  <div className="capture__frame">
+                    <video
+                      ref={videoRef}
+                      className="capture__video"
+                      muted
+                      playsInline
+                      aria-label="Camera preview"
+                    />
+                    {!previewing && (
+                      <div className="capture__placeholder">
+                        <span className="capture__placeholder-mark" aria-hidden="true">
+                          ◉
+                        </span>
+                        <span>Camera preview is off</span>
+                      </div>
+                    )}
+                  </div>
+                  <CapturePanel
+                    cameraAvailable={cameraAvailable}
+                    keyQuality={keyQuality}
+                    previewing={previewing}
+                    recording={captureRunning}
+                    durationSeconds={captureSeconds}
+                    onStartPreview={startPreview}
+                    onStopPreview={stopPreview}
+                    onDurationChange={setCaptureSeconds}
+                    onRecord={record}
+                    onStop={stopRecording}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === "edit" && (
+            <div className="stage__scroll">
+              <header className="stage__head">
+                <div>
+                  <h2>Edit</h2>
+                  <p className="stage__sub">Edit the video by editing its transcript.</p>
+                </div>
+                {transcript !== null && (
+                  <span className="pill">
+                    {liveWords.toLocaleString()} {liveWords === 1 ? "word" : "words"}
+                  </span>
                 )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </header>
 
+              {project === null ? (
+                <EmptyState
+                  title="No project open"
+                  body="Open a project in Ingest to edit its transcript."
+                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                />
+              ) : !hasMedia ? (
+                <EmptyState
+                  title="No media yet"
+                  body="Import a recording or file in Ingest, then transcribe it."
+                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                />
+              ) : transcript === null ? (
+                <EmptyState
+                  title="No transcript yet"
+                  body="Transcribe this project's media in Ingest to start editing."
+                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                />
+              ) : (
+                <>
+                  <div className="card card--flush" role="region" aria-label="Playback">
+                    <PlaybackScreen
+                      transcript={transcript}
+                      mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
+                      showTranscript={false}
+                      onActiveWordChange={setActiveWordId}
+                      onVideoReady={(video) => {
+                        playerRef.current = video;
+                      }}
+                      waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
+                    />
+                  </div>
 
-        </aside>
+                  <div className="card" role="region" aria-label="Transcript editor">
+                    <div className="card__head">
+                      <h3>Transcript</h3>
+                      <div className="toolbar">
+                        <label className="search">
+                          <span className="sr-only">Find in transcript</span>
+                          <input
+                            autoComplete="off"
+                            value={query}
+                            onChange={(event) => {
+                              setQuery(event.target.value);
+                              setMatchCursor(0);
+                            }}
+                            placeholder="Find in transcript"
+                          />
+                        </label>
+                        {query.trim() !== "" && (
+                          <>
+                            <span className="muted">
+                              {matches.length === 0
+                                ? "No matches"
+                                : `${matchCursor + 1} of ${matches.length}`}
+                            </span>
+                            <button
+                              type="button"
+                              className="button button--ghost"
+                              onClick={() => stepMatch(-1)}
+                              disabled={matches.length === 0}
+                              aria-label="Previous match"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="button button--ghost"
+                              onClick={() => stepMatch(1)}
+                              disabled={matches.length === 0}
+                              aria-label="Next match"
+                            >
+                              ↓
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-        <section className="pane pane--stage" aria-label="Workspace">
-        {mode === "ingest" && project === null && (
-          <ProjectBrowser
-            path={browserPath}
-            parent={browserParent}
-            entries={browserEntries}
-            loading={browserLoading}
-            error={browserError}
-            onHome={() => void loadFolder()}
-            onUp={() => {
-              if (browserParent !== null) {
-                void loadFolder(browserParent);
-              }
-            }}
-            onNavigate={(target) => {
-              setBrowserLoading(true);
-              void loadFolder(target).finally(() => setBrowserLoading(false));
-            }}
-            onOpen={(target) => {
-              void openProjectAt(target);
-            }}
-          />
-        )}
-      <section className="panel" aria-label="Capture" data-modes="ingest">
-        <h2>Green-screen capture</h2>
-        <video
-          ref={videoRef}
-          className="capture__preview"
-          muted
-          playsInline
-          aria-label="Camera preview"
-        />
-        <CapturePanel
-          cameraAvailable={cameraAvailable}
-          keyQuality={keyQuality}
-          previewing={previewing}
-          recording={captureRunning}
-          durationSeconds={captureSeconds}
-          onStartPreview={startPreview}
-          onStopPreview={stopPreview}
-          onDurationChange={setCaptureSeconds}
-          onRecord={record}
-          onStop={stopRecording}
-        />
-      </section>
+                    <TranscriptEditor
+                      transcript={transcript}
+                      selectedRange={selection}
+                      matchedRanges={matches}
+                      activeWordId={activeWordId}
+                      onWordClick={(_wordId, index) => {
+                        setSelection({ fromIndex: index, toIndex: index });
 
+                        // The single transcript is also the transport: clicking a
+                        // word seeks the player, exactly as the read-only copy did.
+                        const word = transcript?.words[index];
+                        if (word !== undefined && playerRef.current !== null) {
+                          playerRef.current.currentTime = word.start;
+                        }
+                      }}
+                      onSelectionChange={setSelection}
+                      onDeleteSelection={deleteSelection}
+                    />
 
-      {transcript !== null && project?.media !== undefined && (
-        <section className="panel" aria-label="Playback" data-modes="edit">
-          <h2>Playback</h2>
-          <PlaybackScreen
-            transcript={transcript}
-            mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
-            showTranscript={false}
-            onActiveWordChange={setActiveWordId}
-            onVideoReady={(video) => {
-              playerRef.current = video;
-            }}
-            waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
-          />
-        </section>
-      )}
-
-      {transcript !== null && (
-        <section className="panel" aria-label="Transcript editor" data-modes="edit">
-          <h2>Transcript</h2>
-          <div className="row">
-            <label className="field">
-              Find
-              <input
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setMatchCursor(0);
-                }}
-                placeholder="Search the transcript"
-              />
-            </label>
-            {query.trim() !== "" && (
-              <>
-                <span className="muted">
-                  {matches.length === 0
-                    ? "No matches"
-                    : `${matchCursor + 1} of ${matches.length}`}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => stepMatch(-1)}
-                  disabled={matches.length === 0}
-                >
-                  Previous match
-                </button>
-                <button
-                  type="button"
-                  onClick={() => stepMatch(1)}
-                  disabled={matches.length === 0}
-                >
-                  Next match
-                </button>
-              </>
-            )}
-          </div>
-          <div className="row">
-            <label className="field">
-              Silence (seconds)
-              <input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={silenceSeconds}
-                onChange={(event) => setSilenceSeconds(Number(event.target.value))}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={insertSilenceAtSelection}
-              disabled={selection === null}
-            >
-              Insert silence
-            </button>
-            <button type="button" onClick={splitAtSelection} disabled={selection === null}>
-              Split segment
-            </button>
-            <button
-              type="button"
-              onClick={() => moveSelection(-1)}
-              disabled={selection === null}
-            >
-              Move earlier
-            </button>
-            <button type="button" onClick={() => moveSelection(1)} disabled={selection === null}>
-              Move later
-            </button>
-          </div>
-          <div className="row">
-            <button type="button" onClick={deleteSelection} disabled={selection === null}>
-              Delete selection
-            </button>
-            <button type="button" onClick={undoEdit} disabled={!editing.canUndo}>
-              Undo
-            </button>
-            <button type="button" onClick={redoEdit} disabled={!editing.canRedo}>
-              Redo
-            </button>
-            <button
-              type="button"
-              onClick={saveTranscriptDocument}
-              disabled={project === null}
-            >
-              Save transcript
-            </button>
-
-          </div>
-          <TranscriptEditor
-            transcript={transcript}
-            selectedRange={selection}
-            matchedRanges={matches}
-            activeWordId={activeWordId}
-            onWordClick={(_wordId, index) => {
-              setSelection({ fromIndex: index, toIndex: index });
-
-              // The single transcript is also the transport: clicking a word
-              // seeks the player, exactly as the read-only copy used to.
-              const word = transcript?.words[index];
-              if (word !== undefined && playerRef.current !== null) {
-                playerRef.current.currentTime = word.start;
-              }
-            }}
-            onSelectionChange={setSelection}
-            onDeleteSelection={deleteSelection}
-          />
-        </section>
-      )}
-
-      <section className="panel" aria-label="Storyboard" data-modes="deliver">
-        <h2>Storyboard</h2>
-        {transcript === null && <p className="muted">Open a project with a transcript first.</p>}
-        <textarea
-          className="editor"
-          aria-label="Storyboard JSON"
-          value={storyboardText}
-          onChange={(event) => setStoryboardText(event.target.value)}
-          spellCheck={false}
-        />
-        <div className="row">
-          <button type="button" onClick={saveStoryboard} disabled={project === null}>
-            Save
-          </button>
-          <button type="button" onClick={() => preview("fast")} disabled={project === null}>
-            Fast preview
-          </button>
-          <button type="button" onClick={() => preview("full")} disabled={project === null}>
-            Full preview
-          </button>
-        </div>
-
-        <div className="row">
-          <button type="button" onClick={checkPrunableAssets} disabled={project === null}>
-            Check prunable assets
-          </button>
-          {prunable !== null && prunable.length > 0 && (
-            <button type="button" onClick={deletePrunableAssets}>
-              Delete {prunable.length} assets
-            </button>
+                    <div className="toolbar toolbar--wrap toolbar--footer">
+                      <label className="field field--inline">
+                        Silence (s)
+                        <input
+                          autoComplete="off"
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={silenceSeconds}
+                          onChange={(event) => setSilenceSeconds(Number(event.target.value))}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={insertSilenceAtSelection}
+                        disabled={selection === null}
+                      >
+                        Insert silence
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={splitAtSelection}
+                        disabled={selection === null}
+                      >
+                        Split
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() => moveSelection(-1)}
+                        disabled={selection === null}
+                      >
+                        Move back
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={() => moveSelection(1)}
+                        disabled={selection === null}
+                      >
+                        Move forward
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={deleteSelection}
+                        disabled={selection === null}
+                      >
+                        Delete
+                      </button>
+                      <span className="toolbar__spacer" />
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={undoEdit}
+                        disabled={!editing.canUndo}
+                      >
+                        Undo
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={redoEdit}
+                        disabled={!editing.canRedo}
+                      >
+                        Redo
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        onClick={saveTranscriptDocument}
+                        disabled={project === null}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
-        </div>
 
-        <div className="row">
-          <label className="field">
-            Image scene
-            <input
-              value={imageSceneId}
-              onChange={(event) => setImageSceneId(event.target.value)}
-              placeholder="g1"
-            />
-          </label>
-          <label className="field">
-            Image prompt
-            <input
-              value={imagePrompt}
-              onChange={(event) => setImagePrompt(event.target.value)}
-              placeholder="A diagram of the pipeline"
-            />
-          </label>
-        </div>
-        <div className="row">
-          <button type="button" onClick={estimateImage} disabled={project === null}>
-            Estimate image
-          </button>
-          <button
-            type="button"
-            onClick={generateImage}
-            disabled={project === null || imageCost === null}
-          >
-            Generate image
-          </button>
-        </div>
-        {imageCost !== null && (
-          <p className="muted">Cost per image: ${imageCost.toFixed(2)}</p>
-        )}
+          {mode === "deliver" && (
+            <div className="stage__scroll">
+              <header className="stage__head">
+                <div>
+                  <h2>Storyboard</h2>
+                  <p className="stage__sub">Preview the cut, then export it.</p>
+                </div>
+                <div className="toolbar">
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={() => preview("fast")}
+                    disabled={project === null}
+                  >
+                    Fast preview
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    onClick={() => preview("full")}
+                    disabled={project === null}
+                  >
+                    Render preview
+                  </button>
+                </div>
+              </header>
 
-        <div className="row">
-          <label className="field">
-            Video scene
-            <input
-              value={videoSceneId}
-              onChange={(event) => setVideoSceneId(event.target.value)}
-              placeholder="v1"
-            />
-          </label>
-          <label className="field">
-            Video prompt
-            <input
-              value={videoPrompt}
-              onChange={(event) => setVideoPrompt(event.target.value)}
-              placeholder="A rotating 3D diagram"
-            />
-          </label>
-          <label className="field">
-            Clip seconds
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={videoSeconds}
-              onChange={(event) => setVideoSeconds(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="row">
-          <button type="button" onClick={estimateVideo} disabled={project === null}>
-            Estimate video
-          </button>
-          <button
-            type="button"
-            onClick={generateVideo}
-            disabled={project === null || videoCost === null}
-          >
-            Generate video
-          </button>
-        </div>
-        {videoCost !== null && (
-          <p className="muted">Clip cost: ${videoCost.toFixed(2)}</p>
-        )}
+              {project === null ? (
+                <EmptyState
+                  title="No project open"
+                  body="Open a project in Ingest to build its storyboard."
+                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                />
+              ) : plan === null ? (
+                <EmptyState
+                  title="No preview yet"
+                  body="Render a preview to see the storyboard scenes."
+                  action={{ label: "Render preview", onClick: () => void preview("full") }}
+                />
+              ) : (
+                <div className="card card--flush">
+                  <StoryboardPreview plan={plan} tier={tier} onTierChange={preview} />
+                </div>
+              )}
 
-        {plan !== null && (
-          <StoryboardPreview plan={plan} tier={tier} onTierChange={preview} />
-        )}
-      </section>
+              <details className="disclosure">
+                <summary>Advanced: storyboard document</summary>
+                <p className="muted">Edit the storyboard JSON directly.</p>
+                <textarea
+                  className="editor"
+                  aria-label="Storyboard JSON"
+                  value={storyboardText}
+                  onChange={(event) => setStoryboardText(event.target.value)}
+                  spellCheck={false}
+                />
+                <div className="toolbar">
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    onClick={saveStoryboard}
+                    disabled={project === null}
+                  >
+                    Save storyboard
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--ghost"
+                    onClick={checkPrunableAssets}
+                    disabled={project === null}
+                  >
+                    Check prunable assets
+                  </button>
+                  {prunable !== null && prunable.length > 0 && (
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={deletePrunableAssets}
+                    >
+                      Delete {prunable.length} assets
+                    </button>
+                  )}
+                </div>
+              </details>
 
-      <section className="panel" aria-label="Feedback" data-modes="deliver">
-        <h2>Feedback</h2>
-        <textarea
-          className="editor"
-          aria-label="Patch JSON"
-          value={patchText}
-          onChange={(event) => setPatchText(event.target.value)}
-          placeholder='{"patches":[{"type":"remove","sceneId":"s1"}]}'
-          spellCheck={false}
-        />
-        <div className="row">
-          <button type="button" onClick={parsePatches}>
-            Parse patches
-          </button>
-        </div>
-        {patches.length > 0 && (
-          <PatchReview
-            patches={patches}
-            accepted={accepted}
-            onToggle={(index) =>
-              setAccepted((current) =>
-                current.map((value, position) => (position === index ? !value : value)),
-              )
-            }
-            onApply={applyPatches}
-            onReject={() => {
-              setPatches([]);
-              setAccepted([]);
-            }}
-          />
-        )}
-      </section>
+              <details className="disclosure">
+                <summary>Generate assets</summary>
+                <div className="form-grid">
+                  <fieldset className="fieldset">
+                    <legend>Image</legend>
+                    <label className="field">
+                      Image scene
+                      <input
+                        autoComplete="off"
+                        value={imageSceneId}
+                        onChange={(event) => setImageSceneId(event.target.value)}
+                        placeholder="g1"
+                      />
+                    </label>
+                    <label className="field">
+                      Image prompt
+                      <input
+                        autoComplete="off"
+                        value={imagePrompt}
+                        onChange={(event) => setImagePrompt(event.target.value)}
+                        placeholder="A diagram of the pipeline"
+                      />
+                    </label>
+                    <div className="toolbar">
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={estimateImage}
+                        disabled={project === null}
+                      >
+                        Estimate image
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        onClick={generateImage}
+                        disabled={project === null || imageCost === null}
+                      >
+                        Generate image
+                      </button>
+                    </div>
+                    {imageCost !== null && (
+                      <p className="muted">Cost per image: ${imageCost.toFixed(2)}</p>
+                    )}
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend>Video</legend>
+                    <label className="field">
+                      Video scene
+                      <input
+                        autoComplete="off"
+                        value={videoSceneId}
+                        onChange={(event) => setVideoSceneId(event.target.value)}
+                        placeholder="v1"
+                      />
+                    </label>
+                    <label className="field">
+                      Video prompt
+                      <input
+                        autoComplete="off"
+                        value={videoPrompt}
+                        onChange={(event) => setVideoPrompt(event.target.value)}
+                        placeholder="A rotating 3D diagram"
+                      />
+                    </label>
+                    <label className="field">
+                      Clip seconds
+                      <input
+                        autoComplete="off"
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={videoSeconds}
+                        onChange={(event) => setVideoSeconds(Number(event.target.value))}
+                      />
+                    </label>
+                    <div className="toolbar">
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={estimateVideo}
+                        disabled={project === null}
+                      >
+                        Estimate video
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        onClick={generateVideo}
+                        disabled={project === null || videoCost === null}
+                      >
+                        Generate video
+                      </button>
+                    </div>
+                    {videoCost !== null && (
+                      <p className="muted">Clip cost: ${videoCost.toFixed(2)}</p>
+                    )}
+                  </fieldset>
+                </div>
+              </details>
+
+              <details className="disclosure">
+                <summary>Review feedback</summary>
+                <textarea
+                  className="editor"
+                  aria-label="Patch JSON"
+                  value={patchText}
+                  onChange={(event) => setPatchText(event.target.value)}
+                  placeholder='{"patches":[{"type":"remove","sceneId":"s1"}]}'
+                  spellCheck={false}
+                />
+                <div className="toolbar">
+                  <button type="button" className="button button--ghost" onClick={parsePatches}>
+                    Parse patches
+                  </button>
+                </div>
+                {patches.length > 0 && (
+                  <PatchReview
+                    patches={patches}
+                    accepted={accepted}
+                    onToggle={(index) =>
+                      setAccepted((current) =>
+                        current.map((value, position) => (position === index ? !value : value)),
+                      )
+                    }
+                    onApply={applyPatches}
+                    onReject={() => {
+                      setPatches([]);
+                      setAccepted([]);
+                    }}
+                  />
+                )}
+              </details>
+            </div>
+          )}
         </section>
 
-        <aside className="pane pane--inspector" aria-label="Inspector">
+        {mode === "ingest" && (
+          <aside className="inspector" aria-label="Inspector">
+            <section className="inspector__section" aria-label="Source media">
+              <h3>Source media</h3>
+              <p className="muted">Import a recording or an existing file into this project.</p>
+              <label className="field">
+                Source file path
+                <input
+                  autoComplete="off"
+                  value={importPath}
+                  onChange={(event) => setImportPath(event.target.value)}
+                  placeholder="/home/you/Videos/take.mp4"
+                  disabled={project === null}
+                />
+              </label>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={importMedia}
+                disabled={project === null || importPath.trim() === ""}
+              >
+                Import copy
+              </button>
+            </section>
 
-      {transcript !== null && (
-        <section className="panel" aria-label="Cleanup" data-modes="edit">
-          <h2>Cleanup</h2>
-          {proposals.length === 0 ? (
-            <p className="muted">No filler words, stutters, or repetitions found.</p>
-          ) : (
-            <>
-              <p className="muted">
-                {acceptedProposals.length} of {proposals.length} proposals accepted
-              </p>
-              <div className="row">
+            <section className="inspector__section" aria-label="Transcription">
+              <h3>Transcription</h3>
+              <p className="muted">Transcribing replaces this project&apos;s stored transcript.</p>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={transcribeMedia}
+                disabled={project === null || !hasMedia || transcribing}
+              >
+                {transcribing ? "Transcribing…" : "Transcribe media"}
+              </button>
+              {transcribing && job !== null && (
+                <p className="muted" role="status">
+                  Transcribing {Math.round(job.progress * 100)}%
+                </p>
+              )}
+
+              <details className="disclosure disclosure--inline">
+                <summary>Batch projects</summary>
+                <label className="field">
+                  One project root per line
+                  <textarea
+                    className="editor editor--short"
+                    value={batchRoots}
+                    onChange={(event) => setBatchRoots(event.target.value)}
+                    spellCheck={false}
+                  />
+                </label>
                 <button
                   type="button"
-                  onClick={removeAcceptedProposals}
-                  disabled={acceptedProposals.length === 0}
+                  className="button button--ghost"
+                  onClick={startBatch}
+                  disabled={batchRoots.trim() === "" || transcribing}
                 >
-                  Remove accepted
+                  Start batch
                 </button>
-              </div>
-            </>
-          )}
-          <CleanupReview
-            transcript={transcript}
-            proposals={proposals}
-            audioFixes={[]}
-            acceptance={acceptance}
-            onAcceptanceChange={setAcceptance}
-            onFreeze={freezeMaster}
-          />
-        </section>
-      )}
-
-      <section className="panel" aria-label="Export" data-modes="deliver">
-        <h2>Export</h2>
-        <label className="field">
-          Output file
-          <input
-            value={outputPath}
-            onChange={(event) => setOutputPath(event.target.value)}
-            placeholder="/home/you/Verbal/demo/exports/final.mp4"
-          />
-        </label>
-        <label className="field">
-          Preset
-          <select
-            value={presetId}
-            onChange={(event) => setPresetId(event.target.value as ExportPresetId)}
-          >
-            {EXPORT_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Title
-          <input
-            value={brand.title}
-            onChange={(event) => setBrand({ ...brand, title: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          Outro
-          <input
-            value={brand.outro}
-            onChange={(event) => setBrand({ ...brand, outro: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          Contact
-          <input
-            value={brand.contact}
-            onChange={(event) => setBrand({ ...brand, contact: event.target.value })}
-          />
-        </label>
-        <button type="button" onClick={exportStoryboard} disabled={project === null}>
-          Export storyboard
-        </button>
-        {job !== null && (
-          <p className="muted">
-            Job {job.status} · {Math.round(job.progress * 100)}%
-            {job.error !== null ? ` · ${job.error}` : ""}
-          </p>
+                {batchOutcomes.length > 0 && (
+                  <ul className="outcomes" aria-label="Batch outcomes">
+                    {batchOutcomes.map((outcome) => (
+                      <li key={outcome.root} data-status={outcome.status}>
+                        <span>{outcome.root}</span>
+                        <span className="muted">{outcome.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+            </section>
+          </aside>
         )}
-      </section>
-        </aside>
+
+        {mode === "edit" && (
+          <aside className="inspector" aria-label="Inspector">
+            <section className="inspector__section" aria-label="Cleanup">
+              <h3>Cleanup</h3>
+              {transcript === null ? (
+                <p className="muted">Nothing to clean yet.</p>
+              ) : (
+                <>
+                  {proposals.length === 0 ? (
+                    <p className="muted">
+                      No filler words, stutters, or repetitions found.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="muted">
+                        {acceptedProposals.length} of {proposals.length} proposals accepted
+                      </p>
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        onClick={removeAcceptedProposals}
+                        disabled={acceptedProposals.length === 0}
+                      >
+                        Remove accepted
+                      </button>
+                    </>
+                  )}
+                  <CleanupReview
+                    transcript={transcript}
+                    proposals={proposals}
+                    audioFixes={[]}
+                    acceptance={acceptance}
+                    onAcceptanceChange={setAcceptance}
+                    onFreeze={freezeMaster}
+                  />
+                </>
+              )}
+            </section>
+          </aside>
+        )}
+
+        {mode === "deliver" && (
+          <aside className="inspector" aria-label="Inspector">
+            <section className="inspector__section" aria-label="Export">
+              <h3>Export</h3>
+              <label className="field">
+                Output file
+                <input
+                  autoComplete="off"
+                  value={outputPath}
+                  onChange={(event) => setOutputPath(event.target.value)}
+                  placeholder="/home/you/Verbal/demo/exports/final.mp4"
+                />
+              </label>
+              <label className="field">
+                Preset
+                <select
+                  value={presetId}
+                  onChange={(event) => setPresetId(event.target.value as ExportPresetId)}
+                >
+                  {EXPORT_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Title
+                <input
+                  autoComplete="off"
+                  value={brand.title}
+                  onChange={(event) => setBrand({ ...brand, title: event.target.value })}
+                />
+              </label>
+              <label className="field">
+                Outro
+                <input
+                  autoComplete="off"
+                  value={brand.outro}
+                  onChange={(event) => setBrand({ ...brand, outro: event.target.value })}
+                />
+              </label>
+              <label className="field">
+                Contact
+                <input
+                  autoComplete="off"
+                  value={brand.contact}
+                  onChange={(event) => setBrand({ ...brand, contact: event.target.value })}
+                />
+              </label>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={exportStoryboard}
+                disabled={project === null}
+              >
+                Export storyboard
+              </button>
+              {job !== null && (
+                <p className="muted">
+                  Job {job.status} · {Math.round(job.progress * 100)}%
+                  {job.error !== null ? ` · ${job.error}` : ""}
+                </p>
+              )}
+            </section>
+          </aside>
+        )}
       </div>
 
-      <footer className="app__statusbar">
-        <span className="muted">
+      <footer className="statusbar">
+        <span className="statusbar__item">
           {job !== null && (job.status === "queued" || job.status === "running")
             ? `${job.kind}: ${Math.round(job.progress * 100)}%`
             : "Ready"}
         </span>
-        <span className="muted">
-          {project?.media === undefined ? "no media" : "media loaded"}
-        </span>
-        <span className={error !== null ? "status status--error" : "status"}>
+        <span className="statusbar__item">{hasMedia ? "Media loaded" : "No media"}</span>
+        <span
+          className={`statusbar__message${error !== null ? " is-error" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
           {error ?? message ?? ""}
         </span>
       </footer>

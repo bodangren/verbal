@@ -84,3 +84,11 @@
 - **MVP First:** Build the smallest end-to-end flow (record/import → transcribe → playback → delete word → export) before adding advanced features.
 - **Tests Before UI:** Verify media pipeline correctness with real fixtures before wiring it to GTK widgets.
 - **Keep main.go Small:** The application controller belongs in `internal/app`, not the entry point.
+
+## UI Rebuild (2026-11-21)
+
+- **"New project here" means a new subfolder.** `createProject(fs, root, { name })` writes `project.json` at `root`. Passing the browsed folder as `root` turns that folder into the project; derive `root = <browsed>/<safe name>` in the page instead.
+- **Modes that unmount must keep their landmarks.** Conditional mode rendering removes the old stacked panels. Put `role="region" aria-label="…"` on the visible card (Playback, Transcript editor, Cleanup, Export) so screen readers and the walkthrough see the same regions the stacked layout had.
+- **Two live regions are fine; ambiguous locators are not.** The save state and the status-bar message both use `aria-live`. Pin tests to `.bar__save`, not `getByRole("status")`, which now matches two elements.
+- **Collapsed detail sections need the walkthrough to open them.** Moving developer controls under `<details>` is good for the UI and means the e2e must click the summary before filling those fields.
+- **A folder created after page load is not in the list.** The browser lists on mount and on navigation; click Home (or navigate) to refresh before clicking a project the API just created.

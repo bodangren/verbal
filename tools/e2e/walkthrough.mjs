@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -87,7 +87,10 @@ await new Promise((resolve) => asr.listen(0, "127.0.0.1", resolve));
 const asrBaseUrl = `http://127.0.0.1:${asr.address().port}/v1`;
 
 const home = await mkdtemp(path.join(os.tmpdir(), "verbal-home-"));
-const projectRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-e2e-"));
+// Projects live under the server's home so the browser, which starts there,
+// can reach them by clicking — the only way into the app.
+const projectRoot = path.join(home, "walkthrough");
+await mkdir(projectRoot, { recursive: true });
 const serverLog = [];
 
 const server = spawn(process.execPath, ["dist/standalone/server.js"], {
@@ -192,6 +195,12 @@ try {
   browser = await chromium.launch({ executablePath: CHROME, headless: true });
   const page = await browser.newPage();
 
+  const openProject = async (name) => {
+    const row = page.locator(".entry--project", { hasText: name });
+    await row.getByRole("button", { name: "Open", exact: true }).click();
+    await page.getByText(`Opened ${name}`).waitFor();
+  };
+
   page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
     if (
@@ -227,18 +236,15 @@ try {
   await page.goto(BASE, { waitUntil: "networkidle" });
   console.log("page: loaded");
 
-  await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
-  await page.getByRole("button", { name: "Open", exact: true }).click();
-  await page.getByText("Opened Walkthrough").waitFor();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
-  console.log("project: opened from the UI");
+  await openProject("Walkthrough");
+  console.log("project: opened from the browser");
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   console.log("shell: switched to Edit");
 
-  const editorPanel = page.getByRole("region", { name: "Transcript editor" });
+  const editorPanel = page.getByRole("region", { name: "Transcript editor", exact: true });
   const waitForSavedState = (saved) =>
     page.waitForFunction(
-      (expected) => document.querySelector('[role="status"]')?.textContent === expected,
+      (expected) => document.querySelector(".bar__save")?.textContent === expected,
       saved ? "Saved" : "Unsaved changes",
       { timeout: 5000 },
     );
@@ -271,7 +277,7 @@ try {
   // "world" is mid-segment; splitting at a segment head is a no-op by design.
   await editorPanel.getByRole("button", { name: "world" }).click();
 
-  await editorPanel.getByRole("button", { name: "Split segment" }).click();
+  await editorPanel.getByRole("button", { name: "Split" }).click();
   await page.waitForFunction(
     (expected) =>
       document.querySelectorAll('[aria-label="Transcript"] .transcript__segment').length ===
@@ -295,7 +301,7 @@ try {
   // Reorder: move a word earlier, check the order, then undo it.
   const words = () => editorPanel.locator(".transcript__word").allTextContents();
   await editorPanel.getByRole("button", { name: "world" }).click();
-  await editorPanel.getByRole("button", { name: "Move earlier" }).click();
+  await editorPanel.getByRole("button", { name: "Move back" }).click();
   await page.waitForFunction(
     () =>
       [...document.querySelectorAll('[aria-label="Transcript"] .transcript__word')]
@@ -369,7 +375,7 @@ try {
     "the accepted filler should be removed from the document",
   );
 
-  await editorPanel.getByRole("button", { name: "Save transcript" }).click();
+  await editorPanel.getByRole("button", { name: "Save" }).click();
   await waitForSavedState(true);
   await page.getByText("Transcript saved").waitFor();
   console.log("cleanup: reviewed, removed, and saved");
@@ -380,8 +386,8 @@ try {
 
   // Select a range, delete it with the keyboard, undo, redo, and save.
   // The playback panel renders its own transcript, so editor steps are scoped.
-  const transcriptRegion = page.getByRole("region", { name: "Transcript", exact: true });
-  const dirtyStatus = page.getByRole("status");
+  const transcriptRegion = page.getByRole("region", { name: "Transcript editor", exact: true });
+  const dirtyStatus = page.locator(".bar__save");
 
   await editorPanel.getByRole("button", { name: "hello" }).click();
   await editorPanel.getByRole("button", { name: "world" }).click({ modifiers: ["Shift"] });
@@ -417,9 +423,7 @@ try {
   console.log("transcript: undo, redo, and autosaved the result");
 
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
-  await page.getByRole("button", { name: "Open", exact: true }).click();
-  await page.getByText("Opened Walkthrough").waitFor();
+  await openProject("Walkthrough");
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   assert(
     (await editorPanel
@@ -434,15 +438,17 @@ try {
   );
   console.log("transcript: saved edit survives a reload");
 
+  await page.getByRole("button", { name: "Deliver", exact: true }).click();
+  await page.getByText("Advanced: storyboard document").click();
   const storyboardText = page.getByLabel("Storyboard JSON");
   assert((await storyboardText.inputValue()).includes("Walkthrough"), "storyboard should load");
 
-  await page.getByRole("button", { name: "Deliver", exact: true }).click();
   await page.getByRole("button", { name: "Fast preview" }).click();
   await page.getByRole("region", { name: "Storyboard preview" }).waitFor();
   await page.getByText("Placeholder").first().waitFor();
   console.log("preview: fast tier planned a placeholder");
 
+  await page.getByText("Review feedback").click();
   await page.getByLabel("Patch JSON").fill(
     JSON.stringify({
       patches: [{ type: "update-props", sceneId: "s1", props: { title: "Changed" } }],
@@ -458,6 +464,7 @@ try {
   );
   console.log("feedback: parsed, reviewed, and applied");
 
+  await page.getByText("Generate assets").click();
   await page.getByLabel("Image scene").fill("g1");
   await page.getByLabel("Image prompt").fill("a diagram");
   await page.getByRole("button", { name: "Estimate image" }).click();
@@ -485,7 +492,8 @@ try {
 
   // Transcription runs on a second project, so the hand-written fixture used by
   // the earlier checks stays untouched.
-  const transcribedRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-transcribed-"));
+  const transcribedRoot = path.join(home, "transcribed");
+  await mkdir(transcribedRoot, { recursive: true });
   await api("POST", "/api/projects", { root: transcribedRoot, name: "Transcribed" });
 
   if (mediaImported) {
@@ -496,9 +504,11 @@ try {
     });
 
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
-    await page.getByLabel("Folder", { exact: true }).fill(transcribedRoot);
-    await page.getByRole("button", { name: "Open", exact: true }).click();
-    await page.getByText("Opened Transcribed").waitFor();
+    // The project was created through the API after the page loaded, so
+    // refresh the folder the browser is showing before clicking its row.
+    await page.getByRole("button", { name: "Home" }).click();
+    await openProject("Transcribed");
+    await page.getByRole("button", { name: "Ingest", exact: true }).click();
 
     await page.getByRole("button", { name: "Transcribe media" }).click();
     await page.getByText(/Transcribed 3 words/).waitFor();
@@ -522,7 +532,8 @@ try {
   if (mediaImported) {
     // A batch over an already-transcribed project and a fresh one: the plan
     // should skip the first and transcribe the second.
-    const batchRoot = await mkdtemp(path.join(os.tmpdir(), "verbal-batch-"));
+    const batchRoot = path.join(home, "batch");
+    await mkdir(batchRoot, { recursive: true });
     await api("POST", "/api/projects", { root: batchRoot, name: "Batched" });
     await api("POST", "/api/media/import", {
       projectRoot: batchRoot,
@@ -531,7 +542,8 @@ try {
     });
 
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
-    await page.getByLabel(/Batch projects/).fill(`${transcribedRoot}\n${batchRoot}`);
+    await page.getByText("Batch projects").click();
+    await page.getByLabel("One project root per line").fill(`${transcribedRoot}\n${batchRoot}`);
     await page.getByRole("button", { name: "Start batch" }).click();
     await page.getByText(/Batch done/).waitFor({ timeout: 30000 });
 
@@ -546,18 +558,21 @@ try {
     console.log("transcription: ran a batch across two projects");
   }
 
-  // Library: a folder containing one project lists it and opens it.
-  const libraryParent = await mkdtemp(path.join(os.tmpdir(), "verbal-library-"));
-  const libraryProject = path.join(libraryParent, "take-one");
-  await api("POST", "/api/projects", { root: libraryProject, name: "Take One" });
+  // Creating lives in the browser: enter a folder, name a project, create it.
+  const newFolder = "new-work";
+  await mkdir(path.join(home, newFolder), { recursive: true });
 
-  await page.getByLabel("Projects folder").last().fill(libraryParent);
-  await page.getByRole("button", { name: "Scan folder" }).last().click();
-  await page.getByText(/1 projects found/).waitFor();
-  await page.getByLabel("Projects").last().getByText("Take One", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Open Take One" }).click();
+  await page.getByRole("button", { name: "Ingest", exact: true }).click();
+  await page.getByRole("button", { name: "Home" }).click();
+  await page.getByTitle(`Enter ${newFolder}`).waitFor();
+  await page.getByTitle(`Enter ${newFolder}`).click();
+  await page.getByRole("button", { name: "+ New project here" }).click();
+  await page.getByLabel("New project name").fill("Take One");
+  await page.getByRole("button", { name: "Create" }).click();
+  await page.getByText("Created Take One").waitFor();
+  await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Take One").waitFor();
-  console.log("library: scanned a folder and opened a project");
+  console.log("browser: created and opened a project in the served folder");
 
   assert(errors.length === 0, `browser errors:\n${errors.join("\n")}`);
   console.log("browser: no console or page errors");

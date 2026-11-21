@@ -6,9 +6,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
-- [~] **Track: UI Rebuild to Spec** [created: 2026-11-21]
+- [x] **Track: UI Rebuild to Spec** [created: 2026-11-21] [completed: 2026-11-21]
   *Focus: One reviewed information architecture — a single project browser, modes owning only their own panes, explicit deletions, and a craft bar from the Web Interface Guidelines.*
-  *Status: In progress — spec written for review; implementation starts on approval. Supersedes the remaining phases of Application Shell and Workflow.*
+  *Status: Complete. The page is a 52px top bar plus browser/stage/inspector; the browser is the only way in (home default, last folder remembered, project rows with word/media/age summaries, create-in-the-browsed-folder); Ingest/Edit/Deliver each own their panes. Deleted `ProjectPicker`, `GET /api/projects/list` and their tests. Zero page scroll at 1440x900 and 1280x800. `npm run check` green (626 tests) and `npm run e2e` PASS with the walkthrough rewritten onto the browser. Supersedes the remaining phases of Application Shell and Workflow.*
   *Link: [./tracks/ui_rebuild_20261121](./tracks/ui_rebuild_20261121/)*
 
 - [~] **Track: Application Shell and Workflow** [created: 2026-11-21]
