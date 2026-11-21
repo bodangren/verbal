@@ -116,6 +116,8 @@ export default function Home() {
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
   const [prunable, setPrunable] = useState<string[] | null>(null);
   const [mode, setMode] = useState<WorkspaceMode>("ingest");
+  const [activeWordId, setActiveWordId] = useState<string | null>(null);
+  const playerRef = useRef<HTMLVideoElement | null>(null);
   const [brand, setBrand] = useState({
     title: "Untitled",
     outro: "Thanks for watching",
@@ -932,7 +934,11 @@ export default function Home() {
           <PlaybackScreen
             transcript={transcript}
             mediaUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
-            transcriptLabel="Playback transcript"
+            showTranscript={false}
+            onActiveWordChange={setActiveWordId}
+            onVideoReady={(video) => {
+              playerRef.current = video;
+            }}
             waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
           />
         </section>
@@ -1032,7 +1038,17 @@ export default function Home() {
             transcript={transcript}
             selectedRange={selection}
             matchedRanges={matches}
-            onWordClick={(_wordId, index) => setSelection({ fromIndex: index, toIndex: index })}
+            activeWordId={activeWordId}
+            onWordClick={(_wordId, index) => {
+              setSelection({ fromIndex: index, toIndex: index });
+
+              // The single transcript is also the transport: clicking a word
+              // seeks the player, exactly as the read-only copy used to.
+              const word = transcript?.words[index];
+              if (word !== undefined && playerRef.current !== null) {
+                playerRef.current.currentTime = word.start;
+              }
+            }}
             onSelectionChange={setSelection}
             onDeleteSelection={deleteSelection}
           />

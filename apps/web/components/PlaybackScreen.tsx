@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TranscriptDocument } from "@verbal/core";
 import { useActiveWord, type PlaybackScheduler } from "../hooks/use-playback-sync";
 import { timeFromClick } from "./waveform-seek";
@@ -11,6 +11,12 @@ export type PlaybackScreenProps = {
   transcriptLabel?: string;
   /** Waveform strip for the media, when one could be rendered. */
   waveformUrl?: string;
+  /** Render the built-in read-only transcript. Off when the page owns one. */
+  showTranscript?: boolean;
+  /** Reported as playback advances, for a transcript rendered elsewhere. */
+  onActiveWordChange?: (wordId: string | null) => void;
+  /** Handed the video element, so an external transcript can seek it. */
+  onVideoReady?: (video: HTMLVideoElement | null) => void;
   /** Injectable scheduler for deterministic tests. */
   scheduler?: PlaybackScheduler;
 };
@@ -27,6 +33,9 @@ export function PlaybackScreen({
   mediaUrl,
   transcriptLabel,
   waveformUrl,
+  showTranscript = true,
+  onActiveWordChange,
+  onVideoReady,
   scheduler,
 }: PlaybackScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,6 +50,13 @@ export function PlaybackScreen({
   });
 
   const activeWord = activeIndex >= 0 ? transcript.words[activeIndex] : undefined;
+
+  // One transcript, one highlight: the page's editable copy follows playback
+  // through this callback instead of a second read-only copy here.
+  const activeWordId = activeWord?.id ?? null;
+  useEffect(() => {
+    onActiveWordChange?.(activeWordId);
+  }, [activeWordId, onActiveWordChange]);
 
   const togglePlayback = () => {
     const video = videoRef.current;
@@ -69,7 +85,10 @@ export function PlaybackScreen({
   return (
     <div className="playback">
       <video
-        ref={videoRef}
+        ref={(node) => {
+          videoRef.current = node;
+          onVideoReady?.(node);
+        }}
         className="playback__video"
         src={mediaUrl}
         aria-label="Media preview"
@@ -121,12 +140,14 @@ export function PlaybackScreen({
         </button>
       </div>
 
-      <TranscriptEditor
-        transcript={transcript}
-        label={transcriptLabel}
-        activeWordId={activeWord?.id ?? null}
-        onWordClick={seekToWord}
-      />
+      {showTranscript && (
+        <TranscriptEditor
+          transcript={transcript}
+          label={transcriptLabel}
+          activeWordId={activeWordId}
+          onWordClick={seekToWord}
+        />
+      )}
     </div>
   );
 }

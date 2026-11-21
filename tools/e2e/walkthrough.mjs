@@ -333,7 +333,8 @@ try {
     await page.locator('[data-active="true"]').first().waitFor({ timeout: 5000 });
     console.log("playback: the active word follows playback");
 
-    await playback.getByRole("button", { name: "world" }).click();
+    // One transcript: clicking a word in the editor is what seeks the player.
+    await editorPanel.getByRole("button", { name: "world", exact: true }).click();
     const seeked = await video.evaluate((media) => media.currentTime);
     assert(seeked >= 0.6 && seeked <= 1.5, `clicking a word should seek to ~0.9s, got ${seeked}s`);
     await playback.getByRole("button", { name: "Pause" }).click();

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTranscript } from "@verbal/core";
 import { PlaybackScreen } from "./PlaybackScreen";
@@ -37,6 +37,31 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+/** Scheduler the test advances by hand. */
+class ManualScheduler {
+  private callbacks = new Map<number, () => void>();
+  private next = 1;
+
+  request(callback: () => void): number {
+    const handle = this.next;
+    this.next += 1;
+    this.callbacks.set(handle, callback);
+    return handle;
+  }
+
+  cancel(handle: number): void {
+    this.callbacks.delete(handle);
+  }
+
+  flush(): void {
+    const pending = [...this.callbacks.values()];
+    this.callbacks.clear();
+    for (const callback of pending) {
+      callback();
+    }
+  }
+}
 
 describe("PlaybackScreen", () => {
   it("renders the media and the transcript", () => {
@@ -85,6 +110,47 @@ describe("PlaybackScreen", () => {
     );
 
     expect(screen.getByRole("region", { name: "Playback transcript" })).toBeTruthy();
+  });
+
+  it("hides its built-in transcript when the page owns one", () => {
+    render(
+      <PlaybackScreen transcript={transcript} mediaUrl="/media/take.mp4" showTranscript={false} />,
+    );
+
+    expect(screen.queryByRole("region", { name: /transcript/i })).toBeNull();
+  });
+
+  it("hands the video element to the caller", () => {
+    const onVideoReady = vi.fn();
+    render(
+      <PlaybackScreen
+        transcript={transcript}
+        mediaUrl="/media/take.mp4"
+        onVideoReady={onVideoReady}
+      />,
+    );
+
+    expect(onVideoReady).toHaveBeenCalledWith(expect.any(HTMLMediaElement));
+  });
+
+  it("reports the active word so an external transcript can highlight it", () => {
+    const scheduler = new ManualScheduler();
+    const onActiveWordChange = vi.fn();
+    render(
+      <PlaybackScreen
+        transcript={transcript}
+        mediaUrl="/media/take.mp4"
+        scheduler={scheduler}
+        onActiveWordChange={onActiveWordChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /play/i }));
+    const video = screen.getByLabelText(/media preview/i) as HTMLVideoElement;
+    video.currentTime = 0.5;
+    act(() => scheduler.flush());
+
+    expect(onActiveWordChange).toHaveBeenCalledWith("w1");
   });
 
   it("surfaces a media that will not load instead of failing silently", () => {

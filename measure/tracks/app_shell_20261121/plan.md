@@ -39,7 +39,16 @@
 
 ---
 
-## Phase 5: Dogfooding
+## Phase 5: One transcript
+
+- [x] Resolve the duplicate transcripts: the player hands its video element and
+      active word to the page, renders no transcript, and the single editable
+      transcript carries the highlight, seeks on click, and auto-saves.
+- [x] Commit: `feat(ui): Make the transcript the only transcript`
+
+---
+
+## Phase 6: Dogfooding
 
 - [ ] Record the next walkthrough using Verbal itself for the storyboard/export step where it is capable, and note the gaps that force external tooling.
 - [ ] Commit: `docs: Record the dogfooding findings`
