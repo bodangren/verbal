@@ -6,6 +6,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [~] **Track: UI Rebuild to Spec** [created: 2026-11-21]
+  *Focus: One reviewed information architecture — a single project browser, modes owning only their own panes, explicit deletions, and a craft bar from the Web Interface Guidelines.*
+  *Status: In progress — spec written for review; implementation starts on approval. Supersedes the remaining phases of Application Shell and Workflow.*
+  *Link: [./tracks/ui_rebuild_20261121](./tracks/ui_rebuild_20261121/)*
+
 - [~] **Track: Application Shell and Workflow** [created: 2026-11-21]
   *Focus: Replace the scrolling panel stack with a viewport-locked three-pane shell and Ingest/Edit/Deliver modes.*
   *Status: In progress — Phases 1-4 done: viewport-locked three-pane shell with Ingest/Edit/Deliver modes (measured no page scroll at 1440x900), status bar, and a walkthrough that drives modes; `npm run check` green (621 tests), `npm run e2e` PASS. Phase 5 (dogfooding a video through Verbal itself) remains.*
