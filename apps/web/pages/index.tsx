@@ -1026,9 +1026,7 @@ export default function Home() {
             >
               Save transcript
             </button>
-            <span className="muted" role="status">
-              {autoSave.saving ? "Saving…" : editing.dirty ? "Unsaved changes" : "Saved"}
-            </span>
+
           </div>
           <TranscriptEditor
             transcript={transcript}

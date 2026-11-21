@@ -230,7 +230,10 @@ try {
   await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Walkthrough").waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   console.log("project: opened from the UI");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  console.log("shell: switched to Edit");
 
   const editorPanel = page.getByRole("region", { name: "Transcript editor" });
   const waitForSavedState = (saved) =>
@@ -416,6 +419,7 @@ try {
   await page.getByLabel("Folder", { exact: true }).fill(projectRoot);
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Walkthrough").waitFor();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   assert(
     (await editorPanel
       .getByRole("button", { name: "world" })
@@ -432,6 +436,7 @@ try {
   const storyboardText = page.getByLabel("Storyboard JSON");
   assert((await storyboardText.inputValue()).includes("Walkthrough"), "storyboard should load");
 
+  await page.getByRole("button", { name: "Deliver", exact: true }).click();
   await page.getByRole("button", { name: "Fast preview" }).click();
   await page.getByRole("region", { name: "Storyboard preview" }).waitFor();
   await page.getByText("Placeholder").first().waitFor();
@@ -489,12 +494,14 @@ try {
       mode: "copy",
     });
 
+    await page.getByRole("button", { name: "Ingest", exact: true }).click();
     await page.getByLabel("Folder", { exact: true }).fill(transcribedRoot);
     await page.getByRole("button", { name: "Open", exact: true }).click();
     await page.getByText("Opened Transcribed").waitFor();
 
     await page.getByRole("button", { name: "Transcribe media" }).click();
     await page.getByText(/Transcribed 3 words/).waitFor();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
 
     const transcribedWords = page.getByRole("region", {
       name: "Transcript editor",
@@ -522,6 +529,7 @@ try {
       mode: "copy",
     });
 
+    await page.getByRole("button", { name: "Ingest", exact: true }).click();
     await page.getByLabel(/Batch projects/).fill(`${transcribedRoot}\n${batchRoot}`);
     await page.getByRole("button", { name: "Start batch" }).click();
     await page.getByText(/Batch done/).waitFor({ timeout: 30000 });

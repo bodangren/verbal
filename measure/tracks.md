@@ -8,7 +8,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Application Shell and Workflow** [created: 2026-11-21]
   *Focus: Replace the scrolling panel stack with a viewport-locked three-pane shell and Ingest/Edit/Deliver modes.*
-  *Status: In progress — Phase 1 started.*
+  *Status: In progress — Phases 1-4 done: viewport-locked three-pane shell with Ingest/Edit/Deliver modes (measured no page scroll at 1440x900), status bar, and a walkthrough that drives modes; `npm run check` green (621 tests), `npm run e2e` PASS. Phase 5 (dogfooding a video through Verbal itself) remains.*
   *Link: [./tracks/app_shell_20261121](./tracks/app_shell_20261121/)*
 
 - [x] **Track: Local Offline Transcription** [created: 2026-11-21] [completed: 2026-11-21]

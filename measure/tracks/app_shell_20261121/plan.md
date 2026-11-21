@@ -33,9 +33,9 @@
 
 ## Phase 4: Verification
 
-- [ ] Update `tools/e2e/walkthrough.mjs` for mode navigation; assert no page scroll in each mode.
-- [ ] Run `npm run check` and the walkthrough.
-- [ ] Commit: `test(e2e): Drive the shell by mode`
+- [x] Update `tools/e2e/walkthrough.mjs` for mode navigation; assert no page scroll in each mode.
+- [x] Run `npm run check` and the walkthrough.
+- [x] Commit: `test(e2e): Drive the shell by mode`
 
 ---
 
