@@ -9,7 +9,13 @@ import {
   resolveMediaPath,
   type FileSystem,
 } from "@verbal/core";
-import { buildWaveformArgs, normaliseWaveform, runCommand, type WaveformOptions } from "@verbal/media";
+import {
+  buildFlatWaveformArgs,
+  buildWaveformArgs,
+  normaliseWaveform,
+  runCommand,
+  type WaveformOptions,
+} from "@verbal/media";
 
 export type WaveformImage = {
   bytes: Uint8Array;
@@ -21,6 +27,7 @@ export type WaveformApiDeps = {
   stat: (filePath: string) => Promise<{ size: number; mtimeMs: number }>;
   exists: (filePath: string) => Promise<boolean>;
   render: (input: { args: string[] }) => Promise<void>;
+  renderFlat: (input: { args: string[] }) => Promise<void>;
   read: (filePath: string) => Promise<Uint8Array>;
   mkdir: (directory: string) => Promise<void>;
 };
@@ -64,6 +71,9 @@ export function createWaveformApi(overrides: Partial<WaveformApiDeps> = {}) {
       // FFmpeg's own message instead of an empty image.
       await runCommand("ffmpeg", args);
     },
+    renderFlat: async ({ args }) => {
+      await runCommand("ffmpeg", args);
+    },
     read: async (filePath) => readFile(filePath),
     mkdir: async (directory) => {
       await mkdir(directory, { recursive: true });
@@ -105,9 +115,21 @@ export function createWaveformApi(overrides: Partial<WaveformApiDeps> = {}) {
 
       if (!(await deps.exists(cachePath))) {
         await deps.mkdir(directory);
-        await deps.render({
-          args: buildWaveformArgs({ inputPath: source, outputPath: cachePath, options }),
-        });
+        try {
+          await deps.render({
+            args: buildWaveformArgs({ inputPath: source, outputPath: cachePath, options }),
+          });
+        } catch (error) {
+          // A silent video has no waveform. Draw a flat line so the player
+          // still gets a timeline, but keep the original failure in the log.
+          console.warn(
+            `waveform: no audio in ${source}; drawing a flat line`,
+            error instanceof Error ? error.message : error,
+          );
+          await deps.renderFlat({
+            args: buildFlatWaveformArgs({ outputPath: cachePath, options }),
+          });
+        }
       }
 
       return { bytes: await deps.read(cachePath), cachePath };

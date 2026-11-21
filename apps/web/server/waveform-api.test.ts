@@ -48,6 +48,30 @@ describe("waveform service", () => {
     expect(render).toHaveBeenCalledTimes(1);
   });
 
+  it("falls back to a flat line when the source has no audio", async () => {
+    const fs = projectFs({ assetPath: "assets/silent.mp4" });
+    const render = vi.fn(async () => {
+      throw new Error("Output file does not contain any stream");
+    });
+    const renderFlat = vi.fn(async () => undefined);
+
+    const api = createWaveformApi({
+      fs,
+      stat: async () => ({ size: 10, mtimeMs: 1 }),
+      exists: async () => false,
+      render,
+      renderFlat,
+      read: async () => PNG,
+      mkdir: async () => undefined,
+    });
+
+    const image = await api.image({ root: ROOT });
+
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(renderFlat).toHaveBeenCalledTimes(1);
+    expect(image.bytes).toEqual(PNG);
+  });
+
   it("keys the cache on the source revision, so a re-import re-renders", async () => {
     const fs = projectFs({ assetPath: "assets/take.mp4" });
     const render = vi.fn(async () => undefined);

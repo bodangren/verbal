@@ -49,6 +49,29 @@ export function normaliseWaveform(options: Partial<WaveformOptions> = {}): Wavef
   };
 }
 
+/**
+ * Builds the argv for a flat line when the source has no audio track.
+ *
+ * Screen recordings are often silent, and `showwavespic` fails on an input
+ * with no audio stream. A flat line keeps the timeline readable instead of
+ * turning the player into a 500.
+ */
+export function buildFlatWaveformArgs(input: {
+  outputPath: string;
+  options?: Partial<WaveformOptions>;
+}): string[] {
+  const { width, height, color } = normaliseWaveform(input.options);
+  return [
+    "-y",
+    "-f", "lavfi",
+    "-i", `color=c=black@0.0:s=${width}x${height}:d=1`,
+    "-vf", `drawbox=x=0:y=${Math.floor(height / 2) - 1}:w=${width}:h=2:color=${color}:t=fill`,
+    "-frames:v", "1",
+    "-pix_fmt", "rgba",
+    input.outputPath,
+  ];
+}
+
 /** Builds the argv that draws one waveform frame into `outputPath`. */
 export function buildWaveformArgs(input: {
   inputPath: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MediaError } from "./import";
-import { buildWaveformArgs, normaliseWaveform } from "./waveform";
+import { buildFlatWaveformArgs, buildWaveformArgs, normaliseWaveform } from "./waveform";
 
 describe("normaliseWaveform", () => {
   it("defaults the size and colour", () => {
@@ -64,5 +64,16 @@ describe("buildWaveformArgs", () => {
         options: { color: "nope;bad" },
       }),
     ).toThrow(MediaError);
+  });
+});
+
+describe("buildFlatWaveformArgs", () => {
+  it("draws a flat line for a source with no audio", () => {
+    const args = buildFlatWaveformArgs({ outputPath: "/cache/flat.png" });
+
+    expect(args).toContain("lavfi");
+    expect(args.join(" ")).toContain("drawbox");
+    expect(args).toContain("/cache/flat.png");
+    expect(args).toContain("rgba");
   });
 });

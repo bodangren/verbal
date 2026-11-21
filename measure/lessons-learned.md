@@ -99,3 +99,11 @@
 - **Verify layout with numbers, not just screenshots.** `getBoundingClientRect()` plus `clientHeight` vs `scrollHeight` on the card showed the clipping in one probe; the screenshot alone looked plausible because the clipped control simply vanished.
 - **Playback must not depend on transcription.** A take is reviewable before it has words. `PlaybackScreen` now accepts `transcript: null`, and Edit renders the player whenever media exists; the transcript card becomes the empty state instead of replacing the player.
 - **A scrub affordance needs to be visible and keyboard-operable.** A bare waveform image with an `onClick` is not a scrubber a user can find. Ship a labelled range control (drag + arrow/Home/End) and a playhead, and keep the waveform click as a bonus.
+
+## Dogfood (2026-11-21)
+
+- **Screen recordings are often silent.** `showwavespic` fails on an input with no audio stream, so the waveform endpoint must degrade to a flat line instead of returning 500. A missing waveform should cost the drawing, not the player.
+- **Demo footage must not show an older build.** A how-to recorded against the previous UI teaches the wrong interface. Generate neutral footage for the fixture, or re-record the demo after a redesign.
+- **Compose captions from recorded step times.** The recorder writes each step's start time; the composer burns captions with `enable='between(t,…)'`. Captions then stay in sync even when a step is slow.
+- **Scope automation to the navigation.** Transcript words and chrome can share names ("Deliver"); `getByRole("button", { name: "Deliver" })` becomes ambiguous. Scope to the mode nav in tests and recorders.
+- **A 17-second how-to is enough to expose a defect.** The silent-media 500 and the old-footage problem both surfaced in a single run; running the product beats reading the tests.

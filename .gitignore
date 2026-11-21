@@ -55,5 +55,5 @@ next-env.d.ts
 tools/remotion/.bundle/
 tools/remotion/out/
 
-# Dogfooding projects: generated media, not source.
-dogfood/
+# Dogfooding projects: generated media, not source (root only; tools/dogfood is source).
+/dogfood/
