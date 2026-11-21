@@ -3,7 +3,6 @@ import {
   searchTranscript,
   type JobRecord,
   type ProjectDocument,
-  type ProjectSummary,
   type TranscriptDocument,
 } from "@verbal/core/browser";
 import {
@@ -25,7 +24,8 @@ import {
 import { CapturePanel } from "../components/CapturePanel";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
-import { ProjectPicker } from "../components/ProjectPicker";
+import { ProjectBrowser } from "../components/ProjectBrowser";
+import type { FsEntry } from "../server/fs-api";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
@@ -97,19 +97,12 @@ export default function Home() {
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
   const [batchRoots, setBatchRoots] = useState("");
-  // Client-only: the remembered folder is read through useSyncExternalStore so
-  // the server snapshot stays empty and no state is set inside an effect.
-  const rememberedFolder = useSyncExternalStore(
-    subscribeNever,
-    () => window.localStorage.getItem("verbal.libraryFolder") ?? "",
-    () => "",
-  );
-  const [typedFolder, setTypedFolder] = useState<string | null>(null);
-  const libraryFolder = typedFolder ?? rememberedFolder;
-  const [library, setLibrary] = useState<ProjectSummary[]>([]);
-  const [scanned, setScanned] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const autoScanned = useRef(false);
+
+  const [browserPath, setBrowserPath] = useState("");
+  const [browserParent, setBrowserParent] = useState<string | null>(null);
+  const [browserEntries, setBrowserEntries] = useState<FsEntry[]>([]);
+  const [browserError, setBrowserError] = useState<string | null>(null);
+  const [browserLoading, setBrowserLoading] = useState(false);
   const [batchOutcomes, setBatchOutcomes] = useState<
     { root: string; status: string; detail?: string }[]
   >([]);
@@ -202,13 +195,6 @@ export default function Home() {
     setMessage(`Opened ${next.name}`);
   }
 
-  function openProject() {
-    return guard(async () => {
-      const opened = await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`);
-      await loadProjectFiles(opened, root);
-    });
-  }
-
   /** Opens a project by path, for callers that already know which one. */
   function openProjectAt(target: string) {
     return guard(async () => {
@@ -220,49 +206,41 @@ export default function Home() {
     });
   }
 
-  useEffect(() => {
-    if (libraryFolder.trim() === "") {
-      return;
-    }
-    window.localStorage.setItem("verbal.libraryFolder", libraryFolder);
-  }, [libraryFolder]);
-
-  // Scan the remembered folder once, so a returning user sees their projects
-  // without typing a path. State is only set after the await.
-  useEffect(() => {
-    if (autoScanned.current || libraryFolder.trim() === "") {
-      return;
-    }
-    autoScanned.current = true;
-
-    void (async () => {
-      try {
-        const result = await request<{ projects: ProjectSummary[] }>(
-          `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
-        );
-        setLibrary(result.projects);
-        setScanned(true);
-      } catch {
-        // A stale remembered folder is not worth an error banner; Scan is there.
-      }
-    })();
-  }, [libraryFolder]);
-
-  function scanForProjects() {
+  function loadFolder(target?: string) {
     return guard(async () => {
-      setScanning(true);
       try {
-        const result = await request<{ projects: ProjectSummary[] }>(
-          `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
-        );
-        setLibrary(result.projects);
-        setScanned(true);
-        setMessage(`${result.projects.length} projects found`);
-      } finally {
-        setScanning(false);
+        const listing = await request<{
+          path: string;
+          parent: string | null;
+          entries: FsEntry[];
+        }>(`/api/fs/list${target === undefined ? "" : `?path=${encodeURIComponent(target)}`}`);
+
+        setBrowserPath(listing.path);
+        setBrowserParent(listing.parent);
+        setBrowserEntries(listing.entries);
+        setBrowserError(null);
+      } catch (cause) {
+        setBrowserError(cause instanceof Error ? cause.message : String(cause));
       }
     });
   }
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const listing = await request<{
+          path: string;
+          parent: string | null;
+          entries: FsEntry[];
+        }>("/api/fs/list");
+        setBrowserPath(listing.path);
+        setBrowserParent(listing.parent);
+        setBrowserEntries(listing.entries);
+      } catch {
+        // The browser still offers Up/Home; the server reports its own errors.
+      }
+    })();
+  }, []);
 
   function createProject() {
     return guard(async () => {
@@ -823,32 +801,27 @@ export default function Home() {
         <aside className="pane pane--rail" aria-label="Setup">
       <section className="panel" aria-label="Project" data-modes="ingest">
         <h2>Project</h2>
-        <label className="field">
-          Folder
-          <input
-            value={root}
-            onChange={(event) => setRoot(event.target.value)}
-            placeholder="/home/you/Verbal/demo"
-          />
-        </label>
-        <label className="field">
-          Name
-          <input value={name} onChange={(event) => setName(event.target.value)} />
-        </label>
-        <div className="row">
-          <button type="button" onClick={createProject}>
-            Create
-          </button>
-          <button type="button" onClick={openProject}>
-            Open
-          </button>
-        </div>
-        {project !== null && (
+        {project === null ? (
+          <p className="muted">Choose a project in the browser on the left of the workspace.</p>
+        ) : (
           <p className="muted">
             {project.name} · media:{" "}
             {project.media?.assetPath ?? project.media?.externalPath ?? "none"}
           </p>
         )}
+        <label className="field">
+          New project name
+          <input value={name} onChange={(event) => setName(event.target.value)} />
+        </label>
+        <div className="row">
+          <button
+            type="button"
+            onClick={createProject}
+            disabled={browserPath.trim() === "" || name.trim() === ""}
+          >
+            Create in {browserPath.split("/").filter(Boolean).slice(-1)[0] ?? "folder"}
+          </button>
+        </div>
       </section>
 
       <section className="panel" aria-label="Media" data-modes="ingest">
@@ -917,34 +890,30 @@ export default function Home() {
         )}
       </section>
 
-      {project !== null && (
-      <section className="panel" aria-label="Library" data-modes="ingest">
-        <ProjectPicker
-          variant="rail"
-          folder={libraryFolder}
-          projects={library}
-          scanned={scanned}
-          scanning={scanning}
-          onFolderChange={setTypedFolder}
-          onScan={() => void scanForProjects()}
-          onOpen={(target) => void openProjectAt(target)}
-        />
-      </section>
-      )}
 
         </aside>
 
         <section className="pane pane--stage" aria-label="Workspace">
         {mode === "ingest" && project === null && (
-          <ProjectPicker
-            folder={libraryFolder}
-            projects={library}
-            scanned={scanned}
-            scanning={scanning}
-            error={error}
-            onFolderChange={setTypedFolder}
-            onScan={() => void scanForProjects()}
-            onOpen={(target) => void openProjectAt(target)}
+          <ProjectBrowser
+            path={browserPath}
+            parent={browserParent}
+            entries={browserEntries}
+            loading={browserLoading}
+            error={browserError}
+            onHome={() => void loadFolder()}
+            onUp={() => {
+              if (browserParent !== null) {
+                void loadFolder(browserParent);
+              }
+            }}
+            onNavigate={(target) => {
+              setBrowserLoading(true);
+              void loadFolder(target).finally(() => setBrowserLoading(false));
+            }}
+            onOpen={(target) => {
+              void openProjectAt(target);
+            }}
           />
         )}
       <section className="panel" aria-label="Capture" data-modes="ingest">
