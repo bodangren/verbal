@@ -10,24 +10,24 @@
 
 ## Phase 1: Shell layout
 
-- [ ] Lock the document to the viewport; add title bar, three-column body, status bar.
-- [ ] Give panes their own scrolling and clamped widths.
-- [ ] Commit: `feat(ui): Lock the app to a three-pane shell`
+- [x] Lock the document to the viewport; add title bar, three-column body, status bar.
+- [x] Give panes their own scrolling and clamped widths.
+- [x] Commit: `feat(ui): Lock the app to a three-pane shell`
 
 ---
 
 ## Phase 2: Modes
 
-- [ ] Add the mode switcher and per-panel mode attributes; move Capture and Cleanup so each pane is contiguous.
-- [ ] Hide rather than unmount inactive panels, so state survives a switch.
-- [ ] Commit: `feat(ui): Split the workspace into ingest, edit, and deliver modes`
+- [x] Add the mode switcher and per-panel mode attributes; move Capture and Cleanup so each pane is contiguous.
+- [x] Hide rather than unmount inactive panels, so state survives a switch.
+- [x] Commit: `feat(ui): Split the workspace into ingest, edit, and deliver modes`
 
 ---
 
 ## Phase 3: Status bar
 
-- [ ] Move errors, messages, job progress, and save state into the title and status bars.
-- [ ] Commit: `feat(ui): Report state in the shell chrome`
+- [x] Move errors, messages, job progress, and save state into the title and status bars.
+- [x] Commit: `feat(ui): Report state in the shell chrome`
 
 ---
 

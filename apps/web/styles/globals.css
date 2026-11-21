@@ -26,6 +26,8 @@
 
 html,
 body {
+  height: 100%;
+  overflow: hidden;
   margin: 0;
   padding: 0;
   background: var(--surface);
@@ -44,13 +46,152 @@ body {
   gap: var(--space-4);
 }
 
+/* The window holds still; only panes scroll. */
 .app {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr) 32px;
+  height: 100dvh;
+  max-width: none;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+.app__titlebar {
+  align-items: center;
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+}
+
+.app__identity {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.app__identity h1 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.app__project {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modes {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.modes .mode {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--rounded-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.modes .mode:hover {
+  color: var(--text-primary);
+}
+
+.modes .mode[aria-pressed="true"] {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.app__state {
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  margin: 0;
+  min-width: 120px;
+  text-align: right;
+}
+
+.app__body {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  margin: 0 auto;
-  max-width: 960px;
-  padding: var(--space-6) var(--space-5);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.pane--rail {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  width: min(300px, 26vw);
+}
+
+.pane--stage {
+  flex: 1;
+  min-width: 0;
+}
+
+.pane--inspector {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  width: min(380px, 32vw);
+}
+
+/* Panels are hidden, never unmounted, so a mode switch keeps their state. */
+.panel[data-modes] {
+  display: none;
+}
+
+.app[data-mode="ingest"] .panel[data-modes~="ingest"],
+.app[data-mode="edit"] .panel[data-modes~="edit"],
+.app[data-mode="deliver"] .panel[data-modes~="deliver"] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.app[data-mode="edit"] .pane--rail,
+.app[data-mode="deliver"] .pane--rail,
+.app[data-mode="ingest"] .pane--inspector {
+  display: none;
+}
+
+.app__statusbar {
+  align-items: center;
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--border);
+  display: flex;
+  font-size: 12px;
+  gap: var(--space-4);
+  overflow: hidden;
+  padding: 0 var(--space-4);
+  white-space: nowrap;
+}
+
+.app__statusbar .status {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app__header h1 {
@@ -285,7 +426,27 @@ code {
   aspect-ratio: 16 / 9;
   background: #000;
   border-radius: 8px;
+  /* A player that eats the stage pushes the transcript off screen. */
+  max-height: min(42vh, 420px);
+  object-fit: contain;
   width: 100%;
+}
+
+/* In Edit the player keeps a compact read-only transcript, and the editable
+   transcript below it keeps a usable height instead of being squeezed away. */
+.app[data-mode="edit"] .pane--stage .playback .transcript {
+  max-height: 132px;
+  overflow-y: auto;
+}
+
+.app[data-mode="edit"] .pane--stage [aria-label="Transcript editor"] {
+  flex: 0 0 auto;
+  min-height: 300px;
+}
+
+.app[data-mode="edit"] .pane--stage .transcript {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .playback__waveform {

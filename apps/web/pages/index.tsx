@@ -33,6 +33,15 @@ import { useTranscriptDocument } from "../hooks/use-transcript-document";
 
 const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 
+/** The three workspaces. Panels are hidden, never unmounted, so state survives. */
+const MODES = [
+  { id: "ingest", label: "Ingest" },
+  { id: "edit", label: "Edit" },
+  { id: "deliver", label: "Deliver" },
+] as const;
+
+type WorkspaceMode = (typeof MODES)[number]["id"];
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const data: unknown = await response.json().catch(() => ({}));
@@ -106,6 +115,7 @@ export default function Home() {
   const [outputPath, setOutputPath] = useState("");
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
   const [prunable, setPrunable] = useState<string[] | null>(null);
+  const [mode, setMode] = useState<WorkspaceMode>("ingest");
   const [brand, setBrand] = useState({
     title: "Untitled",
     outro: "Thanks for watching",
@@ -723,16 +733,43 @@ export default function Home() {
     (job.status === "queued" || job.status === "running");
 
   return (
-    <main className="app">
-      <header className="app__header">
-        <h1>Verbal</h1>
-        <p className="subtitle">Storyboard studio</p>
+    <main className="app" data-mode={mode}>
+      <header className="app__titlebar">
+        <div className="app__identity">
+          <h1>Verbal</h1>
+          <p className="app__project">
+            {project === null ? "No project open" : project.name}
+          </p>
+        </div>
+
+        <nav className="modes" aria-label="Workspace mode">
+          {MODES.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className="mode"
+              aria-pressed={mode === entry.id}
+              onClick={() => setMode(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </nav>
+
+        <p className="app__state" role="status">
+          {transcript === null
+            ? "No transcript"
+            : autoSave.saving
+              ? "Saving…"
+              : editing.dirty
+                ? "Unsaved changes"
+                : "Saved"}
+        </p>
       </header>
 
-      {error !== null && <p className="status status--error">{error}</p>}
-      {message !== null && <p className="status">{message}</p>}
-
-      <section className="panel" aria-label="Project">
+      <div className="app__body">
+        <aside className="pane pane--rail" aria-label="Setup">
+      <section className="panel" aria-label="Project" data-modes="ingest">
         <h2>Project</h2>
         <label className="field">
           Folder
@@ -762,7 +799,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="panel" aria-label="Capture">
+      <section className="panel" aria-label="Capture" data-modes="ingest">
         <h2>Green-screen capture</h2>
         <video
           ref={videoRef}
@@ -785,7 +822,7 @@ export default function Home() {
         />
       </section>
 
-      <section className="panel" aria-label="Media">
+      <section className="panel" aria-label="Media" data-modes="ingest">
         <h2>Media</h2>
         <label className="field">
           Source file
@@ -800,7 +837,7 @@ export default function Home() {
         </button>
       </section>
 
-      <section className="panel" aria-label="Transcription">
+      <section className="panel" aria-label="Transcription" data-modes="ingest">
         <h2>Transcription</h2>
         <p className="muted">Transcribing replaces this project&apos;s stored transcript.</p>
         <div className="row">
@@ -851,7 +888,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="panel" aria-label="Library">
+      <section className="panel" aria-label="Library" data-modes="ingest">
         <h2>Library</h2>
         <label className="field">
           Library folder
@@ -886,8 +923,11 @@ export default function Home() {
         )}
       </section>
 
+        </aside>
+
+        <section className="pane pane--stage" aria-label="Workspace">
       {transcript !== null && project?.media !== undefined && (
-        <section className="panel" aria-label="Playback">
+        <section className="panel" aria-label="Playback" data-modes="edit">
           <h2>Playback</h2>
           <PlaybackScreen
             transcript={transcript}
@@ -899,39 +939,7 @@ export default function Home() {
       )}
 
       {transcript !== null && (
-        <section className="panel" aria-label="Cleanup">
-          <h2>Cleanup</h2>
-          {proposals.length === 0 ? (
-            <p className="muted">No filler words, stutters, or repetitions found.</p>
-          ) : (
-            <>
-              <p className="muted">
-                {acceptedProposals.length} of {proposals.length} proposals accepted
-              </p>
-              <div className="row">
-                <button
-                  type="button"
-                  onClick={removeAcceptedProposals}
-                  disabled={acceptedProposals.length === 0}
-                >
-                  Remove accepted
-                </button>
-              </div>
-            </>
-          )}
-          <CleanupReview
-            transcript={transcript}
-            proposals={proposals}
-            audioFixes={[]}
-            acceptance={acceptance}
-            onAcceptanceChange={setAcceptance}
-            onFreeze={freezeMaster}
-          />
-        </section>
-      )}
-
-      {transcript !== null && (
-        <section className="panel" aria-label="Transcript editor">
+        <section className="panel" aria-label="Transcript editor" data-modes="edit">
           <h2>Transcript</h2>
           <div className="row">
             <label className="field">
@@ -1033,7 +1041,7 @@ export default function Home() {
         </section>
       )}
 
-      <section className="panel" aria-label="Storyboard">
+      <section className="panel" aria-label="Storyboard" data-modes="deliver">
         <h2>Storyboard</h2>
         {transcript === null && <p className="muted">Open a project with a transcript first.</p>}
         <textarea
@@ -1149,7 +1157,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="panel" aria-label="Feedback">
+      <section className="panel" aria-label="Feedback" data-modes="deliver">
         <h2>Feedback</h2>
         <textarea
           className="editor"
@@ -1181,8 +1189,43 @@ export default function Home() {
           />
         )}
       </section>
+        </section>
 
-      <section className="panel" aria-label="Export">
+        <aside className="pane pane--inspector" aria-label="Inspector">
+
+      {transcript !== null && (
+        <section className="panel" aria-label="Cleanup" data-modes="edit">
+          <h2>Cleanup</h2>
+          {proposals.length === 0 ? (
+            <p className="muted">No filler words, stutters, or repetitions found.</p>
+          ) : (
+            <>
+              <p className="muted">
+                {acceptedProposals.length} of {proposals.length} proposals accepted
+              </p>
+              <div className="row">
+                <button
+                  type="button"
+                  onClick={removeAcceptedProposals}
+                  disabled={acceptedProposals.length === 0}
+                >
+                  Remove accepted
+                </button>
+              </div>
+            </>
+          )}
+          <CleanupReview
+            transcript={transcript}
+            proposals={proposals}
+            audioFixes={[]}
+            acceptance={acceptance}
+            onAcceptanceChange={setAcceptance}
+            onFreeze={freezeMaster}
+          />
+        </section>
+      )}
+
+      <section className="panel" aria-label="Export" data-modes="deliver">
         <h2>Export</h2>
         <label className="field">
           Output file
@@ -1236,6 +1279,22 @@ export default function Home() {
           </p>
         )}
       </section>
+        </aside>
+      </div>
+
+      <footer className="app__statusbar">
+        <span className="muted">
+          {job !== null && (job.status === "queued" || job.status === "running")
+            ? `${job.kind}: ${Math.round(job.progress * 100)}%`
+            : "Ready"}
+        </span>
+        <span className="muted">
+          {project?.media === undefined ? "no media" : "media loaded"}
+        </span>
+        <span className={error !== null ? "status status--error" : "status"}>
+          {error ?? message ?? ""}
+        </span>
+      </footer>
     </main>
   );
 }
