@@ -54,3 +54,6 @@ next-env.d.ts
 # Remotion renderer output
 tools/remotion/.bundle/
 tools/remotion/out/
+
+# Dogfooding projects: generated media, not source.
+dogfood/

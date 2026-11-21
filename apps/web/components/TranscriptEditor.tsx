@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { TranscriptDocument, TranscriptWord } from "@verbal/core";
+import type { TranscriptDocument, TranscriptWord } from "@verbal/core/browser";
 
 /** An inclusive range of word indices. */
 export type WordSelection = {

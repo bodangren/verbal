@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { TranscriptDocument } from "@verbal/core";
+import type { TranscriptDocument } from "@verbal/core/browser";
 import { useActiveWord, type PlaybackScheduler } from "../hooks/use-playback-sync";
 import { timeFromClick } from "./waveform-seek";
 import { TranscriptEditor } from "./TranscriptEditor";

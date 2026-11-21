@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTranscript, removeWord } from "@verbal/core";
+import { createTranscript, removeWord } from "@verbal/core/browser";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 afterEach(cleanup);

@@ -1,4 +1,4 @@
-import type { TranscriptDocument } from "@verbal/core";
+import type { TranscriptDocument } from "@verbal/core/browser";
 import {
   groupProposals,
   toggleCategory,

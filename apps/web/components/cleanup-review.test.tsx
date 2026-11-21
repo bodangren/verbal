@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createTranscript } from "@verbal/core";
+import { createTranscript } from "@verbal/core/browser";
 import { DEFAULT_ACCEPTANCE, type CleanupProposal } from "@verbal/cleanup";
 import { CleanupReview } from "./CleanupReview";
 

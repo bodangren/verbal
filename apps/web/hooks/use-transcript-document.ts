@@ -12,7 +12,7 @@ import {
   undo as historyUndo,
   type History,
   type TranscriptDocument,
-} from "@verbal/core";
+} from "@verbal/core/browser";
 
 /** An inclusive range of word indices. */
 export type IndexRange = {

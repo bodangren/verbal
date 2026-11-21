@@ -5,7 +5,7 @@ import {
   type ProjectDocument,
   type ProjectSummary,
   type TranscriptDocument,
-} from "@verbal/core";
+} from "@verbal/core/browser";
 import {
   applyAcceptedPatches,
   parsePatchResponse,

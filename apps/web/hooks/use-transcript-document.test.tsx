@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createTranscript, type TranscriptDocument } from "@verbal/core";
+import { createTranscript, type TranscriptDocument } from "@verbal/core/browser";
 import { useTranscriptDocument } from "./use-transcript-document";
 
 const SPOKEN = [

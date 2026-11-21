@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createTranscript } from "@verbal/core";
+import { createTranscript } from "@verbal/core/browser";
 import {
   useActiveWord,
   type PlaybackScheduler,

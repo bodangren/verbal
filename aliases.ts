@@ -11,6 +11,7 @@ export const workspaceAliases: Record<string, string> = {
   "@verbal/cleanup/freeze": fromRoot("./packages/cleanup/src/freeze.ts"),
   "@verbal/cleanup": fromRoot("./packages/cleanup/src/index.ts"),
   "@verbal/compose": fromRoot("./packages/compose/src/index.ts"),
+  "@verbal/core/browser": fromRoot("./packages/core/src/browser.ts"),
   "@verbal/core": fromRoot("./packages/core/src/index.ts"),
   "@verbal/media/key-quality": fromRoot("./packages/media/src/key-quality.ts"),
   "@verbal/media/presets": fromRoot("./packages/media/src/presets.ts"),

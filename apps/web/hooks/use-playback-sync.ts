@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { wordIndexAtTime, type TranscriptWord } from "@verbal/core";
+import { wordIndexAtTime, type TranscriptWord } from "@verbal/core/browser";
 
 /** Scheduling seam, so tests can drive the polling loop deterministically. */
 export type PlaybackScheduler = {

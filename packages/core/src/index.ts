@@ -12,3 +12,4 @@ export * from "./project";
 export * from "./search";
 export * from "./sync";
 export * from "./transcript";
+export * from "./transcript-save";
