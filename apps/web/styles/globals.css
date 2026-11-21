@@ -765,3 +765,69 @@ code {
 .patches__discard:hover {
   color: var(--text-primary);
 }
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.picker--stage {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-lg);
+  padding: var(--space-4);
+}
+
+.picker h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.picker__item {
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-sm);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.picker__item:hover {
+  border-color: var(--border-strong, var(--border));
+}
+
+.picker__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.picker__name {
+  font-weight: 600;
+}
+
+.picker__path {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker--rail .picker__path {
+  display: none;
+}

@@ -551,10 +551,10 @@ try {
   const libraryProject = path.join(libraryParent, "take-one");
   await api("POST", "/api/projects", { root: libraryProject, name: "Take One" });
 
-  await page.getByLabel("Library folder").fill(libraryParent);
-  await page.getByRole("button", { name: "Scan", exact: true }).click();
+  await page.getByLabel("Projects folder").last().fill(libraryParent);
+  await page.getByRole("button", { name: "Scan folder" }).last().click();
   await page.getByText(/1 projects found/).waitFor();
-  await page.getByLabel("Library projects").getByText("Take One", { exact: true }).waitFor();
+  await page.getByLabel("Projects").last().getByText("Take One", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Open Take One" }).click();
   await page.getByText("Opened Take One").waitFor();
   console.log("library: scanned a folder and opened a project");

@@ -25,6 +25,7 @@ import {
 import { CapturePanel } from "../components/CapturePanel";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
+import { ProjectPicker } from "../components/ProjectPicker";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
@@ -96,8 +97,19 @@ export default function Home() {
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
   const [batchRoots, setBatchRoots] = useState("");
-  const [libraryFolder, setLibraryFolder] = useState("");
+  // Client-only: the remembered folder is read through useSyncExternalStore so
+  // the server snapshot stays empty and no state is set inside an effect.
+  const rememberedFolder = useSyncExternalStore(
+    subscribeNever,
+    () => window.localStorage.getItem("verbal.libraryFolder") ?? "",
+    () => "",
+  );
+  const [typedFolder, setTypedFolder] = useState<string | null>(null);
+  const libraryFolder = typedFolder ?? rememberedFolder;
   const [library, setLibrary] = useState<ProjectSummary[]>([]);
+  const [scanned, setScanned] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const autoScanned = useRef(false);
   const [batchOutcomes, setBatchOutcomes] = useState<
     { root: string; status: string; detail?: string }[]
   >([]);
@@ -153,10 +165,12 @@ export default function Home() {
   }
 
   /** Reloads the stored transcript and the proposals that describe it. */
-  async function loadTranscriptState() {
+  async function loadTranscriptState(projectRoot: string = root) {
     try {
       editing.reset(
-        await request<TranscriptDocument>(`/api/transcript?root=${encodeURIComponent(root)}`),
+        await request<TranscriptDocument>(
+          `/api/transcript?root=${encodeURIComponent(projectRoot)}`,
+        ),
       );
     } catch {
       editing.reset(null);
@@ -165,7 +179,7 @@ export default function Home() {
 
     try {
       const cleanup = await request<{ proposals: CleanupProposal[] }>(
-        `/api/cleanup?root=${encodeURIComponent(root)}`,
+        `/api/cleanup?root=${encodeURIComponent(projectRoot)}`,
       );
       setProposals(cleanup.proposals);
     } catch {
@@ -174,13 +188,15 @@ export default function Home() {
     setAcceptance(DEFAULT_ACCEPTANCE);
   }
 
-  async function loadProjectFiles(next: ProjectDocument) {
+  // The root is passed in, not read from state: a caller that just set it would
+  // otherwise fetch transcripts for the previous (or empty) project.
+  async function loadProjectFiles(next: ProjectDocument, projectRoot: string = root) {
     setProject(next);
 
-    await loadTranscriptState();
+    await loadTranscriptState(projectRoot);
 
     const storyboard = await request<StoryboardDocument>(
-      `/api/storyboard?root=${encodeURIComponent(root)}`,
+      `/api/storyboard?root=${encodeURIComponent(projectRoot)}`,
     );
     setStoryboardText(JSON.stringify(storyboard, null, 2));
     setMessage(`Opened ${next.name}`);
@@ -189,7 +205,7 @@ export default function Home() {
   function openProject() {
     return guard(async () => {
       const opened = await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`);
-      await loadProjectFiles(opened);
+      await loadProjectFiles(opened, root);
     });
   }
 
@@ -200,24 +216,58 @@ export default function Home() {
         `/api/projects?root=${encodeURIComponent(target)}`,
       );
       setRoot(target);
-      await loadProjectFiles(opened);
+      await loadProjectFiles(opened, target);
     });
   }
 
+  useEffect(() => {
+    if (libraryFolder.trim() === "") {
+      return;
+    }
+    window.localStorage.setItem("verbal.libraryFolder", libraryFolder);
+  }, [libraryFolder]);
+
+  // Scan the remembered folder once, so a returning user sees their projects
+  // without typing a path. State is only set after the await.
+  useEffect(() => {
+    if (autoScanned.current || libraryFolder.trim() === "") {
+      return;
+    }
+    autoScanned.current = true;
+
+    void (async () => {
+      try {
+        const result = await request<{ projects: ProjectSummary[] }>(
+          `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
+        );
+        setLibrary(result.projects);
+        setScanned(true);
+      } catch {
+        // A stale remembered folder is not worth an error banner; Scan is there.
+      }
+    })();
+  }, [libraryFolder]);
+
   function scanForProjects() {
     return guard(async () => {
-      const result = await request<{ projects: ProjectSummary[] }>(
-        `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
-      );
-      setLibrary(result.projects);
-      setMessage(`${result.projects.length} projects found`);
+      setScanning(true);
+      try {
+        const result = await request<{ projects: ProjectSummary[] }>(
+          `/api/projects/list?folder=${encodeURIComponent(libraryFolder)}`,
+        );
+        setLibrary(result.projects);
+        setScanned(true);
+        setMessage(`${result.projects.length} projects found`);
+      } finally {
+        setScanning(false);
+      }
     });
   }
 
   function createProject() {
     return guard(async () => {
       const created = await postJson<ProjectDocument>("/api/projects", { root, name });
-      await loadProjectFiles(created);
+      await loadProjectFiles(created, root);
     });
   }
 
@@ -801,29 +851,6 @@ export default function Home() {
         )}
       </section>
 
-      <section className="panel" aria-label="Capture" data-modes="ingest">
-        <h2>Green-screen capture</h2>
-        <video
-          ref={videoRef}
-          className="capture__preview"
-          muted
-          playsInline
-          aria-label="Camera preview"
-        />
-        <CapturePanel
-          cameraAvailable={cameraAvailable}
-          keyQuality={keyQuality}
-          previewing={previewing}
-          recording={captureRunning}
-          durationSeconds={captureSeconds}
-          onStartPreview={startPreview}
-          onStopPreview={stopPreview}
-          onDurationChange={setCaptureSeconds}
-          onRecord={record}
-          onStop={stopRecording}
-        />
-      </section>
-
       <section className="panel" aria-label="Media" data-modes="ingest">
         <h2>Media</h2>
         <label className="field">
@@ -890,44 +917,60 @@ export default function Home() {
         )}
       </section>
 
+      {project !== null && (
       <section className="panel" aria-label="Library" data-modes="ingest">
-        <h2>Library</h2>
-        <label className="field">
-          Library folder
-          <input
-            value={libraryFolder}
-            onChange={(event) => setLibraryFolder(event.target.value)}
-            placeholder="/home/you/Verbal"
-          />
-        </label>
-        <div className="row">
-          <button
-            type="button"
-            onClick={scanForProjects}
-            disabled={libraryFolder.trim() === ""}
-          >
-            Scan
-          </button>
-        </div>
-        {library.length > 0 && (
-          <ul className="cleanup__proposals" aria-label="Library projects">
-            {library.map((entry) => (
-              <li key={entry.root} className="cleanup__proposal">
-                <span>{entry.name}</span>
-                <span className="cleanup__reason">{entry.transcriptWords} words</span>
-                <span className="muted">{entry.hasMedia ? "media" : "no media"}</span>
-                <button type="button" onClick={() => openProjectAt(entry.root)}>
-                  Open {entry.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ProjectPicker
+          variant="rail"
+          folder={libraryFolder}
+          projects={library}
+          scanned={scanned}
+          scanning={scanning}
+          onFolderChange={setTypedFolder}
+          onScan={() => void scanForProjects()}
+          onOpen={(target) => void openProjectAt(target)}
+        />
       </section>
+      )}
 
         </aside>
 
         <section className="pane pane--stage" aria-label="Workspace">
+        {mode === "ingest" && project === null && (
+          <ProjectPicker
+            folder={libraryFolder}
+            projects={library}
+            scanned={scanned}
+            scanning={scanning}
+            error={error}
+            onFolderChange={setTypedFolder}
+            onScan={() => void scanForProjects()}
+            onOpen={(target) => void openProjectAt(target)}
+          />
+        )}
+      <section className="panel" aria-label="Capture" data-modes="ingest">
+        <h2>Green-screen capture</h2>
+        <video
+          ref={videoRef}
+          className="capture__preview"
+          muted
+          playsInline
+          aria-label="Camera preview"
+        />
+        <CapturePanel
+          cameraAvailable={cameraAvailable}
+          keyQuality={keyQuality}
+          previewing={previewing}
+          recording={captureRunning}
+          durationSeconds={captureSeconds}
+          onStartPreview={startPreview}
+          onStopPreview={stopPreview}
+          onDurationChange={setCaptureSeconds}
+          onRecord={record}
+          onStop={stopRecording}
+        />
+      </section>
+
+
       {transcript !== null && project?.media !== undefined && (
         <section className="panel" aria-label="Playback" data-modes="edit">
           <h2>Playback</h2>
