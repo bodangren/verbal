@@ -35,5 +35,5 @@
 ## Phase 4: Verify
 
 - [x] `npm run check` green.
-- [ ] `npm run e2e` PASS (re-run after the waveform change).
+- [x] `npm run e2e` PASS (re-run after the waveform change).
 - [x] Commit the harness and the fixes.
