@@ -5,7 +5,8 @@ import { timeFromClick } from "./waveform-seek";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 export type PlaybackScreenProps = {
-  transcript: TranscriptDocument;
+  /** Null before transcription: the take can still be played and scrubbed. */
+  transcript: TranscriptDocument | null;
   mediaUrl: string;
   /** Accessible name of the transcript region inside the screen. */
   transcriptLabel?: string;
@@ -21,12 +22,25 @@ export type PlaybackScreenProps = {
   scheduler?: PlaybackScheduler;
 };
 
+/** Seconds as m:ss, so the transport reads like a player. */
+export function formatPlaybackTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "0:00";
+  }
+
+  const total = Math.floor(seconds);
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
 /**
- * Video preview with a synchronised transcript.
+ * Video preview with a transport, a scrubber, and a synchronised transcript.
  *
- * Clicking a word seeks to its start; the active word follows playback. The
- * transcript is not rebuilt per frame — only the active word's highlight
- * changes.
+ * The player exists whenever a take exists — not only after transcription.
+ * Play/pause works from the control or by clicking the video; the take scrubs
+ * by clicking the waveform, dragging the range, or its keyboard bindings.
+ * Clicking a transcript word seeks to its start.
  */
 export function PlaybackScreen({
   transcript,
@@ -40,16 +54,21 @@ export function PlaybackScreen({
 }: PlaybackScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
 
+  const words = transcript?.words ?? [];
+
   const activeIndex = useActiveWord({
-    words: transcript.words,
+    words,
     getTime: () => videoRef.current?.currentTime ?? 0,
     active: playing,
     scheduler,
   });
 
-  const activeWord = activeIndex >= 0 ? transcript.words[activeIndex] : undefined;
+  const activeWord =
+    transcript !== null && activeIndex >= 0 ? transcript.words[activeIndex] : undefined;
 
   // One transcript, one highlight: the page's editable copy follows playback
   // through this callback instead of a second read-only copy here.
@@ -58,7 +77,7 @@ export function PlaybackScreen({
     onActiveWordChange?.(activeWordId);
   }, [activeWordId, onActiveWordChange]);
 
-  const togglePlayback = () => {
+  function togglePlayback() {
     const video = videoRef.current;
     if (video === null) {
       return;
@@ -71,63 +90,112 @@ export function PlaybackScreen({
       void video.play();
       setPlaying(true);
     }
-  };
+  }
 
-  const seekToWord = (_wordId: string, index: number) => {
+  function seekTo(seconds: number) {
     const video = videoRef.current;
-    const word = transcript.words[index];
-
-    if (video !== null && word !== undefined) {
-      video.currentTime = word.start;
+    if (video === null) {
+      return;
     }
-  };
+
+    const max = Number.isFinite(video.duration) ? video.duration : seconds;
+    const next = Math.min(Math.max(seconds, 0), max);
+    video.currentTime = next;
+    setCurrentTime(next);
+  }
+
+  function seekToWord(_wordId: string, index: number) {
+    const word = transcript?.words[index];
+    if (word !== undefined) {
+      seekTo(word.start);
+    }
+  }
+
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const canSeek = safeDuration > 0;
+  const progress = canSeek ? Math.min(currentTime / safeDuration, 1) : 0;
 
   return (
     <div className="playback">
-      <video
-        ref={(node) => {
-          videoRef.current = node;
-          onVideoReady?.(node);
-        }}
-        className="playback__video"
-        src={mediaUrl}
-        aria-label="Media preview"
-        playsInline
-        onError={() => {
-          setLoadFailed(true);
-          setPlaying(false);
-        }}
-        onLoadedData={() => setLoadFailed(false)}
-      />
+      <div className="playback__video-wrap">
+        <video
+          ref={(node) => {
+            videoRef.current = node;
+            onVideoReady?.(node);
+          }}
+          className="playback__video"
+          src={mediaUrl}
+          aria-label="Media preview"
+          playsInline
+          onClick={togglePlayback}
+          onError={() => {
+            setLoadFailed(true);
+            setPlaying(false);
+          }}
+          onLoadedData={() => setLoadFailed(false)}
+          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+          onDurationChange={(event) => setDuration(event.currentTarget.duration)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
+        />
+
+        {!playing && !loadFailed && (
+          <span className="playback__overlay" aria-hidden="true">
+            ▶
+          </span>
+        )}
+      </div>
 
       {loadFailed && (
         <p className="status" role="alert">
-          Media could not be loaded from {mediaUrl}. Re-import it, or check that
-          the referenced file still exists.
+          Media could not be loaded from {mediaUrl}. Re-import it, or check that the
+          referenced file still exists.
         </p>
       )}
 
-      {waveformUrl !== undefined && (
-        <img
-          className="playback__waveform"
-          src={waveformUrl}
-          alt="Waveform"
-          onClick={(event) => {
-            const video = videoRef.current;
-            if (video === null) {
-              return;
-            }
+      <div className="playback__timeline">
+        {waveformUrl !== undefined ? (
+          <img
+            className="playback__waveform"
+            src={waveformUrl}
+            alt=""
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              seekTo(
+                timeFromClick({
+                  clientX: event.clientX,
+                  left: rect.left,
+                  width: rect.width,
+                  durationSeconds: videoRef.current?.duration ?? safeDuration,
+                }),
+              );
+            }}
+          />
+        ) : (
+          <span className="playback__track" aria-hidden="true" />
+        )}
 
-            const rect = event.currentTarget.getBoundingClientRect();
-            video.currentTime = timeFromClick({
-              clientX: event.clientX,
-              left: rect.left,
-              width: rect.width,
-              durationSeconds: video.duration,
-            });
-          }}
+        <span
+          className="playback__playhead"
+          style={{ left: `${progress * 100}%` }}
+          aria-hidden="true"
         />
-      )}
+      </div>
+
+      <input
+        type="range"
+        className="playback__scrub"
+        aria-label="Seek"
+        aria-valuetext={`${formatPlaybackTime(currentTime)} of ${formatPlaybackTime(duration)}`}
+        min={0}
+        max={canSeek ? safeDuration : 0}
+        step={0.01}
+        value={canSeek ? Math.min(currentTime, safeDuration) : 0}
+        disabled={!canSeek}
+        onChange={(event) => seekTo(Number(event.target.value))}
+      />
 
       <div className="playback__controls">
         <button
@@ -138,9 +206,13 @@ export function PlaybackScreen({
         >
           {playing ? "Pause" : "Play"}
         </button>
+        <span className="playback__time">
+          {formatPlaybackTime(currentTime)} / {formatPlaybackTime(duration)}
+        </span>
+        <span className="playback__hint">Click the video to play · drag to scrub</span>
       </div>
 
-      {showTranscript && (
+      {showTranscript && transcript !== null && (
         <TranscriptEditor
           transcript={transcript}
           label={transcriptLabel}

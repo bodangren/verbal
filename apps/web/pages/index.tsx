@@ -311,6 +311,7 @@ export default function Home() {
       });
       setProject(result.project);
       setMessage("Media imported");
+      setMode("edit");
     });
   }
 
@@ -711,6 +712,7 @@ export default function Home() {
       } catch {
         // The project update is best-effort; the job result is authoritative.
       }
+      setMode("edit");
     });
   }
 
@@ -979,12 +981,6 @@ export default function Home() {
                   body="Import a recording or file in Ingest, then transcribe it."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
-              ) : transcript === null ? (
-                <EmptyState
-                  title="No transcript yet"
-                  body="Transcribe this project's media in Ingest to start editing."
-                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
-                />
               ) : (
                 <>
                   <div className="card card--flush" role="region" aria-label="Playback">
@@ -1000,6 +996,13 @@ export default function Home() {
                     />
                   </div>
 
+                  {transcript === null ? (
+                    <EmptyState
+                      title="No transcript yet"
+                      body="Play and scrub the take now. Transcribe it in Ingest to edit the words."
+                      action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                    />
+                  ) : (
                   <div className="card" role="region" aria-label="Transcript editor">
                     <div className="card__head">
                       <h3>Transcript</h3>
@@ -1144,6 +1147,7 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+                  )}
                 </>
               )}
             </div>

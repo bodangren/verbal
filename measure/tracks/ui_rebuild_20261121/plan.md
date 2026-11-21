@@ -40,3 +40,13 @@
 - [x] Re-run the four dogfood projects; screenshot per mode.
 - [x] `npm run check` green.
 - [x] Commit: `test(e2e): Drive the rebuild by browser and mode`
+
+---
+
+## Follow-up: Playback (2026-11-21)
+
+- [x] Stop the stage from shrinking the player card (the transport was clipped).
+- [x] Render the player whenever media exists, with or without a transcript.
+- [x] Add a visible, keyboard-operable scrubber, time readout, and playhead.
+- [x] Land on the player after importing or recording.
+- [x] Unit tests for playing before transcription and scrubbing; e2e guards for clipping and End/Home scrubbing.

@@ -438,6 +438,7 @@ code {
 .playback__video {
   aspect-ratio: 16 / 9;
   background: #000;
+  cursor: pointer;
   border-radius: 8px;
   /* A player that eats the stage pushes the transcript off screen. */
   max-height: min(42vh, 420px);
@@ -462,14 +463,82 @@ code {
   overflow-y: auto;
 }
 
+.playback__video-wrap {
+  position: relative;
+}
+
+.playback__overlay {
+  color: rgba(255, 255, 255, 0.85);
+  display: grid;
+  font-size: 56px;
+  inset: 0;
+  place-items: center;
+  pointer-events: none;
+  position: absolute;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+.playback__timeline {
+  align-items: center;
+  display: flex;
+  min-height: 32px;
+  position: relative;
+}
+
 .playback__waveform {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+}
+
+.playback__track {
+  background: var(--border);
+  border-radius: 999px;
+  display: block;
+  height: 4px;
+  width: 100%;
+}
+
+.playback__playhead {
+  background: var(--primary-hover);
+  bottom: 0;
+  box-shadow: 0 0 8px var(--primary);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-1px);
+  width: 2px;
+}
+
+.playback__scrub {
+  accent-color: var(--primary);
   cursor: pointer;
   width: 100%;
 }
 
+.playback__scrub:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .playback__controls {
+  align-items: center;
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.playback__time {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.playback__hint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-left: auto;
 }
 
 .playback__button {
@@ -1233,6 +1302,12 @@ h2 {
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-5);
+}
+
+/* The stage scrolls; its children must keep their content height instead of
+   being compressed by flex. A shrunk player card clips its own transport. */
+.stage__scroll > * {
+  flex-shrink: 0;
 }
 
 .stage__head {

@@ -32,6 +32,12 @@ beforeEach(() => {
     configurable: true,
     value: pause,
   });
+  Object.defineProperty(HTMLMediaElement.prototype, "duration", {
+    configurable: true,
+    get() {
+      return 2;
+    },
+  });
   play.mockClear();
   pause.mockClear();
 });
@@ -110,6 +116,34 @@ describe("PlaybackScreen", () => {
     );
 
     expect(screen.getByRole("region", { name: "Playback transcript" })).toBeTruthy();
+  });
+
+  it("plays a take before it has a transcript", () => {
+    render(<PlaybackScreen transcript={null} mediaUrl="/media/take.mp4" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /play/i }));
+
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("region", { name: /transcript/i })).toBeNull();
+  });
+
+  it("toggles playback when the video itself is clicked", () => {
+    render(<PlaybackScreen transcript={transcript} mediaUrl="/media/take.mp4" />);
+
+    fireEvent.click(screen.getByLabelText(/media preview/i));
+
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it("scrubs to a position from the range control", () => {
+    render(<PlaybackScreen transcript={transcript} mediaUrl="/media/take.mp4" />);
+
+    const video = screen.getByLabelText(/media preview/i) as HTMLVideoElement;
+    fireEvent.loadedMetadata(video);
+    fireEvent.change(screen.getByLabelText("Seek"), { target: { value: "1.5" } });
+
+    expect(video.currentTime).toBe(1.5);
+    expect(screen.getByText("0:01 / 0:02")).toBeTruthy();
   });
 
   it("hides its built-in transcript when the page owns one", () => {

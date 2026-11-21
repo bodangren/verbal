@@ -335,6 +335,14 @@ try {
     const duration = await video.evaluate((media) => media.duration);
     assert(duration > 1.5, `expected a ~2s clip, got ${duration}s`);
 
+    // The transport must sit inside the player card, not be clipped by it.
+    const transportInsideCard = await page.evaluate(() => {
+      const card = document.querySelector(".card--flush")?.getBoundingClientRect();
+      const button = document.querySelector(".playback__button")?.getBoundingClientRect();
+      return card !== undefined && button !== undefined && button.bottom <= card.bottom + 1;
+    });
+    assert(transportInsideCard, "the play control must not be clipped by the player card");
+
     await playback.getByRole("button", { name: "Play" }).click();
     await page.locator('[data-active="true"]').first().waitFor({ timeout: 5000 });
     console.log("playback: the active word follows playback");
@@ -347,7 +355,7 @@ try {
     console.log("playback: click-to-seek");
 
     // The waveform is rendered from the real clip and seeks where it is clicked.
-    const waveform = playback.getByAltText("Waveform");
+    const waveform = playback.locator(".playback__waveform");
     await waveform.waitFor({ timeout: 20000 });
     const box = await waveform.boundingBox();
     assert(box !== null && box.width > 0, "the waveform should have a size");
@@ -358,6 +366,20 @@ try {
       `a waveform click at 75% should seek past halfway, got ${sought}s of ${duration}s`,
     );
     console.log("playback: waveform seek");
+
+    // The visible range scrubs with the keyboard, not just the mouse.
+    const seek = playback.getByLabel("Seek");
+    await seek.focus();
+    await page.keyboard.press("End");
+    const scrubbed = await video.evaluate((media) => media.currentTime);
+    assert(
+      scrubbed > duration * 0.9,
+      `End on the scrubber should seek near the end, got ${scrubbed}s of ${duration}s`,
+    );
+    await page.keyboard.press("Home");
+    const rewound = await video.evaluate((media) => media.currentTime);
+    assert(rewound < 0.2, `Home on the scrubber should seek to the start, got ${rewound}s`);
+    console.log("playback: keyboard scrub");
   }
 
   // The fixture's "um" is the only proposal the detector should find.

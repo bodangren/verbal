@@ -92,3 +92,10 @@
 - **Two live regions are fine; ambiguous locators are not.** The save state and the status-bar message both use `aria-live`. Pin tests to `.bar__save`, not `getByRole("status")`, which now matches two elements.
 - **Collapsed detail sections need the walkthrough to open them.** Moving developer controls under `<details>` is good for the UI and means the e2e must click the summary before filling those fields.
 - **A folder created after page load is not in the list.** The browser lists on mount and on navigation; click Home (or navigate) to refresh before clicking a project the API just created.
+
+## Playback and Flex Layout (2026-11-21)
+
+- **A flex scroll stage clips its children unless they opt out of shrinking.** `.stage__scroll` is a `display:flex; flex-direction:column; overflow-y:auto` container; its children default to `flex-shrink: 1`. The player card was compressed from 597px of content to 512px, and `overflow: hidden` clipped the Play button entirely — the control existed in the DOM and passed Playwright visibility, but no human could see it. `> * { flex-shrink: 0 }` on the scroll container is the fix.
+- **Verify layout with numbers, not just screenshots.** `getBoundingClientRect()` plus `clientHeight` vs `scrollHeight` on the card showed the clipping in one probe; the screenshot alone looked plausible because the clipped control simply vanished.
+- **Playback must not depend on transcription.** A take is reviewable before it has words. `PlaybackScreen` now accepts `transcript: null`, and Edit renders the player whenever media exists; the transcript card becomes the empty state instead of replacing the player.
+- **A scrub affordance needs to be visible and keyboard-operable.** A bare waveform image with an `onClick` is not a scrubber a user can find. Ship a labelled range control (drag + arrow/Home/End) and a playhead, and keep the waveform click as a bonus.
