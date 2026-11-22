@@ -147,10 +147,26 @@ async function prepareFixture() {
     sourcePath: clip,
     mode: "copy",
   });
-  await api("PUT", "/api/transcript", {
-    root: tourRoot,
-    document: transcriptDocument(30),
-  });
+  const transcript = transcriptDocument(30);
+  await api("PUT", "/api/transcript", { root: tourRoot, document: transcript });
+
+  if (SCENARIO === "export") {
+    await api("PUT", "/api/storyboard", {
+      root: tourRoot,
+      document: {
+        schemaVersion: 1,
+        scenes: transcript.segments.map((segment, index) => ({
+          id: `scene-${index + 1}`,
+          anchor: {
+            startWordId: segment.wordIds[0],
+            endWordId: segment.wordIds[segment.wordIds.length - 1],
+          },
+          visual: "talk",
+          layer: "full-frame",
+        })),
+      },
+    });
+  }
 
   console.log(`fixture: ${tourRoot}`);
   return { home, projectRoot: tourRoot, mediaDir: null };
@@ -265,6 +281,36 @@ async function main() {
 
     mark("export", "Export from the inspector");
     await page.waitForTimeout(1200);
+  } else if (SCENARIO === "export") {
+    await page.waitForTimeout(900);
+    mark("open", "Open a project that is ready to deliver");
+    await page
+      .locator(".entry--project", { hasText: PROJECT_NAME })
+      .getByRole("button", { name: "Open", exact: true })
+      .click();
+    await page.waitForTimeout(1400);
+    console.log("record: project open");
+
+    mark("deliver", "Deliver: four scenes are ready");
+    await page
+      .getByRole("navigation", { name: "Workspace mode" })
+      .getByRole("button", { name: "Deliver", exact: true })
+      .click();
+    await page.waitForTimeout(800);
+
+    mark("output", "Choose a preset and an output file");
+    await page.getByLabel("Preset").selectOption("webm-vp9");
+    await page.getByLabel("Output file").fill(`${projectRoot}/exports/how-to-export.mp4`);
+    await page.waitForTimeout(900);
+
+    mark("export", "Export the storyboard");
+    await page.getByRole("button", { name: "Export storyboard", exact: true }).click();
+    await page.getByText(/Job done/).waitFor({ timeout: 180000 });
+    await page.waitForTimeout(1200);
+    console.log("record: exported");
+
+    mark("done", "The file is written with the chosen preset");
+    await page.waitForTimeout(1400);
   } else {
   await page.waitForTimeout(900);
   mark("intro", "A 30-second tour of Verbal");

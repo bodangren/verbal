@@ -814,7 +814,12 @@ export default function Home() {
         geometry: GEOMETRY,
       });
       setJob(record);
-      await pollJob(record.id);
+      const finished = await pollJob(record.id);
+      const result = finished.result as { outputPath?: string } | null;
+      if (result?.outputPath !== undefined) {
+        setOutputPath(result.outputPath);
+        setMessage(`Exported to ${result.outputPath}`);
+      }
     });
   }
 
@@ -1609,7 +1614,7 @@ export default function Home() {
                   value={presetId}
                   onChange={(event) => setPresetId(event.target.value as ExportPresetId)}
                 >
-                  {EXPORT_PRESETS.map((preset) => (
+                  {EXPORT_PRESETS.filter((preset) => preset.id !== "podcast-audio").map((preset) => (
                     <option key={preset.id} value={preset.id}>
                       {preset.label}
                     </option>

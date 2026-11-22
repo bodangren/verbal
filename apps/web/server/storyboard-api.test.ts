@@ -210,6 +210,36 @@ describe("storyboard export API", () => {
     expect(rangeCall).toBeDefined();
   });
 
+  it("follows the preset's container and codecs", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now },
+      { root, outputPath: "/out/final.mp4", brand: BRAND, preset: "webm-vp9" },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(jobId)).toMatchObject({
+      status: "done",
+      result: { outputPath: "/out/final.webm" },
+    });
+    const codecCall = run.mock.calls.find((call) => {
+      const args = (call as unknown[])[1];
+      return Array.isArray(args) && args.includes("libvpx-vp9");
+    });
+    expect(codecCall).toBeDefined();
+  });
+
   it("starts an export job that completes with provenance", async () => {
     const { fs, root, registry, renderer, run } = await setup({ media: true });
 

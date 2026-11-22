@@ -8,6 +8,8 @@ export type VideoRangeRequest = {
   width: number;
   height: number;
   fps: number;
+  videoCodec?: string;
+  audioCodec?: string;
   videoArgs?: string[];
   audioArgs?: string[];
 };
@@ -67,10 +69,10 @@ export function buildVideoRangeArgs(request: VideoRangeRequest): string[] {
     "-r",
     String(request.fps),
     "-c:v",
-    "libx264",
+    request.videoCodec ?? "libx264",
     ...(request.videoArgs ?? ["-crf", "20", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
     "-c:a",
-    "aac",
+    request.audioCodec ?? "aac",
     ...(request.audioArgs ?? ["-b:a", "192k"]),
     "-ar",
     "48000",

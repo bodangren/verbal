@@ -54,3 +54,22 @@ describe("buildVideoRangeArgs", () => {
     ).toThrow(VideoRangeError);
   });
 });
+
+describe("preset codecs", () => {
+  it("uses the codec names the preset supplies", () => {
+    const args = buildVideoRangeArgs({
+      input: "/media/take.mp4",
+      startSeconds: 0,
+      durationSeconds: 1,
+      outputPath: "/out/one.webm",
+      width: 320,
+      height: 180,
+      fps: 10,
+      videoCodec: "libvpx-vp9",
+      audioCodec: "libopus",
+    });
+
+    expect(args).toContain("libvpx-vp9");
+    expect(args).toContain("libopus");
+  });
+});

@@ -128,3 +128,9 @@
 - **Concat with `-c copy` requires identical audio parameters.** Slide composites defaulted to 96 kHz while source ranges kept 48 kHz; the file played the programme at the wrong rate. Force `-ar 48000` on every segment type.
 - **Brand bookends are not part of the programme.** A title/outro that reuses the speaker audio from 0 duplicates the first scene. Render them silent (`anullsrc`) and let the scenes carry the sound.
 - **Verify exported media by measurement, not by job status.** A job can be "done" with mismatched streams; `ffprobe` sample rates and `volumedetect` on the title vs a scene catch what the job record cannot.
+
+## Presets (2026-11-22)
+
+- **A visible preset must change the bytes.** Resolve the id to codecs, force the container extension (`withPresetExtension`), and pass those codecs to every segment type — slides and talk ranges alike. A select that only changes React state is a lie.
+- **The output path is part of the preset contract.** A WebM preset writing to `.mp4` produces a file no player understands; the server, not the caller, should own the extension.
+- **Slow encoders need segment progress.** A VP9 export sat at "0%" for a minute because only a global percentage was shown. Report steps done/total and the current step for long jobs.

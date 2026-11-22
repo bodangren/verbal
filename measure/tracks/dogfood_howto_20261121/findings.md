@@ -16,7 +16,9 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 | 9 | High | The first storyboard (all `talk` scenes) was rejected by export: "storyboard has no renderable scenes". | The exporter only accepted slide/generated scenes. | **Fixed** — talk scenes render as source-video ranges (`-ss`/`-t`) and concatenate with slides. |
 | 10 | High | The exported file mixed 96 kHz slide audio with 48 kHz talk audio; concat-copy cannot reconcile that, so the programme would pitch-shift. | The composite AAC defaulted to 96 kHz; the ranges kept the source rate. | **Fixed** — every segment forces 48 kHz; verified. |
 | 11 | Medium | The title/outro replayed the first seconds of programme audio, duplicating scene 1. | Brand steps used the speaker audio. | **Fixed** — brand steps render silent (`anullsrc`); verified -91 dB. |
-| 12 | Medium (open) | The Export preset in the inspector is ignored by the server. | `startStoryboardExport` reads brand/geometry, not `preset`. | **Open** — wire the preset into the export codecs or remove the control. |
+| 12 | Medium | The Export preset in the inspector was ignored by the server. | `startStoryboardExport` read brand/geometry, not `preset`. | **Fixed** — the preset resolves to codecs, forces the container extension, and reaches slides, talk ranges, and the output path. Verified with WebM/VP9. |
+| 13 | Low (open) | The output-path field is too narrow to show the filename at 1280px. | The inspector input truncates the path. | **Open** — show the basename with the directory in a title, or widen it. |
+| 14 | Low (open) | A VP9 export sits at "Job running · 0%" for about a minute. | Only a percentage is shown; segment progress is not. | **Open** — show segments done/total and the current step. |
 
 ## What worked well
 
@@ -38,6 +40,23 @@ Verified:
 - Title/outro are **silent** (-91 dB mean); scene 1 programme is **-16.5 dB**.
 - The first export attempt (before the fixes) mixed 96 kHz and 48 kHz audio and
   could not have played the programme correctly.
+
+## How-To #4 — Export with a Preset (77s)
+
+`out/howto-export.mp4`: open a storyboard project -> Deliver -> choose **WebM
+(VP9)** -> set the output -> **Export storyboard** -> the job writes
+`how-to-export.webm`.
+
+Verified produced file (`out/export-webm-vp9.webm`): VP9/Opus, 1280x720,
+**48 kHz mono**, 36.0s.
+
+What surfaced:
+
+- The preset now changes the container and codecs: choosing WebM writes `.webm`
+  and the inspector reflects the actual path after the job.
+- VP9 is slow; the UI sat at "Job running · 0%" for about a minute, and the
+  how-to is 77s because of that wait. Segment progress would help (finding 14).
+- The output-path field truncates the filename at 1280px (finding 13).
 
 ## How-To #2 — Import Through the Picker (9.8s)
 
@@ -69,8 +88,8 @@ What worked well:
 
 ## What the next dogfood run should try
 
-1. Record how-to #4: use Export from the UI, then watch the produced file.
-2. Wire the Export preset into the codecs (finding 12) or remove the control.
+1. Add export segment progress (finding 14) and re-record a shorter VP9 how-to.
+2. Fix the output-path field (finding 13).
 3. Run a real transcription provider when one is available, and compare the
    scripted-transcript demo against it.
 4. Record the picker flow with a folder that has no media, to check the empty

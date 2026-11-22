@@ -37,6 +37,7 @@ import {
   type SlideRenderer,
   type StepScene,
 } from "@verbal/compose";
+import { resolvePreset, withPresetExtension } from "@verbal/media";
 import { failure } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
 import { runStoryboardExport } from "./storyboard-export";
@@ -174,7 +175,14 @@ export async function startStoryboardExport(
   try {
     const body = asRecord(input);
     const root = requireAbsolutePath(body.root, "root");
-    const outputPath = requireAbsolutePath(body.outputPath, "outputPath");
+    const requestedOutput = requireAbsolutePath(body.outputPath, "outputPath");
+    const preset = resolvePreset(
+      typeof body.preset === "string" ? body.preset : undefined,
+    );
+    if (preset.id === "podcast-audio") {
+      return { status: 400, body: { error: "storyboard export needs a video preset" } };
+    }
+    const outputPath = withPresetExtension(requestedOutput, preset);
     const brand = validateBrandKit(body.brand);
     const geometry = parseGeometry(body.geometry);
 
@@ -261,6 +269,7 @@ export async function startStoryboardExport(
       speaker: { input: mediaPath },
       audio: audioFromBrand(brand),
       scenes,
+      codecs: preset.codecs,
     });
 
     const job = await deps.registry.create("export");

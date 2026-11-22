@@ -8,7 +8,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Dogfood: How-To Videos** [created: 2026-11-21]
   *Focus: Use Verbal to produce its own how-to videos, and fix the UX friction that a real run exposes.*
-  *Status: In progress — `tools/dogfood` records and captions real sessions; three how-tos are cut (17s tour, 10s import, 9s Deliver). Fixed a 500 on silent media, replaced the typed media path with a picker, made Deliver build its first storyboard from the transcript, and made that storyboard exportable (talk ranges, 48 kHz, silent brand bookends). The first export is verified at 36.0s, 48 kHz, title -91 dB. Open: the Export preset is still ignored by the server. Transcription is scripted on this machine (no ASR key or whisper binary). See `findings.md`.*
+  *Status: In progress — `tools/dogfood` records and captions real sessions; four how-tos are cut (17s tour, 10s import, 9s Deliver, 77s Export). Fixed a 500 on silent media, replaced the typed media path with a picker, made Deliver build its first storyboard from the transcript, made it exportable (talk ranges, 48 kHz, silent brand bookends), and wired the preset into the codecs and container. The WebM/VP9 export is verified at 36.0s, 48 kHz, VP9/Opus. Open: export progress detail and the truncated output-path field. Transcription is scripted on this machine (no ASR key or whisper binary). See `findings.md`.*
   *Link: [./tracks/dogfood_howto_20261121](./tracks/dogfood_howto_20261121/)*
 
 - [x] **Track: UI Rebuild to Spec** [created: 2026-11-21] [completed: 2026-11-21]

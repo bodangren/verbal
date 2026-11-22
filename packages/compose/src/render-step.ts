@@ -108,6 +108,12 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           width: deps.geometry.width,
           height: deps.geometry.height,
           fps: deps.geometry.fps,
+          ...(deps.codecs?.videoCodec === undefined
+            ? {}
+            : { videoCodec: deps.codecs.videoCodec }),
+          ...(deps.codecs?.audioCodec === undefined
+            ? {}
+            : { audioCodec: deps.codecs.audioCodec }),
           ...(deps.codecs?.videoArgs === undefined ? {} : { videoArgs: deps.codecs.videoArgs }),
           ...(deps.codecs?.audioArgs === undefined ? {} : { audioArgs: deps.codecs.audioArgs }),
         }),
