@@ -10,11 +10,11 @@
 
 ## Phase 1: Evidence and planning
 
-- [x] Review production paths and behavior tests; record file and line evidence.
-- [x] Run the existing gates through the shared heavy runner; record exact results.
-- [x] Write the ranked review and six pending improvement tracks.
+- [x] Review production paths and behavior tests; record file and line evidence. `fd1bed5`
+- [x] Run the existing gates through the shared heavy runner; record exact results. `fd1bed5`
+- [x] Write the ranked review and six pending improvement tracks. `3f72eb0`
 - [x] Update the registry and directive while preserving standing rules.
-- [~] Verify documentation, commit on the planning branch, and hand off to PM.
+- [x] Verify documentation, commit on the planning branch, and hand off to PM.
 
 Documentation-only work uses source checks and existing gates, not artificial failing application tests.
 

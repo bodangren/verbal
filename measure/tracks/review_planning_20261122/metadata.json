@@ -1,8 +1,9 @@
 {
   "id": "review_planning_20261122",
   "title": "Repository Review and Improvement Planning",
-  "status": "in_progress",
+  "status": "complete",
   "priority": "high",
   "type": "chore",
-  "created": "2026-11-22"
+  "created": "2026-11-22",
+  "completed": "2026-11-22"
 }
