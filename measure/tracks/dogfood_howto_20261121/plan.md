@@ -28,7 +28,9 @@
 
 - [x] Write the issue log (findings.md)
 - [x] Fix finding 4: media files in `/api/fs/list`, `MediaPicker`, Browse… in Source media.
-- [x] Record how-to #2 (import through the picker) and compose it. (symptom, why it matters, severity).
+- [x] Record how-to #2 (import through the picker) and compose it.
+- [x] Fix finding 5: storyboard from the transcript + Deliver empty-state action.
+- [x] Record how-to #3 (Deliver's first storyboard) and compose it. (symptom, why it matters, severity).
 - [x] Fix the first-run blockers (waveform 500 on silent media).
 - [x] Re-record with the fixes.
 

@@ -9,6 +9,7 @@ import {
   applyAcceptedPatches,
   parsePatchResponse,
   parseStoryboard,
+  storyboardFromTranscript,
   type StoryboardDocument,
   type StoryboardPatch,
 } from "@verbal/storyboard";
@@ -358,6 +359,25 @@ export default function Home() {
     });
   }
 
+  /** Builds the first storyboard from the transcript, then previews it. */
+  function createStoryboard() {
+    return guard(async () => {
+      if (transcript === null) {
+        return;
+      }
+
+      const document = storyboardFromTranscript(transcript);
+      const saved = await putJson<StoryboardDocument>("/api/storyboard", { root, document });
+      setStoryboardText(JSON.stringify(saved, null, 2));
+      setMessage(
+        `Created ${saved.scenes.length} ${
+          saved.scenes.length === 1 ? "scene" : "scenes"
+        } from the transcript`,
+      );
+      await preview("full");
+    });
+  }
+
   function saveStoryboard() {
     return guard(async () => {
       const document = parseStoryboard(storyboardText);
@@ -417,6 +437,15 @@ export default function Home() {
     () => (transcript === null ? [] : searchTranscript(transcript, query)),
     [transcript, query],
   );
+
+  /** A parsed, empty storyboard is the first-run Deliver state. */
+  const storyboardEmpty = useMemo(() => {
+    try {
+      return parseStoryboard(storyboardText).scenes.length === 0;
+    } catch {
+      return false;
+    }
+  }, [storyboardText]);
 
   function stepMatch(direction: 1 | -1) {
     if (matches.length === 0) {
@@ -1203,24 +1232,26 @@ export default function Home() {
                   <h2>Storyboard</h2>
                   <p className="stage__sub">Preview the cut, then export it.</p>
                 </div>
-                <div className="toolbar">
-                  <button
-                    type="button"
-                    className="button button--ghost"
-                    onClick={() => preview("fast")}
-                    disabled={project === null}
-                  >
-                    Fast preview
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--primary"
-                    onClick={() => preview("full")}
-                    disabled={project === null}
-                  >
-                    Render preview
-                  </button>
-                </div>
+                {!storyboardEmpty && (
+                  <div className="toolbar">
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={() => preview("fast")}
+                      disabled={project === null}
+                    >
+                      Fast preview
+                    </button>
+                    <button
+                      type="button"
+                      className="button button--primary"
+                      onClick={() => preview("full")}
+                      disabled={project === null}
+                    >
+                      Render preview
+                    </button>
+                  </div>
+                )}
               </header>
 
               {project === null ? (
@@ -1229,11 +1260,25 @@ export default function Home() {
                   body="Open a project in Ingest to build its storyboard."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
+              ) : transcript === null ? (
+                <EmptyState
+                  title="No transcript yet"
+                  body="Transcribe the take in Ingest to build a storyboard."
+                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                />
               ) : plan === null ? (
                 <EmptyState
-                  title="No preview yet"
-                  body="Render a preview to see the storyboard scenes."
-                  action={{ label: "Render preview", onClick: () => void preview("full") }}
+                  title={storyboardEmpty ? "No scenes yet" : "No preview yet"}
+                  body={
+                    storyboardEmpty
+                      ? "Build one scene per transcript segment, then preview the cut."
+                      : "Render a preview to see the storyboard scenes."
+                  }
+                  action={
+                    storyboardEmpty
+                      ? { label: "Create storyboard", onClick: () => void createStoryboard() }
+                      : { label: "Render preview", onClick: () => void preview("full") }
+                  }
                 />
               ) : (
                 <div className="card card--flush">

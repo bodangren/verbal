@@ -4,6 +4,7 @@
 export * from "./anchors";
 export * from "./comments";
 export * from "./feedback";
+export * from "./from-transcript";
 export * from "./history";
 export * from "./parse";
 export * from "./patches";

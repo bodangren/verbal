@@ -8,7 +8,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Dogfood: How-To Videos** [created: 2026-11-21]
   *Focus: Use Verbal to produce its own how-to videos, and fix the UX friction that a real run exposes.*
-  *Status: In progress — `tools/dogfood` records and captions real sessions; two how-tos are cut (17s tour, 10s import). Fixed a 500 on silent media and replaced the typed media path with a folder/file picker (finding 4). Open: Deliver lacks first-run guidance (finding 5). Transcription is scripted on this machine (no ASR key or whisper binary). See `findings.md`.*
+  *Status: In progress — `tools/dogfood` records and captions real sessions; three how-tos are cut (17s tour, 10s import, 9s Deliver). Fixed a 500 on silent media, replaced the typed media path with a picker, and made Deliver's empty state build a first storyboard from the transcript. Transcription is scripted on this machine (no ASR key or whisper binary). Next: export and watch the created storyboard end to end. See `findings.md`.*
   *Link: [./tracks/dogfood_howto_20261121](./tracks/dogfood_howto_20261121/)*
 
 - [x] **Track: UI Rebuild to Spec** [created: 2026-11-21] [completed: 2026-11-21]

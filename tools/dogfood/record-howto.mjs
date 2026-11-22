@@ -77,10 +77,20 @@ function transcriptDocument(durationSeconds) {
     end: Number(((index + 1) * step).toFixed(3)),
   }));
 
+  // Four segments, so the first storyboard has more than one scene to show.
+  const chunkSize = Math.max(1, Math.ceil(words.length / 4));
+  const segments = [];
+  for (let index = 0; index < words.length; index += chunkSize) {
+    segments.push({
+      id: `s${segments.length}`,
+      wordIds: words.slice(index, index + chunkSize).map((word) => word.id),
+    });
+  }
+
   return {
     schemaVersion: 1,
     words,
-    segments: [{ id: "s0", wordIds: words.map((word) => word.id) }],
+    segments,
     removedWordIds: [],
   };
 }
@@ -226,6 +236,35 @@ async function main() {
 
     mark("next", "Transcribe it in Ingest when you are ready");
     await page.waitForTimeout(1400);
+  } else if (SCENARIO === "deliver") {
+    await page.waitForTimeout(900);
+    mark("open", "Open a project that has a transcript");
+    await page
+      .locator(".entry--project", { hasText: PROJECT_NAME })
+      .getByRole("button", { name: "Open", exact: true })
+      .click();
+    await page.waitForTimeout(1500);
+    console.log("record: project open");
+
+    mark("deliver", "Deliver starts with no scenes");
+    await page
+      .getByRole("navigation", { name: "Workspace mode" })
+      .getByRole("button", { name: "Deliver", exact: true })
+      .click();
+    await page.waitForTimeout(900);
+
+    mark("create", "Build scenes from the transcript");
+    await page.getByRole("button", { name: "Create storyboard", exact: true }).click();
+    await page.getByRole("region", { name: "Storyboard preview" }).waitFor({ timeout: 20000 });
+    await page.getByText("Speaker").first().waitFor();
+    await page.waitForTimeout(1600);
+    console.log("record: storyboard created");
+
+    mark("scenes", "One scene per transcript segment");
+    await page.waitForTimeout(1600);
+
+    mark("export", "Export from the inspector");
+    await page.waitForTimeout(1200);
   } else {
   await page.waitForTimeout(900);
   mark("intro", "A 30-second tour of Verbal");

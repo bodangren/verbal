@@ -115,3 +115,9 @@
 - **Choosing is not importing.** Fill the source field on choose and let the user press Import copy; it keeps the copy explicit and reversible.
 - **Scope modal automation to the dialog.** A modal sits over a page with rows carrying the same titles; `getByTitle("Enter media")` matches both. Use `role="dialog"` as the scope.
 - **Fixture names must match the UI-derived folder.** "Imported take" becomes a folder with a space; cleaning `imported-take` leaves the previous run in place and the second run fails on "already exists".
+
+## Deliver First Run (2026-11-22)
+
+- **An empty state must offer the action that creates its content.** "Render preview" with no scenes can only plan nothing. Build the first storyboard from the transcript, then preview it in the same click.
+- **Derive the first scenes from what the user already has.** Segments are the natural scene boundary; removed words must not anchor a scene, and a segment emptied by removals is dropped.
+- **Hide actions that cannot work.** The preview buttons now appear only once scenes exist; before that the single action is Create storyboard, so there is no dead end.
