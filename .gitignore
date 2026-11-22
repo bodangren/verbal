@@ -57,3 +57,6 @@ tools/remotion/out/
 
 # Dogfooding projects: generated media, not source (root only; tools/dogfood is source).
 /dogfood/
+
+# Reasonix session data
+.reasonix/
