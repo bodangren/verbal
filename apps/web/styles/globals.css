@@ -1774,3 +1774,13 @@ h2 {
   flex: 1;
   width: auto;
 }
+
+/* The full path lives in a narrow input; show the filename it ends with. */
+.field__hint {
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

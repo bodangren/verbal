@@ -144,3 +144,8 @@
 
 - **Do not ship the wait.** A slow encoder makes a faithful recording unwatchable; cut the idle middle in post and keep the setup, the first progress, and the completion. The progress fix is what makes the cut legible.
 - **Trim the composed video, not the raw capture.** The captions are already burned into the segments; cutting the composed file keeps the text correct on both sides of the join.
+
+## Error States (2026-11-22)
+
+- **Every error needs a next step.** The picker's missing-folder alert said only "no folder at …"; the dialog still had Home and Up, but the text did not say so. Append the recovery action to the alert.
+- **Empty and error are different states.** An empty media folder explains what it is and what to do; a missing folder must show the failure and the way back, and should not fall through to the empty-state copy.

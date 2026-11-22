@@ -100,9 +100,12 @@ export function MediaPicker({
 
         <div className="picker-dialog__list">
           {error !== null && (
-            <p className="browser__error" role="alert">
-              {error}
-            </p>
+            <>
+              <p className="browser__error" role="alert">
+                {error}
+              </p>
+              <p className="browser__hint">Use Home or Up to keep browsing.</p>
+            </>
           )}
 
           {loading && (

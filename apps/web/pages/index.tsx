@@ -1625,6 +1625,11 @@ export default function Home() {
                   onChange={(event) => setOutputPath(event.target.value)}
                   placeholder="/home/you/Verbal/demo/exports/final.mp4"
                 />
+                {outputPath.trim() !== "" && (
+                  <span className="field__hint" title={outputPath}>
+                    {outputPath.split(/[\\/]/).filter(Boolean).slice(-1)[0]}
+                  </span>
+                )}
               </label>
               <label className="field">
                 Preset

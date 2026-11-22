@@ -53,6 +53,13 @@ describe("MediaPicker", () => {
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("offers a next step when a folder fails to open", () => {
+    setup({ error: "no folder at /tmp/gone", entries: [] });
+
+    expect(screen.getByRole("alert").textContent).toContain("no folder");
+    expect(screen.getByText("Use Home or Up to keep browsing.")).toBeTruthy();
+  });
+
   it("shows an empty state when the folder has no media", () => {
     setup({ entries: [] });
 

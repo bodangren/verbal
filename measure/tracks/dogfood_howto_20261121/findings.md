@@ -19,6 +19,7 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 | 12 | Medium | The Export preset in the inspector was ignored by the server. | `startStoryboardExport` read brand/geometry, not `preset`. | **Fixed** — the preset resolves to codecs, forces the container extension, and reaches slides, talk ranges, and the output path. Verified with WebM/VP9. |
 | 13 | Low | The output path had to be typed, and the field truncates long paths. | The field started empty and showed the whole path in a narrow input. | **Fixed** — the path is prefilled to `<project>/exports/<name>.<preset extension>` and carries the full path as a title. |
 | 14 | Low | A VP9 export sat at "Job running · 0%" for about a minute. | Only a percentage was shown; the assembly never reported per-step progress. | **Fixed** — the export reports "Rendering step N of M", "Concatenating segments" and "Export complete"; the inspector and status bar show the message. |
+| 15 | Low | The picker's missing-folder error was raw ("no folder at …") with no next step. | The API message went straight into the alert. | **Fixed** — the alert is followed by "Use Home or Up to keep browsing." |
 
 ## What worked well
 
