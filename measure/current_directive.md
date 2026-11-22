@@ -1,11 +1,40 @@
 # Current Directive
 
-**Direction: protect local data and prove edit fidelity before adding features (2026-11-22).**
+Primary direction (Daniel, 2026-11-22): UI/UX. Security and integrity tracks follow.
 
-The TypeScript rewrite exists. The repository review finds gaps in export fidelity, save acknowledgment, cancellation, and local safety.
+The primary plan is [the UX review and improvement plan](./review-ux-2026-11-22.md).
+Daniel's target screens are in `tracks/review_planning_20261122/screens/target-*.jpg`.
+`DESIGN.md` tokens still rule over the target screens.
+
+## Merged execution order
+
+A security or integrity track goes ahead of a UX track only when that UX track cannot be built safely without it.
+
+1. **UX Gates and Design Conformance** — `ux_gates_20261122`.
+2. **Shell and Core Flow** — `ux_shell_flow_20261122`.
+3. **Transcript as a Document** — `ux_transcript_document_20261122`.
+4. **Edit Inspector and Cleanup Review** — `ux_edit_inspector_20261122`.
+5. **Local Safety Boundaries** — `local_safety_20261122`.
+   Reason: Edit Timeline Integrity depends on its path and filtergraph adapters.
+6. **Edit Timeline Integrity** — `edit_timeline_integrity_20261122`.
+   Reason: the UX timeline must show the same cuts that playback and export use (F01, F02).
+7. **Edited Timeline and Playback** — `ux_timeline_playback_20261122`.
+8. **Save and Export Integrity** — `save_export_integrity_20261122`.
+   Reason: the export panel's Replace step needs isolated output that never overwrites inputs (F05).
+9. **Job Lifecycle and Events** — `job_lifecycle_20261122`.
+   Reason: the export panel's Cancel and progress need real cancellation and job events (F06, F10).
+10. **Deliver Strip and Export Panel** — `ux_deliver_export_20261122`.
+11. **Deliver Preview and Scene Controls** — `deliver_preview_20261122`.
+    It fills the player slot and the scene field editor that the Deliver UX track leaves open.
+12. **Repository Contracts and Verification** — `repository_contracts_20261122`.
+
+## Secondary block: security and integrity (from the first review)
+
+The repository review finds gaps in export fidelity, save acknowledgment, cancellation, and local safety.
 See [the review and improvement plan](./review-2026-11-22.md) for evidence and gate results.
+The list below keeps its original order inside the secondary block.
 
-## Recommended execution order
+### Original security and integrity order
 
 1. **Local Safety Boundaries** — `local_safety_20261122`.
    Enforce loopback access, validate paths and filtergraphs, and isolate renderer credentials.
@@ -20,7 +49,7 @@ See [the review and improvement plan](./review-2026-11-22.md) for evidence and g
 6. **Repository Contracts and Verification** — `repository_contracts_20261122`.
    Verify the real offline journey and reconcile setup, context, track states, and assets.
 
-All six tracks start pending.
+All twelve tracks start pending.
 Follow their dependency lists before implementation.
 Documentation inventory and gate design can start early.
 Performance changes follow output-correctness measurements.
@@ -47,7 +76,7 @@ Keep exact encoding as the fallback.
 
 ## Planning handoff
 
-This branch contains review and planning documents only.
+The UX review branch `plan/ux-review-2026-11-22` contains review and planning documents only.
 PM checks the evidence before merging and pushing.
 No code fix, deploy, or paid operation forms part of this planning assignment.
 
