@@ -43,3 +43,10 @@ This review does not claim application acceptance.
 - [x] Write six UX tracks (`ux_*_20261122`); put them first in the registry and set the merged order in the directive.
 - [x] Copy nine key screens to `screens/ux-*.png`, each under 300 KB.
 - [ ] PM checks the evidence, merges, and pushes.
+
+### Phase 2 verification results
+
+- Capture run (heavy runner): `npm run build` OK; capture script finished with no failure.
+- `npx prettier --check` on the changed files: pass, but `.prettierignore` excludes `measure/`.
+  With `--ignore-path /dev/null`: the new review passes after one table reformat; `measure/tracks.md` already failed before this branch.
+- `npm run check`: exit 0; 648 tests passed, two skipped.
