@@ -52,11 +52,13 @@ Produced: H.264/AAC, 48 kHz mono, 36.0s (`exports/How to edit a take.mp4`).
 Findings 13 and 14 are visible fixed. The longer VP9 how-to (#4) is kept for the
 preset/extension demonstration.
 
-## How-To #4 — Export with a Preset (77s)
+## How-To #4 — Export with a Preset (13s, trimmed)
 
 `out/howto-export.mp4`: open a storyboard project -> Deliver -> choose **WebM
-(VP9)** -> set the output -> **Export storyboard** -> the job writes
-`how-to-export.webm`.
+(VP9)** -> **Export storyboard** -> the job writes `how-to-export.webm`. The
+original 77s recording spent a minute at "Job running · 0%"; the shipped cut
+drops that idle middle and keeps the preset selection, the first progress, and
+the completion (12.96s).
 
 Verified produced file (`out/export-webm-vp9.webm`): VP9/Opus, 1280x720,
 **48 kHz mono**, 36.0s.

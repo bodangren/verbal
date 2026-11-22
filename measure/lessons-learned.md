@@ -139,3 +139,8 @@
 
 - **A percentage without a step is not progress.** A VP9 export sat at 0% while the first Remotion slide rendered. Report "Rendering step N of M" and "Concatenating segments" from the assembly callback; the job registry already carries a message.
 - **Prefill destinations from context.** Derive the export path from the project root, project name, and preset extension when the project opens, and update the extension when the preset changes. A path field should be a correction, not a data-entry task.
+
+## Recording Slow Jobs (2026-11-22)
+
+- **Do not ship the wait.** A slow encoder makes a faithful recording unwatchable; cut the idle middle in post and keep the setup, the first progress, and the completion. The progress fix is what makes the cut legible.
+- **Trim the composed video, not the raw capture.** The captions are already burned into the segments; cutting the composed file keeps the text correct on both sides of the join.
