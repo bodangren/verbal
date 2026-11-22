@@ -15,8 +15,14 @@ export default async function handler(
   try {
     const url = new URL(request.url ?? "/", "http://localhost");
     const requested = url.searchParams.get("path") ?? undefined;
+    const includeFiles =
+      url.searchParams.get("includeFiles") === "1" ||
+      url.searchParams.get("includeFiles") === "true";
 
-    sendJson(response, { status: 200, body: await createFsApi().listing(requested) });
+    sendJson(response, {
+      status: 200,
+      body: await createFsApi().listing(requested, { includeFiles }),
+    });
   } catch (error) {
     sendJson(response, failure(error));
   }

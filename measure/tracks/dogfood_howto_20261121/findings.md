@@ -8,10 +8,11 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 | 1 | High | The player loses its waveform and the browser logs a **500** for a silent take. | `showwavespic` fails when the input has no audio stream; the endpoint surfaced that as 500. | **Fixed** — the waveform falls back to a flat line and logs the original failure; unit + service tests added. |
 | 2 | Medium | The first cut showed the *previous* UI inside the demo video. | The fixture reused the old walkthrough screen recording as demo media. | **Fixed** — the fixture now generates neutral footage with a real audio track. |
 | 3 | Low | The how-to brand label covered the app's own title bar. | Composer drew it at `y=26`, inside the app chrome. | **Fixed** — removed the duplicate brand; the scripted-transcript note moved to the bottom-right. |
-| 4 | High (open) | Importing a take requires typing an absolute file path. The browser lists folders only. | `Source media` is a text field; `/api/fs/list` has no file mode. | **Open** — next: a file picker (files + folders) so media can be imported by clicking. |
+| 4 | High | Importing a take required typing an absolute file path; the browser listed folders only. | `Source media` was a text field; `/api/fs/list` had no file mode. | **Fixed** — `?includeFiles=1` lists media files, `MediaPicker` browses to one, and the Source media panel has a Browse… button. How-to #2 imports through it. |
 | 5 | Medium (open) | Deliver is blank for a fresh project; Fast preview can be a placeholder with no explanation. | The storyboard starts empty and nothing guides the first scene. | **Open** — offer a generated first scene or an explicit empty-state action. |
 | 6 | Info | Mode buttons and transcript words can share names (`Deliver`), so automation must scope to the navigation. | Chrome and content share the same accessible names. | **Noted** — the recorder scopes to the mode nav; revisit if a real ambiguity appears. |
 | 7 | Environment | Transcription cannot be dogfooded here. | No `OPENAI_API_KEY`, no `whisper` binary. | **Recorded** — transcript is scripted; the rest of ingest/edit/deliver is real. |
+| 8 | Info | The picker and the project browser both had rows titled `Enter …`, so automation had to scope to the dialog. | The modal sits over a page with the same row titles. | **Noted** — the recorder scopes to `role="dialog"`. |
 
 ## What worked well
 
@@ -22,8 +23,25 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 - The auto-save and status bar made the recording feel like a normal app; no
   modal or confirmation interrupted the take.
 
+## How-To #2 — Import Through the Picker (9.8s)
+
+`out/howto-import.mp4`: create a project in the browsed folder → **Browse…** →
+enter a folder → choose a file → **Import copy** → the take opens in the player.
+
+What worked well:
+
+- The picker opens where the project browser was, so the last folder is reused.
+- Media files are listed without the noise of every other file (extensions only).
+- Choosing a file fills the source field and leaves the user in control of
+  *Import copy*; no surprise copy.
+- Import lands in Edit with the player showing the take, even though there is no
+  transcript yet.
+
 ## What the next dogfood run should try
 
-1. Import a take through the UI instead of the API (finding 4).
-2. Make a how-to about *making* a storyboard scene, which exercises Deliver.
-3. Record a second how-to after the finder fix and compare the flow.
+1. Make a how-to about *making* a storyboard scene, which exercises Deliver
+   (finding 5: Deliver is blank for a fresh project).
+2. Run a real transcription provider when one is available, and compare the
+   scripted-transcript demo against it.
+3. Record the picker flow with a folder that has no media, to check the empty
+   state's guidance.

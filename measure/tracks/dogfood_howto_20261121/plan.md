@@ -26,7 +26,9 @@
 
 ## Phase 3: UX findings
 
-- [x] Write the issue log (findings.md) (symptom, why it matters, severity).
+- [x] Write the issue log (findings.md)
+- [x] Fix finding 4: media files in `/api/fs/list`, `MediaPicker`, Browse… in Source media.
+- [x] Record how-to #2 (import through the picker) and compose it. (symptom, why it matters, severity).
 - [x] Fix the first-run blockers (waveform 500 on silent media).
 - [x] Re-record with the fixes.
 

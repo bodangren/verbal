@@ -1705,3 +1705,72 @@ h2 {
   justify-content: center;
   width: 100%;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Media picker                                                            */
+/* ---------------------------------------------------------------------- */
+
+.overlay {
+  align-items: center;
+  background: rgba(8, 8, 12, 0.72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 50;
+}
+
+.picker-dialog {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-lg);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  max-height: min(80vh, 720px);
+  min-height: 360px;
+  outline: none;
+  width: min(640px, calc(100vw - 48px));
+}
+
+.picker-dialog__head {
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.picker-dialog__head h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.picker-dialog > .browser__nav {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.picker-dialog > .browser__path {
+  margin: 0 var(--space-4) var(--space-2);
+}
+
+.picker-dialog__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2);
+}
+
+.picker-dialog__foot {
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-2) var(--space-4);
+}
+
+.inspector .toolbar .button {
+  flex: 1;
+  width: auto;
+}

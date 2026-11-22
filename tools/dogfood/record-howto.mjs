@@ -13,7 +13,7 @@
  *   HOME=$TMPDIR/verbal-dogfood-home npm run dev
  */
 import { execFileSync } from "node:child_process";
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -21,6 +21,9 @@ const BASE = process.env.DOGFOOD_BASE ?? "http://127.0.0.1:5173";
 const OUT = process.env.DOGFOOD_OUT ?? path.join(os.tmpdir(), "verbal-dogfood");
 const CHROME = process.env.DOGFOOD_CHROME ?? "/usr/bin/google-chrome";
 const PROJECT_NAME = "How to edit a take";
+const IMPORT_PROJECT = "Imported take";
+/** "tour" edits a prepared project; "import" creates one and imports through the picker. */
+const SCENARIO = process.env.DOGFOOD_SCENARIO ?? "tour";
 
 /** Loaded after the ffmpeg registry is set: Playwright resolves it at import time. */
 let chromium;
@@ -85,10 +88,17 @@ function transcriptDocument(durationSeconds) {
 async function prepareFixture() {
   const listing = await api("GET", "/api/fs/list");
   const home = listing.path;
-  const projectRoot = path.join(home, "how-to-edit-a-take");
+  const tourRoot = path.join(home, "how-to-edit-a-take");
+  const importRoot = path.join(home, IMPORT_PROJECT);
+  const mediaDir = path.join(home, "media");
   const clip = path.join(OUT, "take.mp4");
 
-  await rm(projectRoot, { recursive: true, force: true });
+  await Promise.all([
+    rm(tourRoot, { recursive: true, force: true }),
+    rm(importRoot, { recursive: true, force: true }),
+    rm(path.join(home, "imported-take"), { recursive: true, force: true }),
+    rm(mediaDir, { recursive: true, force: true }),
+  ]);
   await mkdir(OUT, { recursive: true });
 
   // Neutral footage with a real audio track. A screen recording would show a
@@ -114,25 +124,33 @@ async function prepareFixture() {
     { stdio: "ignore" },
   );
 
-  await api("POST", "/api/projects", { root: projectRoot, name: PROJECT_NAME });
+  if (SCENARIO === "import") {
+    await mkdir(mediaDir, { recursive: true });
+    await copyFile(clip, path.join(mediaDir, "take.mp4"));
+    console.log(`fixture: ${mediaDir} (import scenario; no project yet)`);
+    return { home, projectRoot: importRoot, mediaDir };
+  }
+
+  await api("POST", "/api/projects", { root: tourRoot, name: PROJECT_NAME });
   await api("POST", "/api/media/import", {
-    projectRoot,
+    projectRoot: tourRoot,
     sourcePath: clip,
     mode: "copy",
   });
   await api("PUT", "/api/transcript", {
-    root: projectRoot,
+    root: tourRoot,
     document: transcriptDocument(30),
   });
 
-  console.log(`fixture: ${projectRoot}`);
-  return { home, projectRoot };
+  console.log(`fixture: ${tourRoot}`);
+  return { home, projectRoot: tourRoot, mediaDir: null };
 }
 
 async function main() {
   await ensureFfmpeg();
   ({ chromium } = await import("playwright-core"));
-  const { projectRoot } = await prepareFixture();
+  const fixture = await prepareFixture();
+  const { projectRoot } = fixture;
 
   const raw = path.join(OUT, "raw");
   await rm(raw, { recursive: true, force: true });
@@ -164,8 +182,51 @@ async function main() {
   };
 
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
-  await page.locator(".entry--project").first().waitFor({ timeout: 20000 });
+  await page.locator(".browser").first().waitFor({ timeout: 20000 });
   console.log("record: page loaded");
+
+  if (SCENARIO === "import") {
+    await page.waitForTimeout(900);
+    mark("create", "A new project lives in the folder you are browsing");
+    await page.getByRole("button", { name: "+ New project here" }).click();
+    await page.getByLabel("New project name").fill(IMPORT_PROJECT);
+    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByText(`Created ${IMPORT_PROJECT}`).waitFor();
+    await page.waitForTimeout(900);
+    console.log("record: project created");
+
+    mark("browse", "Browse to the take instead of typing a path");
+    await page.getByRole("button", { name: /Browse/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Choose media file" });
+    await dialog.waitFor();
+    await dialog.getByTitle("Enter media").click();
+    await dialog.getByTitle("Choose take.mp4").waitFor();
+    await page.waitForTimeout(700);
+    console.log("record: picker open");
+
+    mark("choose", "Choose a file, then import a copy");
+    await dialog.getByTitle("Choose take.mp4").click();
+    await page.getByRole("button", { name: "Import copy" }).click();
+    await page.getByText("Media imported").waitFor();
+    await page.waitForTimeout(1200);
+    console.log("record: media imported");
+
+    mark("play", "The take opens in the player");
+    await page
+      .getByRole("region", { name: "Playback" })
+      .getByRole("button", { name: "Play" })
+      .click();
+    await page.waitForTimeout(2400);
+    await page
+      .getByRole("region", { name: "Playback" })
+      .getByRole("button", { name: "Pause" })
+      .click();
+    await page.waitForTimeout(800);
+    console.log("record: played");
+
+    mark("next", "Transcribe it in Ingest when you are ready");
+    await page.waitForTimeout(1400);
+  } else {
   await page.waitForTimeout(900);
   mark("intro", "A 30-second tour of Verbal");
 
@@ -217,6 +278,7 @@ async function main() {
   await page.getByRole("button", { name: "Fast preview", exact: true }).click();
   await page.waitForTimeout(2400);
   console.log("record: deliver");
+  }
 
   } finally {
     await context?.close().catch(() => undefined);
@@ -231,6 +293,7 @@ async function main() {
   const video = path.join(raw, files[0]);
   const session = {
     base: BASE,
+    scenario: SCENARIO,
     projectRoot,
     video,
     note: "Transcript is scripted: this machine has no ASR provider or whisper binary.",

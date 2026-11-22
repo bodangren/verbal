@@ -107,3 +107,11 @@
 - **Compose captions from recorded step times.** The recorder writes each step's start time; the composer burns captions with `enable='between(t,…)'`. Captions then stay in sync even when a step is slow.
 - **Scope automation to the navigation.** Transcript words and chrome can share names ("Deliver"); `getByRole("button", { name: "Deliver" })` becomes ambiguous. Scope to the mode nav in tests and recorders.
 - **A 17-second how-to is enough to expose a defect.** The silent-media 500 and the old-footage problem both surfaced in a single run; running the product beats reading the tests.
+
+## Media Import (2026-11-22)
+
+- **A picker needs its own listing mode.** Keep the project browser folder-only by default, and ask for files explicitly (`includeFiles=1`). Filtering by media extension keeps the dialog usable in a folder full of source files.
+- **Open the picker where the user already is.** Starting at the project browser's current folder reuses context; starting at home forces the user to walk back.
+- **Choosing is not importing.** Fill the source field on choose and let the user press Import copy; it keeps the copy explicit and reversible.
+- **Scope modal automation to the dialog.** A modal sits over a page with rows carrying the same titles; `getByTitle("Enter media")` matches both. Use `role="dialog"` as the scope.
+- **Fixture names must match the UI-derived folder.** "Imported take" becomes a folder with a space; cleaning `imported-take` leaves the previous run in place and the second run fails on "already exists".

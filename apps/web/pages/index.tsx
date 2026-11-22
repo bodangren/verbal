@@ -22,6 +22,7 @@ import {
   type CleanupProposal,
 } from "@verbal/cleanup";
 import { CapturePanel } from "../components/CapturePanel";
+import { MediaPicker } from "../components/MediaPicker";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
 import { ProjectBrowser } from "../components/ProjectBrowser";
@@ -127,6 +128,12 @@ export default function Home() {
   const [browserEntries, setBrowserEntries] = useState<FsEntry[]>([]);
   const [browserError, setBrowserError] = useState<string | null>(null);
   const [browserLoading, setBrowserLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPath, setPickerPath] = useState("");
+  const [pickerParent, setPickerParent] = useState<string | null>(null);
+  const [pickerEntries, setPickerEntries] = useState<FsEntry[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
   const [batchOutcomes, setBatchOutcomes] = useState<
     { root: string; status: string; detail?: string }[]
   >([]);
@@ -271,6 +278,42 @@ export default function Home() {
     // The browser loads once on mount; later navigation goes through loadFolder.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Loads a folder for the media picker, with media files included. */
+  async function loadPickerFolder(target?: string) {
+    setPickerLoading(true);
+    setPickerError(null);
+    try {
+      const listing = await request<{
+        path: string;
+        parent: string | null;
+        entries: FsEntry[];
+      }>(
+        `/api/fs/list?includeFiles=1${
+          target === undefined ? "" : `&path=${encodeURIComponent(target)}`
+        }`,
+      );
+
+      setPickerPath(listing.path);
+      setPickerParent(listing.parent);
+      setPickerEntries(listing.entries);
+    } catch (cause) {
+      setPickerError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setPickerLoading(false);
+    }
+  }
+
+  function openMediaPicker() {
+    setPickerOpen(true);
+    // Start where the project browser is, so the last place is reused.
+    void loadPickerFolder(browserPath.trim() === "" ? undefined : browserPath);
+  }
+
+  function chooseMedia(filePath: string) {
+    setImportPath(filePath);
+    setPickerOpen(false);
+  }
 
   // Leaving Ingest unmounts the camera element; stop the stream so the light
   // does not stay on behind an invisible preview.
@@ -1390,14 +1433,24 @@ export default function Home() {
                   disabled={project === null}
                 />
               </label>
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={importMedia}
-                disabled={project === null || importPath.trim() === ""}
-              >
-                Import copy
-              </button>
+              <div className="toolbar">
+                <button
+                  type="button"
+                  className="button button--ghost"
+                  onClick={openMediaPicker}
+                  disabled={project === null}
+                >
+                  Browse…
+                </button>
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={importMedia}
+                  disabled={project === null || importPath.trim() === ""}
+                >
+                  Import copy
+                </button>
+              </div>
             </section>
 
             <section className="inspector__section" aria-label="Transcription">
@@ -1560,6 +1613,25 @@ export default function Home() {
           </aside>
         )}
       </div>
+
+      {pickerOpen && (
+        <MediaPicker
+          path={pickerPath}
+          parent={pickerParent}
+          entries={pickerEntries}
+          loading={pickerLoading}
+          error={pickerError}
+          onChoose={chooseMedia}
+          onClose={() => setPickerOpen(false)}
+          onHome={() => void loadPickerFolder()}
+          onUp={() => {
+            if (pickerParent !== null) {
+              void loadPickerFolder(pickerParent);
+            }
+          }}
+          onNavigate={(target) => void loadPickerFolder(target)}
+        />
+      )}
 
       <footer className="statusbar">
         <span className="statusbar__item">

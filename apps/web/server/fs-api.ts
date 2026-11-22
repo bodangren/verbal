@@ -17,12 +17,32 @@ export type FsEntrySummary = {
   createdAt: string;
 };
 
+export type FsEntryKind = "directory" | "file";
+
 export type FsEntry = {
   name: string;
   path: string;
   isProject: boolean;
+  kind: FsEntryKind;
+  /** True for a file the media importer can take. */
+  isMedia?: boolean;
   summary?: FsEntrySummary;
 };
+
+export type FsListOptions = {
+  /** List media files beside folders, for the import picker. */
+  includeFiles?: boolean;
+};
+
+/** Extensions the importer accepts; the picker lists only these files. */
+export const MEDIA_EXTENSIONS = new Set([
+  ".mp4", ".webm", ".mov", ".mkv", ".m4v", ".avi",
+  ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus",
+]);
+
+export function isMediaFile(name: string): boolean {
+  return MEDIA_EXTENSIONS.has(path.extname(name).toLowerCase());
+}
 
 export type FsListing = {
   path: string;
@@ -81,40 +101,65 @@ async function summariseProject(directory: string): Promise<FsEntrySummary | nul
  * so the page never needs a native file dialog it cannot use.
  */
 export function createFsApi(
-  overrides: { home?: () => string; list?: (directory: string) => Promise<FsEntry[]> } = {},
+  overrides: {
+    home?: () => string;
+    list?: (directory: string, options?: FsListOptions) => Promise<FsEntry[]>;
+  } = {},
 ) {
   const home = overrides.home ?? (() => os.homedir());
 
   const list =
     overrides.list ??
-    (async (directory: string): Promise<FsEntry[]> => {
+    (async (directory: string, options?: FsListOptions): Promise<FsEntry[]> => {
       const dirents = await readdir(directory, { withFileTypes: true });
-      const directories = dirents.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
 
-      // Hidden folders are configuration, not work you came here to open.
-      const visible = directories.filter((name) => !name.startsWith("."));
+      // Hidden entries are configuration, not work you came here to open.
+      const directories = dirents
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .filter((name) => !name.startsWith("."));
 
-      const entries = await Promise.all(
-        visible.map(async (name): Promise<FsEntry> => {
+      const files = options?.includeFiles
+        ? dirents
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name)
+            .filter((name) => !name.startsWith(".") && isMediaFile(name))
+        : [];
+
+      const directoryEntries = await Promise.all(
+        directories.map(async (name): Promise<FsEntry> => {
           const childPath = path.join(directory, name);
           const summary = await summariseProject(childPath);
           return summary === null
-            ? { name, path: childPath, isProject: false }
-            : { name, path: childPath, isProject: true, summary };
+            ? { name, path: childPath, isProject: false, kind: "directory" }
+            : { name, path: childPath, isProject: true, kind: "directory", summary };
         }),
       );
 
-      // Projects first, then alphabetical: the thing you came for is at the top.
-      return entries.sort((left, right) => {
-        if (left.isProject !== right.isProject) {
-          return left.isProject ? -1 : 1;
+      const fileEntries: FsEntry[] = files.map((name) => ({
+        name,
+        path: path.join(directory, name),
+        isProject: false,
+        kind: "file",
+        isMedia: true,
+      }));
+
+      // Projects first, then folders, then media files: the order of intent.
+      return [...directoryEntries, ...fileEntries].sort((left, right) => {
+        const rank = (entry: FsEntry) =>
+          entry.isProject ? 0 : entry.kind === "directory" ? 1 : 2;
+        if (rank(left) !== rank(right)) {
+          return rank(left) - rank(right);
         }
         return left.name.localeCompare(right.name);
       });
     });
 
   return {
-    async listing(requested: string | undefined): Promise<FsListing> {
+    async listing(
+      requested: string | undefined,
+      options: FsListOptions = {},
+    ): Promise<FsListing> {
       const target = requested === undefined || requested.trim() === "" ? home() : requested;
 
       if (!path.isAbsolute(target)) {
@@ -123,7 +168,7 @@ export function createFsApi(
 
       let entries: FsEntry[];
       try {
-        entries = await list(target);
+        entries = await list(target, options);
       } catch (error) {
         if (isNotFound(error)) {
           throw new ProjectError("not-found", `no folder at ${target}`);
