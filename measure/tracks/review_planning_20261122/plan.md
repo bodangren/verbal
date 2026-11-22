@@ -32,3 +32,14 @@ Documentation-only work uses source checks and existing gates, not artificial fa
 
 The repository-contract track owns the formatting and dependency findings.
 This review does not claim application acceptance.
+
+---
+
+## Phase 2: Primary UI/UX review (Daniel, 2026-11-22)
+
+- [x] Build and run the app on 127.0.0.1 through the heavy runner; capture 52 screens at three viewports with fake ASR.
+- [x] Compare the app with Daniel's three target screens (`screens/target-*.jpg`).
+- [x] Write `measure/review-ux-2026-11-22.md`: 21 ranked findings and the UX plan.
+- [x] Write six UX tracks (`ux_*_20261122`); put them first in the registry and set the merged order in the directive.
+- [x] Copy nine key screens to `screens/ux-*.png`, each under 300 KB.
+- [ ] PM checks the evidence, merges, and pushes.
