@@ -6,6 +6,43 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+> **Primary direction (Daniel, 2026-11-22): UI/UX.** The six UX tracks come first. See [the UX review](./review-ux-2026-11-22.md).
+> The six security and integrity tracks follow as a second block. Three of them go ahead of a UX track; [the directive](./current_directive.md) gives the merged order and the reasons.
+
+### Block 1 — UI/UX (primary)
+
+- [ ] **Track: UX Gates and Design Conformance** [created: 2026-11-22]
+  *Focus: Measure clicks, tab stops, scroll, names, and contrast; hold the `DESIGN.md` type, accent, and copy rules.*
+  *Status: Not started. UX priority 1; no dependency.*
+  *Link: [./tracks/ux_gates_20261122](./tracks/ux_gates_20261122/)*
+
+- [ ] **Track: Shell and Core Flow** [created: 2026-11-22]
+  *Focus: Keep the browser in all modes, put import and transcription in one place, add the top-bar save dot and Export, inline errors, and session memory.*
+  *Status: Not started. UX priority 2; depends on UX Gates.*
+  *Link: [./tracks/ux_shell_flow_20261122](./tracks/ux_shell_flow_20261122/)*
+
+- [ ] **Track: Transcript as a Document** [created: 2026-11-22]
+  *Focus: One focus target with a caret, keyboard and drag selection, restore of removed words, a floating selection toolbar, and follow-scroll.*
+  *Status: Not started. UX priority 3; depends on UX Gates and Shell and Core Flow.*
+  *Link: [./tracks/ux_transcript_document_20261122](./tracks/ux_transcript_document_20261122/)*
+
+- [ ] **Track: Edit Inspector and Cleanup Review** [created: 2026-11-22]
+  *Focus: Selection timecodes, cut summary, a cleanup review tied to the transcript, and a labelled undo history.*
+  *Status: Not started. UX priority 4; depends on Transcript as a Document.*
+  *Link: [./tracks/ux_edit_inspector_20261122](./tracks/ux_edit_inspector_20261122/)*
+
+- [ ] **Track: Edited Timeline and Playback** [created: 2026-11-22]
+  *Focus: Show kept and cut ranges on the waveform, play the edit, and make the timeline keyboard-operable.*
+  *Status: Not started. UX priority 5; depends on Edit Timeline Integrity (one compiled timeline), Transcript as a Document, and Edit Inspector.*
+  *Link: [./tracks/ux_timeline_playback_20261122](./tracks/ux_timeline_playback_20261122/)*
+
+- [ ] **Track: Deliver Strip and Export Panel** [created: 2026-11-22]
+  *Focus: A storyboard strip of scene cards, an export panel with progress, Cancel, done, and failed states, and one Advanced drawer.*
+  *Status: Not started. UX priority 6; depends on Job Lifecycle and Events (real Cancel), Save and Export Integrity (no overwrite), and Shell and Core Flow.*
+  *Link: [./tracks/ux_deliver_export_20261122](./tracks/ux_deliver_export_20261122/)*
+
+### Block 2 — Security and integrity (secondary)
+
 - [ ] **Track: Local Safety Boundaries** [created: 2026-11-22]
   *Focus: Enforce local HTTP access, validate paths and filtergraphs, and isolate renderer credentials.*
   *Status: Not started. Priority 1 from the repository review; no dependency.*
@@ -36,8 +73,10 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Not started. Priority 6; final acceptance follows the other five tracks. Documentation inventory and gate design can start earlier.*
   *Link: [./tracks/repository_contracts_20261122](./tracks/repository_contracts_20261122/)*
 
+### Earlier tracks
+
 - [x] **Track: Repository Review and Improvement Planning** [created: 2026-11-22] [completed: 2026-11-22]
-  *Focus: Review code and gates, then write six detailed improvement tracks without implementing fixes.*
+  *Focus: Review code and gates, then write six detailed improvement tracks without implementing fixes. Phase 2 (same day) adds the primary UI/UX review and six UX tracks.*
   *Status: Documentation assignment complete. The review records 19 findings and six pending improvement tracks. Both application checks and the offline walkthrough pass. Existing formatting fails in 98 files; one dependency advisory affects four moderate packages. PM owns the independent plan check, merge, and push.*
   *Link: [./tracks/review_planning_20261122](./tracks/review_planning_20261122/)*
 
