@@ -6,6 +6,41 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ## Active Tracks
 
+- [ ] **Track: Local Safety Boundaries** [created: 2026-11-22]
+  *Focus: Enforce local HTTP access, validate paths and filtergraphs, and isolate renderer credentials.*
+  *Status: Not started. Priority 1 from the repository review; no dependency.*
+  *Link: [./tracks/local_safety_20261122](./tracks/local_safety_20261122/)*
+
+- [ ] **Track: Edit Timeline Integrity** [created: 2026-11-22]
+  *Focus: Preserve deletion, reorder, silence, scene offsets, and stream compatibility in playback and export.*
+  *Status: Not started. Priority 2; depends on Local Safety Boundaries.*
+  *Link: [./tracks/edit_timeline_integrity_20261122](./tracks/edit_timeline_integrity_20261122/)*
+
+- [ ] **Track: Save and Export Integrity** [created: 2026-11-22]
+  *Focus: Acknowledge exact saved revisions, isolate export jobs, protect output files, and reuse verified segments.*
+  *Status: Not started. Priority 3; depends on Local Safety Boundaries and Edit Timeline Integrity.*
+  *Link: [./tracks/save_export_integrity_20261122](./tracks/save_export_integrity_20261122/)*
+
+- [ ] **Track: Job Lifecycle and Events** [created: 2026-11-22]
+  *Focus: Stop real work on cancellation, serialize durable state, and replace page polling with job events.*
+  *Status: Not started. Priority 4; depends on Local Safety Boundaries and Save and Export Integrity.*
+  *Link: [./tracks/job_lifecycle_20261122](./tracks/job_lifecycle_20261122/)*
+
+- [ ] **Track: Deliver Preview and Scene Controls** [created: 2026-11-22]
+  *Focus: Play a composed preview, edit existing scene fields, and reuse versioned animation frames safely.*
+  *Status: Not started. Priority 5; depends on Edit Timeline Integrity, Save and Export Integrity, and Job Lifecycle and Events.*
+  *Link: [./tracks/deliver_preview_20261122](./tracks/deliver_preview_20261122/)*
+
+- [ ] **Track: Repository Contracts and Verification** [created: 2026-11-22]
+  *Focus: Verify clean setup and real media behavior, enforce architecture, reconcile stale context, and organize tracked assets.*
+  *Status: Not started. Priority 6; final acceptance follows the other five tracks. Documentation inventory and gate design can start earlier.*
+  *Link: [./tracks/repository_contracts_20261122](./tracks/repository_contracts_20261122/)*
+
+- [x] **Track: Repository Review and Improvement Planning** [created: 2026-11-22] [completed: 2026-11-22]
+  *Focus: Review code and gates, then write six detailed improvement tracks without implementing fixes.*
+  *Status: Documentation assignment complete. The review records 19 findings and six pending improvement tracks. Both application checks and the offline walkthrough pass. Existing formatting fails in 98 files; one dependency advisory affects four moderate packages. PM owns the independent plan check, merge, and push.*
+  *Link: [./tracks/review_planning_20261122](./tracks/review_planning_20261122/)*
+
 - [~] **Track: Dogfood: How-To Videos** [created: 2026-11-21]
   *Focus: Use Verbal to produce its own how-to videos, and fix the UX friction that a real run exposes.*
   *Status: In progress — `tools/dogfood` records and captions real sessions; five how-tos are cut (17s tour, 10s import, 9s Deliver, 13s VP9 Export, 43s fast Export). Fixed a 500 on silent media, replaced the typed media path with a picker, made Deliver build its first storyboard from the transcript, made it exportable (talk ranges, 48 kHz, silent brand bookends), and wired the preset into the codecs and container. The WebM/VP9 export is verified at 36.0s, 48 kHz, VP9/Opus. Export paths are prefilled from the project and preset, and the job reports per-step progress. Transcription is scripted on this machine (no ASR key or whisper binary). See `findings.md`.*
