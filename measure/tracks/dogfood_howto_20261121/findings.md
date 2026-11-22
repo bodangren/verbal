@@ -17,8 +17,8 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 | 10 | High | The exported file mixed 96 kHz slide audio with 48 kHz talk audio; concat-copy cannot reconcile that, so the programme would pitch-shift. | The composite AAC defaulted to 96 kHz; the ranges kept the source rate. | **Fixed** — every segment forces 48 kHz; verified. |
 | 11 | Medium | The title/outro replayed the first seconds of programme audio, duplicating scene 1. | Brand steps used the speaker audio. | **Fixed** — brand steps render silent (`anullsrc`); verified -91 dB. |
 | 12 | Medium | The Export preset in the inspector was ignored by the server. | `startStoryboardExport` read brand/geometry, not `preset`. | **Fixed** — the preset resolves to codecs, forces the container extension, and reaches slides, talk ranges, and the output path. Verified with WebM/VP9. |
-| 13 | Low (open) | The output-path field is too narrow to show the filename at 1280px. | The inspector input truncates the path. | **Open** — show the basename with the directory in a title, or widen it. |
-| 14 | Low (open) | A VP9 export sits at "Job running · 0%" for about a minute. | Only a percentage is shown; segment progress is not. | **Open** — show segments done/total and the current step. |
+| 13 | Low | The output path had to be typed, and the field truncates long paths. | The field started empty and showed the whole path in a narrow input. | **Fixed** — the path is prefilled to `<project>/exports/<name>.<preset extension>` and carries the full path as a title. |
+| 14 | Low | A VP9 export sat at "Job running · 0%" for about a minute. | Only a percentage was shown; the assembly never reported per-step progress. | **Fixed** — the export reports "Rendering step N of M", "Concatenating segments" and "Export complete"; the inspector and status bar show the message. |
 
 ## What worked well
 

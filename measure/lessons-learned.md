@@ -134,3 +134,8 @@
 - **A visible preset must change the bytes.** Resolve the id to codecs, force the container extension (`withPresetExtension`), and pass those codecs to every segment type — slides and talk ranges alike. A select that only changes React state is a lie.
 - **The output path is part of the preset contract.** A WebM preset writing to `.mp4` produces a file no player understands; the server, not the caller, should own the extension.
 - **Slow encoders need segment progress.** A VP9 export sat at "0%" for a minute because only a global percentage was shown. Report steps done/total and the current step for long jobs.
+
+## Long Jobs (2026-11-22)
+
+- **A percentage without a step is not progress.** A VP9 export sat at 0% while the first Remotion slide rendered. Report "Rendering step N of M" and "Concatenating segments" from the assembly callback; the job registry already carries a message.
+- **Prefill destinations from context.** Derive the export path from the project root, project name, and preset extension when the project opens, and update the extension when the preset changes. A path field should be a correction, not a data-entry task.

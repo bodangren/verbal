@@ -266,6 +266,7 @@ describe("storyboard export API", () => {
 
     expect(registry.get(jobId)).toMatchObject({
       status: "done",
+      message: "Export complete",
       result: {
         outputPath: "/out/final.mp4",
         manifestPath: "/out/final.mp4.provenance.json",

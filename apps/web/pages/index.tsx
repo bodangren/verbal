@@ -15,7 +15,12 @@ import {
 } from "@verbal/storyboard";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
-import { DEFAULT_PRESET_ID, EXPORT_PRESETS, type ExportPresetId } from "@verbal/media/presets";
+import {
+  DEFAULT_PRESET_ID,
+  EXPORT_PRESETS,
+  withPresetExtension,
+  type ExportPresetId,
+} from "@verbal/media/presets";
 import {
   DEFAULT_ACCEPTANCE,
   resolveAccepted,
@@ -38,6 +43,17 @@ const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 
 /** Remembers the folder you were browsing, so launch lands on your work. */
 const BROWSER_PATH_KEY = "verbal.browser.path";
+
+/** A sensible export destination inside the project, so a path is never typed. */
+function defaultOutputPath(
+  projectRoot: string,
+  projectName: string,
+  presetId: ExportPresetId,
+): string {
+  const extension = EXPORT_PRESETS.find((preset) => preset.id === presetId)?.extension ?? "mp4";
+  const name = projectName.trim().replace(/[\\/]+/g, "-") || "export";
+  return `${projectRoot.replace(/\/+$/, "")}/exports/${name}.${extension}`;
+}
 
 /** The three workspaces. Panels are hidden, never unmounted, so state survives. */
 const MODES = [
@@ -217,6 +233,7 @@ export default function Home() {
   // otherwise fetch transcripts for the previous (or empty) project.
   async function loadProjectFiles(next: ProjectDocument, projectRoot: string = root) {
     setProject(next);
+    setOutputPath(defaultOutputPath(projectRoot, next.name, presetId));
 
     await loadTranscriptState(projectRoot);
 
@@ -1603,6 +1620,7 @@ export default function Home() {
                 Output file
                 <input
                   autoComplete="off"
+                  title={outputPath}
                   value={outputPath}
                   onChange={(event) => setOutputPath(event.target.value)}
                   placeholder="/home/you/Verbal/demo/exports/final.mp4"
@@ -1612,7 +1630,15 @@ export default function Home() {
                 Preset
                 <select
                   value={presetId}
-                  onChange={(event) => setPresetId(event.target.value as ExportPresetId)}
+                  onChange={(event) => {
+                    const next = event.target.value as ExportPresetId;
+                    setPresetId(next);
+
+                    const preset = EXPORT_PRESETS.find((entry) => entry.id === next);
+                    if (preset !== undefined && outputPath.trim() !== "") {
+                      setOutputPath(withPresetExtension(outputPath, preset));
+                    }
+                  }}
                 >
                   {EXPORT_PRESETS.filter((preset) => preset.id !== "podcast-audio").map((preset) => (
                     <option key={preset.id} value={preset.id}>
@@ -1656,6 +1682,7 @@ export default function Home() {
               {job !== null && (
                 <p className="muted">
                   Job {job.status} · {Math.round(job.progress * 100)}%
+                  {job.message !== null ? ` · ${job.message}` : ""}
                   {job.error !== null ? ` · ${job.error}` : ""}
                 </p>
               )}
@@ -1686,7 +1713,9 @@ export default function Home() {
       <footer className="statusbar">
         <span className="statusbar__item">
           {job !== null && (job.status === "queued" || job.status === "running")
-            ? `${job.kind}: ${Math.round(job.progress * 100)}%`
+            ? `${job.kind}: ${Math.round(job.progress * 100)}%${
+                job.message !== null ? ` · ${job.message}` : ""
+              }`
             : "Ready"}
         </span>
         <span className="statusbar__item">{hasMedia ? "Media loaded" : "No media"}</span>

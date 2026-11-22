@@ -37,7 +37,7 @@ import {
   type SlideRenderer,
   type StepScene,
 } from "@verbal/compose";
-import { resolvePreset, withPresetExtension } from "@verbal/media";
+import { ExportError, resolvePreset, withPresetExtension } from "@verbal/media";
 import { failure } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
 import { runStoryboardExport } from "./storyboard-export";
@@ -279,11 +279,29 @@ export async function startStoryboardExport(
       jobId: job.id,
       plan,
       outputPath,
-      assemble: async (steps, target) =>
-        assembleStoryboard(
+      assemble: async (steps, target, report, signal) => {
+        const total = steps.length + 1;
+
+        const renderWithProgress: typeof renderStep = async (step, index) => {
+          if (signal.aborted) {
+            throw new ExportError("cancelled", "export cancelled");
+          }
+
+          report(index / total, `Rendering step ${index + 1} of ${steps.length}`);
+          const file = await renderStep(step, index);
+          report((index + 1) / total, `Rendered step ${index + 1} of ${steps.length}`);
+          return file;
+        };
+
+        const result = await assembleStoryboard(
           {
-            renderStep,
+            renderStep: renderWithProgress,
             concat: async (files, out) => {
+              if (signal.aborted) {
+                throw new ExportError("cancelled", "export cancelled");
+              }
+
+              report(steps.length / total, "Concatenating segments");
               const listPath = path.join(workDirectory, "concat.txt");
               await writeFileAtomic(deps.fs, listPath, buildConcatListContent(files));
               await deps.run("ffmpeg", buildConcatArgs(listPath, out));
@@ -291,7 +309,11 @@ export async function startStoryboardExport(
           },
           steps,
           target,
-        ),
+        );
+
+        report(1, "Export complete");
+        return { files: result.files };
+      },
       writeProvenance: async (out) => {
         const manifest = buildProvenanceManifest({
           createdAt: deps.now().toISOString(),
