@@ -164,8 +164,8 @@ export type StartStoryboardExportDeps = {
 /**
  * Starts a storyboard export as a job.
  *
- * Only slide scenes are rendered; a storyboard with none is rejected rather
- * than producing an empty video.
+ * Slides, generated assets, and talk ranges are rendered; a storyboard with
+ * none of those is rejected rather than producing an empty video.
  */
 export async function startStoryboardExport(
   deps: StartStoryboardExportDeps,
@@ -196,6 +196,25 @@ export async function startStoryboardExport(
     const resolved: { sceneId: string; startSeconds: number; endSeconds: number }[] = [];
 
     for (const scene of storyboard.scenes) {
+      // A talk scene is the source video itself: cut the anchored range and
+      // let the assembly concatenate it with the rendered slides.
+      if (scene.visual === "talk") {
+        const times = resolveScene(scene, anchors);
+        scenes.set(scene.id, {
+          videoRange: {
+            input: mediaPath,
+            startSeconds: times.startSeconds,
+            durationSeconds: times.endSeconds - times.startSeconds,
+          },
+        });
+        resolved.push({
+          sceneId: scene.id,
+          startSeconds: times.startSeconds,
+          endSeconds: times.endSeconds,
+        });
+        continue;
+      }
+
       if (scene.visual === "slide" && scene.template !== undefined) {
         const times = resolveScene(scene, anchors);
         scenes.set(scene.id, { template: scene.template, props: scene.props ?? {} });

@@ -1,0 +1,82 @@
+export type VideoRangeRequest = {
+  /** Source media file. */
+  input: string;
+  /** Seconds into the source where the scene starts. */
+  startSeconds: number;
+  durationSeconds: number;
+  outputPath: string;
+  width: number;
+  height: number;
+  fps: number;
+  videoArgs?: string[];
+  audioArgs?: string[];
+};
+
+export type VideoRangeErrorCode = "invalid-range";
+
+/** Error raised when a source range cannot be turned into a segment. */
+export class VideoRangeError extends Error {
+  readonly code: VideoRangeErrorCode;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "VideoRangeError";
+    this.code = "invalid-range";
+  }
+}
+
+/**
+ * Builds the argv that cuts one source-video range into a scene segment.
+ *
+ * Talk scenes are the source video itself, so they must be re-encoded to the
+ * export geometry and codecs before they can be concatenated with rendered
+ * slides. `-ss` seeks the input; `-t` bounds the output.
+ */
+export function buildVideoRangeArgs(request: VideoRangeRequest): string[] {
+  if (request.input.trim() === "" || request.outputPath.trim() === "") {
+    throw new VideoRangeError("input and outputPath are required");
+  }
+  if (!Number.isFinite(request.startSeconds) || request.startSeconds < 0) {
+    throw new VideoRangeError("startSeconds must be zero or positive");
+  }
+  if (!Number.isFinite(request.durationSeconds) || request.durationSeconds <= 0) {
+    throw new VideoRangeError("durationSeconds must be positive");
+  }
+  if (!Number.isFinite(request.width) || request.width < 2) {
+    throw new VideoRangeError("width must be at least 2");
+  }
+  if (!Number.isFinite(request.height) || request.height < 2) {
+    throw new VideoRangeError("height must be at least 2");
+  }
+  if (!Number.isFinite(request.fps) || request.fps <= 0) {
+    throw new VideoRangeError("fps must be positive");
+  }
+
+  const { width: W, height: H } = request;
+
+  return [
+    "-y",
+    "-ss",
+    request.startSeconds.toFixed(3),
+    "-i",
+    request.input,
+    "-t",
+    request.durationSeconds.toFixed(3),
+    "-vf",
+    `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
+    "-r",
+    String(request.fps),
+    "-c:v",
+    "libx264",
+    ...(request.videoArgs ?? ["-crf", "20", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
+    "-c:a",
+    "aac",
+    ...(request.audioArgs ?? ["-b:a", "192k"]),
+    "-ar",
+    "48000",
+    "-progress",
+    "pipe:1",
+    "-nostats",
+    request.outputPath,
+  ];
+}

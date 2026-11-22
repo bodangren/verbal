@@ -3,6 +3,7 @@ import type { AssemblyStep } from "./assemble";
 import type { SlideCache } from "./cache";
 import type { CompositeAudio, CompositeCodecs, CompositeRequest } from "./composite";
 import { buildCompositeArgs } from "./composite";
+import { buildVideoRangeArgs } from "./video-range";
 import type { PreviewGeometry } from "./preview";
 import { renderSceneSlide } from "./slides";
 import type { SlideRenderer } from "./types";
@@ -15,6 +16,8 @@ export type StepScene = {
   assetPath?: string;
   /** Image assets loop for the scene duration; video assets are trimmed. */
   assetKind?: "image" | "video";
+  /** Cut this source range full-frame with its own audio (talk scenes). */
+  videoRange?: { input: string; startSeconds: number; durationSeconds: number };
 };
 
 export type RenderStepDeps = {
@@ -94,6 +97,24 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
       throw new StepAdapterError("missing-scene", `unknown scene: ${step.sceneId}`);
     }
 
+    if (scene?.videoRange !== undefined) {
+      await deps.run(
+        "ffmpeg",
+        buildVideoRangeArgs({
+          input: scene.videoRange.input,
+          startSeconds: scene.videoRange.startSeconds,
+          durationSeconds: step.durationSeconds,
+          outputPath,
+          width: deps.geometry.width,
+          height: deps.geometry.height,
+          fps: deps.geometry.fps,
+          ...(deps.codecs?.videoArgs === undefined ? {} : { videoArgs: deps.codecs.videoArgs }),
+          ...(deps.codecs?.audioArgs === undefined ? {} : { audioArgs: deps.codecs.audioArgs }),
+        }),
+      );
+      return outputPath;
+    }
+
     // An asset-backed scene skips the renderer entirely: the image already
     // exists, so it only needs the composite.
     if (scene?.assetPath !== undefined) {
@@ -146,6 +167,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
       height: deps.geometry.height,
       fps: deps.geometry.fps,
       durationSeconds: step.durationSeconds,
+      mute: step.kind === "brand",
       layout: step.kind === "brand" ? "full-frame" : (deps.sceneLayout ?? "speaker-inset"),
       slide: {
         input: path.join(outcome.directory, outcome.manifest.pattern),

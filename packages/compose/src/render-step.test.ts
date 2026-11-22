@@ -58,6 +58,7 @@ describe("createStepRenderer", () => {
     const args = argsOf(run);
     expect(args).toContain("-filter_complex");
     expect(args).toContain("mpeg4");
+    expect(args.join(" ")).toContain("anullsrc");
     expect(args.join(" ")).not.toContain("chromakey");
   });
 
@@ -122,6 +123,28 @@ describe("createStepRenderer", () => {
     const args = argsOf(run);
     expect(args).toContain("-loop");
     expect(args).toContain("/project/assets/generated/abc");
+  });
+
+  it("cuts a source range for a talk scene", async () => {
+    const { deps, renderer, run } = makeDeps({
+      scenes: new Map([
+        [
+          "talk",
+          {
+            videoRange: { input: "/media/take.mp4", startSeconds: 2, durationSeconds: 3 },
+          },
+        ],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "talk", durationSeconds: 3 }, 0);
+
+    expect(renderer.render).not.toHaveBeenCalled();
+    const args = argsOf(run);
+    expect(args).toContain("-ss");
+    expect(args[args.indexOf("-ss") + 1]).toBe("2.000");
+    expect(args).toContain("/media/take.mp4");
   });
 
   it("composites a video asset without looping it", async () => {

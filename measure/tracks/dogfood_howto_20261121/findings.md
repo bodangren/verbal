@@ -13,6 +13,10 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
 | 6 | Info | Mode buttons and transcript words can share names (`Deliver`), so automation must scope to the navigation. | Chrome and content share the same accessible names. | **Noted** — the recorder scopes to the mode nav; revisit if a real ambiguity appears. |
 | 7 | Environment | Transcription cannot be dogfooded here. | No `OPENAI_API_KEY`, no `whisper` binary. | **Recorded** — transcript is scripted; the rest of ingest/edit/deliver is real. |
 | 8 | Info | The picker and the project browser both had rows titled `Enter …`, so automation had to scope to the dialog. | The modal sits over a page with the same row titles. | **Noted** — the recorder scopes to `role="dialog"`. |
+| 9 | High | The first storyboard (all `talk` scenes) was rejected by export: "storyboard has no renderable scenes". | The exporter only accepted slide/generated scenes. | **Fixed** — talk scenes render as source-video ranges (`-ss`/`-t`) and concatenate with slides. |
+| 10 | High | The exported file mixed 96 kHz slide audio with 48 kHz talk audio; concat-copy cannot reconcile that, so the programme would pitch-shift. | The composite AAC defaulted to 96 kHz; the ranges kept the source rate. | **Fixed** — every segment forces 48 kHz; verified. |
+| 11 | Medium | The title/outro replayed the first seconds of programme audio, duplicating scene 1. | Brand steps used the speaker audio. | **Fixed** — brand steps render silent (`anullsrc`); verified -91 dB. |
+| 12 | Medium (open) | The Export preset in the inspector is ignored by the server. | `startStoryboardExport` reads brand/geometry, not `preset`. | **Open** — wire the preset into the export codecs or remove the control. |
 
 ## What worked well
 
@@ -22,6 +26,18 @@ transcript is **scripted**: this machine has no ASR key and no whisper binary.
   opening each one.
 - The auto-save and status bar made the recording feel like a normal app; no
   modal or confirmation interrupted the take.
+
+## Export #1 — Four Talk Scenes (36.0s)
+
+Exported `exports/final-verified.mp4` from the how-to #3 storyboard.
+
+Verified:
+
+- 1280x720 H.264, 36.02s, **48 kHz mono**; six segments (title + four talk
+  ranges + outro).
+- Title/outro are **silent** (-91 dB mean); scene 1 programme is **-16.5 dB**.
+- The first export attempt (before the fixes) mixed 96 kHz and 48 kHz audio and
+  could not have played the programme correctly.
 
 ## How-To #2 — Import Through the Picker (9.8s)
 
@@ -53,8 +69,9 @@ What worked well:
 
 ## What the next dogfood run should try
 
-1. Export the created storyboard to a real MP4 and watch it end to end.
-2. Run a real transcription provider when one is available, and compare the
+1. Record how-to #4: use Export from the UI, then watch the produced file.
+2. Wire the Export preset into the codecs (finding 12) or remove the control.
+3. Run a real transcription provider when one is available, and compare the
    scripted-transcript demo against it.
-3. Record the picker flow with a folder that has no media, to check the empty
+4. Record the picker flow with a folder that has no media, to check the empty
    state's guidance.

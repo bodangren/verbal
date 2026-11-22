@@ -32,6 +32,15 @@ describe("buildCompositeArgs", () => {
     expect(args.at(-1)).toBe("/out/final.mp4");
   });
 
+  it("silences the programme audio for a brand bookend", () => {
+    const args = buildCompositeArgs(request({ mute: true, layout: "full-frame" }));
+    const graph = graphOf(args);
+
+    expect(graph).toContain("anullsrc=r=48000:cl=mono");
+    expect(graph).not.toContain("loudnorm");
+    expect(args).toContain("48000");
+  });
+
   it("keys the speaker and overlays it for speaker-inset", () => {
     const graph = graphOf(buildCompositeArgs(request()));
 

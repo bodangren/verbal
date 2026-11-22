@@ -170,7 +170,7 @@ describe("storyboard export API", () => {
     expect(response.status).toBe(400);
   });
 
-  it("rejects a storyboard with no slide scenes", async () => {
+  it("starts an export for a talk-only storyboard", async () => {
     const { fs, root, registry, renderer, run } = await setup({
       media: true,
       storyboard: {
@@ -191,7 +191,23 @@ describe("storyboard export API", () => {
       { root, outputPath: "/out/final.mp4", brand: BRAND },
     );
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(jobId)).toMatchObject({ status: "done" });
+    const rangeCall = run.mock.calls.find((call) => {
+      const args = (call as unknown[])[1];
+      return Array.isArray(args) && args.includes("-ss");
+    });
+    expect(rangeCall).toBeDefined();
   });
 
   it("starts an export job that completes with provenance", async () => {

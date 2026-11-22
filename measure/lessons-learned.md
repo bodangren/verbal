@@ -121,3 +121,10 @@
 - **An empty state must offer the action that creates its content.** "Render preview" with no scenes can only plan nothing. Build the first storyboard from the transcript, then preview it in the same click.
 - **Derive the first scenes from what the user already has.** Segments are the natural scene boundary; removed words must not anchor a scene, and a segment emptied by removals is dropped.
 - **Hide actions that cannot work.** The preview buttons now appear only once scenes exist; before that the single action is Create storyboard, so there is no dead end.
+
+## Export (2026-11-22)
+
+- **Every storyboard scene kind must be exportable.** Preview supported `talk`, but export skipped it, so the first storyboard a new user created could not leave the app. Keep preview and export acceptance lists in sync.
+- **Concat with `-c copy` requires identical audio parameters.** Slide composites defaulted to 96 kHz while source ranges kept 48 kHz; the file played the programme at the wrong rate. Force `-ar 48000` on every segment type.
+- **Brand bookends are not part of the programme.** A title/outro that reuses the speaker audio from 0 duplicates the first scene. Render them silent (`anullsrc`) and let the scenes carry the sound.
+- **Verify exported media by measurement, not by job status.** A job can be "done" with mismatched streams; `ffprobe` sample rates and `volumedetect` on the title vs a scene catch what the job record cannot.

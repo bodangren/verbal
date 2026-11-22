@@ -43,6 +43,8 @@ export type CompositeRequest = {
   slide: CompositeSource;
   key?: CompositeKey;
   audio: CompositeAudio;
+  /** Silence the programme audio, for brand bookends. */
+  mute?: boolean;
   codecs?: CompositeCodecs;
 };
 
@@ -150,7 +152,9 @@ export function buildCompositeArgs(request: CompositeRequest): string[] {
   const loudness = request.audio.loudnessLufs ?? -16;
   const loudnorm = `loudnorm=I=${loudness}:TP=-1.5:LRA=11`;
 
-  if (request.audio.musicInput === undefined) {
+  if (request.mute === true) {
+    filters.push("anullsrc=r=48000:cl=mono[aout]");
+  } else if (request.audio.musicInput === undefined) {
     filters.push(`[1:a]${loudnorm}[aout]`);
   } else {
     const volume = request.audio.musicVolume ?? 0.25;
@@ -187,6 +191,8 @@ export function buildCompositeArgs(request: CompositeRequest): string[] {
     "-c:a",
     codecs.audioCodec ?? "aac",
     ...(codecs.audioArgs ?? ["-b:a", "192k"]),
+    "-ar",
+    "48000",
     "-progress",
     "pipe:1",
     "-nostats",

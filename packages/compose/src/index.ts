@@ -11,5 +11,6 @@ export * from "./provenance";
 export * from "./render-step";
 export * from "./slides";
 export * from "./types";
+export * from "./video-range";
 export * from "./worker";
 export * from "./prune";
