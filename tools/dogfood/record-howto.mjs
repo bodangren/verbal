@@ -298,9 +298,7 @@ async function main() {
       .click();
     await page.waitForTimeout(800);
 
-    mark("output", "Choose a preset and an output file");
-    await page.getByLabel("Preset").selectOption("webm-vp9");
-    await page.getByLabel("Output file").fill(`${projectRoot}/exports/how-to-export.mp4`);
+    mark("output", "The export path is prefilled from the project");
     await page.waitForTimeout(900);
 
     mark("export", "Export the storyboard");

@@ -41,6 +41,17 @@ Verified:
 - The first export attempt (before the fixes) mixed 96 kHz and 48 kHz audio and
   could not have played the programme correctly.
 
+## How-To #5 — Fast Export with Prefill and Progress (43s)
+
+`out/howto-export-fast.mp4`: open the project -> Deliver -> the output path is
+already filled (`<project>/exports/How to edit a take.mp4`) -> **Export
+storyboard** -> the inspector and status bar report "Rendering step 1 of 6",
+"Concatenating segments", "Export complete".
+
+Produced: H.264/AAC, 48 kHz mono, 36.0s (`exports/How to edit a take.mp4`).
+Findings 13 and 14 are visible fixed. The longer VP9 how-to (#4) is kept for the
+preset/extension demonstration.
+
 ## How-To #4 — Export with a Preset (77s)
 
 `out/howto-export.mp4`: open a storyboard project -> Deliver -> choose **WebM
