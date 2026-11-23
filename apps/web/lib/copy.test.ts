@@ -12,6 +12,7 @@ const files = [
   "apps/web/components/IngestInspector.tsx",
   "apps/web/components/BatchDialog.tsx",
   "apps/web/components/StudioOverlay.tsx",
+  "apps/web/components/ScriptEditor.tsx",
   "apps/web/components/Teleprompter.tsx",
 ];
 
@@ -40,6 +41,7 @@ const sentenceCase = [
   "New project here",
   "Next steps",
   "Use transcript",
+  "Open studio",
   "No project open",
   "Audio fixes",
   "Freeze master",
@@ -73,6 +75,7 @@ const titleCase = [
   "Studio",
   "Start Camera",
   "Camera Controls",
+  "Open Studio",
   "Export Storyboard",
   "New Project Here",
   "Audio Fixes",

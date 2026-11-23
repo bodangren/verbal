@@ -36,6 +36,7 @@ import { IngestInspector, type ProbeSummary } from "../components/IngestInspecto
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
 import { StudioOverlay } from "../components/StudioOverlay";
+import { ScriptEditor } from "../components/ScriptEditor";
 import {
   advanceWords,
   clampFontSize,
@@ -1357,6 +1358,20 @@ export default function Home() {
                 />
               )}
 
+              {project !== null && (
+                <ScriptEditor
+                  script={script}
+                  words={scriptWords}
+                  readTime={formatReadTime(readTimeSeconds(scriptWords))}
+                  onScriptChange={(text) => {
+                    setScript(text);
+                    setPrompterOffset(0);
+                    setPrompterPlaying(false);
+                  }}
+                  onUseTranscript={useTranscriptAsScript}
+                  onOpenStudio={openStudio}
+                />
+              )}
             </IngestStage>
           )}
 

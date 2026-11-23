@@ -167,3 +167,6 @@ Use unit tests for beats, alignment, review schema, and the EDL. Use component t
 prompter, Studio, and review. Use server tests with a fake spawner and a fake provider for
 upload, normalize, STT, and the review API. Use the walkthrough with
 `--use-fake-device-for-media-stream` for the browser path. Never call a paid API.
+
+- The Studio is one fixed viewport: the camera fills it, the script drawer overlays it, and the page does not scroll.
+- Ingest keeps a persistent **Script** card: textarea, word count/read time, **Use Transcript**, and **Open Studio**. The Studio drawer edits the same `script.md`.

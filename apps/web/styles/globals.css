@@ -2042,7 +2042,13 @@ h2 {
   margin: 0;
 }
 
-.studio__head .button {
+.studio__head > .button:first-of-type {
+  margin-left: auto;
+}
+
+.studio__actions {
+  display: flex;
+  gap: var(--space-2);
   margin-left: auto;
 }
 
