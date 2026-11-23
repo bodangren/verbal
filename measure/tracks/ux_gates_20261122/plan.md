@@ -1,6 +1,6 @@
 # Plan: UX Gates and Design Conformance
 
-**Status:** IN PROGRESS — Phase 1 complete; baseline recorded
+**Status:** IN PROGRESS — Phase 2 complete; 6 budget failures await Shell/Transcript
 **Created:** 2026-11-22
 **Focus:** Measure the experience, then hold the design system.
 
@@ -53,30 +53,42 @@
 
 The report is `tools/e2e/ux-report.json`. Later phases must turn these numbers green.
 
+### Phase 2 result — 2026-11-23
+
+Conformance is green: five contrast pairs pass, no disabled primary keeps an
+indigo fill, headings form one h1 -> h2 -> h3 -> h4 outline, every interactive
+element has a name, focus outlines pass, and there is one polite live region.
+
+The gate still reports six failures, all owned by later UX tracks:
+
+- 9 clicks to an editable transcript (Shell and Core Flow).
+- 6 Tab stops before the first word and 3 per-word stops (Transcript as a Document).
+- 1 visible transcript line at 1440/1280 and 0 at 1024 (Shell and Transcript).
+
 ---
 
 ## Phase 2: Contrast, type, and accent
 
 ### Red
 
-- [ ] Add a failing style scan test.
+- [x] Add a failing style scan test.
       File: `apps/web/styles/globals.test.ts` (new).
       It fails on 10px sizes, gradients, `transition: all`, and colors outside the token list.
-- [ ] Extend the gate with computed contrast for removed words, the active word, and error text.
+- [x] Extend the gate with token contrast for removed words, the active word, and error text.
 
 **Targeted Red command:** `npx vitest run apps/web/styles/globals.test.ts`.
 
 ### Green
 
-- [ ] Fix the failing tokens and record each change in `DESIGN.md`.
+- [x] Fix the failing tokens and record each change in `DESIGN.md`.
       Files: `DESIGN.md`, `apps/web/styles/globals.css`.
-- [ ] Replace the 10px sizes, the gradient mark, and raw hex values with tokens.
+- [x] Replace the 10px sizes, the gradient mark, and raw hex values with tokens.
       File: `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [ ] Run the style test and the gate at three viewports.
-- [ ] Re-capture each mode and compare against the review screens.
+- [x] Run the style test and the gate at three viewports.
+- [x] Re-capture each mode and compare against the review screens.
 - [x] Commit the phase.
 
 ---

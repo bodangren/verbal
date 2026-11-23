@@ -7,6 +7,8 @@ colors:
   surface-elevated: "#2A2A2A"
   surface-overlay: "#333333"
   card: "#252525"
+  video-bg: "#000000"
+  capture-bg: "#0B0B0B"
 
   # Borders and dividers
   border: "#3D3D3D"
@@ -15,7 +17,8 @@ colors:
   # Text hierarchy
   text-primary: "#F5F5F5"
   text-secondary: "#A0A0A0"
-  text-tertiary: "#707070"
+  text-tertiary: "#909090"
+  on-primary: "#FFFFFF"
 
   # Accent - "Electric Indigo" - Distinctive but professional
   primary: "#6366F1"
@@ -23,8 +26,9 @@ colors:
   primary-focus: "#4F46E5"
 
   # Semantic colors - muted with colored borders
-  error: "#EF4444"
+  error: "#F87171"
   error-surface: "#2D1B1B"
+  error-border: "#5A2626"
   success: "#22C55E"
   success-surface: "#1A2D1F"
   pending: "#A0A0A0"
@@ -189,3 +193,20 @@ Fast and subtle. 100-200ms transitions. No bounces or playful animations. The to
 - **Don't** use soft pastel colors on dark backgrounds
 - **Don't** use emoji icons or playful iconography
 - **Don't** use excessive border-radius (max 8px, typically 4-6px)
+
+## Accessibility Corrections (2026-11-23)
+
+The UX gate measured three pairs below 4.5:1 and corrected them in the tokens
+and the rules that use them:
+
+- `text-tertiary` was `#707070` (3.10:1 on `card`). It is now `#909090`
+  (4.80:1), because hints and removed words are content, not decoration.
+- `error` was `#EF4444` (4.43:1 on `surface`). It is now `#F87171` (about
+  6:1 on both `surface` and `error-surface`), so error text is readable.
+- The active transcript word now uses `primary-focus` (`#4F46E5`) behind
+  `on-primary` (`#FFFFFF`), not `primary`, because white on `#6366F1` is
+  4.47:1.
+- Removed words use `text-secondary` (`#A0A0A0`, 5.86:1 on `card`) instead of
+  tertiary text.
+- The brand mark and capture placeholder are flat token fills; the 10px labels
+  moved to the 11px step of the scale.

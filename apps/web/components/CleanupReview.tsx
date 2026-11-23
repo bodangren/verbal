@@ -56,7 +56,7 @@ export function CleanupReview({
     <section className="cleanup" aria-label="Cleanup review">
       {audioFixes.length > 0 && (
         <div className="cleanup__audio">
-          <h2>Audio fixes</h2>
+          <h4>Audio fixes</h4>
           <ul className="cleanup__audio-list">
             {audioFixes.map((fix) => (
               <li key={fix.id} className="cleanup__audio-fix" data-kind={fix.kind}>
@@ -85,7 +85,7 @@ export function CleanupReview({
       {groups.map((group) => (
         <article className="cleanup__group" key={group.category}>
           <header className="cleanup__group-header">
-            <h2>{CATEGORY_LABEL[group.category]}</h2>
+            <h4>{CATEGORY_LABEL[group.category]}</h4>
             <label className="cleanup__toggle">
               <input
                 type="checkbox"

@@ -14,6 +14,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright-core";
+import { contrastRatio } from "./contrast.ts";
 import { checkBudgets } from "./ux-budgets.ts";
 
 const PORT = Number(process.env.UX_PORT ?? 3231);
@@ -399,6 +400,33 @@ try {
     pageErrors,
   };
 
+  const cssSource = await readFile(
+    path.join("apps", "web", "styles", "globals.css"),
+    "utf8",
+  );
+  const token = (name) =>
+    new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`).exec(cssSource)?.[1] ?? "";
+  const contrastPairs = [
+    ["removed word", token("text-secondary"), token("card")],
+    ["active word", token("on-primary"), token("primary-focus")],
+    ["error on surface", token("error"), token("surface")],
+    ["error on error-surface", token("error"), token("error-surface")],
+    ["tertiary on card", token("text-tertiary"), token("card")],
+  ];
+  report.contrast = contrastPairs.map(([name, foreground, background]) => {
+    const ratio =
+      foreground !== "" && background !== ""
+        ? contrastRatio(foreground, background)
+        : 0;
+    return {
+      name,
+      foreground,
+      background,
+      ratio: Number(ratio.toFixed(2)),
+      pass: ratio >= 4.5,
+    };
+  });
+
   const reportPath = path.join("tools", "e2e", "ux-report.json");
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
@@ -417,6 +445,9 @@ try {
     ...report.disabledPrimary.map(
       (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
     ),
+    ...report.contrast
+      .filter((pair) => !pair.pass)
+      .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
     ...pageErrors,
   ];
 

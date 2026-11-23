@@ -40,6 +40,7 @@ export function CapturePanel({
       <div className="row">
         <button
           type="button"
+          className="button"
           onClick={onStartPreview}
           disabled={!cameraAvailable || previewing}
         >

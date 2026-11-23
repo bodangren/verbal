@@ -926,6 +926,7 @@ export default function Home() {
 
   return (
     <main className="app" data-mode={mode}>
+      <h1 className="sr-only">{project === null ? "Verbal" : project.name}</h1>
       <header className="bar">
         <div className="bar__brand">
           <span className="bar__mark" aria-hidden="true">
@@ -961,7 +962,7 @@ export default function Home() {
           ))}
         </nav>
 
-        <p className="bar__save" role="status" aria-live="polite">
+        <p className="bar__save">
           {saveState}
         </p>
       </header>

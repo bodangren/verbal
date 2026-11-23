@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T08:57:14.402Z",
+  "generatedAt": "2026-11-23T09:01:24.227Z",
   "steps": {
     "editableTranscript": {
       "clicks": 9,
@@ -27,7 +27,7 @@
     "tabStopsBeforeFirstWord": 6,
     "tabStopsPerWord": 3
   },
-  "liveRegions": 2,
+  "liveRegions": 1,
   "accessibleNames": {
     "nameless": []
   },
@@ -37,6 +37,11 @@
   },
   "headings": {
     "order": [
+      {
+        "mode": "Ingest",
+        "level": 1,
+        "text": "UX gate"
+      },
       {
         "mode": "Ingest",
         "level": 2,
@@ -51,6 +56,11 @@
         "mode": "Ingest",
         "level": 3,
         "text": "Transcription"
+      },
+      {
+        "mode": "Edit",
+        "level": 1,
+        "text": "UX gate"
       },
       {
         "mode": "Edit",
@@ -69,8 +79,13 @@
       },
       {
         "mode": "Edit",
-        "level": 2,
+        "level": 4,
         "text": "Filler"
+      },
+      {
+        "mode": "Deliver",
+        "level": 1,
+        "text": "UX gate"
       },
       {
         "mode": "Deliver",
@@ -83,38 +98,45 @@
         "text": "Export"
       }
     ],
-    "violations": [
-      "Ingest: no h1",
-      "Edit: no h1",
-      "Deliver: no h1"
-    ]
+    "violations": []
   },
-  "disabledPrimary": [
+  "disabledPrimary": [],
+  "pageErrors": [],
+  "contrast": [
     {
-      "mode": "Ingest",
-      "text": "Stop preview",
-      "background": "rgb(99, 102, 241)"
+      "name": "removed word",
+      "foreground": "#a0a0a0",
+      "background": "#252525",
+      "ratio": 5.86,
+      "pass": true
     },
     {
-      "mode": "Ingest",
-      "text": "Stop recording",
-      "background": "rgb(99, 102, 241)"
+      "name": "active word",
+      "foreground": "#ffffff",
+      "background": "#4f46e5",
+      "ratio": 6.29,
+      "pass": true
     },
     {
-      "mode": "Edit",
-      "text": "Remove accepted",
-      "background": "rgb(99, 102, 241)"
+      "name": "error on surface",
+      "foreground": "#f87171",
+      "background": "#1e1e1e",
+      "ratio": 6.03,
+      "pass": true
     },
     {
-      "mode": "Deliver",
-      "text": "Generate image",
-      "background": "rgb(99, 102, 241)"
+      "name": "error on error-surface",
+      "foreground": "#f87171",
+      "background": "#2d1b1b",
+      "ratio": 5.91,
+      "pass": true
     },
     {
-      "mode": "Deliver",
-      "text": "Generate video",
-      "background": "rgb(99, 102, 241)"
+      "name": "tertiary on card",
+      "foreground": "#909090",
+      "background": "#252525",
+      "ratio": 4.8,
+      "pass": true
     }
-  ],
-  "pageErrors": []
+  ]
 }
