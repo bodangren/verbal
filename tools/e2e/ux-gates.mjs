@@ -1,0 +1,455 @@
+/**
+ * UX gate: measure the core journey and the shell.
+ *
+ * Reuses the walkthrough fixtures (fake ASR, temporary HOME, generated media)
+ * and drives the real UI. Writes `ux-report.json` and exits non-zero when a
+ * budget, an accessible name, a focus outline, a heading order or a disabled
+ * primary style fails.
+ *
+ * Run: node tools/e2e/ux-gates.mjs
+ */
+import { execFileSync, spawn } from "node:child_process";
+import { createServer } from "node:http";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { chromium } from "playwright-core";
+import { checkBudgets } from "./ux-budgets.ts";
+
+const PORT = Number(process.env.UX_PORT ?? 3231);
+const BASE = `http://127.0.0.1:${PORT}`;
+const CHROME = process.env.UX_CHROME ?? "/usr/bin/google-chrome";
+const VIEWPORTS = [
+  [1440, 900],
+  [1280, 800],
+  [1024, 700],
+];
+const PROJECT = "UX gate";
+
+if (process.env.UX_SKIP_BUILD !== "1") {
+  execFileSync("npm", ["run", "build"], { stdio: "inherit" });
+}
+
+const asrWords = [
+  { word: "hello", start: 0, end: 0.6 },
+  { word: "um", start: 0.6, end: 0.9 },
+  { word: "world", start: 0.9, end: 2 },
+];
+
+const asr = createServer((request, response) => {
+  if (request.method !== "POST" || request.url !== "/v1/audio/transcriptions") {
+    response.statusCode = 404;
+    response.end("{}");
+    return;
+  }
+
+  request.resume();
+  request.on("end", () => {
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify({
+        text: asrWords.map((word) => word.word).join(" "),
+        language: "en",
+        words: asrWords,
+      }),
+    );
+  });
+});
+
+await new Promise((resolve) => asr.listen(0, "127.0.0.1", resolve));
+const asrBaseUrl = `http://127.0.0.1:${asr.address().port}/v1`;
+
+const home = await mkdtemp(path.join(os.tmpdir(), "verbal-ux-home-"));
+const mediaDir = path.join(home, "media");
+await mkdir(mediaDir, { recursive: true });
+const clip = path.join(mediaDir, "take.mp4");
+execFileSync(
+  "ffmpeg",
+  [
+    "-y",
+    "-f", "lavfi",
+    "-i", "testsrc=size=320x180:rate=30",
+    "-f", "lavfi",
+    "-i", "sine=frequency=440",
+    "-t", "2",
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    clip,
+  ],
+  { stdio: "ignore" },
+);
+
+const serverLog = [];
+const server = spawn(process.execPath, ["dist/standalone/server.js"], {
+  cwd: path.resolve("apps/web"),
+  env: {
+    ...process.env,
+    PORT: String(PORT),
+    HOME: home,
+    OPENAI_API_KEY: "ux-fake-key",
+    OPENAI_BASE_URL: asrBaseUrl,
+  },
+  stdio: ["ignore", "pipe", "pipe"],
+});
+server.stdout.on("data", (chunk) => serverLog.push(String(chunk)));
+server.stderr.on("data", (chunk) => serverLog.push(String(chunk)));
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    try {
+      const response = await fetch(`${BASE}/api/system`);
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // Not up yet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error("server did not become ready");
+}
+
+function modeButton(page, name) {
+  return page
+    .getByRole("navigation", { name: "Workspace mode" })
+    .getByRole("button", { name, exact: true });
+}
+
+async function measureMode(page, mode) {
+  return page.evaluate((currentMode) => {
+    const root = document.documentElement;
+    const stage = document.querySelector(".stage__scroll");
+    const stageRect = stage?.getBoundingClientRect();
+    const words = [...document.querySelectorAll(".transcript__word")];
+    const visibleWords =
+      stageRect === undefined
+        ? []
+        : words.filter((word) => {
+            const rect = word.getBoundingClientRect();
+            return rect.top < stageRect.bottom && rect.bottom > stageRect.top;
+          });
+    const transcriptLines = new Set(
+      visibleWords.map((word) => Math.round(word.getBoundingClientRect().top)),
+    ).size;
+
+    const nameOf = (element) => {
+      const aria = element.getAttribute("aria-label");
+      if (aria !== null && aria.trim() !== "") {
+        return aria.trim();
+      }
+
+      const labelledBy = element.getAttribute("aria-labelledby");
+      if (labelledBy !== null) {
+        const target = document.getElementById(labelledBy);
+        if (target !== null && (target.textContent ?? "").trim() !== "") {
+          return (target.textContent ?? "").trim();
+        }
+      }
+
+      const labels =
+        element.labels === undefined
+          ? ""
+          : [...element.labels]
+              .map((label) => (label.textContent ?? "").trim())
+              .filter(Boolean)
+              .join(" ");
+      if (labels !== "") {
+        return labels;
+      }
+
+      const text = (element.textContent ?? "").trim();
+      if (text !== "") {
+        return text;
+      }
+
+      return (
+        element.getAttribute("title") ??
+        element.getAttribute("placeholder") ??
+        ""
+      ).trim();
+    };
+
+    const interactive = [
+      ...document.querySelectorAll("button,input,select,textarea,a[href]"),
+    ];
+    const nameless = interactive
+      .filter((element) => nameOf(element) === "")
+      .map((element) => ({
+        mode: currentMode,
+        tag: element.tagName.toLowerCase(),
+        text: (element.textContent ?? "").trim().slice(0, 40),
+        id: element.id,
+      }));
+
+    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map(
+      (heading) => ({
+        level: Number(heading.tagName.slice(1)),
+        text: (heading.textContent ?? "").trim().slice(0, 40),
+      }),
+    );
+
+    const disabledPrimary = [...document.querySelectorAll("button:disabled")]
+      .map((button) => ({
+        mode: currentMode,
+        text: (button.textContent ?? "").trim().slice(0, 40),
+        background: getComputedStyle(button).backgroundColor,
+      }))
+      .filter((button) => /99,\s*102,\s*241/.test(button.background));
+
+    return {
+      pageScrollX: root.scrollWidth - root.clientWidth,
+      pageScrollY: root.scrollHeight - root.clientHeight,
+      transcriptLines,
+      nameless,
+      headings,
+      disabledPrimary,
+    };
+  }, mode);
+}
+
+const browser = await chromium.launch({
+  executablePath: CHROME,
+  args: ["--no-sandbox"],
+});
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const pageErrors = [];
+page.on("pageerror", (error) => pageErrors.push(`pageerror: ${error.message}`));
+
+const counts = { clicks: 0, keys: 0 };
+const click = async (locator) => {
+  await locator.click();
+  counts.clicks += 1;
+};
+const type = async (locator, value) => {
+  await locator.fill(value);
+  counts.keys += 1;
+};
+
+try {
+  await waitForServer();
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await page.locator(".browser").waitFor({ timeout: 20000 });
+
+  // The core journey, measured from the home screen to an editable transcript.
+  await click(page.getByRole("button", { name: "+ New project here", exact: true }));
+  await type(page.getByLabel("New project name"), PROJECT);
+  await click(page.getByRole("button", { name: "Create", exact: true }));
+  await page.getByText(`Created ${PROJECT}`).waitFor();
+
+  await click(page.getByRole("button", { name: /Browse/ }));
+  const dialog = page.getByRole("dialog", { name: "Choose media file" });
+  await dialog.waitFor();
+  await click(dialog.getByTitle("Enter media"));
+  await click(dialog.getByTitle("Choose take.mp4"));
+  await click(page.getByRole("button", { name: "Import copy" }));
+  await page.getByText("Media imported").waitFor();
+
+  await click(modeButton(page, "Ingest"));
+  await click(page.getByRole("button", { name: "Transcribe media" }));
+  await page.getByText(/Transcribed 3 words/).waitFor({ timeout: 30000 });
+  await click(modeButton(page, "Edit"));
+  await page
+    .getByRole("region", { name: "Transcript editor" })
+    .getByRole("button", { name: "hello" })
+    .waitFor();
+
+  const viewports = {};
+  const nameless = [];
+  const headings = [];
+  const disabledPrimary = [];
+
+  for (const [width, height] of VIEWPORTS) {
+    await page.setViewportSize({ width, height });
+    const key = `${width}x${height}`;
+    viewports[key] = { pageScrollX: 0, pageScrollY: 0, transcriptLines: 0 };
+
+    for (const mode of ["Ingest", "Edit", "Deliver"]) {
+      await modeButton(page, mode).click();
+      await page.waitForTimeout(250);
+      const measured = await measureMode(page, mode);
+
+      viewports[key].pageScrollX = Math.max(
+        viewports[key].pageScrollX,
+        measured.pageScrollX,
+      );
+      viewports[key].pageScrollY = Math.max(
+        viewports[key].pageScrollY,
+        measured.pageScrollY,
+      );
+      if (mode === "Edit") {
+        viewports[key].transcriptLines = measured.transcriptLines;
+      }
+
+      nameless.push(...measured.nameless);
+      headings.push(...measured.headings.map((heading) => ({ mode, ...heading })));
+      disabledPrimary.push(...measured.disabledPrimary);
+    }
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await modeButton(page, "Edit").click();
+  await page.waitForTimeout(300);
+
+  const tabStopsPerWord = await page.locator(".transcript__word").count();
+
+  await modeButton(page, "Edit").focus();
+  let tabStopsBeforeFirstWord = 0;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await page.keyboard.press("Tab");
+    tabStopsBeforeFirstWord += 1;
+    const onWord = await page.evaluate(
+      () =>
+        document.activeElement !== null &&
+        document.activeElement.classList.contains("transcript__word"),
+    );
+    if (onWord) {
+      break;
+    }
+  }
+
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
+  const focusFailures = [];
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await page.keyboard.press("Tab");
+    const info = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!(element instanceof HTMLElement) || element === document.body) {
+        return null;
+      }
+
+      const style = getComputedStyle(element);
+      return {
+        tag: element.tagName.toLowerCase(),
+        text: (element.textContent ?? "").trim().slice(0, 30),
+        outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+        boxShadow: style.boxShadow,
+      };
+    });
+
+    if (
+      info !== null &&
+      info.outlineWidth < 2 &&
+      (info.boxShadow === "none" || info.boxShadow === "")
+    ) {
+      focusFailures.push(info);
+    }
+  }
+
+  const liveRegions = await page.evaluate(
+    () => document.querySelectorAll('[aria-live="polite"]').length,
+  );
+
+  const headingViolations = [];
+  const seenModes = new Set(headings.map((heading) => heading.mode));
+  for (const mode of seenModes) {
+    const modeHeadings = headings.filter((heading) => heading.mode === mode);
+    if (!modeHeadings.some((heading) => heading.level === 1)) {
+      headingViolations.push(`${mode}: no h1`);
+    }
+
+    let previous = 0;
+    for (const heading of modeHeadings) {
+      if (previous !== 0 && heading.level > previous + 1) {
+        headingViolations.push(
+          `${mode}: h${previous} to h${heading.level} (${heading.text})`,
+        );
+      }
+      previous = heading.level;
+    }
+  }
+
+  const unique = (items) => {
+    const seen = new Set();
+    return items.filter((item) => {
+      const key = JSON.stringify(item);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    steps: {
+      editableTranscript: { clicks: counts.clicks, keys: counts.keys },
+    },
+    viewports,
+    transcript: { tabStopsBeforeFirstWord, tabStopsPerWord },
+    liveRegions,
+    accessibleNames: {
+      nameless: unique(nameless),
+    },
+    focusOutlines: {
+      checked: 12,
+      failures: focusFailures,
+    },
+    headings: {
+      order: unique(headings),
+      violations: [...new Set(headingViolations)],
+    },
+    disabledPrimary: unique(disabledPrimary),
+    pageErrors,
+  };
+
+  const reportPath = path.join("tools", "e2e", "ux-report.json");
+  await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+
+  const budgets = JSON.parse(
+    await readFile(path.join("tools", "e2e", "ux-budgets.json"), "utf8"),
+  );
+  const failures = [
+    ...checkBudgets(report, budgets).map((violation) => violation.message),
+    ...report.accessibleNames.nameless.map(
+      (item) => `${item.mode}: ${item.tag} "${item.text}" has no accessible name`,
+    ),
+    ...focusFailures.map(
+      (item) => `${item.tag} "${item.text}" has no visible focus outline`,
+    ),
+    ...report.headings.violations,
+    ...report.disabledPrimary.map(
+      (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
+    ),
+    ...pageErrors,
+  ];
+
+  console.log(
+    `ux gate: clicks ${counts.clicks}, tab stops ${tabStopsBeforeFirstWord}, ` +
+      `per word ${tabStopsPerWord}, live regions ${liveRegions}`,
+  );
+  for (const [viewport, metrics] of Object.entries(viewports)) {
+    console.log(
+      `  ${viewport}: scroll ${metrics.pageScrollX}/${metrics.pageScrollY}, ` +
+        `transcript lines ${metrics.transcriptLines}`,
+    );
+  }
+
+  if (failures.length > 0) {
+    console.error(`ux gate: ${failures.length} failure(s)`);
+    for (const failure of failures) {
+      console.error(`  - ${failure}`);
+    }
+    process.exitCode = 1;
+  } else {
+    console.log("ux gate: PASS");
+  }
+  console.log(`report: ${reportPath}`);
+} catch (error) {
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  if (serverLog.length > 0) {
+    console.error("--- server log ---");
+    console.error(serverLog.join(""));
+  }
+  process.exitCode = 1;
+} finally {
+  await browser.close().catch(() => undefined);
+  server.kill("SIGTERM");
+  await new Promise((resolve) => asr.close(resolve));
+}

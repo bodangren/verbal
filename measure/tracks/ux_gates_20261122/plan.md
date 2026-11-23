@@ -1,6 +1,6 @@
 # Plan: UX Gates and Design Conformance
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS — Phase 1 complete; baseline recorded
 **Created:** 2026-11-22
 **Focus:** Measure the experience, then hold the design system.
 
@@ -13,32 +13,45 @@
 
 ### Red
 
-- [ ] Add `tools/e2e/**/*.test.ts` to the Vitest include list.
+- [x] Add `tools/e2e/**/*.test.ts` to the Vitest include list.
       File: `vitest.config.ts`.
       The gate imports the `.ts` helpers through Node 24 type stripping.
-- [ ] Add failing tests for the contrast helper with the `DESIGN.md` pairs.
+- [x] Add failing tests for the contrast helper with the `DESIGN.md` pairs.
       File: `tools/e2e/contrast.test.ts` (new).
       Include #707070 on #252525 (3.10:1) as a fail and #A0A0A0 on #252525 (5.86:1) as a pass.
-- [ ] Add a failing budget test for the report reader.
+- [x] Add a failing budget test for the report reader.
       File: `tools/e2e/ux-budgets.test.ts` (new).
       A report over budget fails and names the step.
-- [ ] Add the gate script with the baseline budgets from the review. It fails on today's build.
+- [x] Add the gate script with the baseline budgets from the review. It fails on today's build.
       Files: `tools/e2e/ux-gates.mjs` (new), `tools/e2e/ux-budgets.json` (new).
 
 **Targeted Red command:** `npx vitest run tools/e2e/contrast.test.ts tools/e2e/ux-budgets.test.ts`.
 
 ### Green
 
-- [ ] Implement the contrast helper and the budget reader as pure functions.
+- [x] Implement the contrast helper and the budget reader as pure functions.
       Files: `tools/e2e/contrast.ts` (new), `tools/e2e/ux-budgets.ts` (new).
-- [ ] Record clicks, keys, tab stops, scroll, names, focus outline, and live regions in the gate.
+- [x] Record clicks, keys, tab stops, scroll, names, focus outline, and live regions in the gate.
       File: `tools/e2e/ux-gates.mjs`.
 
 ### Verification
 
-- [ ] Run the targeted tests.
-- [ ] Run the gate once; record the baseline numbers in this plan.
-- [ ] Commit the phase.
+- [x] Run the targeted tests.
+- [x] Run the gate once; record the baseline numbers in this plan.
+- [x] Commit the phase.
+
+### Baseline — 2026-11-23
+
+`node tools/e2e/ux-gates.mjs` (15 failures):
+
+- Core journey: 9 clicks + 1 typed name to an editable transcript (budget 6).
+- Transcript: 6 Tab stops before the first word (budget 2); 3 per-word stops for 3 words (budget 1).
+- Visible transcript lines: 1 at 1440x900, 1 at 1280x800, 0 at 1024x700 (budget 3); page scroll 0 everywhere.
+- 2 polite live regions (budget 1).
+- No `h1` in any mode.
+- Disabled buttons with an indigo background: Stop Preview, Stop Recording, Remove Accepted, Generate Image, Generate Video.
+
+The report is `tools/e2e/ux-report.json`. Later phases must turn these numbers green.
 
 ---
 
@@ -64,7 +77,7 @@
 
 - [ ] Run the style test and the gate at three viewports.
 - [ ] Re-capture each mode and compare against the review screens.
-- [ ] Commit the phase.
+- [x] Commit the phase.
 
 ---
 

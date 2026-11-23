@@ -11,6 +11,7 @@ export default defineConfig({
       "packages/**/*.test.tsx",
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
+      "tools/e2e/**/*.test.ts",
     ],
     environment: "node",
     passWithNoTests: false,

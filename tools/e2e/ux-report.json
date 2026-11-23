@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-11-23T08:57:14.402Z",
+  "steps": {
+    "editableTranscript": {
+      "clicks": 9,
+      "keys": 1
+    }
+  },
+  "viewports": {
+    "1440x900": {
+      "pageScrollX": 0,
+      "pageScrollY": 0,
+      "transcriptLines": 1
+    },
+    "1280x800": {
+      "pageScrollX": 0,
+      "pageScrollY": 0,
+      "transcriptLines": 1
+    },
+    "1024x700": {
+      "pageScrollX": 0,
+      "pageScrollY": 0,
+      "transcriptLines": 0
+    }
+  },
+  "transcript": {
+    "tabStopsBeforeFirstWord": 6,
+    "tabStopsPerWord": 3
+  },
+  "liveRegions": 2,
+  "accessibleNames": {
+    "nameless": []
+  },
+  "focusOutlines": {
+    "checked": 12,
+    "failures": []
+  },
+  "headings": {
+    "order": [
+      {
+        "mode": "Ingest",
+        "level": 2,
+        "text": "Capture"
+      },
+      {
+        "mode": "Ingest",
+        "level": 3,
+        "text": "Source media"
+      },
+      {
+        "mode": "Ingest",
+        "level": 3,
+        "text": "Transcription"
+      },
+      {
+        "mode": "Edit",
+        "level": 2,
+        "text": "Edit"
+      },
+      {
+        "mode": "Edit",
+        "level": 3,
+        "text": "Transcript"
+      },
+      {
+        "mode": "Edit",
+        "level": 3,
+        "text": "Cleanup"
+      },
+      {
+        "mode": "Edit",
+        "level": 2,
+        "text": "Filler"
+      },
+      {
+        "mode": "Deliver",
+        "level": 2,
+        "text": "Storyboard"
+      },
+      {
+        "mode": "Deliver",
+        "level": 3,
+        "text": "Export"
+      }
+    ],
+    "violations": [
+      "Ingest: no h1",
+      "Edit: no h1",
+      "Deliver: no h1"
+    ]
+  },
+  "disabledPrimary": [
+    {
+      "mode": "Ingest",
+      "text": "Stop preview",
+      "background": "rgb(99, 102, 241)"
+    },
+    {
+      "mode": "Ingest",
+      "text": "Stop recording",
+      "background": "rgb(99, 102, 241)"
+    },
+    {
+      "mode": "Edit",
+      "text": "Remove accepted",
+      "background": "rgb(99, 102, 241)"
+    },
+    {
+      "mode": "Deliver",
+      "text": "Generate image",
+      "background": "rgb(99, 102, 241)"
+    },
+    {
+      "mode": "Deliver",
+      "text": "Generate video",
+      "background": "rgb(99, 102, 241)"
+    }
+  ],
+  "pageErrors": []
+}
