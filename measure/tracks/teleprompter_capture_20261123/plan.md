@@ -31,12 +31,12 @@
       Files: `packages/takes/package.json`, `packages/takes/src/index.ts`, `beats.ts`, `script.ts`.
 - [x] Add the script API and its store.
       Files: `apps/web/server/script-api.ts` (new), `apps/web/pages/api/script.ts` (new).
-- [x] Build the prompter and Studio shell; wire it into Ingest.
-      Files: `apps/web/components/Teleprompter.tsx` (new), `apps/web/components/StudioStage.tsx` (new), `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
+- [x] Build the full-screen Studio overlay (camera, prompter, script drawer) and wire it to Ingest. The inline Studio was rejected: it competed with the preview and forced scrolling.
+      Files: `apps/web/components/Teleprompter.tsx` (new), `apps/web/components/StudioOverlay.tsx` (new), `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [x] Run the targeted tests and the gate (no new page scroll or live regions).
+- [x] Run the targeted tests and the gate (no new page scroll or live regions). Verify the overlay at 1440x900: full viewport, page scroll 0/0, prompter over the camera.
 - [x] Commit the phase.
 
 ---

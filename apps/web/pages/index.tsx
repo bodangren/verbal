@@ -29,14 +29,13 @@ import {
   type Acceptance,
   type CleanupProposal,
 } from "@verbal/cleanup";
-import { CapturePanel } from "../components/CapturePanel";
 import { errorCopyFor, type ErrorCopy } from "../lib/error-copy";
 import { MediaPicker } from "../components/MediaPicker";
 import { IngestStage, type MediaState } from "../components/IngestStage";
 import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
-import { StudioStage } from "../components/StudioStage";
+import { StudioOverlay } from "../components/StudioOverlay";
 import {
   advanceWords,
   clampFontSize,
@@ -248,7 +247,7 @@ export default function Home() {
     label: "Cloud (OpenAI-compatible)",
     cloud: true,
   });
-  const [captureOpen, setCaptureOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
   const [transcribeFailure, setTranscribeFailure] = useState<string | null>(null);
   const [outputPath, setOutputPath] = useState("");
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
@@ -492,6 +491,22 @@ export default function Home() {
     setPickerOpen(true);
     // Start where the project browser is, so the last place is reused.
     void loadPickerFolder(browserPath.trim() === "" ? undefined : browserPath);
+  }
+
+  /** Opens the full-screen Studio and starts the camera when one is available. */
+  function openStudio() {
+    setStudioOpen(true);
+    requestAnimationFrame(() => {
+      if (cameraAvailable && !previewing) {
+        void startPreview();
+      }
+    });
+  }
+
+  function closeStudio() {
+    setStudioOpen(false);
+    setPrompterPlaying(false);
+    stopPreview();
   }
 
   function chooseMedia(filePath: string) {
@@ -1093,13 +1108,16 @@ export default function Home() {
 
   function record() {
     return guard(async () => {
+      // Release the preview before FFmpeg opens the camera, then leave the
+      // Studio so the job's progress is visible.
+      setStudioOpen(false);
+      stopPreview();
       const started = await postJson<JobRecord>("/api/capture", {
         projectRoot: root,
         durationSeconds: captureSeconds,
       });
       setJob(started);
       await pollJob(started.id);
-      stopPreview();
 
       try {
         setProject(await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`));
@@ -1316,7 +1334,7 @@ export default function Home() {
                   openMediaPicker();
                 }
               }}
-              onRecord={() => setCaptureOpen((open) => !open)}
+              onRecord={openStudio}
               onTranscribe={() => void transcribeMedia()}
               onRetry={() => void transcribeMedia()}
               onTranscribeSeveral={() => {
@@ -1332,34 +1350,6 @@ export default function Home() {
                 />
               )}
 
-              {project !== null && (
-                <StudioStage
-                  script={script}
-                  words={scriptWords}
-                  readTime={formatReadTime(readTimeSeconds(scriptWords))}
-                  offsetWords={prompterOffset}
-                  wpm={prompterWpm}
-                  fontSize={prompterFontSize}
-                  mirror={prompterMirror}
-                  playing={prompterPlaying}
-                  reducedMotion={reducedMotion}
-                  onScriptChange={(text) => {
-                    setScript(text);
-                    setPrompterOffset(0);
-                    setPrompterPlaying(false);
-                  }}
-                  onUseTranscript={useTranscriptAsScript}
-                  onTogglePlay={() => setPrompterPlaying((value) => !value)}
-                  onWpmChange={(value) => setPrompterWpm(clampWpm(value))}
-                  onFontSizeChange={(value) => setPrompterFontSize(clampFontSize(value))}
-                  onToggleMirror={() => setPrompterMirror((value) => !value)}
-                  onReset={() => {
-                    setPrompterOffset(0);
-                    setPrompterPlaying(false);
-                  }}
-                />
-              )}
-
               {project === null && (
                 <EmptyState
                   title="No Project Open"
@@ -1367,39 +1357,6 @@ export default function Home() {
                 />
               )}
 
-              {project !== null && captureOpen && (
-                <div className="card">
-                  <div className="capture__frame">
-                    <video
-                      ref={videoRef}
-                      className="capture__video"
-                      muted
-                      playsInline
-                      aria-label="Camera preview"
-                    />
-                    {!previewing && (
-                      <div className="capture__placeholder">
-                        <span className="capture__placeholder-mark" aria-hidden="true">
-                          ◉
-                        </span>
-                        <span>Camera preview is off</span>
-                      </div>
-                    )}
-                  </div>
-                  <CapturePanel
-                    cameraAvailable={cameraAvailable}
-                    keyQuality={keyQuality}
-                    previewing={previewing}
-                    recording={captureRunning}
-                    durationSeconds={captureSeconds}
-                    onStartPreview={startPreview}
-                    onStopPreview={stopPreview}
-                    onDurationChange={setCaptureSeconds}
-                    onRecord={record}
-                    onStop={stopRecording}
-                  />
-                </div>
-              )}
             </IngestStage>
           )}
 
@@ -2011,6 +1968,47 @@ export default function Home() {
           </aside>
         )}
       </div>
+
+      {studioOpen && (
+        <StudioOverlay
+          projectName={project?.name ?? null}
+          script={script}
+          words={scriptWords}
+          readTime={formatReadTime(readTimeSeconds(scriptWords))}
+          offsetWords={prompterOffset}
+          wpm={prompterWpm}
+          fontSize={prompterFontSize}
+          mirror={prompterMirror}
+          playing={prompterPlaying}
+          reducedMotion={reducedMotion}
+          videoRef={videoRef}
+          previewing={previewing}
+          cameraAvailable={cameraAvailable}
+          keyQuality={keyQuality}
+          recording={captureRunning}
+          durationSeconds={captureSeconds}
+          onClose={closeStudio}
+          onScriptChange={(text) => {
+            setScript(text);
+            setPrompterOffset(0);
+            setPrompterPlaying(false);
+          }}
+          onUseTranscript={useTranscriptAsScript}
+          onTogglePlay={() => setPrompterPlaying((value) => !value)}
+          onWpmChange={(value) => setPrompterWpm(clampWpm(value))}
+          onFontSizeChange={(value) => setPrompterFontSize(clampFontSize(value))}
+          onToggleMirror={() => setPrompterMirror((value) => !value)}
+          onReset={() => {
+            setPrompterOffset(0);
+            setPrompterPlaying(false);
+          }}
+          onStartPreview={() => void startPreview()}
+          onStopPreview={stopPreview}
+          onDurationChange={setCaptureSeconds}
+          onRecord={record}
+          onStopRecording={stopRecording}
+        />
+      )}
 
       {pickerOpen && (
         <MediaPicker

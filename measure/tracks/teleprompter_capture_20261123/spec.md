@@ -50,7 +50,7 @@ re-recording one flubbed line. See `apps/web/server/capture-api.ts`,
 
 ### FR1: Studio capture
 
-- The Ingest **Record** action opens a Studio card: live preview, prompter, script editor.
+- The Ingest **Record** action opens a full-screen Studio overlay: the live camera fills the window, the prompter floats over the top center, and the script lives in a right-side drawer.
 - `getUserMedia` feeds both the preview and the recorder. Camera and microphone are chosen
   from `enumerateDevices`; the choice persists in localStorage.
 - MediaRecorder MIME negotiation: `video/webm;codecs=vp9,opus`, then `vp8,opus`, then
