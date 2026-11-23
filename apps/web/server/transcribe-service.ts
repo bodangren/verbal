@@ -117,6 +117,11 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
      * The batch runner awaits each project, so it needs a call that settles
      * rather than a job record to poll.
      */
+    /** Builds the provider the environment selects, for a non-project file. */
+    provider(): TranscriptionProvider {
+      return providerFor(cloudConfig());
+    },
+
     async transcribeNow(root: string): Promise<number> {
       const provider = providerFor(cloudConfig());
 

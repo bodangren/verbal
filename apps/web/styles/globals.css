@@ -2260,3 +2260,72 @@ h2 {
   justify-content: space-between;
   gap: var(--space-2);
 }
+
+/* Take review: script beats against the take's coverage. */
+.take-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.take-review__video {
+  width: 100%;
+  border-radius: var(--rounded-md);
+  background: var(--video-bg);
+}
+
+.take-review__beats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.take-review__beat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+}
+
+.take-review__beat[data-status="bungled"] {
+  border-color: var(--error-border);
+}
+
+.take-review__seek {
+  flex: 1 1 auto;
+  display: flex;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.take-review__time {
+  color: var(--text-secondary);
+  font-family: var(--mono);
+}
+
+.take-review__text {
+  color: var(--text-primary);
+}
+
+.take-review__status {
+  font-weight: 600;
+}
+
+.take-review__beat[data-status="good"] .take-review__status {
+  color: var(--success);
+}
+
+.take-review__beat[data-status="bungled"] .take-review__status,
+.take-review__beat[data-status="skipped"] .take-review__status {
+  color: var(--error);
+}

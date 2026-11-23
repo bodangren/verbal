@@ -43,7 +43,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Webcam Recording with Teleprompter** [created: 2026-11-23]
   *Focus: Record the webcam from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.*
-  *Status: In progress — Phases 1–2 complete. Ingest keeps a persistent Script card; Open Studio is a full-screen overlay with the camera filling the window, the prompter over the top center, Record/Stop with a countdown, device selects, and a Takes list. Browser takes upload as base64 JSON, normalize to MP4, and become the project media. Page scroll is 0/0 at 1440x900. Phase 3 alignment is next.*
+  *Status: In progress — Phases 1–3 complete. Ingest keeps a persistent Script card; Open Studio is a full-screen overlay with camera, prompter, Record/Stop, devices, and takes. Browser takes normalize to MP4; /api/take-transcript words them; the aligner marks beats Good/Bungled/Skipped/Improvised, and TakeReview shows coverage, source times, overrides, and Reread. Page scroll is 0/0 at 1440x900. Phase 4 LLM review, reread capture, and the EDL are next.*
   *Link: [./tracks/teleprompter_capture_20261123](./tracks/teleprompter_capture_20261123/)*
 
 ### Block 2 — Security and integrity (secondary)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { splitBeats } from "@verbal/takes";
+import { splitBeats, type BeatStatus, type TakeAlignment } from "@verbal/takes";
+import { TakeReview } from "./TakeReview";
 import { Teleprompter } from "./Teleprompter";
 
 export type StudioTake = {
@@ -48,6 +49,13 @@ export type StudioOverlayProps = {
   dimmedBeatIds?: readonly string[];
   videoRef: RefObject<HTMLVideoElement | null>;
   capture: StudioCapture;
+  review: { takeId: string; alignment: TakeAlignment } | null;
+  reviewing: boolean;
+  takeUrl?: string;
+  onReview: (takeId: string) => void;
+  onReread: (beatId: string) => void;
+  onStatusChange: (beatId: string, status: BeatStatus) => void;
+  onSeek: (seconds: number) => void;
   onClose: () => void;
   onScriptChange: (text: string) => void;
   onUseTranscript: () => void;
@@ -82,6 +90,13 @@ export function StudioOverlay({
   dimmedBeatIds,
   videoRef,
   capture,
+  review,
+  reviewing,
+  takeUrl,
+  onReview,
+  onReread,
+  onStatusChange,
+  onSeek,
   onClose,
   onScriptChange,
   onUseTranscript,
@@ -278,11 +293,33 @@ export function StudioOverlay({
                   <li key={take.id}>
                     <span>{take.fileName}</span>
                     <span className="muted">{formatElapsed(take.durationSeconds)}</span>
+                    <button
+                      type="button"
+                      className="button button--ghost"
+                      onClick={() => onReview(take.id)}
+                      disabled={reviewing}
+                    >
+                      {reviewing ? "Reviewing…" : "Review"}
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </details>
+
+          {review !== null && (
+            <details className="disclosure" open>
+              <summary>Review</summary>
+              <TakeReview
+                beats={splitBeats(script)}
+                alignment={review.alignment}
+                takeUrl={takeUrl}
+                onReread={onReread}
+                onStatusChange={onStatusChange}
+                onSeek={onSeek}
+              />
+            </details>
+          )}
         </aside>
       )}
     </div>

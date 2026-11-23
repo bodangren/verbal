@@ -13,6 +13,7 @@ const files = [
   "apps/web/components/BatchDialog.tsx",
   "apps/web/components/StudioOverlay.tsx",
   "apps/web/components/ScriptEditor.tsx",
+  "apps/web/components/TakeReview.tsx",
   "apps/web/components/Teleprompter.tsx",
 ];
 
@@ -82,6 +83,13 @@ const titleCase = [
   "Capture Settings",
   "Takes",
   "Recording",
+  "Take Review",
+  "Review",
+  "Reread",
+  "Good",
+  "Bungled",
+  "Skipped",
+  "Improvised",
   "Export Storyboard",
   "New Project Here",
   "Audio Fixes",

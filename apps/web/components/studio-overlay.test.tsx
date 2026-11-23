@@ -43,6 +43,13 @@ function setup(overrides: Partial<StudioOverlayProps> = {}) {
     playing: false,
     videoRef: { current: null },
     capture: capture(),
+    review: null,
+    reviewing: false,
+    takeUrl: "/api/media/file?root=/p",
+    onReview: vi.fn(),
+    onReread: vi.fn(),
+    onStatusChange: vi.fn(),
+    onSeek: vi.fn(),
     onClose: vi.fn(),
     onScriptChange: vi.fn(),
     onUseTranscript: vi.fn(),
@@ -146,5 +153,8 @@ describe("StudioOverlay", () => {
 
     expect(screen.getByText("take-1.mp4")).toBeTruthy();
     expect(screen.getByText("1:05")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
+    expect(props.onReview).toHaveBeenCalledWith("take-1");
   });
 });

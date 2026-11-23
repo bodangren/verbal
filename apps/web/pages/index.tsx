@@ -13,7 +13,15 @@ import {
   type StoryboardDocument,
   type StoryboardPatch,
 } from "@verbal/storyboard";
-import { countWords, formatReadTime, readTimeSeconds } from "@verbal/takes";
+import {
+  alignTake,
+  countWords,
+  formatReadTime,
+  readTimeSeconds,
+  splitBeats,
+  type BeatStatus,
+  type TakeAlignment,
+} from "@verbal/takes";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import type { MediaInfo } from "@verbal/media";
 import {
@@ -238,6 +246,7 @@ export default function Home() {
   const [prompterFontSize, setPrompterFontSize] = useState(DEFAULT_FONT);
   const [prompterMirror, setPrompterMirror] = useState(false);
   const [prompterPlaying, setPrompterPlaying] = useState(false);
+  const scriptBeats = splitBeats(script);
 
   const [browserPath, setBrowserPath] = useState("");
   const [browserParent, setBrowserParent] = useState<string | null>(null);
@@ -298,6 +307,11 @@ export default function Home() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [takes, setTakes] = useState<StudioTake[]>([]);
+  const [review, setReview] = useState<{
+    takeId: string;
+    alignment: TakeAlignment;
+  } | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [cameras, setCameras] = useState<StudioDevice[]>([]);
   const [microphones, setMicrophones] = useState<StudioDevice[]>([]);
   const [cameraId, setCameraId] = useState<string | null>(null);
@@ -1273,6 +1287,55 @@ export default function Home() {
     });
   }
 
+  function reviewTake(takeId: string) {
+    return guard(async () => {
+      setReviewing(true);
+      const started = await postJson<JobRecord>("/api/take-transcript", { root, takeId });
+      setJob(started);
+
+      const finished = await pollJob(started.id);
+      if (finished.status !== "done") {
+        throw new Error(finished.error ?? `transcribe ${finished.status}`);
+      }
+
+      const saved = await request<{
+        words: { text: string; start: number; end: number }[];
+      }>(
+        `/api/take-transcript?root=${encodeURIComponent(root)}&takeId=${encodeURIComponent(takeId)}`,
+      );
+      setReview({ takeId, alignment: alignTake(scriptBeats, saved.words) });
+    }).finally(() => setReviewing(false));
+  }
+
+  function rereadBeat(beatId: string) {
+    const beatIndex = scriptBeats.findIndex((beat) => beat.id === beatId);
+    const offset = scriptBeats
+      .slice(0, Math.max(0, beatIndex))
+      .reduce((sum, beat) => sum + beat.wordCount, 0);
+    setPrompterOffset(offset);
+    setPrompterPlaying(true);
+    setMessage(`Reread from ${beatId}`);
+  }
+
+  function overrideReviewStatus(beatId: string, status: BeatStatus) {
+    setReview((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            alignment: {
+              beats: current.alignment.beats.map((beat) =>
+                beat.beatId === beatId ? { ...beat, status } : beat,
+              ),
+            },
+          },
+    );
+  }
+
+  function seekReview(seconds: number) {
+    setMessage(`Take at ${seconds.toFixed(1)}s`);
+  }
+
   /** Export is always one click away: open Deliver and focus its panel. */
   function openExport() {
     setMode("deliver");
@@ -2143,6 +2206,13 @@ export default function Home() {
             onCameraChange: changeCamera,
             onMicrophoneChange: changeMicrophone,
           }}
+          review={review}
+          reviewing={reviewing}
+          takeUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
+          onReview={(takeId) => void reviewTake(takeId)}
+          onReread={rereadBeat}
+          onStatusChange={overrideReviewStatus}
+          onSeek={seekReview}
           onClose={closeStudio}
           onScriptChange={(text) => {
             setScript(text);

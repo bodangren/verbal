@@ -19,6 +19,16 @@ export function takeFilePath(root: string, take: Pick<Take, "fileName">): string
   return path.join(root, TAKES_DIR, take.fileName);
 }
 
+/** The normalized MP4 for a take id. */
+export function takeMediaPath(root: string, takeId: string): string {
+  return path.join(root, TAKES_DIR, `${takeId}.mp4`);
+}
+
+/** The word-timestamped transcript for a take id. */
+export function takeTranscriptPath(root: string, takeId: string): string {
+  return path.join(root, TAKES_DIR, `${takeId}.transcript.json`);
+}
+
 function isNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&

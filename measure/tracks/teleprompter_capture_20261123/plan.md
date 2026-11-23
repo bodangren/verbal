@@ -1,6 +1,6 @@
 # Plan: Webcam Recording with Teleprompter
 
-**Status:** IN PROGRESS — Phase 2 complete; Phase 3 next
+**Status:** IN PROGRESS — Phase 3 complete; Phase 4 next
 **Created:** 2026-11-23
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
@@ -80,13 +80,13 @@
 
 ### Red
 
-- [ ] Add failing pure tests for script alignment.
+- [x] Add failing pure tests for script alignment.
       File: `packages/takes/src/align.test.ts` (new).
       Cover normalization, Needleman-Wunsch, per-beat coverage, source ranges, confidence, skipped and improvised beats.
-- [ ] Add failing server tests for take transcription.
+- [x] Add failing server tests for take transcription.
       File: `apps/web/server/take-transcript.test.ts` (new).
       Cover provider injection, word timestamps, storage, and local versus cloud selection.
-- [ ] Add failing component tests for the take review.
+- [x] Add failing component tests for the take review.
       File: `apps/web/components/take-review.test.tsx` (new).
       Cover status chips, seek to a beat, manual override, and no LLM call.
 
@@ -94,17 +94,17 @@
 
 ### Green
 
-- [ ] Implement alignment and per-beat status.
+- [x] Implement alignment and per-beat status.
       File: `packages/takes/src/align.ts` (new).
-- [ ] Implement take transcription and its API.
+- [x] Implement take transcription and its API.
       Files: `apps/web/server/take-transcript.ts` (new), `apps/web/pages/api/take-transcript.ts` (new).
-- [ ] Build the take review surface.
+- [x] Build the take review surface.
       Files: `apps/web/components/TakeReview.tsx` (new), `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [ ] Run the targeted tests against fixture transcribes.
-- [ ] Commit the phase.
+- [x] Run the targeted tests against fixture transcribes.
+- [x] Commit the phase.
 
 ---
 
