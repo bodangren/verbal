@@ -192,7 +192,15 @@ try {
     console.log("fixture: ffmpeg unavailable, playback checks skipped");
   }
 
-  browser = await chromium.launch({ executablePath: CHROME, headless: true });
+  browser = await chromium.launch({
+    executablePath: CHROME,
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+    ],
+  });
   const page = await browser.newPage();
 
   const openProject = async (name) => {
@@ -718,6 +726,20 @@ try {
   await page.getByRole("button", { name: "Open", exact: true }).click();
   await page.getByText("Opened Take One").waitFor();
   console.log("browser: created and opened a project in the served folder");
+
+  // Studio: record a take with the fake camera.
+  await page.getByRole("button", { name: "Ingest", exact: true }).click();
+  await page.getByRole("button", { name: "Record", exact: true }).click();
+  const studio = page.getByRole("dialog", { name: "Studio" });
+  await studio.waitFor();
+  await studio.getByRole("button", { name: "Record", exact: true }).click();
+  const stopTake = studio.getByRole("button", { name: "Stop", exact: true });
+  await stopTake.waitFor({ timeout: 12000 });
+  await page.waitForTimeout(1000);
+  await stopTake.click();
+  await page.getByText("Take saved").waitFor({ timeout: 60000 });
+  await studio.getByRole("button", { name: "Close", exact: true }).click();
+  console.log("studio: recorded a take with the fake camera");
 
   assert(errors.length === 0, `browser errors:\n${errors.join("\n")}`);
   console.log("browser: no console or page errors");

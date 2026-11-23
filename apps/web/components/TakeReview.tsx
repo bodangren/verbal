@@ -28,6 +28,8 @@ export type TakeReviewProps = {
   llm?: TakeReviewLlm;
   cut?: { ranges: number; durationSeconds: number; building: boolean };
   onBuildCut?: () => void;
+  onRenderCut?: () => void;
+  rendering?: boolean;
 };
 
 const STATUS_LABELS: Record<BeatStatus, string> = {
@@ -61,6 +63,8 @@ export function TakeReview({
   llm,
   cut,
   onBuildCut,
+  onRenderCut,
+  rendering,
 }: TakeReviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -207,6 +211,16 @@ export function TakeReview({
               {cut.ranges} {cut.ranges === 1 ? "range" : "ranges"} ·{" "}
               {formatTime(cut.durationSeconds)}
             </span>
+          )}
+          {onRenderCut !== undefined && (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={onRenderCut}
+              disabled={rendering === true}
+            >
+              {rendering === true ? "Rendering…" : "Render Cut"}
+            </button>
           )}
         </div>
       )}

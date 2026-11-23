@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { splitBeats, type BeatStatus, type TakeAlignment } from "@verbal/takes";
 import { TakeReview, type TakeReviewLlm } from "./TakeReview";
+import { PaneAlert } from "./PaneAlert";
 import { Teleprompter } from "./Teleprompter";
 
 export type StudioTake = {
@@ -59,6 +60,10 @@ export type StudioOverlayProps = {
   onSeek: (seconds: number) => void;
   cut?: { ranges: number; durationSeconds: number; building: boolean };
   onBuildCut?: () => void;
+  onRenderCut?: () => void;
+  rendering?: boolean;
+  error?: { message: string; detail: string } | null;
+  onDismissError?: () => void;
   onClose: () => void;
   onScriptChange: (text: string) => void;
   onUseTranscript: () => void;
@@ -103,6 +108,10 @@ export function StudioOverlay({
   onSeek,
   cut,
   onBuildCut,
+  onRenderCut,
+  rendering,
+  error,
+  onDismissError,
   onClose,
   onScriptChange,
   onUseTranscript,
@@ -183,6 +192,16 @@ export function StudioOverlay({
           Close
         </button>
       </div>
+
+      {error !== undefined && error !== null && (
+        <div className="studio-overlay__alert">
+          <PaneAlert
+            message={error.message}
+            detail={error.detail}
+            onDismiss={onDismissError ?? (() => undefined)}
+          />
+        </div>
+      )}
 
       <div className="studio-overlay__prompter">
         <Teleprompter
@@ -326,6 +345,8 @@ export function StudioOverlay({
                 llm={reviewLlm}
                 cut={cut}
                 onBuildCut={onBuildCut}
+                onRenderCut={onRenderCut}
+                rendering={rendering}
               />
             </details>
           )}

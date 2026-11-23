@@ -1,18 +1,25 @@
+import { promises as nodeFs } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { nodeFileSystem } from "@verbal/core";
+import path from "node:path";
+import { nodeFileSystem, openProject, saveProject } from "@verbal/core";
 import { failure } from "../../server/api-errors";
 import { buildTakeEdl, edlDuration } from "../../server/assembly";
+import { runAssemblyJob } from "../../server/assembly-job";
+import { spawnCapture } from "../../server/capture-spawn";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
+import { getJobRegistry } from "../../server/registry";
 import { createScriptApi } from "../../server/script-api";
 import { normalizeTakeId } from "../../server/take-api";
+import { takeMediaPath } from "../../server/take-store";
 import { readTakeTranscript } from "../../server/take-transcript";
 import { asRecord, requireAbsolutePath } from "../../server/validation";
 
 /**
- * Builds the edit decision list for one take.
+ * Builds the EDL for one take, and optionally renders it.
  *
- * This is the cut plan; rendering the EDL to a file is the export step. The
- * response is small, so the review UI can show the kept ranges immediately.
+ * `render: true` cuts every kept range and concatenates the segments. The
+ * assembled MP4 becomes the project media, so the player and export see the
+ * cut; without `render`, the response is just the range plan.
  */
 export default async function handler(
   request: IncomingMessage,
@@ -44,10 +51,56 @@ export default async function handler(
     );
     const edl = buildTakeEdl(script, transcript, takeId, durationSeconds);
 
-    sendJson(response, {
-      status: 200,
-      body: { ranges: edl.ranges, durationSeconds: edlDuration(edl.ranges) },
-    });
+    if (body.render !== true) {
+      sendJson(response, {
+        status: 200,
+        body: { ranges: edl.ranges, durationSeconds: edlDuration(edl.ranges) },
+      });
+      return;
+    }
+
+    if (edl.ranges.length === 0) {
+      sendJson(response, { status: 400, body: { error: "nothing to cut" } });
+      return;
+    }
+
+    const registry = await getJobRegistry();
+    const job = await registry.create("capture");
+    const fileName = `assembled-${job.id}.mp4`;
+    const assets = path.join(root, "assets");
+    await nodeFs.mkdir(assets, { recursive: true });
+    const outputPath = path.join(assets, fileName);
+
+    void runAssemblyJob(
+      {
+        registry,
+        spawn: spawnCapture,
+        mkdir: async (target) => {
+          await nodeFs.mkdir(target, { recursive: true });
+        },
+        writeFile: (target, data) => nodeFs.writeFile(target, data),
+        unlink: (target) => nodeFs.unlink(target),
+      },
+      {
+        jobId: job.id,
+        ranges: edl.ranges,
+        takePath: takeMediaPath(root, takeId),
+        outputPath,
+        workDir: path.join(root, "takes", `.assembly-${job.id}`),
+        width: 1280,
+        height: 720,
+        fps: 30,
+        onOutput: async () => {
+          const project = await openProject(nodeFileSystem, root);
+          await saveProject(nodeFileSystem, root, {
+            ...project,
+            media: { assetPath: `assets/${fileName}` },
+          });
+        },
+      },
+    );
+
+    sendJson(response, { status: 202, body: job });
   } catch (error) {
     sendJson(response, failure(error));
   }

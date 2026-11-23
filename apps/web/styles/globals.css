@@ -2193,7 +2193,7 @@ h2 {
 
 .studio-overlay__script {
   position: absolute;
-  top: 0;
+  top: 60px;
   right: 0;
   bottom: 0;
   z-index: 5;
@@ -2358,4 +2358,13 @@ h2 {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.studio-overlay__alert {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  z-index: 6;
+  width: min(640px, 92vw);
+  transform: translateX(-50%);
 }

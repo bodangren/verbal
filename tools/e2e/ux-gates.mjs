@@ -213,7 +213,11 @@ async function measureMode(page, mode) {
 
 const browser = await chromium.launch({
   executablePath: CHROME,
-  args: ["--no-sandbox"],
+  args: [
+    "--no-sandbox",
+    "--use-fake-ui-for-media-stream",
+    "--use-fake-device-for-media-stream",
+  ],
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const pageErrors = [];
@@ -348,6 +352,58 @@ try {
     () => document.querySelectorAll('[aria-live="polite"], [role="status"]').length,
   );
 
+  // The Studio is one full-screen overlay reached in one click from Ingest.
+  const studio = {
+    box: { width: 0, height: 0 },
+    scrollX: 0,
+    scrollY: 0,
+    liveRegions: 0,
+    prompterHidden: null,
+  };
+  const studioFailures = [];
+  try {
+    await modeButton(page, "Ingest").click();
+    await page.getByRole("button", { name: "Record", exact: true }).click();
+    const studioDialog = page.getByRole("dialog", { name: "Studio" });
+    await studioDialog.waitFor({ timeout: 10000 });
+    const box = await studioDialog.boundingBox();
+    studio.box = { width: box?.width ?? 0, height: box?.height ?? 0 };
+    studio.scrollX = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    studio.scrollY = await page.evaluate(
+      () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    );
+    studio.liveRegions = await page.evaluate(
+      () => document.querySelectorAll('[aria-live="polite"], [role="status"]').length,
+    );
+    studio.prompterHidden = await page
+      .getByTestId("prompter-viewport")
+      .getAttribute("aria-hidden");
+
+    if (studio.box.width < 1400 || studio.box.height < 800) {
+      studioFailures.push(
+        `studio: dialog is ${studio.box.width}x${studio.box.height}, not the viewport`,
+      );
+    }
+    if (studio.scrollX !== 0 || studio.scrollY !== 0) {
+      studioFailures.push(`studio: page scroll ${studio.scrollX}/${studio.scrollY}`);
+    }
+    if (studio.liveRegions !== 1) {
+      studioFailures.push(`studio: ${studio.liveRegions} live regions`);
+    }
+    if (studio.prompterHidden !== "true") {
+      studioFailures.push("studio: prompter is not aria-hidden");
+    }
+
+    await studioDialog.getByRole("button", { name: "Close", exact: true }).click();
+    await studioDialog.waitFor({ state: "detached" });
+  } catch (error) {
+    studioFailures.push(
+      `studio: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
   const headingViolations = [];
   const seenModes = new Set(headings.map((heading) => heading.mode));
   for (const mode of seenModes) {
@@ -387,6 +443,7 @@ try {
     viewports,
     transcript: { tabStopsBeforeFirstWord, tabStopsPerWord },
     liveRegions,
+    studio,
     accessibleNames: {
       nameless: unique(nameless),
     },
@@ -450,6 +507,7 @@ try {
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
+    ...studioFailures,
     ...pageErrors,
   ];
 

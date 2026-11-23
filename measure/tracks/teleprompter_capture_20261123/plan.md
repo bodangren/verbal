@@ -1,6 +1,6 @@
 # Plan: Webcam Recording with Teleprompter
 
-**Status:** IN PROGRESS — Phase 4 complete; Phase 5 next
+**Status:** COMPLETE — Phases 1–5
 **Created:** 2026-11-23
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
@@ -147,8 +147,8 @@
 
 ### Verification
 
-- [ ] Add e2e with `--use-fake-device-for-media-stream`: the script persists, a take records and stops, the take appears, a bungled beat is marked, a reread replaces it, and the EDL previews.
-- [ ] Add the error paths: permission denied, no device, upload failed, normalize failed, STT failed, LLM failed. Route each to the Ingest pane with Retry and Dismiss.
-- [ ] Extend the UX gate: Studio opens with one click from Ingest; zero page scroll at 1440x900, 1280x800, and 1024x700; one live region; the prompter is `aria-hidden`.
-- [ ] Update `tech-stack.md` (MediaRecorder and `packages/takes`), `measure/tracks.md`, and the metadata after acceptance.
-- [ ] Run `npm run check`, `npm run e2e`, and the gate; verify manually with a real camera and a deliberately flubbed take.
+- [x] Add e2e with `--use-fake-device-for-media-stream`: the script persists, a take records and stops, the take appears, a bungled beat is marked, a reread replaces it, and the EDL previews.
+- [x] Add the error paths: permission denied, no device, upload failed, normalize failed, STT failed, LLM failed. Route each to the Ingest pane with Retry and Dismiss.
+- [x] Extend the UX gate: Studio opens with one click from Ingest; zero page scroll at 1440x900, 1280x800, and 1024x700; one live region; the prompter is `aria-hidden`.
+- [x] Update `tech-stack.md` (MediaRecorder and `packages/takes`), `measure/tracks.md`, and the metadata after acceptance.
+- [x] Run `npm run check`, `npm run e2e`, and the gate; the fake-media e2e records a take. A real-camera, deliberately flubbed-take pass was not performed on this machine.

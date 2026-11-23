@@ -114,11 +114,15 @@ describe("TakeReview", () => {
     const props = setup({
       cut: { ranges: 2, durationSeconds: 2.9, building: false },
       onBuildCut: vi.fn(),
+      onRenderCut: vi.fn(),
+      rendering: false,
     });
 
     expect(screen.getByText(/2 ranges/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Build Cut" }));
     expect(props.onBuildCut).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Render Cut" }));
+    expect(props.onRenderCut).toHaveBeenCalledTimes(1);
   });
 
   it("lets the status be overridden", () => {

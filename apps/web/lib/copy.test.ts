@@ -97,6 +97,8 @@ const titleCase = [
   "Build Cut",
   "Reviewing…",
   "Building…",
+  "Render Cut",
+  "Rendering…",
   "Export Storyboard",
   "New Project Here",
   "Audio Fixes",

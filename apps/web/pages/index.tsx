@@ -327,6 +327,7 @@ export default function Home() {
     durationSeconds: number;
     building: boolean;
   } | null>(null);
+  const [rendering, setRendering] = useState(false);
   const [cameras, setCameras] = useState<StudioDevice[]>([]);
   const [microphones, setMicrophones] = useState<StudioDevice[]>([]);
   const [cameraId, setCameraId] = useState<string | null>(null);
@@ -595,6 +596,7 @@ export default function Home() {
     setRereadTarget(null);
     setLlmReview(null);
     setCut(null);
+    setRendering(false);
     stopPreview();
   }
 
@@ -1303,6 +1305,8 @@ export default function Home() {
       setRereadTarget(null);
       setLlmReview(null);
       setCut(null);
+    setRendering(false);
+      setRendering(false);
       setTakeState("idle");
       setElapsedSeconds(0);
     });
@@ -1328,6 +1332,8 @@ export default function Home() {
       setLlmReview(null);
       setRereadTarget(null);
       setCut(null);
+    setRendering(false);
+      setRendering(false);
     }).finally(() => setReviewing(false));
   }
 
@@ -1475,6 +1481,28 @@ export default function Home() {
         current === null ? current : { ...current, building: false },
       );
     });
+  }
+
+  function renderCut(takeId: string) {
+    return guard(async () => {
+      setRendering(true);
+      const started = await postJson<JobRecord>("/api/assembly", {
+        root,
+        takeId,
+        render: true,
+      });
+      setJob(started);
+      const finished = await pollJob(started.id);
+      if (finished.status !== "done") {
+        throw new Error(finished.error ?? `render ${finished.status}`);
+      }
+      setProject(
+        await request<ProjectDocument>(
+          `/api/projects?root=${encodeURIComponent(root)}`,
+        ),
+      );
+      setMessage("Cut rendered");
+    }).finally(() => setRendering(false));
   }
 
   /** Export is always one click away: open Deliver and focus its panel. */
@@ -2387,6 +2415,14 @@ export default function Home() {
               void buildCut(review.takeId);
             }
           }}
+          rendering={rendering}
+          onRenderCut={() => {
+            if (review !== null) {
+              void renderCut(review.takeId);
+            }
+          }}
+          error={paneError?.copy ?? null}
+          onDismissError={() => setPaneError(null)}
           takeUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
           onReview={(takeId) => void reviewTake(takeId)}
           onReread={rereadBeat}

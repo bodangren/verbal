@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T23:42:35.352Z",
+  "generatedAt": "2026-11-23T23:48:38.458Z",
   "steps": {
     "editableTranscript": {
       "clicks": 5,
@@ -28,6 +28,16 @@
     "tabStopsPerWord": 200
   },
   "liveRegions": 1,
+  "studio": {
+    "box": {
+      "width": 1440,
+      "height": 900
+    },
+    "scrollX": 0,
+    "scrollY": 0,
+    "liveRegions": 1,
+    "prompterHidden": "true"
+  },
   "accessibleNames": {
     "nameless": []
   },
