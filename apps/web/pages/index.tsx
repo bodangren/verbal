@@ -16,7 +16,6 @@ import {
 import { countWords, formatReadTime, readTimeSeconds } from "@verbal/takes";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import type { MediaInfo } from "@verbal/media";
-import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
 import {
   DEFAULT_PRESET_ID,
   EXPORT_PRESETS,
@@ -35,7 +34,12 @@ import { IngestStage, type MediaState } from "../components/IngestStage";
 import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
-import { StudioOverlay } from "../components/StudioOverlay";
+import {
+  StudioOverlay,
+  type StudioDevice,
+  type StudioTake,
+} from "../components/StudioOverlay";
+import { CaptureRecorder, type MediaRecorderLike } from "../lib/capture-recorder";
 import { ScriptEditor } from "../components/ScriptEditor";
 import {
   advanceWords,
@@ -62,6 +66,23 @@ const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 const BROWSER_PATH_KEY = "verbal.browser.path";
 
 /** A sensible export destination inside the project, so a path is never typed. */
+/** FileReader avoids building a huge binary string by hand. */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      // The MIME type can contain a comma ("codecs=vp9,opus"), so split on the
+      // ;base64, marker rather than the first comma.
+      const marker = ";base64,";
+      const index = result.indexOf(marker);
+      resolve(index === -1 ? "" : result.slice(index + marker.length));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("could not read the recording"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function defaultOutputPath(
   projectRoot: string,
   projectName: string,
@@ -271,8 +292,19 @@ export default function Home() {
   } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  const [keyQuality, setKeyQuality] = useState<KeyQuality | null>(null);
-  const [captureSeconds, setCaptureSeconds] = useState(10);
+  const [takeState, setTakeState] = useState<
+    "idle" | "countdown" | "recording" | "uploading"
+  >("idle");
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [takes, setTakes] = useState<StudioTake[]>([]);
+  const [cameras, setCameras] = useState<StudioDevice[]>([]);
+  const [microphones, setMicrophones] = useState<StudioDevice[]>([]);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [microphoneId, setMicrophoneId] = useState<string | null>(null);
+  const recorderRef = useRef<CaptureRecorder | null>(null);
+  const takeStartRef = useRef<number | null>(null);
+  const takeCancelledRef = useRef(false);
   const [imageSceneId, setImageSceneId] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageCost, setImageCost] = useState<number | null>(null);
@@ -352,6 +384,15 @@ export default function Home() {
     } catch {
       setScript("");
       setScriptSaved("");
+    }
+
+    try {
+      const result = await request<{ takes: StudioTake[] }>(
+        `/api/takes?root=${encodeURIComponent(projectRoot)}`,
+      );
+      setTakes(result.takes);
+    } catch {
+      setTakes([]);
     }
     setPrompterOffset(0);
     setPrompterPlaying(false);
@@ -495,18 +536,43 @@ export default function Home() {
   }
 
   /** Opens the full-screen Studio and starts the camera when one is available. */
+  function stopPreview() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setPreviewing(false);
+  }
+
   function openStudio() {
     setStudioOpen(true);
     requestAnimationFrame(() => {
       if (cameraAvailable && !previewing) {
         void startPreview();
+      } else {
+        void refreshDevices();
       }
     });
   }
 
   function closeStudio() {
+    takeCancelledRef.current = true;
+    if (takeState === "recording") {
+      void stopTake();
+    }
     setStudioOpen(false);
+    setTakeState("idle");
+    setCountdown(null);
+    setElapsedSeconds(0);
     setPrompterPlaying(false);
+    stopPreview();
+  }
+
+  function changeCamera(id: string) {
+    setCameraId(id === "" ? null : id);
+    stopPreview();
+  }
+
+  function changeMicrophone(id: string) {
+    setMicrophoneId(id === "" ? null : id);
     stopPreview();
   }
 
@@ -629,11 +695,26 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompterPlaying, prompterWpm]);
 
+  // Show elapsed time while a take records, without polling the job.
+  useEffect(() => {
+    if (takeState !== "recording") {
+      return;
+    }
+    const handle = setInterval(() => {
+      if (takeStartRef.current !== null) {
+        setElapsedSeconds((performance.now() - takeStartRef.current) / 1000);
+      }
+    }, 250);
+    return () => clearInterval(handle);
+  }, [takeState]);
+
   // Leaving Ingest unmounts the camera element; stop the stream so the light
   // does not stay on behind an invisible preview.
   useEffect(() => {
     if (mode !== "ingest") {
-      stopPreview();
+      // Stopping the stream is the external side effect; the preview flag
+      // follows the device, so update it after the render rather than in it.
+      queueMicrotask(stopPreview);
     }
     // Only a mode change should stop capture; the stream functions are stable
     // enough for this purpose and stopping twice is harmless.
@@ -1045,97 +1126,150 @@ export default function Home() {
     return record;
   }
 
-  function sampleKey() {
-    const video = videoRef.current;
-    if (video === null) {
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 64;
-    canvas.height = 36;
-    const context = canvas.getContext("2d");
-    if (context === null) {
-      return;
-    }
-
+  async function refreshDevices(): Promise<void> {
     try {
-      context.drawImage(video, 0, 0, 64, 36);
-      const { data } = context.getImageData(0, 0, 64, 36);
-      const samples = [];
-
-      for (let index = 0; index < data.length; index += 32) {
-        samples.push({
-          r: data[index] ?? 0,
-          g: data[index + 1] ?? 0,
-          b: data[index + 2] ?? 0,
-        });
-      }
-
-      setKeyQuality(assessKeyQuality(samples));
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setCameras(
+        devices
+          .filter((device) => device.kind === "videoinput")
+          .map((device, index) => ({
+            deviceId: device.deviceId,
+            label: device.label || `Camera ${index + 1}`,
+          })),
+      );
+      setMicrophones(
+        devices
+          .filter((device) => device.kind === "audioinput")
+          .map((device, index) => ({
+            deviceId: device.deviceId,
+            label: device.label || `Microphone ${index + 1}`,
+          })),
+      );
     } catch {
-      // The frame is not drawable yet; the next tick will try again.
+      // Labels need permission; the default device still works without them.
     }
   }
 
-  useEffect(() => {
-    if (!previewing) {
-      return;
+  async function ensureStream(): Promise<MediaStream> {
+    if (streamRef.current !== null) {
+      return streamRef.current;
     }
 
-    const handle = setInterval(() => sampleKey(), 1000);
-    return () => clearInterval(handle);
-  }, [previewing]);
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: cameraId === null ? true : { deviceId: { exact: cameraId } },
+      audio: microphoneId === null ? true : { deviceId: { exact: microphoneId } },
+    });
+    streamRef.current = stream;
+
+    if (videoRef.current !== null) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+    }
+    setPreviewing(true);
+    await refreshDevices();
+    return stream;
+  }
 
   function startPreview() {
     return guard(async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
-
-      if (videoRef.current !== null) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      setPreviewing(true);
+      await ensureStream();
     });
   }
 
-  function stopPreview() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setPreviewing(false);
+  function startTake() {
+    return guard(async () => {
+      if (takeState !== "idle") {
+        return;
+      }
+
+      takeCancelledRef.current = false;
+      const stream = await ensureStream();
+      setTakeState("countdown");
+
+      for (let remaining = 3; remaining >= 1; remaining -= 1) {
+        if (takeCancelledRef.current) {
+          setCountdown(null);
+          setTakeState("idle");
+          return;
+        }
+        setCountdown(remaining);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      setCountdown(null);
+
+      if (takeCancelledRef.current) {
+        setTakeState("idle");
+        return;
+      }
+
+      const recorder = new CaptureRecorder();
+      recorder.start(
+        stream,
+        (mediaStream, mimeType) =>
+          new MediaRecorder(mediaStream, { mimeType }) as unknown as MediaRecorderLike,
+        (mimeType) => MediaRecorder.isTypeSupported(mimeType),
+      );
+      recorderRef.current = recorder;
+      takeStartRef.current = performance.now();
+      setElapsedSeconds(0);
+      setTakeState("recording");
+      setPrompterPlaying(true);
+    });
   }
 
-  function record() {
+  function stopTake() {
     return guard(async () => {
-      // Release the preview before FFmpeg opens the camera, then leave the
-      // Studio so the job's progress is visible.
-      setStudioOpen(false);
-      stopPreview();
-      const started = await postJson<JobRecord>("/api/capture", {
-        projectRoot: root,
-        durationSeconds: captureSeconds,
+      const recorder = recorderRef.current;
+      if (recorder === null) {
+        return;
+      }
+
+      setTakeState("uploading");
+      setPrompterPlaying(false);
+      setCountdown(null);
+
+      const blob = await recorder.stop();
+      recorderRef.current = null;
+      const duration =
+        takeStartRef.current === null
+          ? 0
+          : Math.max(0.1, (performance.now() - takeStartRef.current) / 1000);
+      takeStartRef.current = null;
+      const takeId = `take-${Date.now()}`;
+
+      const dataBase64 = await blobToBase64(blob);
+      const response = await fetch("/api/takes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          root,
+          takeId,
+          durationSeconds: Number(duration.toFixed(3)),
+          dataBase64,
+        }),
       });
-      setJob(started);
-      await pollJob(started.id);
-
-      try {
-        setProject(await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`));
-      } catch {
-        // The project update is best-effort; the job result is authoritative.
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `upload ${response.status}`);
       }
-      setMode("edit");
-    });
-  }
 
-  function stopRecording() {
-    return guard(async () => {
-      if (job !== null && (job.status === "queued" || job.status === "running")) {
-        await request<JobRecord>(`/api/jobs/${job.id}`, { method: "DELETE" });
-        await pollJob(job.id);
+      const job = (await response.json()) as JobRecord;
+      setJob(job);
+      const finished = await pollJob(job.id);
+      if (finished.status !== "done") {
+        throw new Error(finished.error ?? `normalize ${finished.status}`);
       }
-      stopPreview();
+
+      const saved = await request<{ takes: StudioTake[] }>(
+        `/api/takes?root=${encodeURIComponent(root)}`,
+      );
+      setTakes(saved.takes);
+      setProject(
+        await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`),
+      );
+      setMessage("Take saved");
+      setTakeState("idle");
+      setElapsedSeconds(0);
     });
   }
 
@@ -1235,11 +1369,6 @@ export default function Home() {
       setMessage("Clip generated");
     });
   }
-
-  const captureRunning =
-    job !== null &&
-    job.kind === "capture" &&
-    (job.status === "queued" || job.status === "running");
 
   const saveState: SaveState =
     transcript === null
@@ -1997,11 +2126,23 @@ export default function Home() {
           playing={prompterPlaying}
           reducedMotion={reducedMotion}
           videoRef={videoRef}
-          previewing={previewing}
-          cameraAvailable={cameraAvailable}
-          keyQuality={keyQuality}
-          recording={captureRunning}
-          durationSeconds={captureSeconds}
+          capture={{
+            state: takeState,
+            countdown,
+            elapsedSeconds,
+            cameraAvailable,
+            previewing,
+            cameras,
+            microphones,
+            cameraId,
+            microphoneId,
+            takes,
+            onStart: () => void startTake(),
+            onStop: () => void stopTake(),
+            onStartPreview: () => void startPreview(),
+            onCameraChange: changeCamera,
+            onMicrophoneChange: changeMicrophone,
+          }}
           onClose={closeStudio}
           onScriptChange={(text) => {
             setScript(text);
@@ -2017,11 +2158,6 @@ export default function Home() {
             setPrompterOffset(0);
             setPrompterPlaying(false);
           }}
-          onStartPreview={() => void startPreview()}
-          onStopPreview={stopPreview}
-          onDurationChange={setCaptureSeconds}
-          onRecord={record}
-          onStopRecording={stopRecording}
         />
       )}
 

@@ -1,6 +1,6 @@
 # Plan: Webcam Recording with Teleprompter
 
-**Status:** IN PROGRESS — Phase 1 complete; Phase 2 next
+**Status:** IN PROGRESS — Phase 2 complete; Phase 3 next
 **Created:** 2026-11-23
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
@@ -45,34 +45,34 @@
 
 ### Red
 
-- [ ] Add failing tests for the recorder wrapper.
+- [x] Add failing tests for the recorder wrapper.
       File: `apps/web/lib/capture-recorder.test.ts` (new).
       Cover MIME negotiation (VP9, VP8, MP4), chunk assembly, stop, and the unsupported case.
-- [ ] Add failing tests for the take store.
+- [x] Add failing tests for the take store.
       File: `apps/web/server/take-store.test.ts` (new).
       Cover manifest read/write, timestamp naming, atomic write, delete, and the byte cap.
-- [ ] Add failing tests for the normalize job.
+- [x] Add failing tests for the normalize job.
       File: `apps/web/server/normalize-job.test.ts` (new).
       Use a fake spawner: success, failure, progress, and output path.
-- [ ] Add failing component tests for the Studio capture controls.
-      File: `apps/web/components/studio-stage.test.tsx` (new).
+- [x] Add failing component tests for the Studio capture controls.
+      File: `apps/web/components/studio-overlay.test.tsx` (new).
       Cover the countdown, record/stop, device selection, elapsed time, and the unload guard.
 
-**Targeted Red command:** `npx vitest run apps/web/lib/capture-recorder.test.ts apps/web/server/take-store.test.ts apps/web/server/normalize-job.test.ts apps/web/components/studio-stage.test.tsx`.
+**Targeted Red command:** `npx vitest run apps/web/lib/capture-recorder.test.ts apps/web/server/take-store.test.ts apps/web/server/normalize-job.test.ts apps/web/components/studio-overlay.test.tsx`.
 
 ### Green
 
-- [ ] Implement the recorder wrapper and negotiation.
+- [x] Implement the recorder wrapper and negotiation.
       File: `apps/web/lib/capture-recorder.ts` (new).
-- [ ] Implement the take store and normalize job.
+- [x] Implement the take store and normalize job.
       Files: `apps/web/server/take-store.ts` (new), `apps/web/server/normalize-job.ts` (new), `apps/web/pages/api/takes.ts` (new).
-- [ ] Wire capture into the Studio and Ingest.
+- [x] Wire capture into the Studio and Ingest.
       Files: `apps/web/components/StudioStage.tsx`, `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [ ] Run the targeted tests and an e2e smoke with Chrome's fake media device.
-- [ ] Commit the phase.
+- [x] Run the targeted tests and an e2e smoke with Chrome's fake media device.
+- [x] Commit the phase.
 
 ---
 

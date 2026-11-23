@@ -1,8 +1,38 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import type { KeyQuality } from "@verbal/media/key-quality";
 import { splitBeats } from "@verbal/takes";
-import { CapturePanel } from "./CapturePanel";
 import { Teleprompter } from "./Teleprompter";
+
+export type StudioTake = {
+  id: string;
+  fileName: string;
+  createdAt: string;
+  durationSeconds: number;
+};
+
+export type StudioDevice = {
+  deviceId: string;
+  label: string;
+};
+
+export type StudioTakeState = "idle" | "countdown" | "recording" | "uploading";
+
+export type StudioCapture = {
+  state: StudioTakeState;
+  countdown: number | null;
+  elapsedSeconds: number;
+  cameraAvailable: boolean;
+  previewing: boolean;
+  cameras: readonly StudioDevice[];
+  microphones: readonly StudioDevice[];
+  cameraId: string | null;
+  microphoneId: string | null;
+  takes: readonly StudioTake[];
+  onStart: () => void;
+  onStop: () => void;
+  onStartPreview: () => void;
+  onCameraChange: (id: string) => void;
+  onMicrophoneChange: (id: string) => void;
+};
 
 export type StudioOverlayProps = {
   projectName: string | null;
@@ -17,11 +47,7 @@ export type StudioOverlayProps = {
   reducedMotion?: boolean;
   dimmedBeatIds?: readonly string[];
   videoRef: RefObject<HTMLVideoElement | null>;
-  previewing: boolean;
-  cameraAvailable: boolean;
-  keyQuality: KeyQuality | null;
-  recording: boolean;
-  durationSeconds: number;
+  capture: StudioCapture;
   onClose: () => void;
   onScriptChange: (text: string) => void;
   onUseTranscript: () => void;
@@ -30,19 +56,17 @@ export type StudioOverlayProps = {
   onFontSizeChange: (size: number) => void;
   onToggleMirror: () => void;
   onReset: () => void;
-  onStartPreview: () => void;
-  onStopPreview: () => void;
-  onDurationChange: (seconds: number) => void;
-  onRecord: () => void;
-  onStopRecording: () => void;
 };
+
+function formatElapsed(seconds: number): string {
+  const total = Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : 0;
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
 
 /**
  * A full-screen Studio: the camera fills the window, the prompter floats over
- * the top center, and the script lives in a side panel. Nothing scrolls.
- *
- * The overlay is rendered only while open, so focus and Escape listeners mount
- * with it. The prompter is never part of the recorded frame; it is a UI layer.
+ * the top center, and the script and capture settings live in a side panel.
+ * Nothing scrolls.
  */
 export function StudioOverlay({
   projectName,
@@ -57,11 +81,7 @@ export function StudioOverlay({
   reducedMotion = false,
   dimmedBeatIds,
   videoRef,
-  previewing,
-  cameraAvailable,
-  keyQuality,
-  recording,
-  durationSeconds,
+  capture,
   onClose,
   onScriptChange,
   onUseTranscript,
@@ -70,11 +90,6 @@ export function StudioOverlay({
   onFontSizeChange,
   onToggleMirror,
   onReset,
-  onStartPreview,
-  onStopPreview,
-  onDurationChange,
-  onRecord,
-  onStopRecording,
 }: StudioOverlayProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [scriptOpen, setScriptOpen] = useState(() => script.trim() === "");
@@ -92,6 +107,8 @@ export function StudioOverlay({
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
+
+  const busy = capture.state === "countdown" || capture.state === "uploading";
 
   return (
     <div
@@ -111,11 +128,19 @@ export function StudioOverlay({
         aria-label="Camera preview"
       />
 
-      {!previewing && (
+      {!capture.previewing && (
         <div className="studio-overlay__placeholder">
-          <p>{cameraAvailable ? "Camera preview is off" : "No camera available in this browser."}</p>
-          {cameraAvailable && (
-            <button type="button" className="button button--primary" onClick={onStartPreview}>
+          <p>
+            {capture.cameraAvailable
+              ? "Camera preview is off"
+              : "No camera available in this browser."}
+          </p>
+          {capture.cameraAvailable && (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={capture.onStartPreview}
+            >
               Start Camera
             </button>
           )}
@@ -156,6 +181,35 @@ export function StudioOverlay({
         />
       </div>
 
+      {capture.countdown !== null && (
+        <div className="studio-overlay__countdown" role="status" aria-live="assertive">
+          {capture.countdown}
+        </div>
+      )}
+
+      <div className="studio-overlay__transport">
+        <button
+          type="button"
+          className="button button--primary"
+          onClick={capture.state === "recording" ? capture.onStop : capture.onStart}
+          disabled={busy}
+        >
+          {capture.state === "recording"
+            ? "Stop"
+            : capture.state === "uploading"
+              ? "Saving…"
+              : "Record"}
+        </button>
+        <span className="muted">{formatElapsed(capture.elapsedSeconds)}</span>
+        {capture.state === "recording" && <span className="muted">Recording</span>}
+        {capture.state === "uploading" && <span className="muted">Saving take…</span>}
+        {capture.takes.length > 0 && (
+          <span className="muted">
+            {capture.takes.length} {capture.takes.length === 1 ? "take" : "takes"}
+          </span>
+        )}
+      </div>
+
       {scriptOpen && (
         <aside id="studio-script" className="studio-overlay__script" aria-label="Script panel">
           <div className="studio__head">
@@ -182,20 +236,52 @@ export function StudioOverlay({
             spellCheck={false}
           />
 
+          <details className="disclosure" open>
+            <summary>Capture Settings</summary>
+            <label className="field">
+              Camera
+              <select
+                value={capture.cameraId ?? ""}
+                onChange={(event) => capture.onCameraChange(event.target.value)}
+              >
+                <option value="">Default camera</option>
+                {capture.cameras.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Microphone
+              <select
+                value={capture.microphoneId ?? ""}
+                onChange={(event) => capture.onMicrophoneChange(event.target.value)}
+              >
+                <option value="">Default microphone</option>
+                {capture.microphones.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </details>
+
           <details className="disclosure">
-            <summary>Camera Controls</summary>
-            <CapturePanel
-              cameraAvailable={cameraAvailable}
-              keyQuality={keyQuality}
-              previewing={previewing}
-              recording={recording}
-              durationSeconds={durationSeconds}
-              onStartPreview={onStartPreview}
-              onStopPreview={onStopPreview}
-              onDurationChange={onDurationChange}
-              onRecord={onRecord}
-              onStop={onStopRecording}
-            />
+            <summary>Takes</summary>
+            {capture.takes.length === 0 ? (
+              <p className="muted">No takes yet.</p>
+            ) : (
+              <ul className="studio-overlay__takes" aria-label="Takes">
+                {capture.takes.map((take) => (
+                  <li key={take.id}>
+                    <span>{take.fileName}</span>
+                    <span className="muted">{formatElapsed(take.durationSeconds)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </details>
         </aside>
       )}
