@@ -90,7 +90,7 @@ export function ProjectBrowser({
           <button
             type="button"
             className="icon-button"
-            aria-label="Go up one folder"
+            aria-label="Go Up One Folder"
             title="Up one folder"
             onClick={onUp}
             disabled={parent === null}
@@ -114,7 +114,7 @@ export function ProjectBrowser({
         )}
 
         {loading && (
-          <p className="browser__hint" role="status">
+          <p className="browser__hint">
             Reading folder…
           </p>
         )}
@@ -185,13 +185,13 @@ export function ProjectBrowser({
         {creating ? (
           <form className="browser__new" onSubmit={submit}>
             <label className="sr-only" htmlFor="new-project-name">
-              New project name
+              New Project Name
             </label>
             <input
               id="new-project-name"
               autoComplete="off"
               autoFocus
-              placeholder="Project name"
+              placeholder="Project name…"
               value={name}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
@@ -217,7 +217,7 @@ export function ProjectBrowser({
           </form>
         ) : (
           <button type="button" className="button button--ghost browser__new-button" onClick={() => setCreating(true)}>
-            + New project here
+            + New Project Here
           </button>
         )}
       </footer>

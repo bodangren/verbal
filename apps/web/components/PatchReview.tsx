@@ -54,7 +54,7 @@ export function PatchReview({
 
       <div className="patches__actions">
         <button type="button" className="patches__apply" onClick={onApply}>
-          Apply selected
+          Apply Selected
         </button>
         <button type="button" className="patches__discard" onClick={onReject}>
           Discard

@@ -44,15 +44,15 @@ export function CapturePanel({
           onClick={onStartPreview}
           disabled={!cameraAvailable || previewing}
         >
-          Start preview
+          Start Preview
         </button>
         <button type="button" onClick={onStopPreview} disabled={!previewing}>
-          Stop preview
+          Stop Preview
         </button>
       </div>
 
       <label className="field">
-        Duration (seconds)
+        Duration (Seconds)
         <input
           type="number"
           min={1}
@@ -67,7 +67,7 @@ export function CapturePanel({
           Record
         </button>
         <button type="button" onClick={onStop} disabled={!recording}>
-          Stop recording
+          Stop Recording
         </button>
       </div>
 

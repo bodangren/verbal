@@ -68,11 +68,11 @@ export function MediaPicker({
         className="picker-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Choose media file"
+        aria-label="Choose Media file"
         tabIndex={-1}
       >
         <header className="picker-dialog__head">
-          <h2>Choose media</h2>
+          <h2>Choose Media</h2>
           <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
             ×
           </button>
@@ -82,7 +82,7 @@ export function MediaPicker({
           <button
             type="button"
             className="icon-button"
-            aria-label="Go up one folder"
+            aria-label="Go Up One Folder"
             title="Up one folder"
             onClick={onUp}
             disabled={parent === null}
@@ -109,14 +109,14 @@ export function MediaPicker({
           )}
 
           {loading && (
-            <p className="browser__hint" role="status">
+            <p className="browser__hint">
               Reading folder…
             </p>
           )}
 
           {!loading && error === null && entries.length === 0 && (
             <div className="browser__empty">
-              <p>No media files here</p>
+              <p>No Media Files Here</p>
               <p className="browser__hint">Go up, or choose another folder.</p>
             </div>
           )}

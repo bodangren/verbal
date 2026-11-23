@@ -285,7 +285,7 @@ try {
     segmentsBefore + 1,
   );
 
-  await editorPanel.getByRole("button", { name: "Insert silence" }).click();
+  await editorPanel.getByRole("button", { name: "Insert Silence" }).click();
   await page.getByText("Unsaved changes").waitFor();
 
   await editorPanel.getByRole("button", { name: "Undo" }).click();
@@ -301,7 +301,7 @@ try {
   // Reorder: move a word earlier, check the order, then undo it.
   const words = () => editorPanel.locator(".transcript__word").allTextContents();
   await editorPanel.getByRole("button", { name: "world" }).click();
-  await editorPanel.getByRole("button", { name: "Move back" }).click();
+  await editorPanel.getByRole("button", { name: "Move Back" }).click();
   await page.waitForFunction(
     () =>
       [...document.querySelectorAll('[aria-label="Transcript"] .transcript__word')]
@@ -387,10 +387,10 @@ try {
   await cleanup.waitFor();
   await cleanup.getByText("0 of 1 proposals accepted").waitFor();
 
-  await cleanup.getByLabel("Accept all filler").check();
+  await cleanup.getByLabel("Accept All filler").check();
   await cleanup.getByText("1 of 1 proposals accepted").waitFor();
 
-  await cleanup.getByRole("button", { name: "Remove accepted" }).click();
+  await cleanup.getByRole("button", { name: "Remove Accepted" }).click();
   await page.getByText(/Removed 1 cleanup proposal/).waitFor();
   assert(
     await editorPanel.getByRole("button", { name: "um" }).isDisabled(),
@@ -402,7 +402,7 @@ try {
   await page.getByText("Transcript saved").waitFor();
   console.log("cleanup: reviewed, removed, and saved");
 
-  await cleanup.getByRole("button", { name: "Freeze master" }).click();
+  await cleanup.getByRole("button", { name: "Freeze Master" }).click();
   await page.getByText(/Frozen master: \d+\.\d{2}s · \d+ anchors/).waitFor();
   console.log("cleanup: froze the master");
 
@@ -461,24 +461,24 @@ try {
   console.log("transcript: saved edit survives a reload");
 
   await page.getByRole("button", { name: "Deliver", exact: true }).click();
-  await page.getByText("Advanced: storyboard document").click();
+  await page.getByText("Advanced: Storyboard Document").click();
   const storyboardText = page.getByLabel("Storyboard JSON");
   assert((await storyboardText.inputValue()).includes("Walkthrough"), "storyboard should load");
 
-  await page.getByRole("button", { name: "Fast preview" }).click();
+  await page.getByRole("button", { name: "Fast Preview" }).click();
   await page.getByRole("region", { name: "Storyboard preview" }).waitFor();
   await page.getByText("Placeholder").first().waitFor();
   console.log("preview: fast tier planned a placeholder");
 
-  await page.getByText("Review feedback").click();
+  await page.getByText("Review Feedback").click();
   await page.getByLabel("Patch JSON").fill(
     JSON.stringify({
       patches: [{ type: "update-props", sceneId: "s1", props: { title: "Changed" } }],
     }),
   );
-  await page.getByRole("button", { name: "Parse patches" }).click();
+  await page.getByRole("button", { name: "Parse Patches" }).click();
   await page.getByRole("region", { name: "Patch review" }).waitFor();
-  await page.getByRole("button", { name: "Apply selected" }).click();
+  await page.getByRole("button", { name: "Apply Selected" }).click();
   await page.getByText("Patches applied").waitFor();
   assert(
     (await storyboardText.inputValue()).includes("Changed"),
@@ -486,16 +486,16 @@ try {
   );
   console.log("feedback: parsed, reviewed, and applied");
 
-  await page.getByText("Generate assets").click();
-  await page.getByLabel("Image scene").fill("g1");
-  await page.getByLabel("Image prompt").fill("a diagram");
-  await page.getByRole("button", { name: "Estimate image" }).click();
+  await page.getByText("Generate Assets").click();
+  await page.getByLabel("Image Scene").fill("g1");
+  await page.getByLabel("Image Prompt").fill("a diagram");
+  await page.getByRole("button", { name: "Estimate Image" }).click();
   await page.getByText(/Estimated cost: \$0\.04/).waitFor();
   console.log("image: cost estimated before generation");
 
-  await page.getByLabel("Video scene").fill("v1");
-  await page.getByLabel("Video prompt").fill("a clip");
-  await page.getByRole("button", { name: "Estimate video" }).click();
+  await page.getByLabel("Video Scene").fill("v1");
+  await page.getByLabel("Video Prompt").fill("a clip");
+  await page.getByRole("button", { name: "Estimate Video" }).click();
   await page.getByText(/Estimated clip cost: \$0\.40/).waitFor();
   console.log("video: cost estimated before generation");
 
@@ -508,7 +508,7 @@ try {
   console.log("export: selected a preset");
 
   // Pruning reports before deleting; this project has no generated assets.
-  await page.getByRole("button", { name: "Check prunable assets" }).click();
+  await page.getByRole("button", { name: "Check Prunable Assets" }).click();
   await page.getByText("No generated assets are prunable").waitFor();
   console.log("assets: reported that nothing is prunable");
 
@@ -532,7 +532,7 @@ try {
     await openProject("Transcribed");
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
 
-    await page.getByRole("button", { name: "Transcribe media" }).click();
+    await page.getByRole("button", { name: "Transcribe Media" }).click();
     await page.getByText(/Transcribed 3 words/).waitFor();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
 
@@ -564,9 +564,9 @@ try {
     });
 
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
-    await page.getByText("Batch projects").click();
-    await page.getByLabel("One project root per line").fill(`${transcribedRoot}\n${batchRoot}`);
-    await page.getByRole("button", { name: "Start batch" }).click();
+    await page.getByText("Batch Projects").click();
+    await page.getByLabel("One Project Root per Line").fill(`${transcribedRoot}\n${batchRoot}`);
+    await page.getByRole("button", { name: "Start Batch" }).click();
     await page.getByText(/Batch done/).waitFor({ timeout: 30000 });
 
     const outcomes = page.getByLabel("Batch outcomes");
@@ -588,8 +588,8 @@ try {
   await page.getByRole("button", { name: "Home" }).click();
   await page.getByTitle(`Enter ${newFolder}`).waitFor();
   await page.getByTitle(`Enter ${newFolder}`).click();
-  await page.getByRole("button", { name: "+ New project here" }).click();
-  await page.getByLabel("New project name").fill("Take One");
+  await page.getByRole("button", { name: "+ New Project Here" }).click();
+  await page.getByLabel("New Project Name").fill("Take One");
   await page.getByRole("button", { name: "Create" }).click();
   await page.getByText("Created Take One").waitFor();
   await page.getByRole("button", { name: "Open", exact: true }).click();

@@ -1,6 +1,6 @@
 # Plan: UX Gates and Design Conformance
 
-**Status:** IN PROGRESS — Phase 2 complete; 6 budget failures await Shell/Transcript
+**Status:** COMPLETE — conformance green; six budgets owned by Shell/Transcript
 **Created:** 2026-11-22
 **Focus:** Measure the experience, then hold the design system.
 
@@ -97,9 +97,9 @@ The gate still reports six failures, all owned by later UX tracks:
 
 ### Red
 
-- [ ] Add failing component tests for Title Case labels and the single live region.
+- [x] Add failing component tests for Title Case labels and the single live region.
       Files: `apps/web/components/*.test.tsx`, `apps/web/pages/index.test.tsx` (new).
-- [ ] Add failing tests for the error-message map.
+- [x] Add failing tests for the error-message map.
       File: `apps/web/lib/error-copy.test.ts` (new).
       A known API error maps to a message with a next step.
 
@@ -107,12 +107,22 @@ The gate still reports six failures, all owned by later UX tracks:
 
 ### Green
 
-- [ ] Add the error-message map and use it in `guard`.
+- [x] Add the error-message map and use it in `guard`.
       Files: `apps/web/lib/error-copy.ts` (new), `apps/web/pages/index.tsx`.
-- [ ] Apply Title Case and `…` copy. Remove the second live region from the save state.
+- [x] Apply Title Case and `…` copy. Remove the second live region from the save state.
       Files: `apps/web/pages/index.tsx`, `apps/web/components/*.tsx`.
 
 ### Verification
 
-- [ ] Run `npm run check`, `npm run e2e`, and the gate through the heavy runner.
-- [ ] Record the final numbers. Update the registry and metadata after acceptance.
+- [x] Run `npm run check`, `npm run e2e`, and the gate through the heavy runner.
+- [x] Record the final numbers. Update the registry and metadata after acceptance.
+
+### Phase 3 result — 2026-11-23
+
+- `npm run check` green (663 tests); `npm run e2e` PASS.
+- Gate: one polite live region; contrast, accessible names, focus outlines,
+  headings and disabled primaries green.
+- Six failures remain, by design owned by dependent tracks: 9 clicks (Shell),
+  6 tab stops before the text and 3 per-word stops (Transcript), and 1/1/0
+  visible transcript lines (Shell + Transcript). The gate keeps them visible
+  until those tracks land.

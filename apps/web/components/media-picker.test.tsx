@@ -63,6 +63,6 @@ describe("MediaPicker", () => {
   it("shows an empty state when the folder has no media", () => {
     setup({ entries: [] });
 
-    expect(screen.getByText("No media files here")).toBeTruthy();
+    expect(screen.getByText("No Media Files Here")).toBeTruthy();
   });
 });

@@ -11,9 +11,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 ### Block 1 — UI/UX (primary)
 
-- [~] **Track: UX Gates and Design Conformance** [created: 2026-11-22]
+- [x] **Track: UX Gates and Design Conformance** [created: 2026-11-22] [completed: 2026-11-23]
   *Focus: Measure clicks, tab stops, scroll, names, and contrast; hold the `DESIGN.md` type, accent, and copy rules.*
-  *Status: In progress — Phase 1 gate complete. Baseline: 9 clicks, 6 tab stops, 1 visible transcript line at 1440, 2 live regions, no h1, five disabled indigo buttons (15 failures). Phases 2–3 must turn the gate green.*
+  *Status: Complete — gate + conformance. 663 tests, e2e PASS; AA contrast, neutral disabled states, one h1 and one polite live region. The gate remains red on six budgets owned by Shell and Transcript (9 clicks, 6/3 tab stops, 1/1/0 transcript lines).*
   *Link: [./tracks/ux_gates_20261122](./tracks/ux_gates_20261122/)*
 
 - [ ] **Track: Shell and Core Flow** [created: 2026-11-22]

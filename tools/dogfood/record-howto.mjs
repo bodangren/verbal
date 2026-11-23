@@ -214,8 +214,8 @@ async function main() {
   if (SCENARIO === "import") {
     await page.waitForTimeout(900);
     mark("create", "A new project lives in the folder you are browsing");
-    await page.getByRole("button", { name: "+ New project here" }).click();
-    await page.getByLabel("New project name").fill(IMPORT_PROJECT);
+    await page.getByRole("button", { name: "+ New Project Here" }).click();
+    await page.getByLabel("New Project Name").fill(IMPORT_PROJECT);
     await page.getByRole("button", { name: "Create" }).click();
     await page.getByText(`Created ${IMPORT_PROJECT}`).waitFor();
     await page.waitForTimeout(900);
@@ -223,7 +223,7 @@ async function main() {
 
     mark("browse", "Browse to the take instead of typing a path");
     await page.getByRole("button", { name: /Browse/ }).click();
-    const dialog = page.getByRole("dialog", { name: "Choose media file" });
+    const dialog = page.getByRole("dialog", { name: "Choose Media file" });
     await dialog.waitFor();
     await dialog.getByTitle("Enter media").click();
     await dialog.getByTitle("Choose take.mp4").waitFor();
@@ -232,7 +232,7 @@ async function main() {
 
     mark("choose", "Choose a file, then import a copy");
     await dialog.getByTitle("Choose take.mp4").click();
-    await page.getByRole("button", { name: "Import copy" }).click();
+    await page.getByRole("button", { name: "Import Copy" }).click();
     await page.getByText("Media imported").waitFor();
     await page.waitForTimeout(1200);
     console.log("record: media imported");
@@ -270,7 +270,7 @@ async function main() {
     await page.waitForTimeout(900);
 
     mark("create", "Build scenes from the transcript");
-    await page.getByRole("button", { name: "Create storyboard", exact: true }).click();
+    await page.getByRole("button", { name: "Create Storyboard", exact: true }).click();
     await page.getByRole("region", { name: "Storyboard preview" }).waitFor({ timeout: 20000 });
     await page.getByText("Speaker").first().waitFor();
     await page.waitForTimeout(1600);
@@ -302,7 +302,7 @@ async function main() {
     await page.waitForTimeout(900);
 
     mark("export", "Export the storyboard");
-    await page.getByRole("button", { name: "Export storyboard", exact: true }).click();
+    await page.getByRole("button", { name: "Export Storyboard", exact: true }).click();
     await page.getByText(/Job done/).waitFor({ timeout: 180000 });
     await page.waitForTimeout(1200);
     console.log("record: exported");
@@ -358,7 +358,7 @@ async function main() {
     .getByRole("button", { name: "Deliver", exact: true })
     .click();
   await page.waitForTimeout(600);
-  await page.getByRole("button", { name: "Fast preview", exact: true }).click();
+  await page.getByRole("button", { name: "Fast Preview", exact: true }).click();
   await page.waitForTimeout(2400);
   console.log("record: deliver");
   }

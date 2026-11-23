@@ -56,7 +56,7 @@ export function CleanupReview({
     <section className="cleanup" aria-label="Cleanup review">
       {audioFixes.length > 0 && (
         <div className="cleanup__audio">
-          <h4>Audio fixes</h4>
+          <h4>Audio Fixes</h4>
           <ul className="cleanup__audio-list">
             {audioFixes.map((fix) => (
               <li key={fix.id} className="cleanup__audio-fix" data-kind={fix.kind}>
@@ -89,11 +89,11 @@ export function CleanupReview({
             <label className="cleanup__toggle">
               <input
                 type="checkbox"
-                aria-label={`Accept all ${group.category}`}
+                aria-label={`Accept All ${group.category}`}
                 checked={acceptance.categories.includes(group.category)}
                 onChange={() => onAcceptanceChange(toggleCategory(acceptance, group.category))}
               />
-              Accept all
+              Accept All
             </label>
           </header>
 
@@ -107,7 +107,7 @@ export function CleanupReview({
                 <label className="cleanup__toggle">
                   <input
                     type="checkbox"
-                    aria-label={`Accept proposal ${proposal.id}`}
+                    aria-label={`Accept Proposal ${proposal.id}`}
                     checked={acceptance.ids.includes(proposal.id)}
                     onChange={() => onAcceptanceChange(toggleProposal(acceptance, proposal.id))}
                   />
@@ -126,7 +126,7 @@ export function CleanupReview({
 
       {onFreeze !== undefined && (
         <button type="button" className="cleanup__freeze" onClick={onFreeze}>
-          Freeze master
+          Freeze Master
         </button>
       )}
     </section>

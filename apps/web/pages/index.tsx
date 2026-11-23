@@ -28,6 +28,7 @@ import {
   type CleanupProposal,
 } from "@verbal/cleanup";
 import { CapturePanel } from "../components/CapturePanel";
+import { errorCopyFor, type ErrorCopy } from "../lib/error-copy";
 import { MediaPicker } from "../components/MediaPicker";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
@@ -178,7 +179,7 @@ export default function Home() {
     loudness: -16,
   });
   const [job, setJob] = useState<JobRecord | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorCopy | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [keyQuality, setKeyQuality] = useState<KeyQuality | null>(null);
@@ -201,7 +202,7 @@ export default function Home() {
     try {
       await run();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorCopyFor(cause));
     }
   }
 
@@ -410,7 +411,7 @@ export default function Home() {
     save: async () => {
       await saveTranscriptDocument();
     },
-    onError: setError,
+    onError: (message) => setError(errorCopyFor(new Error(message))),
   });
 
   function checkPrunableAssets() {
@@ -692,7 +693,7 @@ export default function Home() {
       setError(null);
       setMessage(`${parsed.length} hunks parsed`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(errorCopyFor(cause));
     }
   }
 
@@ -937,7 +938,7 @@ export default function Home() {
 
         <div className="bar__document">
           {project === null ? (
-            <span className="bar__document-empty">No project open</span>
+            <span className="bar__document-empty">No Project Open</span>
           ) : (
             <>
               <span className="bar__document-name">{project.name}</span>
@@ -1011,7 +1012,7 @@ export default function Home() {
 
               {project === null ? (
                 <EmptyState
-                  title="No project open"
+                  title="No Project Open"
                   body="Pick a project in the browser, or create one in the folder you are browsing."
                 />
               ) : (
@@ -1066,13 +1067,13 @@ export default function Home() {
 
               {project === null ? (
                 <EmptyState
-                  title="No project open"
+                  title="No Project Open"
                   body="Open a project in Ingest to edit its transcript."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
               ) : !hasMedia ? (
                 <EmptyState
-                  title="No media yet"
+                  title="No Media Yet"
                   body="Import a recording or file in Ingest, then transcribe it."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
@@ -1093,7 +1094,7 @@ export default function Home() {
 
                   {transcript === null ? (
                     <EmptyState
-                      title="No transcript yet"
+                      title="No Transcript Yet"
                       body="Play and scrub the take now. Transcribe it in Ingest to edit the words."
                       action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                     />
@@ -1103,7 +1104,7 @@ export default function Home() {
                       <h3>Transcript</h3>
                       <div className="toolbar">
                         <label className="search">
-                          <span className="sr-only">Find in transcript</span>
+                          <span className="sr-only">Find in Transcript</span>
                           <input
                             autoComplete="off"
                             value={query}
@@ -1111,7 +1112,7 @@ export default function Home() {
                               setQuery(event.target.value);
                               setMatchCursor(0);
                             }}
-                            placeholder="Find in transcript"
+                            placeholder="Find in Transcript…"
                           />
                         </label>
                         {query.trim() !== "" && (
@@ -1181,7 +1182,7 @@ export default function Home() {
                         onClick={insertSilenceAtSelection}
                         disabled={selection === null}
                       >
-                        Insert silence
+                        Insert Silence
                       </button>
                       <button
                         type="button"
@@ -1197,7 +1198,7 @@ export default function Home() {
                         onClick={() => moveSelection(-1)}
                         disabled={selection === null}
                       >
-                        Move back
+                        Move Back
                       </button>
                       <button
                         type="button"
@@ -1205,7 +1206,7 @@ export default function Home() {
                         onClick={() => moveSelection(1)}
                         disabled={selection === null}
                       >
-                        Move forward
+                        Move Forward
                       </button>
                       <button
                         type="button"
@@ -1263,7 +1264,7 @@ export default function Home() {
                       onClick={() => preview("fast")}
                       disabled={project === null}
                     >
-                      Fast preview
+                      Fast Preview
                     </button>
                     <button
                       type="button"
@@ -1271,7 +1272,7 @@ export default function Home() {
                       onClick={() => preview("full")}
                       disabled={project === null}
                     >
-                      Render preview
+                      Render Preview
                     </button>
                   </div>
                 )}
@@ -1279,19 +1280,19 @@ export default function Home() {
 
               {project === null ? (
                 <EmptyState
-                  title="No project open"
+                  title="No Project Open"
                   body="Open a project in Ingest to build its storyboard."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
               ) : transcript === null ? (
                 <EmptyState
-                  title="No transcript yet"
+                  title="No Transcript Yet"
                   body="Transcribe the take in Ingest to build a storyboard."
                   action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
                 />
               ) : plan === null ? (
                 <EmptyState
-                  title={storyboardEmpty ? "No scenes yet" : "No preview yet"}
+                  title={storyboardEmpty ? "No Scenes Yet" : "No Preview Yet"}
                   body={
                     storyboardEmpty
                       ? "Build one scene per transcript segment, then preview the cut."
@@ -1299,8 +1300,8 @@ export default function Home() {
                   }
                   action={
                     storyboardEmpty
-                      ? { label: "Create storyboard", onClick: () => void createStoryboard() }
-                      : { label: "Render preview", onClick: () => void preview("full") }
+                      ? { label: "Create Storyboard", onClick: () => void createStoryboard() }
+                      : { label: "Render Preview", onClick: () => void preview("full") }
                   }
                 />
               ) : (
@@ -1310,7 +1311,7 @@ export default function Home() {
               )}
 
               <details className="disclosure">
-                <summary>Advanced: storyboard document</summary>
+                <summary>Advanced: Storyboard Document</summary>
                 <p className="muted">Edit the storyboard JSON directly.</p>
                 <textarea
                   className="editor"
@@ -1326,7 +1327,7 @@ export default function Home() {
                     onClick={saveStoryboard}
                     disabled={project === null}
                   >
-                    Save storyboard
+                    Save Storyboard
                   </button>
                   <button
                     type="button"
@@ -1334,7 +1335,7 @@ export default function Home() {
                     onClick={checkPrunableAssets}
                     disabled={project === null}
                   >
-                    Check prunable assets
+                    Check Prunable Assets
                   </button>
                   {prunable !== null && prunable.length > 0 && (
                     <button
@@ -1349,12 +1350,12 @@ export default function Home() {
               </details>
 
               <details className="disclosure">
-                <summary>Generate assets</summary>
+                <summary>Generate Assets</summary>
                 <div className="form-grid">
                   <fieldset className="fieldset">
                     <legend>Image</legend>
                     <label className="field">
-                      Image scene
+                      Image Scene
                       <input
                         autoComplete="off"
                         value={imageSceneId}
@@ -1363,12 +1364,12 @@ export default function Home() {
                       />
                     </label>
                     <label className="field">
-                      Image prompt
+                      Image Prompt
                       <input
                         autoComplete="off"
                         value={imagePrompt}
                         onChange={(event) => setImagePrompt(event.target.value)}
-                        placeholder="A diagram of the pipeline"
+                        placeholder="A diagram of the pipeline…"
                       />
                     </label>
                     <div className="toolbar">
@@ -1378,7 +1379,7 @@ export default function Home() {
                         onClick={estimateImage}
                         disabled={project === null}
                       >
-                        Estimate image
+                        Estimate Image
                       </button>
                       <button
                         type="button"
@@ -1386,7 +1387,7 @@ export default function Home() {
                         onClick={generateImage}
                         disabled={project === null || imageCost === null}
                       >
-                        Generate image
+                        Generate Image
                       </button>
                     </div>
                     {imageCost !== null && (
@@ -1397,7 +1398,7 @@ export default function Home() {
                   <fieldset className="fieldset">
                     <legend>Video</legend>
                     <label className="field">
-                      Video scene
+                      Video Scene
                       <input
                         autoComplete="off"
                         value={videoSceneId}
@@ -1406,16 +1407,16 @@ export default function Home() {
                       />
                     </label>
                     <label className="field">
-                      Video prompt
+                      Video Prompt
                       <input
                         autoComplete="off"
                         value={videoPrompt}
                         onChange={(event) => setVideoPrompt(event.target.value)}
-                        placeholder="A rotating 3D diagram"
+                        placeholder="A rotating 3D diagram…"
                       />
                     </label>
                     <label className="field">
-                      Clip seconds
+                      Clip Seconds
                       <input
                         autoComplete="off"
                         type="number"
@@ -1432,7 +1433,7 @@ export default function Home() {
                         onClick={estimateVideo}
                         disabled={project === null}
                       >
-                        Estimate video
+                        Estimate Video
                       </button>
                       <button
                         type="button"
@@ -1440,7 +1441,7 @@ export default function Home() {
                         onClick={generateVideo}
                         disabled={project === null || videoCost === null}
                       >
-                        Generate video
+                        Generate Video
                       </button>
                     </div>
                     {videoCost !== null && (
@@ -1451,7 +1452,7 @@ export default function Home() {
               </details>
 
               <details className="disclosure">
-                <summary>Review feedback</summary>
+                <summary>Review Feedback</summary>
                 <textarea
                   className="editor"
                   aria-label="Patch JSON"
@@ -1462,7 +1463,7 @@ export default function Home() {
                 />
                 <div className="toolbar">
                   <button type="button" className="button button--ghost" onClick={parsePatches}>
-                    Parse patches
+                    Parse Patches
                   </button>
                 </div>
                 {patches.length > 0 && (
@@ -1488,16 +1489,16 @@ export default function Home() {
 
         {mode === "ingest" && (
           <aside className="inspector" aria-label="Inspector">
-            <section className="inspector__section" aria-label="Source media">
-              <h3>Source media</h3>
+            <section className="inspector__section" aria-label="Source Media">
+              <h3>Source Media</h3>
               <p className="muted">Import a recording or an existing file into this project.</p>
               <label className="field">
-                Source file path
+                Source File Path
                 <input
                   autoComplete="off"
                   value={importPath}
                   onChange={(event) => setImportPath(event.target.value)}
-                  placeholder="/home/you/Videos/take.mp4"
+                  placeholder="/home/you/Videos/take.mp4…"
                   disabled={project === null}
                 />
               </label>
@@ -1516,7 +1517,7 @@ export default function Home() {
                   onClick={importMedia}
                   disabled={project === null || importPath.trim() === ""}
                 >
-                  Import copy
+                  Import Copy
                 </button>
               </div>
             </section>
@@ -1530,18 +1531,18 @@ export default function Home() {
                 onClick={transcribeMedia}
                 disabled={project === null || !hasMedia || transcribing}
               >
-                {transcribing ? "Transcribing…" : "Transcribe media"}
+                {transcribing ? "Transcribing…" : "Transcribe Media"}
               </button>
               {transcribing && job !== null && (
-                <p className="muted" role="status">
+                <p className="muted">
                   Transcribing {Math.round(job.progress * 100)}%
                 </p>
               )}
 
               <details className="disclosure disclosure--inline">
-                <summary>Batch projects</summary>
+                <summary>Batch Projects</summary>
                 <label className="field">
-                  One project root per line
+                  One Project Root per Line
                   <textarea
                     className="editor editor--short"
                     value={batchRoots}
@@ -1555,7 +1556,7 @@ export default function Home() {
                   onClick={startBatch}
                   disabled={batchRoots.trim() === "" || transcribing}
                 >
-                  Start batch
+                  Start Batch
                 </button>
                 {batchOutcomes.length > 0 && (
                   <ul className="outcomes" aria-label="Batch outcomes">
@@ -1595,7 +1596,7 @@ export default function Home() {
                         onClick={removeAcceptedProposals}
                         disabled={acceptedProposals.length === 0}
                       >
-                        Remove accepted
+                        Remove Accepted
                       </button>
                     </>
                   )}
@@ -1618,13 +1619,13 @@ export default function Home() {
             <section className="inspector__section" aria-label="Export">
               <h3>Export</h3>
               <label className="field">
-                Output file
+                Output File
                 <input
                   autoComplete="off"
                   title={outputPath}
                   value={outputPath}
                   onChange={(event) => setOutputPath(event.target.value)}
-                  placeholder="/home/you/Verbal/demo/exports/final.mp4"
+                  placeholder="/home/you/Verbal/demo/exports/final.mp4…"
                 />
                 {outputPath.trim() !== "" && (
                   <span className="field__hint" title={outputPath}>
@@ -1683,13 +1684,13 @@ export default function Home() {
                 onClick={exportStoryboard}
                 disabled={project === null}
               >
-                Export storyboard
+                Export Storyboard
               </button>
               {job !== null && (
                 <p className="muted">
                   Job {job.status} · {Math.round(job.progress * 100)}%
                   {job.message !== null ? ` · ${job.message}` : ""}
-                  {job.error !== null ? ` · ${job.error}` : ""}
+                  {job.error !== null ? ` · ${errorCopyFor(job.error).message}` : ""}
                 </p>
               )}
             </section>
@@ -1729,8 +1730,9 @@ export default function Home() {
           className={`statusbar__message${error !== null ? " is-error" : ""}`}
           role="status"
           aria-live="polite"
+          title={error?.detail}
         >
-          {error ?? message ?? ""}
+          {error?.message ?? message ?? ""}
         </span>
       </footer>
     </main>

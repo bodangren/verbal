@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-23T09:01:24.227Z",
+  "generatedAt": "2026-11-23T09:05:53.655Z",
   "steps": {
     "editableTranscript": {
       "clicks": 9,
@@ -50,7 +50,7 @@
       {
         "mode": "Ingest",
         "level": 3,
-        "text": "Source media"
+        "text": "Source Media"
       },
       {
         "mode": "Ingest",

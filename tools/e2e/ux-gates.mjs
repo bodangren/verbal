@@ -234,21 +234,21 @@ try {
   await page.locator(".browser").waitFor({ timeout: 20000 });
 
   // The core journey, measured from the home screen to an editable transcript.
-  await click(page.getByRole("button", { name: "+ New project here", exact: true }));
-  await type(page.getByLabel("New project name"), PROJECT);
+  await click(page.getByRole("button", { name: "+ New Project Here", exact: true }));
+  await type(page.getByLabel("New Project Name"), PROJECT);
   await click(page.getByRole("button", { name: "Create", exact: true }));
   await page.getByText(`Created ${PROJECT}`).waitFor();
 
   await click(page.getByRole("button", { name: /Browse/ }));
-  const dialog = page.getByRole("dialog", { name: "Choose media file" });
+  const dialog = page.getByRole("dialog", { name: "Choose Media file" });
   await dialog.waitFor();
   await click(dialog.getByTitle("Enter media"));
   await click(dialog.getByTitle("Choose take.mp4"));
-  await click(page.getByRole("button", { name: "Import copy" }));
+  await click(page.getByRole("button", { name: "Import Copy" }));
   await page.getByText("Media imported").waitFor();
 
   await click(modeButton(page, "Ingest"));
-  await click(page.getByRole("button", { name: "Transcribe media" }));
+  await click(page.getByRole("button", { name: "Transcribe Media" }));
   await page.getByText(/Transcribed 3 words/).waitFor({ timeout: 30000 });
   await click(modeButton(page, "Edit"));
   await page
@@ -343,7 +343,7 @@ try {
   }
 
   const liveRegions = await page.evaluate(
-    () => document.querySelectorAll('[aria-live="polite"]').length,
+    () => document.querySelectorAll('[aria-live="polite"], [role="status"]').length,
   );
 
   const headingViolations = [];
