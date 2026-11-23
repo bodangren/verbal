@@ -38,7 +38,7 @@ describe("MediaPicker", () => {
   it("chooses a media file and enters a folder", () => {
     const props = setup();
 
-    fireEvent.click(screen.getByTitle("Choose take.mp4"));
+    fireEvent.click(screen.getByTitle("Import take.mp4"));
     expect(props.onChoose).toHaveBeenCalledWith("/home/me/media/take.mp4");
 
     fireEvent.click(screen.getByTitle("Enter media"));

@@ -235,23 +235,23 @@ try {
   await page.locator(".browser").waitFor({ timeout: 20000 });
 
   // The core journey, measured from the home screen to an editable transcript.
+  // Enter submits the create form, so only revealing it is a click.
   await click(page.getByRole("button", { name: "+ New Project Here", exact: true }));
   await type(page.getByLabel("New Project Name"), PROJECT);
-  await click(page.getByRole("button", { name: "Create", exact: true }));
+  await page.keyboard.press("Enter");
   await page.getByText(`Created ${PROJECT}`).waitFor();
 
-  await click(page.getByRole("button", { name: "Browse…" }));
-  const dialog = page.getByRole("dialog", { name: "Choose Media file" });
+  await click(page.getByRole("button", { name: "Import Media" }));
+  const dialog = page.getByRole("dialog", { name: "Import Media" });
   await dialog.waitFor();
   await click(dialog.getByTitle("Enter media"));
-  await click(dialog.getByTitle("Choose take.mp4"));
-  await click(page.getByRole("button", { name: "Import Copy" }));
-  await page.getByText("Media imported").waitFor();
+  await click(dialog.getByTitle("Import take.mp4"));
+  await page.getByText("Media imported", { exact: true }).waitFor();
 
-  await click(modeButton(page, "Ingest"));
-  await click(page.getByRole("button", { name: "Transcribe Media" }));
+  // Import starts on choose; Transcribe sits on the media row, and the
+  // finished transcript lands in Edit without another mode click.
+  await click(page.getByRole("button", { name: "Transcribe", exact: true }));
   await page.getByText(/Transcribed 200 words/).waitFor({ timeout: 30000 });
-  await click(modeButton(page, "Edit"));
   await page
     .getByRole("region", { name: "Transcript editor" })
     .locator(".transcript__word")

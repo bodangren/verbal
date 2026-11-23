@@ -538,7 +538,7 @@ try {
     await openProject("Transcribed");
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
 
-    await page.getByRole("button", { name: "Transcribe Media" }).click();
+    await page.getByRole("button", { name: "Transcribe", exact: true }).click();
     await page.getByText(/Transcribed 3 words/).waitFor();
     await page.getByRole("button", { name: "Edit", exact: true }).click();
 
@@ -569,10 +569,16 @@ try {
       mode: "copy",
     });
 
+    // The batch project was created through the API after the page loaded, so
+    // refresh the folder before the dialog lists it.
+    await page.getByRole("button", { name: "Home" }).click();
     await page.getByRole("button", { name: "Ingest", exact: true }).click();
-    await page.getByText("Batch Projects").click();
-    await page.getByLabel("One Project Root per Line").fill(`${transcribedRoot}\n${batchRoot}`);
-    await page.getByRole("button", { name: "Start Batch" }).click();
+    await page.getByRole("button", { name: "Transcribe Several Projects" }).click();
+    const batchDialog = page.getByRole("dialog", { name: "Transcribe Several Projects" });
+    await batchDialog.waitFor();
+    await batchDialog.getByRole("checkbox", { name: "Select Transcribed" }).check();
+    await batchDialog.getByRole("checkbox", { name: "Select Batched" }).check();
+    await batchDialog.getByRole("button", { name: "Start Transcribe" }).click();
     await page.getByText(/Batch done/).waitFor({ timeout: 30000 });
 
     const outcomes = page.getByLabel("Batch outcomes");
@@ -583,6 +589,7 @@ try {
         rows.some((row) => row.includes("skipped")),
       `a batch should report both outcomes, got ${JSON.stringify(rows)}`,
     );
+    await batchDialog.getByRole("button", { name: "Close" }).click();
     console.log("transcription: ran a batch across two projects");
   }
 

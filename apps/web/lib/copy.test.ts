@@ -8,6 +8,9 @@ const files = [
   "apps/web/components/PatchReview.tsx",
   "apps/web/components/MediaPicker.tsx",
   "apps/web/components/ProjectBrowser.tsx",
+  "apps/web/components/IngestStage.tsx",
+  "apps/web/components/IngestInspector.tsx",
+  "apps/web/components/BatchDialog.tsx",
 ];
 
 const source = files
@@ -15,7 +18,7 @@ const source = files
   .join("\n");
 
 const sentenceCase = [
-  "Import copy",
+  "Import media",
   "Remove accepted",
   "Start preview",
   "Stop preview",
@@ -28,11 +31,12 @@ const sentenceCase = [
   "Insert silence",
   "Move back",
   "Move forward",
-  "Transcribe media",
-  "Start batch",
+  "Transcribe several projects",
+  "Start transcribe",
+  "Media details",
   "Export storyboard",
   "New project here",
-  "Source media",
+  "Next steps",
   "No project open",
   "Audio fixes",
   "Freeze master",
@@ -40,7 +44,7 @@ const sentenceCase = [
 ];
 
 const titleCase = [
-  "Import Copy",
+  "Import Media",
   "Remove Accepted",
   "Start Preview",
   "Stop Preview",
@@ -53,13 +57,18 @@ const titleCase = [
   "Insert Silence",
   "Move Back",
   "Move Forward",
-  "Transcribe Media",
-  "Start Batch",
+  "Transcribe Several Projects",
+  "Start Transcribe",
+  "Media Details",
+  "Next Steps",
+  "Open in Edit",
+  "Transcribe Again",
+  "No Media Yet",
+  "Not Transcribed",
   "Export Storyboard",
   "New Project Here",
-  "Source Media",
-  "No Project Open",
   "Audio Fixes",
+  "No Project Open",
   "Freeze Master",
   "Apply Selected",
 ];

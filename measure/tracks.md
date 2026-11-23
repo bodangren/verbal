@@ -18,7 +18,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Shell and Core Flow** [created: 2026-11-22]
   *Focus: Keep the browser in all modes, put import and transcription in one place, add the top-bar save dot and Export, inline errors, and session memory.*
-  *Status: In progress — Phase 1: persistent browser, top bar, Edit layout.*
+  *Status: In progress — Phase 1 shell and Phase 2 Ingest done. New project to editable transcript is 5 clicks (was 9). Gate still red on the Transcript tab stops.*
   *Link: [./tracks/ux_shell_flow_20261122](./tracks/ux_shell_flow_20261122/)*
 
 - [ ] **Track: Transcript as a Document** [created: 2026-11-22]

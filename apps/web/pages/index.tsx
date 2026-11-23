@@ -14,6 +14,7 @@ import {
   type StoryboardPatch,
 } from "@verbal/storyboard";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
+import type { MediaInfo } from "@verbal/media";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
 import {
   DEFAULT_PRESET_ID,
@@ -30,6 +31,9 @@ import {
 import { CapturePanel } from "../components/CapturePanel";
 import { errorCopyFor, type ErrorCopy } from "../lib/error-copy";
 import { MediaPicker } from "../components/MediaPicker";
+import { IngestStage, type MediaState } from "../components/IngestStage";
+import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
+import { BatchDialog } from "../components/BatchDialog";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
 import { TopBar, type SaveState, type WorkspaceMode } from "../components/TopBar";
@@ -55,6 +59,48 @@ function defaultOutputPath(
   const extension = EXPORT_PRESETS.find((preset) => preset.id === presetId)?.extension ?? "mp4";
   const name = projectName.trim().replace(/[\\/]+/g, "-") || "export";
   return `${projectRoot.replace(/\/+$/, "")}/exports/${name}.${extension}`;
+}
+
+/** The absolute media path a probe needs, from the project document. */
+function projectMediaPath(
+  project: ProjectDocument | null,
+  projectRoot: string,
+): string | null {
+  if (project?.media === undefined) {
+    return null;
+  }
+  if (project.media.externalPath !== undefined) {
+    return project.media.externalPath;
+  }
+  if (project.media.assetPath !== undefined) {
+    return `${projectRoot.replace(/\/+$/, "")}/${project.media.assetPath}`;
+  }
+  return null;
+}
+
+function projectMediaName(project: ProjectDocument | null): string | null {
+  const target = project?.media?.assetPath ?? project?.media?.externalPath;
+  if (target === undefined) {
+    return null;
+  }
+  return target.split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? null;
+}
+
+/** Narrows a probe result to the fields the inspector shows. */
+function toProbeSummary(info: MediaInfo): ProbeSummary {
+  const video = info.streams.find((stream) => stream.kind === "video") ?? null;
+  const audio = info.streams.find((stream) => stream.kind === "audio") ?? null;
+  return {
+    durationSeconds: info.durationSeconds,
+    sizeBytes: info.sizeBytes,
+    videoCodec: video?.codec ?? null,
+    width: video?.width ?? null,
+    height: video?.height ?? null,
+    frameRate: video?.frameRate ?? null,
+    audioCodec: audio?.codec ?? null,
+    channels: audio?.channels ?? null,
+    sampleRate: audio?.sampleRate ?? null,
+  };
 }
 
 
@@ -132,7 +178,9 @@ export default function Home() {
   const transcript = editing.document;
   const [selection, setSelection] = useState<WordSelection | null>(null);
   const [proposals, setProposals] = useState<CleanupProposal[]>([]);
-  const [batchRoots, setBatchRoots] = useState("");
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchSelected, setBatchSelected] = useState<string[]>([]);
+  const [batchRunning, setBatchRunning] = useState(false);
 
   const [browserPath, setBrowserPath] = useState("");
   const [browserParent, setBrowserParent] = useState<string | null>(null);
@@ -158,7 +206,14 @@ export default function Home() {
   const [patchText, setPatchText] = useState("");
   const [patches, setPatches] = useState<StoryboardPatch[]>([]);
   const [accepted, setAccepted] = useState<boolean[]>([]);
-  const [importPath, setImportPath] = useState("");
+  const [probe, setProbe] = useState<ProbeSummary | null>(null);
+  const [probeError, setProbeError] = useState<string | null>(null);
+  const [transcription, setTranscription] = useState({
+    label: "Cloud (OpenAI-compatible)",
+    cloud: true,
+  });
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [transcribeFailure, setTranscribeFailure] = useState<string | null>(null);
   const [outputPath, setOutputPath] = useState("");
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
   const [prunable, setPrunable] = useState<string[] | null>(null);
@@ -248,6 +303,7 @@ export default function Home() {
       setRoot(target);
       await loadProjectFiles(opened, target);
       setMode(opened.media === undefined ? "ingest" : "edit");
+      setTranscribeFailure(null);
       setBrowserError(null);
     });
   }
@@ -324,9 +380,84 @@ export default function Home() {
   }
 
   function chooseMedia(filePath: string) {
-    setImportPath(filePath);
     setPickerOpen(false);
+    // Import starts at once; there is no second Import button.
+    void importMedia(filePath);
   }
+
+  /**
+   * Copies a chosen file into the open project.
+   *
+   * The page stays in Ingest so the new media row and its Transcribe action
+   * are visible without a mode change.
+   */
+  function importMedia(sourcePath: string) {
+    return guard(async () => {
+      const result = await postJson<{ project: ProjectDocument }>("/api/media/import", {
+        projectRoot: root,
+        sourcePath,
+        mode: "copy",
+      });
+      setProject(result.project);
+      setTranscribeFailure(null);
+      setMessage("Media imported");
+    });
+  }
+
+  // The inspector reads one probe result per project, injected so the UI can be
+  // tested without ffprobe. Re-probe when the project changes (including import).
+  useEffect(() => {
+    const mediaPath = projectMediaPath(project, root);
+    let cancelled = false;
+
+    void (async () => {
+      if (mediaPath === null) {
+        if (!cancelled) {
+          setProbe(null);
+          setProbeError(null);
+        }
+        return;
+      }
+
+      setProbe(null);
+      setProbeError(null);
+      try {
+        const info = await postJson<MediaInfo>("/api/media/probe", { path: mediaPath });
+        if (!cancelled) {
+          setProbe(toProbeSummary(info));
+        }
+      } catch (cause) {
+        if (!cancelled) {
+          setProbeError(cause instanceof Error ? cause.message : String(cause));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [project, root]);
+
+  // The environment picks the provider; the stage names it before transcribing.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const system = await request<{
+          transcription?: { label: string; cloud: boolean };
+        }>("/api/system");
+        if (!cancelled && system.transcription !== undefined) {
+          setTranscription(system.transcription);
+        }
+      } catch {
+        // Keep the default label; transcription still works through the API.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Leaving Ingest unmounts the camera element; stop the stream so the light
   // does not stay on behind an invisible preview.
@@ -353,21 +484,9 @@ export default function Home() {
       setRoot(createdRoot);
       await loadProjectFiles(created, createdRoot);
       setMode("ingest");
+      setTranscribeFailure(null);
       setMessage(`Created ${created.name}`);
       void loadFolder(browserPath);
-    });
-  }
-
-  function importMedia() {
-    return guard(async () => {
-      const result = await postJson<{ project: ProjectDocument }>("/api/media/import", {
-        projectRoot: root,
-        sourcePath: importPath,
-        mode: "copy",
-      });
-      setProject(result.project);
-      setMessage("Media imported");
-      setMode("edit");
     });
   }
 
@@ -480,12 +599,16 @@ export default function Home() {
 
   function transcribeMedia() {
     return guard(async () => {
+      setTranscribeFailure(null);
       const started = await postJson<JobRecord>("/api/transcribe", { projectRoot: root });
       setJob(started);
 
       const finished = await pollJob(started.id);
+      setJob(finished);
       if (finished.status !== "done") {
-        throw new Error(finished.error ?? `transcription ${finished.status}`);
+        const detail = finished.error ?? `transcription ${finished.status}`;
+        setTranscribeFailure(detail);
+        throw new Error(detail);
       }
 
       await loadTranscriptState();
@@ -496,6 +619,8 @@ export default function Home() {
           ? "Transcription finished"
           : `Transcribed ${result.words} words`,
       );
+      // The transcript is the point of transcription; show it in Edit.
+      setMode("edit");
     });
   }
 
@@ -553,36 +678,49 @@ export default function Home() {
 
   function startBatch() {
     return guard(async () => {
-      const roots = batchRoots
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line !== "");
+      const roots = [...batchSelected];
+      if (roots.length === 0) {
+        return;
+      }
 
-      const started = await postJson<{
-        plan: { items: unknown[] };
-        job: JobRecord;
-      }>("/api/transcribe/batch", { roots });
+      setBatchRunning(true);
+      try {
+        const started = await postJson<{
+          plan: { items: unknown[] };
+          job: JobRecord;
+        }>("/api/transcribe/batch", { roots });
 
-      setJob(started.job);
-      setBatchOutcomes([]);
-      setMessage(`${started.plan.items.length} projects planned`);
+        setJob(started.job);
+        setBatchOutcomes([]);
+        setMessage(`${started.plan.items.length} projects planned`);
 
-      const finished = await pollJob(started.job.id);
-      const result = finished.result as {
-        outcomes?: { root: string; status: string; detail?: string }[];
-      } | null;
-      const outcomes = result?.outcomes ?? [];
-      setBatchOutcomes(outcomes);
+        const finished = await pollJob(started.job.id);
+        const result = finished.result as {
+          outcomes?: { root: string; status: string; detail?: string }[];
+        } | null;
+        const outcomes = result?.outcomes ?? [];
+        setBatchOutcomes(outcomes);
 
-      // The open project may be one of the batch, so refresh what the page shows.
-      await loadTranscriptState();
+        // The open project may be one of the batch, so refresh what the page shows.
+        await loadTranscriptState();
 
-      setMessage(
-        `Batch ${finished.status}: ${
-          outcomes.filter((outcome) => outcome.status === "transcribed").length
-        } transcribed, ${outcomes.filter((outcome) => outcome.status === "failed").length} failed`,
-      );
+        setMessage(
+          `Batch ${finished.status}: ${
+            outcomes.filter((outcome) => outcome.status === "transcribed").length
+          } transcribed, ${outcomes.filter((outcome) => outcome.status === "failed").length} failed`,
+        );
+      } finally {
+        setBatchRunning(false);
+      }
     });
+  }
+
+  function toggleBatch(target: string) {
+    setBatchSelected((current) =>
+      current.includes(target)
+        ? current.filter((root) => root !== target)
+        : [...current, target],
+    );
   }
 
   function deleteSelection() {
@@ -925,6 +1063,28 @@ export default function Home() {
   const liveWords =
     transcript === null ? 0 : transcript.words.length - transcript.removedWordIds.length;
 
+  const mediaState: MediaState = (() => {
+    if (!hasMedia) {
+      return { kind: "none" };
+    }
+    if (transcribing) {
+      return { kind: "transcribing", progress: job?.progress ?? 0 };
+    }
+    if (transcribeFailure !== null) {
+      return { kind: "failed", detail: transcribeFailure };
+    }
+    if (transcript !== null && liveWords > 0) {
+      return { kind: "transcribed", words: liveWords };
+    }
+    return { kind: "untranscribed" };
+  })();
+
+  // The batch dialog lists the projects in the folder the browser is showing,
+  // so a batch never needs a typed path.
+  const batchProjects = browserEntries
+    .filter((entry) => entry.isProject)
+    .map((entry) => ({ name: entry.summary?.name ?? entry.name, root: entry.path }));
+
   return (
     <main className="app" data-mode={mode}>
       <h1 className="sr-only">{project === null ? "Verbal" : project.name}</h1>
@@ -965,25 +1125,33 @@ export default function Home() {
 
         <section className="stage" aria-label={`${mode} workspace`}>
           {mode === "ingest" && (
-            <div className="stage__scroll">
-              <header className="stage__head">
-                <div>
-                  <h2>Capture</h2>
-                  <p className="stage__sub">
-                    {project === null
-                      ? "Open or create a project to record a take."
-                      : `Record a take into ${project.name}.`}
-                  </p>
-                </div>
-                <span className="pill">{hasMedia ? "Media loaded" : "No media"}</span>
-              </header>
-
-              {project === null ? (
+            <IngestStage
+              projectName={project?.name ?? null}
+              mediaName={projectMediaName(project)}
+              state={mediaState}
+              provider={transcription.label}
+              cloud={transcription.cloud}
+              onImport={() => {
+                if (project !== null) {
+                  openMediaPicker();
+                }
+              }}
+              onRecord={() => setCaptureOpen((open) => !open)}
+              onTranscribe={() => void transcribeMedia()}
+              onRetry={() => void transcribeMedia()}
+              onTranscribeSeveral={() => {
+                setBatchSelected([]);
+                setBatchOpen(true);
+              }}
+            >
+              {project === null && (
                 <EmptyState
                   title="No Project Open"
                   body="Pick a project in the browser, or create one in the folder you are browsing."
                 />
-              ) : (
+              )}
+
+              {project !== null && captureOpen && (
                 <div className="card">
                   <div className="capture__frame">
                     <video
@@ -1016,7 +1184,7 @@ export default function Home() {
                   />
                 </div>
               )}
-            </div>
+            </IngestStage>
           )}
 
           {mode === "edit" && (
@@ -1458,89 +1626,14 @@ export default function Home() {
         </section>
 
         {mode === "ingest" && (
-          <aside className="inspector" aria-label="Inspector">
-            <section className="inspector__section" aria-label="Source Media">
-              <h3>Source Media</h3>
-              <p className="muted">Import a recording or an existing file into this project.</p>
-              <label className="field">
-                Source File Path
-                <input
-                  autoComplete="off"
-                  value={importPath}
-                  onChange={(event) => setImportPath(event.target.value)}
-                  placeholder="/home/you/Videos/take.mp4…"
-                  disabled={project === null}
-                />
-              </label>
-              <div className="toolbar">
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={openMediaPicker}
-                  disabled={project === null}
-                >
-                  Browse…
-                </button>
-                <button
-                  type="button"
-                  className="button button--primary"
-                  onClick={importMedia}
-                  disabled={project === null || importPath.trim() === ""}
-                >
-                  Import Copy
-                </button>
-              </div>
-            </section>
-
-            <section className="inspector__section" aria-label="Transcription">
-              <h3>Transcription</h3>
-              <p className="muted">Transcribing replaces this project&apos;s stored transcript.</p>
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={transcribeMedia}
-                disabled={project === null || !hasMedia || transcribing}
-              >
-                {transcribing ? "Transcribing…" : "Transcribe Media"}
-              </button>
-              {transcribing && job !== null && (
-                <p className="muted">
-                  Transcribing {Math.round(job.progress * 100)}%
-                </p>
-              )}
-
-              <details className="disclosure disclosure--inline">
-                <summary>Batch Projects</summary>
-                <label className="field">
-                  One Project Root per Line
-                  <textarea
-                    className="editor editor--short"
-                    value={batchRoots}
-                    onChange={(event) => setBatchRoots(event.target.value)}
-                    spellCheck={false}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={startBatch}
-                  disabled={batchRoots.trim() === "" || transcribing}
-                >
-                  Start Batch
-                </button>
-                {batchOutcomes.length > 0 && (
-                  <ul className="outcomes" aria-label="Batch outcomes">
-                    {batchOutcomes.map((outcome) => (
-                      <li key={outcome.root} data-status={outcome.status}>
-                        <span>{outcome.root}</span>
-                        <span className="muted">{outcome.status}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </details>
-            </section>
-          </aside>
+          <IngestInspector
+            probe={probe}
+            probeError={probeError}
+            hasMedia={hasMedia}
+            hasTranscript={transcript !== null && liveWords > 0}
+            transcribing={transcribing}
+            onOpenInEdit={() => setMode("edit")}
+          />
         )}
 
         {mode === "edit" && (
@@ -1689,6 +1782,18 @@ export default function Home() {
             }
           }}
           onNavigate={(target) => void loadPickerFolder(target)}
+        />
+      )}
+
+      {batchOpen && (
+        <BatchDialog
+          projects={batchProjects}
+          selected={batchSelected}
+          running={batchRunning}
+          outcomes={batchOutcomes}
+          onToggle={toggleBatch}
+          onStart={() => void startBatch()}
+          onClose={() => setBatchOpen(false)}
         />
       )}
 

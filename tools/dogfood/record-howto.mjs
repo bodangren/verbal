@@ -221,23 +221,23 @@ async function main() {
     await page.waitForTimeout(900);
     console.log("record: project created");
 
-    mark("browse", "Browse to the take instead of typing a path");
-    await page.getByRole("button", { name: "Browse…" }).click();
-    const dialog = page.getByRole("dialog", { name: "Choose Media file" });
+    mark("browse", "Import Media opens the picker; choosing a file imports it");
+    await page.getByRole("button", { name: "Import Media" }).click();
+    const dialog = page.getByRole("dialog", { name: "Import Media" });
     await dialog.waitFor();
     await dialog.getByTitle("Enter media").click();
-    await dialog.getByTitle("Choose take.mp4").waitFor();
+    await dialog.getByTitle("Import take.mp4").waitFor();
     await page.waitForTimeout(700);
     console.log("record: picker open");
 
-    mark("choose", "Choose a file, then import a copy");
-    await dialog.getByTitle("Choose take.mp4").click();
-    await page.getByRole("button", { name: "Import Copy" }).click();
-    await page.getByText("Media imported").waitFor();
+    mark("choose", "Choosing a file imports a copy at once");
+    await dialog.getByTitle("Import take.mp4").click();
+    await page.getByText("Media imported", { exact: true }).waitFor();
     await page.waitForTimeout(1200);
     console.log("record: media imported");
 
-    mark("play", "The take opens in the player");
+    mark("play", "Open Edit to play the imported take");
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
     await page
       .getByRole("region", { name: "Playback" })
       .getByRole("button", { name: "Play", exact: true })

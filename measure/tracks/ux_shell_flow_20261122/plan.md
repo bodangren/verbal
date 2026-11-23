@@ -1,6 +1,6 @@
 # Plan: Shell and Core Flow
 
-**Status:** IN PROGRESS — Phase 1 complete; Phase 2 next
+**Status:** IN PROGRESS — Phase 2 complete; Phase 3 next
 **Created:** 2026-11-22
 **Focus:** One shell for all modes, and a short path from a take to a transcript.
 
@@ -46,31 +46,31 @@
 
 ### Red
 
-- [ ] Add failing tests for the import card, the media row states, and Retry.
+- [x] Add failing tests for the import card, the media row states, and Retry.
       File: `apps/web/components/ingest-stage.test.tsx` (new).
       Cover Not Transcribed, Transcribing… 40%, Transcribed 81 words, and Failed.
-- [ ] Add failing tests for media details and next steps.
+- [x] Add failing tests for media details and next steps.
       File: `apps/web/components/ingest-inspector.test.tsx` (new).
       Use an injected probe result. Assert the Open in Edit button.
-- [ ] Extend the UX gate: new project to editable transcript in 5 clicks or less. It fails today at 8.
+- [x] Extend the UX gate: new project to editable transcript in 5 clicks or less. It fails today at 8.
 
 **Targeted Red command:** `npx vitest run apps/web/components/ingest-stage.test.tsx apps/web/components/ingest-inspector.test.tsx`.
 
 ### Green
 
-- [ ] Build the Ingest stage and inspector components.
+- [x] Build the Ingest stage and inspector components.
       Files: `apps/web/components/IngestStage.tsx` (new), `apps/web/components/IngestInspector.tsx` (new).
-- [ ] Start import when the picker returns a file. Rename the picker action to Import.
+- [x] Start import when the picker returns a file. Rename the picker action to Import.
       Files: `apps/web/components/MediaPicker.tsx`, `apps/web/pages/index.tsx`.
-- [ ] Move batch transcription into a dialog with project checkboxes.
+- [x] Move batch transcription into a dialog with project checkboxes.
       File: `apps/web/components/BatchDialog.tsx` (new).
-- [ ] Show the provider name from `/api/system`.
+- [x] Show the provider name from `/api/system`.
       Files: `apps/web/server/transcribe-service.ts`, `apps/web/pages/api/system.ts`.
 
 ### Verification
 
-- [ ] Run the targeted tests, `npm run e2e`, and the gate.
-- [ ] Commit the phase with the measured click count.
+- [x] Run the targeted tests, `npm run e2e`, and the gate.
+- [x] Commit the phase with the measured click count.
 
 ---
 

@@ -68,11 +68,11 @@ export function MediaPicker({
         className="picker-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Choose Media file"
+        aria-label="Import Media"
         tabIndex={-1}
       >
         <header className="picker-dialog__head">
-          <h2>Choose Media</h2>
+          <h2>Import Media</h2>
           <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
             ×
           </button>
@@ -146,7 +146,7 @@ export function MediaPicker({
                 type="button"
                 className="entry__main"
                 onClick={() => onChoose(entry.path)}
-                title={`Choose ${entry.name}`}
+                title={`Import ${entry.name}`}
               >
                 <span className="entry__glyph" aria-hidden="true">
                   ▶
@@ -160,7 +160,7 @@ export function MediaPicker({
         </div>
 
         <footer className="picker-dialog__foot">
-          <span className="muted">Only media files are listed.</span>
+          <span className="muted">Choosing a file imports a copy into the project.</span>
         </footer>
       </div>
     </div>

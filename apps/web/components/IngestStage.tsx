@@ -1,0 +1,165 @@
+import type { ReactNode } from "react";
+
+/** The media row's transcription state. */
+export type MediaState =
+  | { kind: "none" }
+  | { kind: "untranscribed" }
+  | { kind: "transcribing"; progress: number }
+  | { kind: "transcribed"; words: number }
+  | { kind: "failed"; detail?: string };
+
+export type IngestStageProps = {
+  projectName: string | null;
+  mediaName: string | null;
+  state: MediaState;
+  /** Human name of the provider in use, e.g. "Cloud (OpenAI-compatible)". */
+  provider: string;
+  /** True when the provider sends audio off the machine. */
+  cloud: boolean;
+  onImport: () => void;
+  onRecord: () => void;
+  onTranscribe: () => void;
+  onRetry: () => void;
+  onTranscribeSeveral: () => void;
+  /** The capture surface, revealed by Record. */
+  children?: ReactNode;
+};
+
+function stateLabel(state: MediaState): string {
+  switch (state.kind) {
+    case "none":
+      return "No Media Yet";
+    case "untranscribed":
+      return "Not Transcribed";
+    case "transcribing":
+      return `Transcribing… ${Math.max(0, Math.min(100, Math.round(state.progress * 100)))}%`;
+    case "transcribed":
+      return `Transcribed ${state.words} ${state.words === 1 ? "word" : "words"}`;
+    case "failed":
+      return state.detail === undefined ? "Failed" : `Failed: ${state.detail}`;
+  }
+}
+
+/**
+ * The Ingest stage: one import card, the media row with its transcription
+ * state, and the provider in use.
+ *
+ * Import and transcription share this surface so the user does not have to
+ * change modes between choosing a take and transcribing it.
+ */
+export function IngestStage({
+  projectName,
+  mediaName,
+  state,
+  provider,
+  cloud,
+  onImport,
+  onRecord,
+  onTranscribe,
+  onRetry,
+  onTranscribeSeveral,
+  children,
+}: IngestStageProps) {
+  const canTranscribe =
+    mediaName !== null && state.kind !== "transcribing" && state.kind !== "none";
+
+  return (
+    <div className="stage__scroll">
+      <header className="stage__head">
+        <div>
+          <h2>Ingest</h2>
+          <p className="stage__sub">
+            {projectName === null
+              ? "Open or create a project to import a take."
+              : `Import and transcribe a take into ${projectName}.`}
+          </p>
+        </div>
+        <span className="pill">
+          {state.kind === "transcribed" ? "Transcript ready" : "No transcript"}
+        </span>
+      </header>
+
+      <div className="card">
+        <h3>Import</h3>
+        <p className="muted">
+          Choose a recording or an existing file. Importing starts as soon as you pick a file.
+        </p>
+        <div className="toolbar">
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={onImport}
+            disabled={projectName === null}
+          >
+            Import Media
+          </button>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={onRecord}
+            disabled={projectName === null}
+          >
+            Record
+          </button>
+        </div>
+        <p className="muted" data-testid="provider-line">
+          Provider: {provider}
+          {cloud ? " · Audio leaves this machine." : " · Audio stays on this machine."}
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Media</h3>
+        <ul className="media-list" aria-label="Project media">
+          <li className="media-row" data-state={state.kind}>
+            <span className="media-row__name">{mediaName ?? "No media imported"}</span>
+            <span className="media-row__state">{stateLabel(state)}</span>
+            {state.kind === "untranscribed" && (
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={onTranscribe}
+                disabled={!canTranscribe}
+              >
+                Transcribe
+              </button>
+            )}
+            {state.kind === "transcribing" && (
+              <button type="button" className="button button--primary" disabled>
+                Transcribing…
+              </button>
+            )}
+            {state.kind === "transcribed" && (
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={onTranscribe}
+                disabled={!canTranscribe}
+              >
+                Transcribe Again
+              </button>
+            )}
+            {state.kind === "failed" && (
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={onRetry}
+                disabled={!canTranscribe}
+              >
+                Retry
+              </button>
+            )}
+          </li>
+        </ul>
+      </div>
+
+      <div className="toolbar">
+        <button type="button" className="button button--ghost" onClick={onTranscribeSeveral}>
+          Transcribe Several Projects
+        </button>
+      </div>
+
+      {children}
+    </div>
+  );
+}

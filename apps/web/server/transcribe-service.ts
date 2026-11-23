@@ -19,6 +19,29 @@ import {
 import { getJobRegistry } from "./registry";
 import { runTranscriptionJob } from "./transcribe-job";
 
+/** What the UI says about the provider the environment selected. */
+export type TranscriptionProviderInfo = {
+  mode: "local" | "cloud";
+  label: string;
+  /** True when audio leaves the machine. */
+  cloud: boolean;
+};
+
+/**
+ * Names the transcription provider for the UI.
+ *
+ * The environment chooses the provider; this only describes the choice, so
+ * the stage can say where the audio goes before the user transcribes.
+ */
+export function describeTranscriptionProvider(
+  asrMode: string | undefined,
+): TranscriptionProviderInfo {
+  if (asrMode === "local") {
+    return { mode: "local", label: "Local (whisper)", cloud: false };
+  }
+  return { mode: "cloud", label: "Cloud (OpenAI-compatible)", cloud: true };
+}
+
 export type TranscribeServiceDeps = {
   fs: FileSystem;
   registry: () => Promise<JobRegistry>;

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-23T09:14:17.939Z",
+  "generatedAt": "2026-11-23T09:23:41.402Z",
   "steps": {
     "editableTranscript": {
-      "clicks": 9,
+      "clicks": 5,
       "keys": 1
     }
   },
@@ -45,17 +45,27 @@
       {
         "mode": "Ingest",
         "level": 2,
-        "text": "Capture"
+        "text": "Ingest"
       },
       {
         "mode": "Ingest",
         "level": 3,
-        "text": "Source Media"
+        "text": "Import"
       },
       {
         "mode": "Ingest",
         "level": 3,
-        "text": "Transcription"
+        "text": "Media"
+      },
+      {
+        "mode": "Ingest",
+        "level": 3,
+        "text": "Media Details"
+      },
+      {
+        "mode": "Ingest",
+        "level": 3,
+        "text": "Next Steps"
       },
       {
         "mode": "Edit",
