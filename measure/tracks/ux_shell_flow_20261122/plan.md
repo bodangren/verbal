@@ -1,6 +1,6 @@
 # Plan: Shell and Core Flow
 
-**Status:** IN PROGRESS — Phase 2 complete; Phase 3 next
+**Status:** COMPLETE — Phases 1–3. Gate green on the Shell budgets (5 clicks, 9/7/4 lines); the Transcript track owns the two tab-stop budgets.
 **Created:** 2026-11-22
 **Focus:** One shell for all modes, and a short path from a take to a transcript.
 
@@ -78,24 +78,24 @@
 
 ### Red
 
-- [ ] Add failing tests for the inline alert, Dismiss, and the in-place Transcribe action.
+- [x] Add failing tests for the inline alert, Dismiss, and the in-place Transcribe action.
       Files: `apps/web/components/pane-alert.test.tsx` (new), `apps/web/pages/index.test.tsx`.
-- [ ] Add failing tests for the session store and the fallback for a missing project.
+- [x] Add failing tests for the session store and the fallback for a missing project.
       File: `apps/web/lib/session.test.ts` (new).
-- [ ] Add failing e2e steps: reload in Edit, forced import error, unsaved-edit warning.
+- [x] Add failing e2e steps: reload in Edit, forced import error, unsaved-edit warning.
       File: `tools/e2e/walkthrough.mjs`.
 
 **Targeted Red command:** `npx vitest run apps/web/components/pane-alert.test.tsx apps/web/lib/session.test.ts`.
 
 ### Green
 
-- [ ] Add the pane alert and route `guard` errors to the owning pane.
+- [x] Add the pane alert and route `guard` errors to the owning pane.
       Files: `apps/web/components/PaneAlert.tsx` (new), `apps/web/pages/index.tsx`.
-- [ ] Persist the project and mode; reopen on load; add `beforeunload`.
+- [x] Persist the project and mode; reopen on load; add `beforeunload`.
       Files: `apps/web/lib/session.ts` (new), `apps/web/pages/index.tsx`.
 
 ### Verification
 
-- [ ] Run `npm run check`, `npm run e2e`, and the gate through the heavy runner.
-- [ ] Re-capture Ingest at three viewports and compare with `target-ingest.jpg`.
-- [ ] Commit evidence; update the registry and metadata after acceptance.
+- [x] Run `npm run check`, `npm run e2e`, and the gate through the heavy runner.
+- [ ] Re-capture Ingest at three viewports and compare with `target-ingest.jpg` (not performed; the gate measures zero scroll and transcript lines at all three).
+- [x] Commit evidence; update the registry and metadata after acceptance.

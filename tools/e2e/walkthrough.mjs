@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -450,9 +450,40 @@ try {
   await waitForSavedState(true);
   console.log("transcript: undo, redo, and autosaved the result");
 
+  // The unload guard fires while an edit is unsaved. Undo the saved redo so the
+  // document is dirty without needing an enabled word in this 3-word fixture.
+  await editorPanel.getByRole("button", { name: "Undo" }).click();
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector(".bar__save")?.textContent ?? "";
+      return text === "Unsaved" || text === "Saving…";
+    },
+    undefined,
+    { timeout: 3000 },
+  );
+  const warnsBeforeUnload = await page.evaluate(() => {
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  assert(warnsBeforeUnload, "unsaved edits should warn before unload");
+  await editorPanel.getByRole("button", { name: "Redo" }).click();
+  await waitForSavedState(true);
+  console.log("errors: an unsaved edit warns before unload");
+
+  // Session memory reopens the project in Edit without a click.
   await page.reload({ waitUntil: "networkidle" });
-  await openProject("Walkthrough");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page
+    .locator(".bar__document-name")
+    .filter({ hasText: "Walkthrough" })
+    .waitFor();
+  assert(
+    (await page
+      .getByRole("button", { name: "Edit", exact: true })
+      .getAttribute("aria-current")) === "page",
+    "the reload should reopen Edit from the session",
+  );
+  await page.getByRole("region", { name: "Transcript editor" }).waitFor();
   assert(
     (await editorPanel
       .getByRole("button", { name: "world" })
@@ -591,6 +622,85 @@ try {
     );
     await batchDialog.getByRole("button", { name: "Close" }).click();
     console.log("transcription: ran a batch across two projects");
+  }
+
+  // A failed import shows an inline alert in the Ingest stage, not only in the
+  // status bar; Dismiss clears it.
+  if (mediaImported) {
+    // The picker can only reach folders under the served home; copy the clip
+    // there so the forced failure happens through the real UI path.
+    await mkdir(path.join(home, "media"), { recursive: true });
+    await copyFile(clipPath, path.join(home, "media", "take.webm"));
+    await page.getByRole("button", { name: "Home" }).click();
+    await page.route("**/api/media/import", (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: { code: "unknown", message: "forced import failure" },
+        }),
+      }),
+    );
+    await page.getByRole("button", { name: "Import Media" }).click();
+    const importDialog = page.getByRole("dialog", { name: "Import Media" });
+    await importDialog.waitFor();
+    await importDialog.getByTitle("Enter media").click();
+    await importDialog.getByTitle("Import take.webm").click();
+    const ingestAlert = page
+      .getByRole("region", { name: "ingest workspace" })
+      .getByRole("alert");
+    await ingestAlert.waitFor();
+    assert(
+      ((await ingestAlert.textContent()) ?? "").includes("Something went wrong"),
+      "a failed import should show an inline alert in Ingest",
+    );
+    await ingestAlert.getByRole("button", { name: "Dismiss" }).click();
+    await ingestAlert.waitFor({ state: "detached" });
+    await page.unroute("**/api/media/import");
+    // The forced 500 is deliberate; it must not trip the console-error check.
+    for (let index = errors.length - 1; index >= 0; index -= 1) {
+      if (errors[index].includes("/api/media/import")) {
+        errors.splice(index, 1);
+      }
+    }
+    console.log("errors: a failed import showed an inline alert and dismissed");
+  }
+
+  // Edit with no transcript offers Transcribe in place, with no mode change.
+  if (mediaImported) {
+    const emptyRoot = path.join(home, "empty");
+    await mkdir(emptyRoot, { recursive: true });
+    await api("POST", "/api/projects", { root: emptyRoot, name: "Empty" });
+    await api("POST", "/api/media/import", {
+      projectRoot: emptyRoot,
+      sourcePath: clipPath,
+      mode: "copy",
+    });
+
+    await page.getByRole("button", { name: "Home" }).click();
+    await openProject("Empty");
+    assert(
+      (await page
+        .getByRole("button", { name: "Edit", exact: true })
+        .getAttribute("aria-current")) === "page",
+      "a project with media should open in Edit",
+    );
+
+    const editWorkspace = page.getByRole("region", { name: "edit workspace" });
+    await editWorkspace.getByText("No Transcript Yet").waitFor();
+    await editWorkspace.getByRole("button", { name: "Transcribe", exact: true }).click();
+    await page.getByText(/Transcribed 3 words/).waitFor({ timeout: 30000 });
+    assert(
+      (await page
+        .getByRole("button", { name: "Edit", exact: true })
+        .getAttribute("aria-current")) === "page",
+      "transcribing in Edit should keep Edit active",
+    );
+    await page
+      .getByRole("region", { name: "Transcript editor" })
+      .getByRole("button", { name: "hello" })
+      .waitFor();
+    console.log("errors: transcribed in place from the Edit empty state");
   }
 
   // Creating lives in the browser: enter a folder, name a project, create it.

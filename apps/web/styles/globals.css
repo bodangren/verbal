@@ -2003,3 +2003,23 @@ h2 {
   white-space: nowrap;
   font-size: 12px;
 }
+
+.pane-alert {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--error-border);
+  border-radius: var(--rounded-md);
+  background: var(--error-surface);
+  color: var(--text-primary);
+}
+
+.pane-alert__message {
+  margin: 0 0 var(--space-1);
+}
+
+.pane-alert__detail {
+  margin: 0 0 var(--space-2);
+  color: var(--error);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

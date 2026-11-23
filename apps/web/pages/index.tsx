@@ -34,6 +34,8 @@ import { MediaPicker } from "../components/MediaPicker";
 import { IngestStage, type MediaState } from "../components/IngestStage";
 import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
 import { BatchDialog } from "../components/BatchDialog";
+import { PaneAlert } from "../components/PaneAlert";
+import { clearSession, loadSession, saveSession } from "../lib/session";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
 import { TopBar, type SaveState, type WorkspaceMode } from "../components/TopBar";
@@ -229,6 +231,10 @@ export default function Home() {
   });
   const [job, setJob] = useState<JobRecord | null>(null);
   const [error, setError] = useState<ErrorCopy | null>(null);
+  const [paneError, setPaneError] = useState<{
+    pane: "browser" | "ingest" | "edit" | "deliver";
+    copy: ErrorCopy;
+  } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [keyQuality, setKeyQuality] = useState<KeyQuality | null>(null);
@@ -246,12 +252,18 @@ export default function Home() {
   // Server snapshot is false, so the first render is hydration-safe.
   const cameraAvailable = useSyncExternalStore(subscribeNever, canUseCamera, () => false);
 
-  async function guard(run: () => Promise<void>) {
+  async function guard(
+    run: () => Promise<void>,
+    pane: "browser" | "ingest" | "edit" | "deliver" = mode,
+  ) {
     setError(null);
     try {
       await run();
+      setPaneError(null);
     } catch (cause) {
-      setError(errorCopyFor(cause));
+      const copy = errorCopyFor(cause);
+      setError(copy);
+      setPaneError({ pane, copy });
     }
   }
 
@@ -305,7 +317,7 @@ export default function Home() {
       setMode(opened.media === undefined ? "ingest" : "edit");
       setTranscribeFailure(null);
       setBrowserError(null);
-    });
+    }, "browser");
   }
 
   function loadFolder(target?: string) {
@@ -331,7 +343,7 @@ export default function Home() {
       } catch (cause) {
         setBrowserError(cause instanceof Error ? cause.message : String(cause));
       }
-    });
+    }, "browser");
   }
 
   useEffect(() => {
@@ -347,6 +359,56 @@ export default function Home() {
     // The browser loads once on mount; later navigation goes through loadFolder.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reopen the last project and mode; a missing project falls back to the browser.
+  useEffect(() => {
+    const session = loadSession();
+    if (session === null) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const opened = await request<ProjectDocument>(
+          `/api/projects?root=${encodeURIComponent(session.root)}`,
+        );
+        setRoot(session.root);
+        await loadProjectFiles(opened, session.root);
+        setMode(session.mode);
+      } catch {
+        clearSession();
+        setMode("ingest");
+        setMessage("That project could not be reopened. Choose another in the browser.");
+      }
+    })();
+    // Restore once, before any user action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Remember the open project and mode across reloads.
+  useEffect(() => {
+    if (project !== null && root !== "") {
+      saveSession({ root, mode });
+    }
+  }, [project, root, mode]);
+
+  const runningJob =
+    job !== null && (job.status === "queued" || job.status === "running");
+
+  // Warn before leaving while an edit is unsaved or a job is running.
+  useEffect(() => {
+    if (!editing.dirty && !runningJob) {
+      return;
+    }
+
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [editing.dirty, runningJob]);
 
   /** Loads a folder for the media picker, with media files included. */
   async function loadPickerFolder(target?: string) {
@@ -401,7 +463,7 @@ export default function Home() {
       setProject(result.project);
       setTranscribeFailure(null);
       setMessage("Media imported");
-    });
+    }, "ingest");
   }
 
   // The inspector reads one probe result per project, injected so the UI can be
@@ -487,7 +549,7 @@ export default function Home() {
       setTranscribeFailure(null);
       setMessage(`Created ${created.name}`);
       void loadFolder(browserPath);
-    });
+    }, "browser");
   }
 
   /** Builds the first storyboard from the transcript, then previews it. */
@@ -561,7 +623,7 @@ export default function Home() {
       await putJson<TranscriptDocument>("/api/transcript", { root, document: transcript });
       editing.markSaved();
       setMessage("Transcript saved");
-    });
+    }, "edit");
   }
 
   const matches = useMemo(
@@ -712,7 +774,7 @@ export default function Home() {
       } finally {
         setBatchRunning(false);
       }
-    });
+    }, "ingest");
   }
 
   function toggleBatch(target: string) {
@@ -1099,6 +1161,13 @@ export default function Home() {
 
       <div className="workspace">
         <aside className="sidebar" aria-label="Project browser">
+            {paneError?.pane === "browser" && (
+              <PaneAlert
+                message={paneError.copy.message}
+                detail={paneError.copy.detail}
+                onDismiss={() => setPaneError(null)}
+              />
+            )}
             <ProjectBrowser
               path={browserPath}
               parent={browserParent}
@@ -1144,6 +1213,14 @@ export default function Home() {
                 setBatchOpen(true);
               }}
             >
+              {paneError?.pane === "ingest" && (
+                <PaneAlert
+                  message={paneError.copy.message}
+                  detail={paneError.copy.detail}
+                  onDismiss={() => setPaneError(null)}
+                />
+              )}
+
               {project === null && (
                 <EmptyState
                   title="No Project Open"
@@ -1201,6 +1278,14 @@ export default function Home() {
                 )}
               </header>
 
+              {paneError?.pane === "edit" && (
+                <PaneAlert
+                  message={paneError.copy.message}
+                  detail={paneError.copy.detail}
+                  onDismiss={() => setPaneError(null)}
+                />
+              )}
+
               {project === null ? (
                 <EmptyState
                   title="No Project Open"
@@ -1233,8 +1318,15 @@ export default function Home() {
                   {transcript === null ? (
                     <EmptyState
                       title="No Transcript Yet"
-                      body="Play and scrub the take now. Transcribe it in Ingest to edit the words."
-                      action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                      body="Play and scrub the take now. Transcribe it here to edit the words."
+                      action={{
+                        label: transcribing ? "Transcribing…" : "Transcribe",
+                        onClick: () => {
+                          if (!transcribing) {
+                            void transcribeMedia();
+                          }
+                        },
+                      }}
                     />
                   ) : (
                   <div className="card" role="region" aria-label="Transcript editor">
@@ -1416,6 +1508,14 @@ export default function Home() {
                 )}
               </header>
 
+              {paneError?.pane === "deliver" && (
+                <PaneAlert
+                  message={paneError.copy.message}
+                  detail={paneError.copy.detail}
+                  onDismiss={() => setPaneError(null)}
+                />
+              )}
+
               {project === null ? (
                 <EmptyState
                   title="No Project Open"
@@ -1425,8 +1525,15 @@ export default function Home() {
               ) : transcript === null ? (
                 <EmptyState
                   title="No Transcript Yet"
-                  body="Transcribe the take in Ingest to build a storyboard."
-                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                  body="Transcribe the take here to build a storyboard."
+                  action={{
+                    label: transcribing ? "Transcribing…" : "Transcribe",
+                    onClick: () => {
+                      if (!transcribing) {
+                        void transcribeMedia();
+                      }
+                    },
+                  }}
                 />
               ) : plan === null ? (
                 <EmptyState
