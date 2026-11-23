@@ -47,6 +47,22 @@ FFmpeg's filtergraph language covers everything this product needs as declarativ
 
 Filtergraphs are built by **pure TypeScript functions** that return an argv array. They are unit-testable with no display, no hardware, and no CGo.
 
+### Webcam capture: browser MediaRecorder, FFmpeg normalizes
+
+**Decision record — 2026-11-23.** A webcam take is captured in the browser from the same
+`getUserMedia` stream the preview shows, then uploaded and normalized to MP4 by FFmpeg.
+The server-side `v4l2` capture remains available for headless and hardware checks but is no
+longer the interactive path.
+
+Rationale: one camera consumer avoids the V4L2 contention between the live preview and
+FFmpeg; the preview stays live; the user stops the take exactly. FFmpeg remains the single
+encoder, so the rest of the pipeline still sees one MP4/H.264/AAC format.
+
+Trade-offs: browser codec support varies (VP9/VP8 WebM, MP4 on Safari), so every take is
+normalized. The upload endpoint must validate size, MIME, and project-root containment.
+`packages/takes` is added for script beats, take alignment, the review schema, take
+manifests, and the EDL.
+
 ### Storage: JSON documents + optional SQLite
 Transcripts, storyboards, and edit lists are **documents**: versioned, diffable, patchable. They live as JSON in the project folder. A SQLite index (`node:sqlite`, built into Node) is optional and only for library-wide queries, caches, and job state. If `node:sqlite` proves too experimental, `better-sqlite3` is the fallback — but it must never be imported into a component or RSC path.
 
@@ -67,6 +83,7 @@ apps/web            vinext app: pages/, pages/api/, UI components
 packages/core       project format, storage, migrations, atomic writes
 packages/media      ffprobe parsing, filtergraph builders, FFmpeg runner
 packages/storyboard storyboard IR, anchor resolution, patches/diff
+packages/takes      script beats, take alignment, review schema, EDL
 packages/slides     Remotion compositions + Player wrappers
 packages/ai         ASR + LLM provider abstraction (no vendor SDKs outside)
 tools/remotion      Remotion render entry point (Node CLI, frames out)

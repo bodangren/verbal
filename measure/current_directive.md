@@ -14,19 +14,21 @@ A security or integrity track goes ahead of a UX track only when that UX track c
 2. **Shell and Core Flow** — `ux_shell_flow_20261122`.
 3. **Transcript as a Document** — `ux_transcript_document_20261122`.
 4. **Edit Inspector and Cleanup Review** — `ux_edit_inspector_20261122`.
-5. **Local Safety Boundaries** — `local_safety_20261122`.
+5. **Webcam Recording with Teleprompter** — `teleprompter_capture_20261123`.
+   Upload validation is built into the track; it does not wait for Local Safety Boundaries.
+6. **Local Safety Boundaries** — `local_safety_20261122`.
    Reason: Edit Timeline Integrity depends on its path and filtergraph adapters.
-6. **Edit Timeline Integrity** — `edit_timeline_integrity_20261122`.
+7. **Edit Timeline Integrity** — `edit_timeline_integrity_20261122`.
    Reason: the UX timeline must show the same cuts that playback and export use (F01, F02).
-7. **Edited Timeline and Playback** — `ux_timeline_playback_20261122`.
-8. **Save and Export Integrity** — `save_export_integrity_20261122`.
+8. **Edited Timeline and Playback** — `ux_timeline_playback_20261122`.
+9. **Save and Export Integrity** — `save_export_integrity_20261122`.
    Reason: the export panel's Replace step needs isolated output that never overwrites inputs (F05).
-9. **Job Lifecycle and Events** — `job_lifecycle_20261122`.
+10. **Job Lifecycle and Events** — `job_lifecycle_20261122`.
    Reason: the export panel's Cancel and progress need real cancellation and job events (F06, F10).
-10. **Deliver Strip and Export Panel** — `ux_deliver_export_20261122`.
-11. **Deliver Preview and Scene Controls** — `deliver_preview_20261122`.
+11. **Deliver Strip and Export Panel** — `ux_deliver_export_20261122`.
+12. **Deliver Preview and Scene Controls** — `deliver_preview_20261122`.
     It fills the player slot and the scene field editor that the Deliver UX track leaves open.
-12. **Repository Contracts and Verification** — `repository_contracts_20261122`.
+13. **Repository Contracts and Verification** — `repository_contracts_20261122`.
 
 ## Secondary block: security and integrity (from the first review)
 

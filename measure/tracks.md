@@ -41,6 +41,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Not started. UX priority 6; depends on Job Lifecycle and Events (real Cancel), Save and Export Integrity (no overwrite), and Shell and Core Flow.*
   *Link: [./tracks/ux_deliver_export_20261122](./tracks/ux_deliver_export_20261122/)*
 
+- [~] **Track: Webcam Recording with Teleprompter** [created: 2026-11-23]
+  *Focus: Record the webcam from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.*
+  *Status: In progress — Phase 1: script and prompter. Placed after the four UX tracks; upload validation is built into the track.*
+  *Link: [./tracks/teleprompter_capture_20261123](./tracks/teleprompter_capture_20261123/)*
+
 ### Block 2 — Security and integrity (secondary)
 
 - [ ] **Track: Local Safety Boundaries** [created: 2026-11-22]
