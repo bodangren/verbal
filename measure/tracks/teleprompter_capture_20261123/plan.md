@@ -1,6 +1,6 @@
 # Plan: Webcam Recording with Teleprompter
 
-**Status:** IN PROGRESS — Phase 1
+**Status:** IN PROGRESS — Phase 1 complete; Phase 2 next
 **Created:** 2026-11-23
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
@@ -13,13 +13,13 @@
 
 ### Red
 
-- [~] Add failing pure tests for beats and the prompter clock.
+- [x] Add failing pure tests for beats and the prompter clock.
       Files: `packages/takes/src/beats.test.ts` (new), `apps/web/components/prompter-clock.test.ts` (new).
       Cover sentence/line splitting, stable ids, word count, read time at 150 WPM, offset over time, speed changes, reset, and reduced motion.
-- [ ] Add failing component tests for the prompter overlay.
+- [x] Add failing component tests for the prompter overlay.
       File: `apps/web/components/teleprompter.test.tsx` (new).
       Cover the top-center overlay, play/pause, speed, font size, mirror, reset, `aria-hidden`, and scoped keys.
-- [ ] Add failing server tests for the script store.
+- [x] Add failing server tests for the script store.
       File: `apps/web/server/script-api.test.ts` (new).
       Cover GET of a missing file (empty), PUT validation, atomic write, and project-root containment.
 
@@ -27,17 +27,17 @@
 
 ### Green
 
-- [ ] Add `packages/takes` for beats and the script document.
+- [x] Add `packages/takes` for beats and the script document.
       Files: `packages/takes/package.json`, `packages/takes/src/index.ts`, `beats.ts`, `script.ts`.
-- [ ] Add the script API and its store.
+- [x] Add the script API and its store.
       Files: `apps/web/server/script-api.ts` (new), `apps/web/pages/api/script.ts` (new).
-- [ ] Build the prompter and Studio shell; wire it into Ingest.
+- [x] Build the prompter and Studio shell; wire it into Ingest.
       Files: `apps/web/components/Teleprompter.tsx` (new), `apps/web/components/StudioStage.tsx` (new), `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [ ] Run the targeted tests and the gate (no new page scroll or live regions).
-- [ ] Commit the phase.
+- [x] Run the targeted tests and the gate (no new page scroll or live regions).
+- [x] Commit the phase.
 
 ---
 

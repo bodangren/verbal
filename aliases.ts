@@ -19,4 +19,5 @@ export const workspaceAliases: Record<string, string> = {
   "@verbal/slides": fromRoot("./packages/slides/src/index.ts"),
   "@verbal/storyboard/hash": fromRoot("./packages/storyboard/src/hash.ts"),
   "@verbal/storyboard": fromRoot("./packages/storyboard/src/index.ts"),
+  "@verbal/takes": fromRoot("./packages/takes/src/index.ts"),
 };

@@ -13,6 +13,7 @@ import {
   type StoryboardDocument,
   type StoryboardPatch,
 } from "@verbal/storyboard";
+import { countWords, formatReadTime, readTimeSeconds } from "@verbal/takes";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import type { MediaInfo } from "@verbal/media";
 import { assessKeyQuality, type KeyQuality } from "@verbal/media/key-quality";
@@ -35,6 +36,14 @@ import { IngestStage, type MediaState } from "../components/IngestStage";
 import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
+import { StudioStage } from "../components/StudioStage";
+import {
+  advanceWords,
+  clampFontSize,
+  clampWpm,
+  DEFAULT_FONT,
+  DEFAULT_WPM,
+} from "../components/prompter-clock";
 import { clearSession, loadSession, saveSession } from "../lib/session";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
@@ -150,6 +159,24 @@ function canUseCamera(): boolean {
   );
 }
 
+/** Reduced motion is a media query; subscribe so the prompter can step by line. */
+function subscribeReducedMotion(callback: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => undefined;
+  }
+  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+
+function readReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 function EmptyState({
   title,
   body,
@@ -183,6 +210,13 @@ export default function Home() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchSelected, setBatchSelected] = useState<string[]>([]);
   const [batchRunning, setBatchRunning] = useState(false);
+  const [script, setScript] = useState("");
+  const [scriptSaved, setScriptSaved] = useState("");
+  const [prompterOffset, setPrompterOffset] = useState(0);
+  const [prompterWpm, setPrompterWpm] = useState(DEFAULT_WPM);
+  const [prompterFontSize, setPrompterFontSize] = useState(DEFAULT_FONT);
+  const [prompterMirror, setPrompterMirror] = useState(false);
+  const [prompterPlaying, setPrompterPlaying] = useState(false);
 
   const [browserPath, setBrowserPath] = useState("");
   const [browserParent, setBrowserParent] = useState<string | null>(null);
@@ -251,6 +285,11 @@ export default function Home() {
 
   // Server snapshot is false, so the first render is hydration-safe.
   const cameraAvailable = useSyncExternalStore(subscribeNever, canUseCamera, () => false);
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    readReducedMotion,
+    () => false,
+  );
 
   async function guard(
     run: () => Promise<void>,
@@ -303,6 +342,20 @@ export default function Home() {
       `/api/storyboard?root=${encodeURIComponent(projectRoot)}`,
     );
     setStoryboardText(JSON.stringify(storyboard, null, 2));
+
+    try {
+      const stored = await request<{ script: string }>(
+        `/api/script?root=${encodeURIComponent(projectRoot)}`,
+      );
+      setScript(stored.script);
+      setScriptSaved(stored.script);
+    } catch {
+      setScript("");
+      setScriptSaved("");
+    }
+    setPrompterOffset(0);
+    setPrompterPlaying(false);
+
     setMessage(`Opened ${next.name}`);
   }
 
@@ -520,6 +573,45 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  // Save the script after a pause; the prompter keeps the text in memory meanwhile.
+  useEffect(() => {
+    if (project === null || root === "" || script === scriptSaved) {
+      return;
+    }
+
+    const handle = setTimeout(() => {
+      void (async () => {
+        try {
+          await putJson<{ script: string }>("/api/script", { root, script });
+          setScriptSaved(script);
+        } catch (cause) {
+          setError(errorCopyFor(cause));
+        }
+      })();
+    }, 600);
+
+    return () => clearTimeout(handle);
+  }, [script, scriptSaved, project, root]);
+
+  // A steady clock advances the prompter. The offset at the start of a run is
+  // captured so a tick never resets the elapsed time.
+  useEffect(() => {
+    if (!prompterPlaying) {
+      return;
+    }
+
+    const start = { words: prompterOffset, at: performance.now() };
+    const handle = setInterval(() => {
+      const elapsed = (performance.now() - start.at) / 1000;
+      setPrompterOffset(advanceWords(start.words, prompterWpm, elapsed));
+    }, 100);
+
+    return () => clearInterval(handle);
+    // The offset at the start of a run is captured in `start`; adding it to the
+    // dependencies would restart the clock on every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompterPlaying, prompterWpm]);
 
   // Leaving Ingest unmounts the camera element; stop the stream so the light
   // does not stay on behind an invisible preview.
@@ -775,6 +867,24 @@ export default function Home() {
         setBatchRunning(false);
       }
     }, "ingest");
+  }
+
+  /** Fills the script from the current transcript, for a rehearse-and-reread pass. */
+  function useTranscriptAsScript() {
+    if (transcript === null) {
+      setScript("");
+      return;
+    }
+
+    const removed = new Set(transcript.removedWordIds);
+    setScript(
+      transcript.words
+        .filter((word) => !removed.has(word.id))
+        .map((word) => word.text)
+        .join(" "),
+    );
+    setPrompterOffset(0);
+    setPrompterPlaying(false);
   }
 
   function toggleBatch(target: string) {
@@ -1124,6 +1234,7 @@ export default function Home() {
   const hasMedia = project?.media !== undefined;
   const liveWords =
     transcript === null ? 0 : transcript.words.length - transcript.removedWordIds.length;
+  const scriptWords = countWords(script);
 
   const mediaState: MediaState = (() => {
     if (!hasMedia) {
@@ -1218,6 +1329,34 @@ export default function Home() {
                   message={paneError.copy.message}
                   detail={paneError.copy.detail}
                   onDismiss={() => setPaneError(null)}
+                />
+              )}
+
+              {project !== null && (
+                <StudioStage
+                  script={script}
+                  words={scriptWords}
+                  readTime={formatReadTime(readTimeSeconds(scriptWords))}
+                  offsetWords={prompterOffset}
+                  wpm={prompterWpm}
+                  fontSize={prompterFontSize}
+                  mirror={prompterMirror}
+                  playing={prompterPlaying}
+                  reducedMotion={reducedMotion}
+                  onScriptChange={(text) => {
+                    setScript(text);
+                    setPrompterOffset(0);
+                    setPrompterPlaying(false);
+                  }}
+                  onUseTranscript={useTranscriptAsScript}
+                  onTogglePlay={() => setPrompterPlaying((value) => !value)}
+                  onWpmChange={(value) => setPrompterWpm(clampWpm(value))}
+                  onFontSizeChange={(value) => setPrompterFontSize(clampFontSize(value))}
+                  onToggleMirror={() => setPrompterMirror((value) => !value)}
+                  onReset={() => {
+                    setPrompterOffset(0);
+                    setPrompterPlaying(false);
+                  }}
                 />
               )}
 

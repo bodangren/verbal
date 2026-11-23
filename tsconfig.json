@@ -22,6 +22,7 @@
       "@verbal/media": ["./packages/media/src/index.ts"],
       "@verbal/media/key-quality": ["./packages/media/src/key-quality.ts"],
       "@verbal/storyboard": ["./packages/storyboard/src/index.ts"],
+      "@verbal/takes": ["./packages/takes/src/index.ts"],
       "@verbal/storyboard/hash": ["./packages/storyboard/src/hash.ts"],
       "@verbal/compose": ["./packages/compose/src/index.ts"],
       "@verbal/cleanup": ["./packages/cleanup/src/index.ts"],

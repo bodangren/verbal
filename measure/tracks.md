@@ -43,7 +43,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 - [~] **Track: Webcam Recording with Teleprompter** [created: 2026-11-23]
   *Focus: Record the webcam from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.*
-  *Status: In progress — Phase 1: script and prompter. Placed after the four UX tracks; upload validation is built into the track.*
+  *Status: In progress — Phase 1 script and prompter complete. The script persists per project; the top-center prompter has speed, size, mirror, and reduced-motion controls. Phase 2 capture is next. Upload validation is built into the track.*
   *Link: [./tracks/teleprompter_capture_20261123](./tracks/teleprompter_capture_20261123/)*
 
 ### Block 2 — Security and integrity (secondary)
