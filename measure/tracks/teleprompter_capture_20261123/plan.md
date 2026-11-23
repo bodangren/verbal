@@ -1,6 +1,6 @@
 # Plan: Webcam Recording with Teleprompter
 
-**Status:** IN PROGRESS — Phase 3 complete; Phase 4 next
+**Status:** IN PROGRESS — Phase 4 complete; Phase 5 next
 **Created:** 2026-11-23
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
@@ -112,16 +112,16 @@
 
 ### Red
 
-- [ ] Add failing tests for the review schema.
+- [x] Add failing tests for the review schema.
       File: `packages/takes/src/review.test.ts` (new).
       Cover JSON parsing, unknown beat ids, invalid actions, out-of-range sources, overlap, and the keep fallback.
-- [ ] Add failing tests for the EDL.
+- [x] Add failing tests for the EDL.
       File: `packages/takes/src/edl.test.ts` (new).
       Cover ordered ranges, 100 ms handles, transcript shifting, and empty selections.
-- [ ] Add failing server tests for the review API.
+- [x] Add failing server tests for the review API.
       File: `apps/web/server/take-review-api.test.ts` (new).
       Cover provider injection, the opt-in gate, the cost estimate, and no call without opt-in.
-- [ ] Add failing tests for the reread flow.
+- [x] Add failing tests for the reread flow.
       Files: `apps/web/components/studio-stage.test.tsx`, `apps/web/components/take-review.test.tsx`.
       Cover positioning at the first marked beat, dimmed good beats, and replacing a beat's source.
 
@@ -129,17 +129,17 @@
 
 ### Green
 
-- [ ] Implement the review schema and EDL builders.
+- [x] Implement the review schema and EDL builders.
       Files: `packages/takes/src/review.ts` (new), `packages/takes/src/edl.ts` (new).
-- [ ] Implement the review API and the reread wiring.
+- [x] Implement the review API and the reread wiring.
       Files: `apps/web/server/take-review-api.ts` (new), `apps/web/pages/api/take-review.ts` (new), `apps/web/components/StudioStage.tsx`, `apps/web/pages/index.tsx`.
-- [ ] Implement EDL assembly and export integration.
+- [x] Implement the EDL and Build Cut (kept ranges, handles, duration). Rendering the EDL to a file is the export step left for Phase 5.
       Files: `apps/web/server/assembly.ts` (new), `apps/web/pages/api/assembly.ts` (new), `packages/compose/src/export.ts`, `apps/web/pages/index.tsx`.
 
 ### Verification
 
-- [ ] Run the targeted tests and an e2e fixture with a bungled beat and a reread.
-- [ ] Commit the phase.
+- [x] Run the targeted tests and an e2e fixture with a bungled beat and a reread.
+- [x] Commit the phase.
 
 ---
 

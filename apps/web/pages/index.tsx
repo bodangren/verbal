@@ -19,6 +19,7 @@ import {
   formatReadTime,
   readTimeSeconds,
   splitBeats,
+  type BeatProposal,
   type BeatStatus,
   type TakeAlignment,
 } from "@verbal/takes";
@@ -48,6 +49,7 @@ import {
   type StudioTake,
 } from "../components/StudioOverlay";
 import { CaptureRecorder, type MediaRecorderLike } from "../lib/capture-recorder";
+import type { ReviewProposalView } from "../components/TakeReview";
 import { ScriptEditor } from "../components/ScriptEditor";
 import {
   advanceWords,
@@ -312,6 +314,19 @@ export default function Home() {
     alignment: TakeAlignment;
   } | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [llmReview, setLlmReview] = useState<{
+    takeId: string;
+    provider: string | null;
+    estimate: { tokens: number; cost: number } | null;
+    proposals: ReviewProposalView[];
+    running: boolean;
+  } | null>(null);
+  const [rereadTarget, setRereadTarget] = useState<string | null>(null);
+  const [cut, setCut] = useState<{
+    ranges: number;
+    durationSeconds: number;
+    building: boolean;
+  } | null>(null);
   const [cameras, setCameras] = useState<StudioDevice[]>([]);
   const [microphones, setMicrophones] = useState<StudioDevice[]>([]);
   const [cameraId, setCameraId] = useState<string | null>(null);
@@ -577,6 +592,9 @@ export default function Home() {
     setCountdown(null);
     setElapsedSeconds(0);
     setPrompterPlaying(false);
+    setRereadTarget(null);
+    setLlmReview(null);
+    setCut(null);
     stopPreview();
   }
 
@@ -1282,6 +1300,9 @@ export default function Home() {
         await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`),
       );
       setMessage("Take saved");
+      setRereadTarget(null);
+      setLlmReview(null);
+      setCut(null);
       setTakeState("idle");
       setElapsedSeconds(0);
     });
@@ -1304,6 +1325,9 @@ export default function Home() {
         `/api/take-transcript?root=${encodeURIComponent(root)}&takeId=${encodeURIComponent(takeId)}`,
       );
       setReview({ takeId, alignment: alignTake(scriptBeats, saved.words) });
+      setLlmReview(null);
+      setRereadTarget(null);
+      setCut(null);
     }).finally(() => setReviewing(false));
   }
 
@@ -1314,6 +1338,7 @@ export default function Home() {
       .reduce((sum, beat) => sum + beat.wordCount, 0);
     setPrompterOffset(offset);
     setPrompterPlaying(true);
+    setRereadTarget(beatId);
     setMessage(`Reread from ${beatId}`);
   }
 
@@ -1334,6 +1359,122 @@ export default function Home() {
 
   function seekReview(seconds: number) {
     setMessage(`Take at ${seconds.toFixed(1)}s`);
+  }
+
+  function previewEdits(takeId: string) {
+    return guard(async () => {
+      const preview = await request<{
+        provider: string;
+        estimate: { tokens: number; cost: number };
+      }>(
+        `/api/take-review?root=${encodeURIComponent(root)}&takeId=${encodeURIComponent(takeId)}`,
+      );
+      setLlmReview({
+        takeId,
+        provider: preview.provider,
+        estimate: preview.estimate,
+        proposals: [],
+        running: false,
+      });
+    });
+  }
+
+  function runEdits(takeId: string) {
+    return guard(async () => {
+      setLlmReview((current) =>
+        current === null ? current : { ...current, running: true },
+      );
+      const result = await postJson<{
+        provider: string;
+        proposals: BeatProposal[];
+      }>("/api/take-review", { root, takeId, confirm: true });
+      setLlmReview((current) =>
+        current === null
+          ? current
+          : {
+              ...current,
+              running: false,
+              provider: result.provider,
+              proposals: result.proposals.map((proposal) => ({
+                ...proposal,
+                selected: proposal.action !== "keep",
+              })),
+            },
+      );
+    });
+  }
+
+  function toggleProposal(beatId: string) {
+    setLlmReview((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            proposals: current.proposals.map((proposal) =>
+              proposal.beatId === beatId
+                ? { ...proposal, selected: !proposal.selected }
+                : proposal,
+            ),
+          },
+    );
+  }
+
+  function applyProposals() {
+    if (llmReview === null) {
+      return;
+    }
+    const actions = new Map(
+      llmReview.proposals
+        .filter((proposal) => proposal.selected)
+        .map((proposal) => [proposal.beatId, proposal.action]),
+    );
+    setReview((current) =>
+      current === null
+        ? current
+        : {
+            ...current,
+            alignment: {
+              beats: current.alignment.beats.map((beat) => {
+                const action = actions.get(beat.beatId);
+                if (action === undefined) {
+                  return beat;
+                }
+                const status: BeatStatus =
+                  action === "cut" ? "skipped" : action === "reread" ? "bungled" : "good";
+                return { ...beat, status };
+              }),
+            },
+          },
+    );
+    setLlmReview(null);
+  }
+
+  function dismissProposals() {
+    setLlmReview(null);
+  }
+
+  function buildCut(takeId: string) {
+    return guard(async () => {
+      setCut({ ranges: 0, durationSeconds: 0, building: true });
+      const result = await postJson<{
+        ranges: { startSeconds: number; endSeconds: number }[];
+        durationSeconds: number;
+      }>("/api/assembly", { root, takeId });
+      setCut({
+        ranges: result.ranges.length,
+        durationSeconds: result.durationSeconds,
+        building: false,
+      });
+      setMessage(
+        `Cut: ${result.ranges.length} ${
+          result.ranges.length === 1 ? "range" : "ranges"
+        } · ${result.durationSeconds.toFixed(1)}s`,
+      );
+    }).finally(() => {
+      setCut((current) =>
+        current === null ? current : { ...current, building: false },
+      );
+    });
   }
 
   /** Export is always one click away: open Deliver and focus its panel. */
@@ -1468,6 +1609,18 @@ export default function Home() {
   const batchProjects = browserEntries
     .filter((entry) => entry.isProject)
     .map((entry) => ({ name: entry.summary?.name ?? entry.name, root: entry.path }));
+
+  const dimmedBeatIds =
+    rereadTarget === null
+      ? []
+      : scriptBeats
+          .filter((beat) => beat.id !== rereadTarget)
+          .filter(
+            (beat) =>
+              review?.alignment.beats.find((item) => item.beatId === beat.id)?.status ===
+              "good",
+          )
+          .map((beat) => beat.id);
 
   return (
     <main className="app" data-mode={mode}>
@@ -2208,6 +2361,32 @@ export default function Home() {
           }}
           review={review}
           reviewing={reviewing}
+          reviewLlm={{
+            provider: llmReview?.provider ?? null,
+            estimate: llmReview?.estimate ?? null,
+            proposals: llmReview?.proposals ?? [],
+            running: llmReview?.running ?? false,
+            onPreview: () => {
+              if (review !== null) {
+                void previewEdits(review.takeId);
+              }
+            },
+            onRun: () => {
+              if (review !== null) {
+                void runEdits(review.takeId);
+              }
+            },
+            onToggle: toggleProposal,
+            onApply: applyProposals,
+            onDismiss: dismissProposals,
+          }}
+          dimmedBeatIds={dimmedBeatIds}
+          cut={cut ?? undefined}
+          onBuildCut={() => {
+            if (review !== null) {
+              void buildCut(review.takeId);
+            }
+          }}
           takeUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
           onReview={(takeId) => void reviewTake(takeId)}
           onReread={rereadBeat}

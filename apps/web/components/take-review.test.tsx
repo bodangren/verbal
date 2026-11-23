@@ -77,6 +77,50 @@ describe("TakeReview", () => {
     expect(props.onReread).toHaveBeenCalledWith("b1");
   });
 
+  it("runs the LLM suggestion flow", () => {
+    const llm = {
+      provider: "fake",
+      estimate: { tokens: 100, cost: 0.002 },
+      proposals: [
+        {
+          beatId: "b1",
+          index: 1,
+          action: "reread" as const,
+          reason: "fluffed",
+          startSeconds: 1,
+          endSeconds: 2,
+          selected: true,
+        },
+      ],
+      running: false,
+      onPreview: vi.fn(),
+      onRun: vi.fn(),
+      onToggle: vi.fn(),
+      onApply: vi.fn(),
+      onDismiss: vi.fn(),
+    };
+    setup({ llm });
+
+    expect(screen.getByText(/fake · ~100 tokens/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply Selected" }));
+    expect(llm.onApply).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(llm.onDismiss).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Suggest Edits" }));
+    expect(llm.onPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it("builds the cut and shows its length", () => {
+    const props = setup({
+      cut: { ranges: 2, durationSeconds: 2.9, building: false },
+      onBuildCut: vi.fn(),
+    });
+
+    expect(screen.getByText(/2 ranges/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Build Cut" }));
+    expect(props.onBuildCut).toHaveBeenCalledTimes(1);
+  });
+
   it("lets the status be overridden", () => {
     const props = setup();
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { splitBeats, type BeatStatus, type TakeAlignment } from "@verbal/takes";
-import { TakeReview } from "./TakeReview";
+import { TakeReview, type TakeReviewLlm } from "./TakeReview";
 import { Teleprompter } from "./Teleprompter";
 
 export type StudioTake = {
@@ -51,11 +51,14 @@ export type StudioOverlayProps = {
   capture: StudioCapture;
   review: { takeId: string; alignment: TakeAlignment } | null;
   reviewing: boolean;
+  reviewLlm: TakeReviewLlm;
   takeUrl?: string;
   onReview: (takeId: string) => void;
   onReread: (beatId: string) => void;
   onStatusChange: (beatId: string, status: BeatStatus) => void;
   onSeek: (seconds: number) => void;
+  cut?: { ranges: number; durationSeconds: number; building: boolean };
+  onBuildCut?: () => void;
   onClose: () => void;
   onScriptChange: (text: string) => void;
   onUseTranscript: () => void;
@@ -92,11 +95,14 @@ export function StudioOverlay({
   capture,
   review,
   reviewing,
+  reviewLlm,
   takeUrl,
   onReview,
   onReread,
   onStatusChange,
   onSeek,
+  cut,
+  onBuildCut,
   onClose,
   onScriptChange,
   onUseTranscript,
@@ -317,6 +323,9 @@ export function StudioOverlay({
                 onReread={onReread}
                 onStatusChange={onStatusChange}
                 onSeek={onSeek}
+                llm={reviewLlm}
+                cut={cut}
+                onBuildCut={onBuildCut}
               />
             </details>
           )}

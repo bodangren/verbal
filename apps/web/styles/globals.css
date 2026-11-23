@@ -2329,3 +2329,33 @@ h2 {
 .take-review__beat[data-status="skipped"] .take-review__status {
   color: var(--error);
 }
+
+.take-review__llm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-md);
+}
+
+.take-review__proposals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.take-review__proposals label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.take-review__cut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
