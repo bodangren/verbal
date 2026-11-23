@@ -31,11 +31,12 @@ if (process.env.UX_SKIP_BUILD !== "1") {
   execFileSync("npm", ["run", "build"], { stdio: "inherit" });
 }
 
-const asrWords = [
-  { word: "hello", start: 0, end: 0.6 },
-  { word: "um", start: 0.6, end: 0.9 },
-  { word: "world", start: 0.9, end: 2 },
-];
+const SCRIPT = ["hello", "um", "world", "this", "is", "a", "long", "transcript"];
+const asrWords = Array.from({ length: 200 }, (_, index) => ({
+  word: SCRIPT[index % SCRIPT.length],
+  start: Number((index * 0.01).toFixed(2)),
+  end: Number(((index + 1) * 0.01).toFixed(2)),
+}));
 
 const asr = createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/audio/transcriptions") {
@@ -239,7 +240,7 @@ try {
   await click(page.getByRole("button", { name: "Create", exact: true }));
   await page.getByText(`Created ${PROJECT}`).waitFor();
 
-  await click(page.getByRole("button", { name: /Browse/ }));
+  await click(page.getByRole("button", { name: "Browse…" }));
   const dialog = page.getByRole("dialog", { name: "Choose Media file" });
   await dialog.waitFor();
   await click(dialog.getByTitle("Enter media"));
@@ -249,11 +250,12 @@ try {
 
   await click(modeButton(page, "Ingest"));
   await click(page.getByRole("button", { name: "Transcribe Media" }));
-  await page.getByText(/Transcribed 3 words/).waitFor({ timeout: 30000 });
+  await page.getByText(/Transcribed 200 words/).waitFor({ timeout: 30000 });
   await click(modeButton(page, "Edit"));
   await page
     .getByRole("region", { name: "Transcript editor" })
-    .getByRole("button", { name: "hello" })
+    .locator(".transcript__word")
+    .first()
     .waitFor();
 
   const viewports = {};

@@ -1,6 +1,6 @@
 # Plan: Shell and Core Flow
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS — Phase 1 complete; Phase 2 next
 **Created:** 2026-11-22
 **Focus:** One shell for all modes, and a short path from a take to a transcript.
 
@@ -13,32 +13,32 @@
 
 ### Red
 
-- [ ] Add failing tests for the browser in every mode and the current project row.
+- [x] Add failing tests for the browser in every mode and the current project row.
       Files: `apps/web/components/project-browser.test.tsx` (new), `apps/web/pages/index.test.tsx`.
       Assert `aria-current="true"` on the open row and the collapse state in localStorage.
-- [ ] Add failing tests for the top bar save dot and the Export button.
+- [x] Add failing tests for the top bar save dot and the Export button.
       File: `apps/web/components/top-bar.test.tsx` (new).
       Export switches to Deliver and focuses the export panel.
-- [ ] Add a failing gate check: visible transcript lines at 1440x900 and 1024x700.
+- [x] Add a failing gate check: visible transcript lines at 1440x900 and 1024x700.
       File: `tools/e2e/ux-gates.mjs`.
 
 **Targeted Red command:** `npx vitest run apps/web/components/project-browser.test.tsx apps/web/components/top-bar.test.tsx`.
 
 ### Green
 
-- [ ] Extract the top bar into a component with the save dot and Export.
+- [x] Extract the top bar into a component with the save dot and Export.
       Files: `apps/web/components/TopBar.tsx` (new), `apps/web/pages/index.tsx`.
-- [ ] Render the browser in all modes with a collapse rail.
+- [x] Render the browser in all modes with a collapse rail.
       Files: `apps/web/components/ProjectBrowser.tsx`, `apps/web/pages/index.tsx`, `apps/web/styles/globals.css`.
-- [ ] Add media duration to the browser summary.
+- [x] Add media duration to the browser summary.
       Files: `apps/web/server/fs-api.ts`, its test.
-- [ ] Lay out the Edit stage as player, timeline, and a scrolling transcript. Add Collapse Player.
+- [x] Lay out the Edit stage as player, timeline, and a scrolling transcript. Add Collapse Player.
       Files: `apps/web/pages/index.tsx`, `apps/web/components/PlaybackScreen.tsx`, `apps/web/styles/globals.css`.
 
 ### Verification
 
-- [ ] Run the targeted tests and the gate at three viewports.
-- [ ] Commit the phase.
+- [x] Run the targeted tests and the gate at three viewports.
+- [x] Commit the phase.
 
 ---
 

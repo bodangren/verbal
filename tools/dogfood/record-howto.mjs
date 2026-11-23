@@ -222,7 +222,7 @@ async function main() {
     console.log("record: project created");
 
     mark("browse", "Browse to the take instead of typing a path");
-    await page.getByRole("button", { name: /Browse/ }).click();
+    await page.getByRole("button", { name: "Browse…" }).click();
     const dialog = page.getByRole("dialog", { name: "Choose Media file" });
     await dialog.waitFor();
     await dialog.getByTitle("Enter media").click();
@@ -240,12 +240,12 @@ async function main() {
     mark("play", "The take opens in the player");
     await page
       .getByRole("region", { name: "Playback" })
-      .getByRole("button", { name: "Play" })
+      .getByRole("button", { name: "Play", exact: true })
       .click();
     await page.waitForTimeout(2400);
     await page
       .getByRole("region", { name: "Playback" })
-      .getByRole("button", { name: "Pause" })
+      .getByRole("button", { name: "Pause", exact: true })
       .click();
     await page.waitForTimeout(800);
     console.log("record: played");
@@ -323,9 +323,9 @@ async function main() {
   console.log("record: project open");
 
   mark("play", "Play: the active word follows the audio");
-  await page.getByRole("region", { name: "Playback" }).getByRole("button", { name: "Play" }).click();
+  await page.getByRole("region", { name: "Playback" }).getByRole("button", { name: "Play", exact: true }).click();
   await page.waitForTimeout(3200);
-  await page.getByRole("region", { name: "Playback" }).getByRole("button", { name: "Pause" }).click();
+  await page.getByRole("region", { name: "Playback" }).getByRole("button", { name: "Pause", exact: true }).click();
   await page.waitForTimeout(700);
   console.log("record: played");
 

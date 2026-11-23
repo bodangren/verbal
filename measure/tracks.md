@@ -16,9 +16,9 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete — gate + conformance. 663 tests, e2e PASS; AA contrast, neutral disabled states, one h1 and one polite live region. The gate remains red on six budgets owned by Shell and Transcript (9 clicks, 6/3 tab stops, 1/1/0 transcript lines).*
   *Link: [./tracks/ux_gates_20261122](./tracks/ux_gates_20261122/)*
 
-- [ ] **Track: Shell and Core Flow** [created: 2026-11-22]
+- [~] **Track: Shell and Core Flow** [created: 2026-11-22]
   *Focus: Keep the browser in all modes, put import and transcription in one place, add the top-bar save dot and Export, inline errors, and session memory.*
-  *Status: Not started. UX priority 2; depends on UX Gates.*
+  *Status: In progress — Phase 1: persistent browser, top bar, Edit layout.*
   *Link: [./tracks/ux_shell_flow_20261122](./tracks/ux_shell_flow_20261122/)*
 
 - [ ] **Track: Transcript as a Document** [created: 2026-11-22]

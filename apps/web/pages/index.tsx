@@ -32,6 +32,7 @@ import { errorCopyFor, type ErrorCopy } from "../lib/error-copy";
 import { MediaPicker } from "../components/MediaPicker";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
+import { TopBar, type SaveState, type WorkspaceMode } from "../components/TopBar";
 import { ProjectBrowser } from "../components/ProjectBrowser";
 import type { FsEntry } from "../server/fs-api";
 import { PatchReview } from "../components/PatchReview";
@@ -56,14 +57,6 @@ function defaultOutputPath(
   return `${projectRoot.replace(/\/+$/, "")}/exports/${name}.${extension}`;
 }
 
-/** The three workspaces. Panels are hidden, never unmounted, so state survives. */
-const MODES = [
-  { id: "ingest", label: "Ingest" },
-  { id: "edit", label: "Edit" },
-  { id: "deliver", label: "Deliver" },
-] as const;
-
-type WorkspaceMode = (typeof MODES)[number]["id"];
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
@@ -170,6 +163,7 @@ export default function Home() {
   const [presetId, setPresetId] = useState<ExportPresetId>(DEFAULT_PRESET_ID);
   const [prunable, setPrunable] = useState<string[] | null>(null);
   const [mode, setMode] = useState<WorkspaceMode>("ingest");
+  const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const [brand, setBrand] = useState({
@@ -816,6 +810,12 @@ export default function Home() {
     });
   }
 
+  /** Export is always one click away: open Deliver and focus its panel. */
+  function openExport() {
+    setMode("deliver");
+    requestAnimationFrame(() => document.getElementById("export-panel")?.focus());
+  }
+
   function exportStoryboard() {
     return guard(async () => {
       const record = await postJson<JobRecord>("/api/storyboard/export", {
@@ -912,14 +912,14 @@ export default function Home() {
     job.kind === "capture" &&
     (job.status === "queued" || job.status === "running");
 
-  const saveState =
+  const saveState: SaveState =
     transcript === null
-      ? "No transcript"
+      ? "none"
       : autoSave.saving
-        ? "Saving…"
+        ? "saving"
         : editing.dirty
-          ? "Unsaved changes"
-          : "Saved";
+          ? "unsaved"
+          : "saved";
 
   const hasMedia = project?.media !== undefined;
   const liveWords =
@@ -928,49 +928,17 @@ export default function Home() {
   return (
     <main className="app" data-mode={mode}>
       <h1 className="sr-only">{project === null ? "Verbal" : project.name}</h1>
-      <header className="bar">
-        <div className="bar__brand">
-          <span className="bar__mark" aria-hidden="true">
-            V
-          </span>
-          <span className="bar__wordmark">Verbal</span>
-        </div>
-
-        <div className="bar__document">
-          {project === null ? (
-            <span className="bar__document-empty">No Project Open</span>
-          ) : (
-            <>
-              <span className="bar__document-name">{project.name}</span>
-              <span className="bar__document-path" title={root}>
-                {root}
-              </span>
-            </>
-          )}
-        </div>
-
-        <nav className="segmented" aria-label="Workspace mode">
-          {MODES.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              className="segmented__option"
-              aria-pressed={mode === entry.id}
-              onClick={() => setMode(entry.id)}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </nav>
-
-        <p className="bar__save">
-          {saveState}
-        </p>
-      </header>
+      <TopBar
+        projectName={project?.name ?? null}
+        projectRoot={root}
+        mode={mode}
+        saveState={saveState}
+        onMode={setMode}
+        onExport={openExport}
+      />
 
       <div className="workspace">
-        {mode === "ingest" && (
-          <aside className="sidebar" aria-label="Project browser">
+        <aside className="sidebar" aria-label="Project browser">
             <ProjectBrowser
               path={browserPath}
               parent={browserParent}
@@ -991,9 +959,9 @@ export default function Home() {
               onOpen={(target) => {
                 void openProjectAt(target);
               }}
+              currentRoot={root}
             />
-          </aside>
-        )}
+        </aside>
 
         <section className="stage" aria-label={`${mode} workspace`}>
           {mode === "ingest" && (
@@ -1052,7 +1020,7 @@ export default function Home() {
           )}
 
           {mode === "edit" && (
-            <div className="stage__scroll">
+            <div className="stage__scroll stage__scroll--edit">
               <header className="stage__head">
                 <div>
                   <h2>Edit</h2>
@@ -1089,6 +1057,8 @@ export default function Home() {
                         playerRef.current = video;
                       }}
                       waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
+                      collapsed={playerCollapsed}
+                      onToggleCollapsed={() => setPlayerCollapsed((value) => !value)}
                     />
                   </div>
 
@@ -1616,7 +1586,12 @@ export default function Home() {
 
         {mode === "deliver" && (
           <aside className="inspector" aria-label="Inspector">
-            <section className="inspector__section" aria-label="Export">
+            <section
+              id="export-panel"
+              tabIndex={-1}
+              className="inspector__section"
+              aria-label="Export"
+            >
               <h3>Export</h3>
               <label className="field">
                 Output File

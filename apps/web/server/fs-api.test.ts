@@ -16,6 +16,18 @@ describe("fs listing", () => {
       path.join(root, "take-one", "project.json"),
       JSON.stringify({ schemaVersion: 1, id: "p", name: "Take one", createdAt: "2026-11-21T00:00:00.000Z" }),
     );
+    await writeFile(
+      path.join(root, "take-one", "transcript.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        words: [
+          { id: "w0", text: "hello", start: 0, end: 1.2 },
+          { id: "w1", text: "world", start: 1.2, end: 2.4 },
+        ],
+        segments: [{ id: "s0", wordIds: ["w0", "w1"] }],
+        removedWordIds: [],
+      }),
+    );
     await writeFile(path.join(root, "clip.mp4"), "x");
     await writeFile(path.join(root, "notes.txt"), "x");
     await writeFile(path.join(root, ".hidden.mp4"), "x");
@@ -62,6 +74,18 @@ describe("fs listing", () => {
       isMedia: true,
       isProject: false,
       kind: "file",
+    });
+  });
+
+  it("summarises words and duration for a project row", async () => {
+    const listing = await createFsApi().listing(root);
+    const project = listing.entries.find((entry) => entry.name === "take-one");
+
+    expect(project?.summary).toMatchObject({
+      name: "Take one",
+      transcriptWords: 2,
+      durationSeconds: 2.4,
+      hasMedia: false,
     });
   });
 

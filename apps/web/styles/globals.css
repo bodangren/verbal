@@ -1056,12 +1056,63 @@ h2 {
   font-size: 13px;
 }
 
+.bar__actions {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+}
+
 .bar__save {
+  align-items: center;
   color: var(--text-secondary);
+  display: flex;
   font-size: 12px;
+  gap: 6px;
+  justify-content: flex-end;
   margin: 0;
   min-width: 110px;
   text-align: right;
+}
+
+.bar__save-dot {
+  background: var(--text-tertiary);
+  border-radius: 50%;
+  height: 7px;
+  width: 7px;
+}
+
+.bar__save[data-state="saved"] .bar__save-dot {
+  background: var(--success);
+}
+
+.bar__save[data-state="saving"] .bar__save-dot {
+  background: var(--primary);
+}
+
+.bar__save[data-state="unsaved"] .bar__save-dot {
+  background: var(--error);
+}
+
+.browser__collapse {
+  margin-left: auto;
+}
+
+.browser--collapsed {
+  align-items: center;
+  padding: var(--space-2);
+}
+
+.browser__rail-button {
+  margin: 0 auto;
+}
+
+.sidebar:has(.browser--collapsed) {
+  min-width: 40px;
+  width: 40px;
+}
+
+.entry--current {
+  border-left: 3px solid var(--primary);
 }
 
 /* Segmented mode switch. */
@@ -1090,7 +1141,7 @@ h2 {
   color: var(--text-primary);
 }
 
-.segmented__option[aria-pressed="true"] {
+.segmented__option[aria-current="page"] {
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -1794,4 +1845,63 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Edit holds the player and timeline still; only the transcript scrolls. */
+.stage__scroll--edit {
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.stage__scroll--edit > .stage__head {
+  flex: 0 0 auto;
+}
+
+.stage__scroll--edit > .card--flush {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.stage__scroll--edit > .card:not(.card--flush) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stage__scroll--edit .playback__video {
+  max-height: min(20vh, 190px);
+}
+
+.stage__scroll--edit .playback__waveform {
+  max-height: 48px;
+  object-fit: fill;
+}
+
+.stage__scroll--edit .transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.stage__scroll--edit > .card:not(.card--flush) > .card__head,
+.stage__scroll--edit > .card:not(.card--flush) > .toolbar {
+  flex: 0 0 auto;
+}
+
+.playback--collapsed {
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.playback--collapsed .playback__video-wrap,
+.playback--collapsed .playback__timeline,
+.playback--collapsed .playback__scrub,
+.playback--collapsed .playback__hint {
+  display: none;
+}
+
+.playback__collapse {
+  margin-left: auto;
 }

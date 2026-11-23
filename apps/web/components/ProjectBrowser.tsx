@@ -13,7 +13,42 @@ export type ProjectBrowserProps = {
   onOpen: (path: string) => void;
   onUp: () => void;
   parent: string | null;
+  /** Root of the open project, marked as the current row. */
+  currentRoot?: string;
 };
+
+const COLLAPSE_KEY = "verbal.browser.collapsed";
+
+function initialCollapsed(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(COLLAPSE_KEY);
+    if (stored !== null) {
+      return stored === "true";
+    }
+  } catch {
+    // Storage can be unavailable; fall through to the viewport rule.
+  }
+
+  return (
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 1100px)").matches
+  );
+}
+
+function formatDuration(seconds: number | undefined): string {
+  if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) {
+    return "";
+  }
+
+  const total = Math.round(seconds);
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return minutes > 0 ? `${minutes}:${String(rest).padStart(2, "0")}` : `${rest}s`;
+}
 
 function countWords(summary: FsEntry["summary"]): string {
   if (summary === undefined) {
@@ -65,9 +100,21 @@ export function ProjectBrowser({
   onOpen,
   onUp,
   parent,
+  currentRoot,
 }: ProjectBrowserProps) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(COLLAPSE_KEY, String(next));
+    } catch {
+      // The rail still works without storage; the choice just will not persist.
+    }
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -78,6 +125,22 @@ export function ProjectBrowser({
     onCreate(trimmed);
     setName("");
     setCreating(false);
+  }
+
+  if (collapsed) {
+    return (
+      <div className="browser browser--collapsed">
+        <button
+          type="button"
+          className="icon-button browser__rail-button"
+          aria-label="Expand Project Browser"
+          title="Expand Project Browser"
+          onClick={toggleCollapsed}
+        >
+          ▸
+        </button>
+      </div>
+    );
   }
 
   const projects = entries.filter((entry) => entry.isProject);
@@ -99,6 +162,15 @@ export function ProjectBrowser({
           </button>
           <button type="button" className="button button--ghost" onClick={onHome}>
             Home
+          </button>
+          <button
+            type="button"
+            className="icon-button browser__collapse"
+            aria-label="Collapse Project Browser"
+            title="Collapse Project Browser"
+            onClick={toggleCollapsed}
+          >
+            ‹
           </button>
         </div>
         <p className="browser__path" title={path}>
@@ -130,7 +202,14 @@ export function ProjectBrowser({
           <p className="browser__section">Projects</p>
         )}
         {projects.map((entry) => (
-          <div key={entry.path} className="entry entry--project" role="listitem">
+          <div
+            key={entry.path}
+            className={`entry entry--project${
+              entry.path === currentRoot ? " entry--current" : ""
+            }`}
+            role="listitem"
+            aria-current={entry.path === currentRoot ? "true" : undefined}
+          >
             <button
               type="button"
               className="entry__main"
@@ -144,6 +223,9 @@ export function ProjectBrowser({
                 <span className="entry__name">{entry.summary?.name ?? entry.name}</span>
                 <span className="entry__meta">
                   {countWords(entry.summary)}
+                  {formatDuration(entry.summary?.durationSeconds) !== ""
+                    ? ` · ${formatDuration(entry.summary?.durationSeconds)}`
+                    : ""}
                   {entry.summary?.hasMedia === true ? " · Media" : " · No media"}
                   {entry.summary ? ` · ${relativeDay(entry.summary.createdAt)}` : ""}
                 </span>

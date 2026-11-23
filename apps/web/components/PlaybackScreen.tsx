@@ -20,6 +20,9 @@ export type PlaybackScreenProps = {
   onVideoReady?: (video: HTMLVideoElement | null) => void;
   /** Injectable scheduler for deterministic tests. */
   scheduler?: PlaybackScheduler;
+  /** Shrink to the transport row; the video stays mounted for playback. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
 /** Seconds as m:ss, so the transport reads like a player. */
@@ -51,6 +54,8 @@ export function PlaybackScreen({
   onActiveWordChange,
   onVideoReady,
   scheduler,
+  collapsed = false,
+  onToggleCollapsed,
 }: PlaybackScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -116,7 +121,7 @@ export function PlaybackScreen({
   const progress = canSeek ? Math.min(currentTime / safeDuration, 1) : 0;
 
   return (
-    <div className="playback">
+    <div className={`playback${collapsed ? " playback--collapsed" : ""}`}>
       <div className="playback__video-wrap">
         <video
           ref={(node) => {
@@ -210,6 +215,16 @@ export function PlaybackScreen({
           {formatPlaybackTime(currentTime)} / {formatPlaybackTime(duration)}
         </span>
         <span className="playback__hint">Click the video to play · drag to scrub</span>
+        {onToggleCollapsed !== undefined && (
+          <button
+            type="button"
+            className="button button--ghost playback__collapse"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Expand Player" : "Collapse Player"}
+          >
+            {collapsed ? "Expand Player" : "Collapse Player"}
+          </button>
+        )}
       </div>
 
       {showTranscript && transcript !== null && (

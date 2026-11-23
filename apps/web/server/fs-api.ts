@@ -15,6 +15,8 @@ export type FsEntrySummary = {
   transcriptWords: number;
   hasMedia: boolean;
   createdAt: string;
+  /** End of the last transcript word, in seconds; 0 without a transcript. */
+  durationSeconds: number;
 };
 
 export type FsEntryKind = "directory" | "file";
@@ -77,9 +79,11 @@ async function summariseProject(directory: string): Promise<FsEntrySummary | nul
   }
 
   let transcriptWords = 0;
+  let durationSeconds = 0;
   try {
     const transcript = parseTranscript(await readFile(paths.transcript, "utf8"));
     transcriptWords = transcript.words.length - transcript.removedWordIds.length;
+    durationSeconds = transcript.words[transcript.words.length - 1]?.end ?? 0;
   } catch {
     // No transcript yet.
   }
@@ -89,6 +93,7 @@ async function summariseProject(directory: string): Promise<FsEntrySummary | nul
     transcriptWords,
     hasMedia: project.media !== undefined,
     createdAt: project.createdAt,
+    durationSeconds,
   };
 }
 
