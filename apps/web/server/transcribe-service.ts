@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import {
   createLocalWhisperProvider,
   createWhisperProvider,
@@ -16,30 +18,68 @@ import {
   type JobRecord,
   type JobRegistry,
 } from "@verbal/core";
-import { getJobRegistry } from "./registry";
+import { resolveAsr, type AsrResolution } from "./asr-resolve";
+import { getJobRegistry, verbalDataDir } from "./registry";
 import { runTranscriptionJob } from "./transcribe-job";
 
 /** What the UI says about the provider the environment selected. */
 export type TranscriptionProviderInfo = {
-  mode: "local" | "cloud";
+  mode: "local" | "cloud" | "none";
   label: string;
   /** True when audio leaves the machine. */
   cloud: boolean;
+  /** A next step when no speech engine is set up. */
+  hint?: string;
 };
 
 /**
  * Names the transcription provider for the UI.
  *
- * The environment chooses the provider; this only describes the choice, so
- * the stage can say where the audio goes before the user transcribes.
+ * The resolver chooses the provider; this only describes the choice, so the
+ * stage can say where the audio goes before the user transcribes.
  */
-export function describeTranscriptionProvider(
-  asrMode: string | undefined,
-): TranscriptionProviderInfo {
-  if (asrMode === "local") {
-    return { mode: "local", label: "Local (whisper)", cloud: false };
+export function describeTranscriptionProvider(resolved: AsrResolution): TranscriptionProviderInfo {
+  if (resolved.mode === "local") {
+    return {
+      mode: "local",
+      label: `Local (whisper ${resolved.modelName})`,
+      cloud: false,
+    };
   }
-  return { mode: "cloud", label: "Cloud (OpenAI-compatible)", cloud: true };
+  if (resolved.mode === "cloud") {
+    return { mode: "cloud", label: "Cloud (OpenAI-compatible)", cloud: true };
+  }
+  return {
+    mode: "none",
+    label: "No speech engine",
+    cloud: false,
+    hint: "Install whisper (see README, Transcription setup) or set OPENAI_API_KEY.",
+  };
+}
+
+/** Files and PATH entries are read here; the resolver itself stays pure. */
+export function resolveSystemAsr(env: NodeJS.ProcessEnv = process.env): AsrResolution {
+  return resolveAsr({
+    dataDir: verbalDataDir(env),
+    env,
+    exists: (candidate) => fs.existsSync(candidate),
+    list: (dir) => {
+      try {
+        return fs.readdirSync(dir);
+      } catch {
+        return [];
+      }
+    },
+    onPath: (name) =>
+      (env.PATH ?? "")
+        .split(path.delimiter)
+        .some((dir) => dir !== "" && fs.existsSync(path.join(dir, name))),
+  });
+}
+
+/** The provider description served by /api/system. */
+export function systemTranscriptionInfo(): TranscriptionProviderInfo {
+  return describeTranscriptionProvider(resolveSystemAsr());
 }
 
 export type TranscribeServiceDeps = {
@@ -48,10 +88,13 @@ export type TranscribeServiceDeps = {
   apiKey: () => string;
   baseUrl: () => string | undefined;
   createProvider: (config: { apiKey: string; baseUrl?: string }) => TranscriptionProvider;
-  /** "local" runs a whisper CLI; anything else uses the cloud provider. */
-  asrMode: () => string | undefined;
-  whisperModelPath: () => string | undefined;
-  createLocalProvider: (config: { modelPath: string }) => TranscriptionProvider;
+  resolveAsr: () => AsrResolution;
+  dataDir: () => string;
+  createLocalProvider: (config: {
+    modelPath: string;
+    binary?: string;
+    language?: string;
+  }) => TranscriptionProvider;
 };
 
 /**
@@ -68,40 +111,38 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     apiKey: () => process.env.OPENAI_API_KEY ?? "",
     baseUrl: () => process.env.OPENAI_BASE_URL,
     createProvider: (config) => createWhisperProvider(config),
-    asrMode: () => process.env.VERBAL_ASR,
-    whisperModelPath: () => process.env.VERBAL_WHISPER_MODEL,
+    resolveAsr: () => resolveSystemAsr(),
+    dataDir: () => verbalDataDir(),
     createLocalProvider: (config) => createLocalWhisperProvider(config),
     ...overrides,
   };
 
-  /**
-   * The provider this request should use.
-   *
-   * Local mode deliberately does not require an API key — requiring one to run
-   * an offline binary would defeat the point — and names its model, because a
-   * whisper CLI without a model is a configuration error worth reporting.
-   */
-  function providerFor(config: { apiKey: string; baseUrl?: string }): TranscriptionProvider {
-    if (deps.asrMode() === "local") {
-      const modelPath = deps.whisperModelPath();
-      if (modelPath === undefined || modelPath.trim() === "") {
-        throw new AiError("not-configured", "VERBAL_WHISPER_MODEL is not set");
-      }
-      return deps.createLocalProvider({ modelPath });
+  /** Builds the provider the resolver selected. */
+  function providerFor(): TranscriptionProvider {
+    const resolved = deps.resolveAsr();
+
+    if (resolved.mode === "none") {
+      throw new AiError(
+        "not-configured",
+        `no speech engine is set up: install whisper-cli and a model in ${deps.dataDir()}, or set OPENAI_API_KEY`,
+      );
     }
 
-    return deps.createProvider(config);
-  }
+    if (resolved.mode === "local") {
+      return deps.createLocalProvider({
+        modelPath: resolved.modelPath,
+        binary: resolved.binary,
+        language: resolved.language,
+      });
+    }
 
-  /** The cloud credentials, which local mode never reads. */
-  function cloudConfig(): { apiKey: string; baseUrl?: string } {
     const apiKey = deps.apiKey();
-    if (deps.asrMode() !== "local" && apiKey.trim() === "") {
+    if (apiKey.trim() === "") {
       // Mapped to 503 by the API error layer, like any unconfigured provider.
       throw new AiError("not-configured", "OPENAI_API_KEY is not set");
     }
     const baseUrl = deps.baseUrl();
-    return { apiKey, ...(baseUrl === undefined ? {} : { baseUrl }) };
+    return deps.createProvider({ apiKey, ...(baseUrl === undefined ? {} : { baseUrl }) });
   }
 
   return {
@@ -119,11 +160,11 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
      */
     /** Builds the provider the environment selects, for a non-project file. */
     provider(): TranscriptionProvider {
-      return providerFor(cloudConfig());
+      return providerFor();
     },
 
     async transcribeNow(root: string): Promise<number> {
-      const provider = providerFor(cloudConfig());
+      const provider = providerFor();
 
       const mediaPath = await this.mediaPathFor(root);
       if (mediaPath === null) {
@@ -142,7 +183,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     },
 
     async start(root: string): Promise<JobRecord> {
-      const provider = providerFor(cloudConfig());
+      const provider = providerFor();
 
       const mediaPath = await this.mediaPathFor(root);
       if (mediaPath === null) {
@@ -151,12 +192,32 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
 
       const registry = await deps.registry();
       const job = await registry.create("transcribe");
+      let lastPercent = -1;
+      let pending = Promise.resolve();
+
+      const onProgress = (fraction: number): void => {
+        const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+        if (percent <= lastPercent) {
+          return;
+        }
+        lastPercent = percent;
+        // The job runner writes 0 with "Extracting audio…". The provider reports
+        // 0.05 once the audio exists, so any value from there on is the engine.
+        const message = fraction < 0.05 ? "Extracting audio…" : "Transcribing audio…";
+        pending = pending
+          .then(async () => {
+            await registry.progress(job.id, fraction, message);
+          })
+          .catch(() => undefined);
+      };
 
       void runTranscriptionJob({
         registry,
         jobId: job.id,
         provider,
         request: { filePath: mediaPath },
+        onProgress,
+        flushProgress: () => pending,
         onTranscript: async (result) => {
           await saveTranscript(
             deps.fs,

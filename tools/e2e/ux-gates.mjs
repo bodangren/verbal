@@ -92,6 +92,7 @@ const server = spawn(process.execPath, ["dist/standalone/server.js"], {
     HOME: home,
     OPENAI_API_KEY: "ux-fake-key",
     OPENAI_BASE_URL: asrBaseUrl,
+    VERBAL_ASR: "cloud",
   },
   stdio: ["ignore", "pipe", "pipe"],
 });

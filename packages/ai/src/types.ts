@@ -18,6 +18,8 @@ export type TranscriptionResult = {
 
 export type ProviderOptions = {
   signal?: AbortSignal;
+  /** Fraction of the work done, from 0 to 1. Cloud providers may ignore it. */
+  onProgress?: (fraction: number) => void;
 };
 
 /** Speech-to-text provider. Implementations live only in this package. */

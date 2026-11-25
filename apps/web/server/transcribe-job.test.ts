@@ -45,6 +45,36 @@ describe("runTranscriptionJob", () => {
     expect(registry.get(job.id)?.status).toBe("done");
   });
 
+  it("forwards provider progress to the job", async () => {
+    const { registry, job } = await makeRegistry();
+    const progress = vi.spyOn(registry, "progress");
+    const onProgress = vi.fn();
+    const provider: TranscriptionProvider = {
+      id: "fake",
+      async transcribe(_request, options) {
+        options?.onProgress?.(0.25);
+        options?.onProgress?.(0.75);
+        return {
+          text: "hello",
+          language: "en",
+          words: [{ text: "hello", start: 0, end: 0.4 }],
+        };
+      },
+    };
+
+    await runTranscriptionJob({
+      registry,
+      jobId: job.id,
+      provider,
+      request: { filePath: "/media/a.mp4" },
+      onTranscript: async () => undefined,
+      onProgress,
+    });
+
+    expect(onProgress.mock.calls.map((call) => call[0])).toEqual([0.25, 0.75]);
+    expect(progress.mock.calls.map((call) => call[1])).toEqual([0, 1]);
+  });
+
   it("fails the job when the provider throws", async () => {
     const { registry, job } = await makeRegistry();
 

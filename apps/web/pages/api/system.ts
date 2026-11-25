@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { checkTools } from "@verbal/media";
-import { describeTranscriptionProvider } from "../../server/transcribe-service";
+import { systemTranscriptionInfo } from "../../server/transcribe-service";
 
 export default async function handler(_request: IncomingMessage, response: ServerResponse) {
   const tools = await checkTools();
@@ -11,7 +11,7 @@ export default async function handler(_request: IncomingMessage, response: Serve
     JSON.stringify({
       node: process.version,
       tools,
-      transcription: describeTranscriptionProvider(process.env.VERBAL_ASR),
+      transcription: systemTranscriptionInfo(),
     }),
   );
 }

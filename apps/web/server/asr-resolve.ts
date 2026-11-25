@@ -1,0 +1,118 @@
+import path from "node:path";
+
+export type AsrResolution =
+  | { mode: "cloud" }
+  | { mode: "none"; missing: "binary" | "model" | "both" }
+  | {
+      mode: "local";
+      binary: string;
+      modelPath: string;
+      modelName: string;
+      language: string;
+    };
+
+/** Every environment and file-system read is supplied by the caller. */
+export type AsrResolveInput = {
+  dataDir: string;
+  env: Readonly<Record<string, string | undefined>>;
+  exists: (filePath: string) => boolean;
+  list: (dir: string) => readonly string[];
+  onPath: (name: string) => boolean;
+};
+
+const MODEL_TIERS = ["large", "medium", "small", "base"];
+
+function set(value: string | undefined): string | undefined {
+  if (value === undefined || value.trim() === "") {
+    return undefined;
+  }
+  return value.trim();
+}
+
+function modelNameOf(fileName: string): string {
+  const stem = fileName.replace(/^ggml-/i, "").replace(/\.bin$/i, "");
+  return stem.split(".")[0] ?? fileName;
+}
+
+function bestModel(files: readonly string[]): string | undefined {
+  const candidates = files
+    .filter((name) => /^ggml-.*\.bin$/i.test(name))
+    .slice()
+    .sort();
+
+  for (const tier of MODEL_TIERS) {
+    const match = candidates.find((name) => name.toLowerCase().includes(tier));
+    if (match !== undefined) {
+      return match;
+    }
+  }
+
+  return candidates[0];
+}
+
+function missingOf(binary: string | undefined, model: string | undefined) {
+  if (binary === undefined && model === undefined) {
+    return "both" as const;
+  }
+  return binary === undefined ? ("binary" as const) : ("model" as const);
+}
+
+/**
+ * Chooses the speech engine before any audio is read.
+ *
+ * Local first keeps audio on the machine. A cloud key is used only when the
+ * user has no local engine and did not ask for local mode explicitly.
+ */
+export function resolveAsr(input: AsrResolveInput): AsrResolution {
+  const { dataDir, env, exists, list, onPath } = input;
+
+  if (set(env.VERBAL_ASR) === "cloud") {
+    return { mode: "cloud" };
+  }
+
+  const explicitLocal = set(env.VERBAL_ASR) === "local";
+  const models = path.join(dataDir, "models");
+
+  const configuredBinary = set(env.VERBAL_WHISPER_BIN);
+  const installedBinary = path.join(dataDir, "bin", "whisper-cli");
+  const binary =
+    configuredBinary !== undefined && exists(configuredBinary)
+      ? configuredBinary
+      : exists(installedBinary)
+        ? installedBinary
+        : onPath("whisper-cli")
+          ? "whisper-cli"
+          : undefined;
+
+  const configuredModel = set(env.VERBAL_WHISPER_MODEL);
+  let modelPath: string | undefined;
+  if (configuredModel !== undefined && exists(configuredModel)) {
+    modelPath = configuredModel;
+  } else {
+    const chosen = bestModel(list(models));
+    if (chosen !== undefined) {
+      modelPath = path.join(models, chosen);
+    }
+  }
+
+  const language = set(env.VERBAL_ASR_LANGUAGE) ?? "auto";
+
+  if (binary !== undefined && modelPath !== undefined) {
+    const fileName = configuredModel !== undefined && modelPath === configuredModel
+      ? path.basename(configuredModel)
+      : path.basename(modelPath);
+    return {
+      mode: "local",
+      binary,
+      modelPath,
+      modelName: modelNameOf(fileName),
+      language,
+    };
+  }
+
+  if (!explicitLocal && set(env.OPENAI_API_KEY) !== undefined) {
+    return { mode: "cloud" };
+  }
+
+  return { mode: "none", missing: missingOf(binary, modelPath) };
+}

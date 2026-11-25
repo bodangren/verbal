@@ -70,6 +70,7 @@ describe("POST /api/transcribe", () => {
 
   const savedKey = process.env.OPENAI_API_KEY;
   const savedBaseUrl = process.env.OPENAI_BASE_URL;
+  const savedAsr = process.env.VERBAL_ASR;
 
   beforeAll(async () => {
     fake = await startFakeAsr();
@@ -102,6 +103,11 @@ describe("POST /api/transcribe", () => {
     await rm(root, { recursive: true, force: true });
     process.env.OPENAI_API_KEY = savedKey;
     process.env.OPENAI_BASE_URL = savedBaseUrl;
+    if (savedAsr === undefined) {
+      delete process.env.VERBAL_ASR;
+    } else {
+      process.env.VERBAL_ASR = savedAsr;
+    }
     setJobRegistry(undefined);
   });
 
@@ -110,6 +116,7 @@ describe("POST /api/transcribe", () => {
     setJobRegistry(registry);
     process.env.OPENAI_API_KEY = "test-key";
     process.env.OPENAI_BASE_URL = fake.baseUrl;
+    process.env.VERBAL_ASR = "cloud";
   });
 
   afterEach(() => {

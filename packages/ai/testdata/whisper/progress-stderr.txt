@@ -1,0 +1,3 @@
+whisper_print_progress_callback: progress =  64%
+whisper_print_progress_callback: progress = 100%
+output_json: saving output to '/tmp/h3c/long.json'

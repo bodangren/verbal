@@ -12,6 +12,10 @@ export type TranscriptionJobInput = {
   request: TranscriptionRequest;
   /** Called only when transcription succeeded. */
   onTranscript: (result: TranscriptionResult) => Promise<void>;
+  /** Receives the provider's progress so the job can show it. */
+  onProgress?: (fraction: number) => void;
+  /** Waits for outstanding progress writes before the job moves on. */
+  flushProgress?: () => Promise<void>;
 };
 
 /**
@@ -25,11 +29,14 @@ export async function runTranscriptionJob(input: TranscriptionJobInput): Promise
 
   try {
     await registry.start(jobId);
-    await registry.progress(jobId, 0.1, "transcribing");
+    await registry.progress(jobId, 0, "Extracting audio…");
 
-    const result = await input.provider.transcribe(input.request);
+    const result = await input.provider.transcribe(input.request, {
+      onProgress: input.onProgress,
+    });
+    await input.flushProgress?.();
 
-    await registry.progress(jobId, 0.9, "saving transcript");
+    await registry.progress(jobId, 1, "saving transcript");
     await input.onTranscript(result);
 
     await registry.complete(jobId, { words: result.words.length });

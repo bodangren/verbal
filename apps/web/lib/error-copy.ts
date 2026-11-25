@@ -57,6 +57,25 @@ export function errorCopyFor(cause: unknown): ErrorCopy {
     };
   }
 
+  if (text.includes("no speech engine") || text.includes("openai_api_key is not set")) {
+    return {
+      message:
+        "No speech engine is set up. Install whisper (see README, Transcription setup) or set OPENAI_API_KEY, then try again.",
+      detail,
+    };
+  }
+
+  if (
+    text.includes("remotion") &&
+    (text.includes("cannot find package") || text.includes("cannot find module"))
+  ) {
+    return {
+      message:
+        "The slide renderer is not installed. Run npm install in tools/remotion, then export again.",
+      detail,
+    };
+  }
+
   return {
     message: "Something went wrong. Try again, or check the server log.",
     detail,
