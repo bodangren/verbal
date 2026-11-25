@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import {
   nodeFileSystem,
@@ -40,7 +41,12 @@ import {
 import { ExportError, resolvePreset, withPresetExtension } from "@verbal/media";
 import { failure } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
+import {
+  rendererDependenciesInstalled,
+  resolveRendererPath,
+} from "./remotion-renderer";
 import { runStoryboardExport } from "./storyboard-export";
+import { computeTalkItems } from "./talk-ranges";
 import { asRecord, requireAbsolutePath } from "./validation";
 
 function isNotFound(error: unknown): boolean {
@@ -146,7 +152,30 @@ export function createStoryboardApi(overrides: Partial<StoryboardApiDeps> = {}) 
           geometry: parseGeometry(body.geometry),
         });
 
-        return { status: 200, body: plan };
+        // A talk scene plays its kept words plus inserted silence, so the
+        // list shows what the export will contain, not the source span.
+        const scenes = plan.scenes.map((entry) => {
+          const scene = storyboard.scenes.find((candidate) => candidate.id === entry.sceneId);
+          if (scene === undefined || scene.visual !== "talk") {
+            return entry;
+          }
+          const items = computeTalkItems({
+            transcript,
+            startWordId: scene.anchor.startWordId,
+            endWordId: scene.anchor.endWordId,
+          });
+          const playSeconds = items.reduce(
+            (sum, item) =>
+              sum +
+              (item.kind === "silence"
+                ? item.durationSeconds
+                : item.endSeconds - item.startSeconds),
+            0,
+          );
+          return { ...entry, playSeconds: Math.round(playSeconds * 1000) / 1000 };
+        });
+
+        return { status: 200, body: { ...plan, scenes } };
       } catch (error) {
         return failure(error);
       }
@@ -160,6 +189,7 @@ export type StartStoryboardExportDeps = {
   renderer: SlideRenderer;
   run: (file: string, args: readonly string[]) => Promise<unknown>;
   now: () => Date;
+  rendererReady?: () => boolean;
 };
 
 /**
@@ -181,6 +211,9 @@ export async function startStoryboardExport(
     );
     if (preset.id === "podcast-audio") {
       return { status: 400, body: { error: "storyboard export needs a video preset" } };
+    }
+    if (body.includeBrand !== undefined && typeof body.includeBrand !== "boolean") {
+      return { status: 400, body: { error: "includeBrand must be a boolean" } };
     }
     const outputPath = withPresetExtension(requestedOutput, preset);
     const brand = validateBrandKit(body.brand);
@@ -207,18 +240,35 @@ export async function startStoryboardExport(
       // A talk scene is the source video itself: cut the anchored range and
       // let the assembly concatenate it with the rendered slides.
       if (scene.visual === "talk") {
-        const times = resolveScene(scene, anchors);
-        scenes.set(scene.id, {
-          videoRange: {
-            input: mediaPath,
-            startSeconds: times.startSeconds,
-            durationSeconds: times.endSeconds - times.startSeconds,
-          },
+        const items = computeTalkItems({
+          transcript,
+          startWordId: scene.anchor.startWordId,
+          endWordId: scene.anchor.endWordId,
         });
-        resolved.push({
-          sceneId: scene.id,
-          startSeconds: times.startSeconds,
-          endSeconds: times.endSeconds,
+
+        items.forEach((item, index) => {
+          const sceneId = items.length === 1 ? scene.id : `${scene.id}#${index + 1}`;
+          if (item.kind === "silence") {
+            scenes.set(sceneId, { silence: true });
+            resolved.push({
+              sceneId,
+              startSeconds: 0,
+              endSeconds: item.durationSeconds,
+            });
+            return;
+          }
+          scenes.set(sceneId, {
+            videoRange: {
+              input: mediaPath,
+              startSeconds: item.startSeconds,
+              durationSeconds: item.endSeconds - item.startSeconds,
+            },
+          });
+          resolved.push({
+            sceneId,
+            startSeconds: item.startSeconds,
+            endSeconds: item.endSeconds,
+          });
         });
         continue;
       }
@@ -255,7 +305,32 @@ export async function startStoryboardExport(
       return { status: 400, body: { error: "storyboard has no renderable scenes" } };
     }
 
-    const plan = planAssembly({ scenes: resolved, brand });
+    const plan = planAssembly({
+      scenes: resolved,
+      brand,
+      includeBrand: body.includeBrand !== false,
+    });
+    const needsRenderer = plan.some((step) => {
+      if (step.kind === "brand") {
+        return true;
+      }
+      const scene = scenes.get(step.sceneId);
+      return scene?.silence !== true && scene?.videoRange === undefined;
+    });
+    const rendererReady =
+      deps.rendererReady ??
+      (() => rendererDependenciesInstalled(resolveRendererPath(), existsSync));
+
+    if (needsRenderer && !rendererReady()) {
+      return {
+        status: 503,
+        body: {
+          error:
+            "Cannot find package '@remotion/bundler': the slide renderer is not installed in tools/remotion",
+        },
+      };
+    }
+
     const cache = createFileSlideCache(deps.fs, path.join(root, "cache", "slides"));
     const workDirectory = path.join(root, "cache", "assembly");
     await deps.fs.mkdir(workDirectory);

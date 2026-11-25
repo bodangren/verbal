@@ -21,6 +21,16 @@ export function resolveRendererPath(): string {
   return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!;
 }
 
+/** Checks for the Remotion bundler installed beside the renderer file. */
+export function rendererDependenciesInstalled(
+  rendererPath: string,
+  exists: (p: string) => boolean,
+): boolean {
+  return exists(
+    path.join(path.dirname(rendererPath), "node_modules", "@remotion", "bundler"),
+  );
+}
+
 /** Production slide renderer: a Node child process running `render.mjs`. */
 export function createStoryboardRenderer(): SlideRenderer {
   return createProcessRenderer({

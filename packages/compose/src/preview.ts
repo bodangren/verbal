@@ -19,6 +19,12 @@ export type PreviewScene = {
   visual: VisualKind;
   startSeconds: number;
   endSeconds: number;
+  /**
+   * How long the scene plays in the export, when that differs from the span.
+   * A talk scene with deleted words or inserted silence plays for less or more
+   * than `endSeconds - startSeconds`. Set by the caller that knows the edits.
+   */
+  playSeconds?: number;
   source: PreviewSceneSource;
   hash?: string;
   directory?: string;
@@ -60,6 +66,7 @@ function stripRequest(entry: PreviewScene): Omit<PreviewScene, "request"> {
     visual: entry.visual,
     startSeconds: entry.startSeconds,
     endSeconds: entry.endSeconds,
+    ...(entry.playSeconds === undefined ? {} : { playSeconds: entry.playSeconds }),
     source: entry.source,
     ...(entry.hash === undefined ? {} : { hash: entry.hash }),
     ...(entry.directory === undefined ? {} : { directory: entry.directory }),

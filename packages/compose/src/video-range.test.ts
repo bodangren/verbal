@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildVideoRangeArgs, VideoRangeError } from "./video-range";
+import { buildSilenceArgs, buildVideoRangeArgs, VideoRangeError } from "./video-range";
 
 describe("buildVideoRangeArgs", () => {
   it("seeks the source, bounds the output, and matches the export geometry", () => {
@@ -47,6 +47,38 @@ describe("buildVideoRangeArgs", () => {
         startSeconds: 0,
         durationSeconds: 0,
         outputPath: "/out/one.mp4",
+        width: 320,
+        height: 180,
+        fps: 10,
+      }),
+    ).toThrow(VideoRangeError);
+  });
+});
+
+describe("buildSilenceArgs", () => {
+  it("makes a black frame with silent audio at the export geometry", () => {
+    const args = buildSilenceArgs({
+      durationSeconds: 1.5,
+      outputPath: "/out/step-002.mp4",
+      width: 320,
+      height: 180,
+      fps: 10,
+    });
+
+    const joined = args.join(" ");
+    expect(joined).toContain("color=c=black:s=320x180");
+    expect(joined).toContain("anullsrc=r=48000:cl=mono");
+    expect(args[args.indexOf("-t") + 1]).toBe("1.500");
+    expect(args).toContain("libx264");
+    expect(args).toContain("yuv420p");
+    expect(args.at(-1)).toBe("/out/step-002.mp4");
+  });
+
+  it("rejects a non-positive duration", () => {
+    expect(() =>
+      buildSilenceArgs({
+        durationSeconds: 0,
+        outputPath: "/out/step.mp4",
         width: 320,
         height: 180,
         fps: 10,

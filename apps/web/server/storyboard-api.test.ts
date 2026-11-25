@@ -4,8 +4,11 @@ import {
   createMemoryJobStore,
   createProject,
   createTranscript,
+  insertSilence,
+  moveRange,
   openProject,
   projectPaths,
+  removeRange,
   saveProject,
   saveTranscript,
 } from "@verbal/core";
@@ -131,6 +134,65 @@ describe("storyboard preview API", () => {
 
     expect((await api.preview({ root: "/projects/demo" })).status).toBe(404);
   });
+
+  it("reports the cut length of a talk scene, not its source span", async () => {
+    const fs = createFakeFileSystem();
+    const root = "/projects/demo";
+    await createProject(fs, root, { name: "Demo", id: "p1" });
+    const transcript = removeRange(
+      insertSilence(
+        createTranscript([
+          { text: "one", start: 0, end: 1 },
+          { text: "two", start: 1, end: 2 },
+          { text: "three", start: 2, end: 3 },
+          { text: "four", start: 3, end: 4 },
+        ]),
+        "w3",
+        1.5,
+      ),
+      1,
+      1,
+    );
+    await saveTranscript(fs, projectPaths(root).transcript, transcript);
+    const api = createStoryboardApi({ fs });
+    await api.save({
+      root,
+      document: {
+        schemaVersion: 1,
+        scenes: [
+          {
+            id: "t1",
+            anchor: { startWordId: "w0", endWordId: "w3" },
+            visual: "talk",
+            layer: "full-frame",
+          },
+        ],
+      },
+    });
+
+    const response = await api.preview({ root, tier: "fast" });
+    const scene = (response.body as { scenes: { startSeconds: number; endSeconds: number; playSeconds?: number }[] })
+      .scenes[0];
+
+    // Source span stays 0-4 s. Removing "two" with 0.05 s handles takes 1.1 s.
+    // The inserted 1.5 s of silence is added back.
+    expect(scene?.startSeconds).toBe(0);
+    expect(scene?.endSeconds).toBe(4);
+    expect(scene?.playSeconds).toBeCloseTo(4 - 1.1 + 1.5, 3);
+  });
+
+  it("leaves playSeconds off a slide scene", async () => {
+    const fs = createFakeFileSystem();
+    await seed(fs, "/projects/demo");
+    const api = createStoryboardApi({ fs });
+    await api.save({ root: "/projects/demo", document: STORYBOARD });
+
+    const response = await api.preview({ root: "/projects/demo", tier: "fast" });
+
+    expect(
+      (response.body as { scenes: { playSeconds?: number }[] }).scenes[0]?.playSeconds,
+    ).toBeUndefined();
+  });
 });
 
 describe("storyboard export API", () => {
@@ -163,11 +225,36 @@ describe("storyboard export API", () => {
     const { fs, root, registry, renderer, run } = await setup({ media: false });
 
     const response = await startStoryboardExport(
-      { fs, registry, renderer, run, now },
+      { fs, registry, renderer, run, now, rendererReady: () => true },
       { root, outputPath: "/out/final.mp4", brand: BRAND },
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("refuses a renderer-dependent export when Remotion is not installed", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+    const before = registry.list().length;
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => false },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(503);
+    expect((response.body as { error: string }).error).toContain("remotion");
+    expect(registry.list().length).toBe(before);
+  });
+
+  it("starts a renderer-dependent export when Remotion is installed", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
   });
 
   it("starts an export for a talk-only storyboard", async () => {
@@ -187,7 +274,7 @@ describe("storyboard export API", () => {
     });
 
     const response = await startStoryboardExport(
-      { fs, registry, renderer, run, now },
+      { fs, registry, renderer, run, now, rendererReady: () => true },
       { root, outputPath: "/out/final.mp4", brand: BRAND },
     );
 
@@ -210,11 +297,167 @@ describe("storyboard export API", () => {
     expect(rangeCall).toBeDefined();
   });
 
+  it("applies transcript deletions to talk ranges", async () => {
+    const { fs, root, registry, renderer, run } = await setup({
+      media: true,
+      storyboard: {
+        schemaVersion: 1,
+        scenes: [
+          {
+            id: "talk",
+            anchor: { startWordId: "w0", endWordId: "w2" },
+            visual: "talk",
+            layer: "full-frame",
+          },
+        ],
+      },
+    });
+
+    const transcript = removeRange(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+        { text: "three", start: 2, end: 3 },
+      ]),
+      1,
+      1,
+    );
+    await saveTranscript(fs, projectPaths(root).transcript, transcript);
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(jobId)).toMatchObject({ status: "done" });
+
+    const starts = (run.mock.calls as unknown as [string, string[]][])
+      .filter(([, args]) => args.includes("-ss"))
+      .map(([, args]) => args[args.indexOf("-ss") + 1]);
+    expect(starts).toEqual(["0.000", "2.050"]);
+  });
+
+  it("keeps moved talk ranges in transcript order", async () => {
+    const { fs, root, registry, renderer, run } = await setup({
+      media: true,
+      storyboard: {
+        schemaVersion: 1,
+        scenes: [
+          {
+            id: "talk",
+            anchor: { startWordId: "w0", endWordId: "w1" },
+            visual: "talk",
+            layer: "full-frame",
+          },
+        ],
+      },
+    });
+
+    const transcript = moveRange(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+        { text: "three", start: 2, end: 3 },
+      ]),
+      1,
+      1,
+      2,
+    );
+    await saveTranscript(fs, projectPaths(root).transcript, transcript);
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(registry.get(jobId)).toMatchObject({ status: "done" });
+
+    const starts = (run.mock.calls as unknown as [string, string[]][])
+      .filter(([, args]) => args.includes("-ss"))
+      .map(([, args]) => args[args.indexOf("-ss") + 1]);
+    expect(starts).toEqual(["0.000", "2.000", "1.000"]);
+  });
+
+  it("renders inserted silence in a talk scene", async () => {
+    const { fs, root, registry, renderer, run } = await setup({
+      media: true,
+      storyboard: {
+        schemaVersion: 1,
+        scenes: [
+          {
+            id: "talk",
+            anchor: { startWordId: "w0", endWordId: "w1" },
+            visual: "talk",
+            layer: "full-frame",
+          },
+        ],
+      },
+    });
+
+    const transcript = insertSilence(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+      ]),
+      "w0",
+      1.5,
+    );
+    await saveTranscript(fs, projectPaths(root).transcript, transcript);
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(registry.get(jobId)).toMatchObject({ status: "done" });
+
+    const starts = (run.mock.calls as unknown as [string, string[]][])
+      .filter(([, args]) => args.includes("-ss"))
+      .map(([, args]) => args[args.indexOf("-ss") + 1]);
+    expect(starts).toEqual(["0.000", "1.000"]);
+    const silenceArgs = (run.mock.calls as unknown as [string, string[]][]).find(([, args]) => {
+      const joined = args.join(" ");
+      return joined.includes("anullsrc") && joined.includes("color=c=black");
+    });
+    expect(silenceArgs).toBeDefined();
+    const args = silenceArgs?.[1] ?? [];
+    expect(args[args.indexOf("-t") + 1]).toBe("1.500");
+  });
+
   it("follows the preset's container and codecs", async () => {
     const { fs, root, registry, renderer, run } = await setup({ media: true });
 
     const response = await startStoryboardExport(
-      { fs, registry, renderer, run, now },
+      { fs, registry, renderer, run, now, rendererReady: () => true },
       { root, outputPath: "/out/final.mp4", brand: BRAND, preset: "webm-vp9" },
     );
 
@@ -244,7 +487,7 @@ describe("storyboard export API", () => {
     const { fs, root, registry, renderer, run } = await setup({ media: true });
 
     const response = await startStoryboardExport(
-      { fs, registry, renderer, run, now },
+      { fs, registry, renderer, run, now, rendererReady: () => true },
       {
         root,
         outputPath: "/out/final.mp4",
@@ -276,6 +519,82 @@ describe("storyboard export API", () => {
     expect(fs.files.has("/out/final.mp4.provenance.json")).toBe(true);
   });
 
+  it("omits the brand bookends when includeBrand is false", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        includeBrand: false,
+      },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(registry.get(jobId)).toMatchObject({
+      status: "done",
+      result: { files: 1 },
+    });
+  });
+
+  it("renders only the title card when outro and contact are empty", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: {
+          ...BRAND,
+          outro: { text: "" },
+          contact: { name: "" },
+          lowerThird: { name: "" },
+        },
+      },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(registry.get(jobId)).toMatchObject({
+      status: "done",
+      result: { files: 2 },
+    });
+  });
+
+  it("rejects a non-boolean includeBrand", async () => {
+    const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        includeBrand: "no",
+      },
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("renders a generated-image scene from its asset", async () => {
     const { fs, root, registry, renderer, run } = await setup({
       media: true,
@@ -300,6 +619,7 @@ describe("storyboard export API", () => {
         renderer,
         run,
         now,
+        rendererReady: () => true,
       },
       {
         root,

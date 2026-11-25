@@ -3,7 +3,7 @@ import type { AssemblyStep } from "./assemble";
 import type { SlideCache } from "./cache";
 import type { CompositeAudio, CompositeCodecs, CompositeRequest } from "./composite";
 import { buildCompositeArgs } from "./composite";
-import { buildVideoRangeArgs } from "./video-range";
+import { buildSilenceArgs, buildVideoRangeArgs } from "./video-range";
 import type { PreviewGeometry } from "./preview";
 import { renderSceneSlide } from "./slides";
 import type { SlideRenderer } from "./types";
@@ -18,6 +18,8 @@ export type StepScene = {
   assetKind?: "image" | "video";
   /** Cut this source range full-frame with its own audio (talk scenes). */
   videoRange?: { input: string; startSeconds: number; durationSeconds: number };
+  /** Render a black frame with silent audio (inserted air). */
+  silence?: boolean;
 };
 
 export type RenderStepDeps = {
@@ -95,6 +97,28 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
 
     if (step.kind === "scene" && scene === undefined) {
       throw new StepAdapterError("missing-scene", `unknown scene: ${step.sceneId}`);
+    }
+
+    if (scene?.silence === true) {
+      await deps.run(
+        "ffmpeg",
+        buildSilenceArgs({
+          durationSeconds: step.durationSeconds,
+          outputPath,
+          width: deps.geometry.width,
+          height: deps.geometry.height,
+          fps: deps.geometry.fps,
+          ...(deps.codecs?.videoCodec === undefined
+            ? {}
+            : { videoCodec: deps.codecs.videoCodec }),
+          ...(deps.codecs?.audioCodec === undefined
+            ? {}
+            : { audioCodec: deps.codecs.audioCodec }),
+          ...(deps.codecs?.videoArgs === undefined ? {} : { videoArgs: deps.codecs.videoArgs }),
+          ...(deps.codecs?.audioArgs === undefined ? {} : { audioArgs: deps.codecs.audioArgs }),
+        }),
+      );
+      return outputPath;
     }
 
     if (scene?.videoRange !== undefined) {

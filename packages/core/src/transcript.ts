@@ -18,12 +18,20 @@ export type TranscriptSegment = {
   wordIds: string[];
 };
 
+/** Inserted air, attached to the word it follows. Word times stay in source seconds. */
+export type TranscriptSilence = {
+  afterWordId: string;
+  seconds: number;
+};
+
 export type TranscriptDocument = {
   schemaVersion: number;
   words: TranscriptWord[];
   segments: TranscriptSegment[];
   /** Removed words are kept in the document so the edit stays reversible. */
   removedWordIds: string[];
+  /** Optional, so transcripts saved before silences existed still parse. */
+  silences?: TranscriptSilence[];
 };
 
 export type TranscriptErrorCode =
@@ -173,20 +181,21 @@ export function removeRange(
 }
 
 /**
- * Inserts air after a word by shifting every later word's timestamps.
+ * Adds air after a word. Word times never change: they are source seconds.
  *
- * Silence needs no media work: a gap between words *is* silence, so the cut
- * list and the anchor index see it without any new document state. A
- * non-positive or non-finite duration is treated as "no change".
+ * The silence follows its word id through removals and moves. A non-positive
+ * or non-finite duration is treated as "no change".
+ *
+ * Older builds stored inserted air by shifting later words. Saved transcripts
+ * from those builds keep the shifted source times. This build cannot repair
+ * them automatically.
  */
 export function insertSilence(
   transcript: TranscriptDocument,
   afterWordId: string,
   seconds: number,
 ): TranscriptDocument {
-  const index = transcript.words.findIndex((word) => word.id === afterWordId);
-
-  if (index === -1) {
+  if (!transcript.words.some((word) => word.id === afterWordId)) {
     throw new TranscriptError("unknown-word", `unknown word id: ${afterWordId}`);
   }
 
@@ -194,14 +203,17 @@ export function insertSilence(
     return transcript;
   }
 
-  return {
-    ...transcript,
-    words: transcript.words.map((word, position) =>
-      position <= index
-        ? word
-        : { ...word, start: word.start + seconds, end: word.end + seconds },
-    ),
-  };
+  const existing = transcript.silences ?? [];
+  const silences = existing.map((entry) =>
+    entry.afterWordId === afterWordId
+      ? { ...entry, seconds: entry.seconds + seconds }
+      : entry,
+  );
+  if (!silences.some((entry) => entry.afterWordId === afterWordId)) {
+    silences.push({ afterWordId, seconds });
+  }
+
+  return { ...transcript, silences };
 }
 
 /** Returns the next free `s<n>` id, so repeated splits never collide. */
@@ -330,7 +342,16 @@ export function keptWords(transcript: TranscriptDocument): TranscriptWord[] {
 
 /** Serialises a transcript with a stable, diff-friendly layout. */
 export function serializeTranscript(transcript: TranscriptDocument): string {
-  return `${JSON.stringify(transcript, null, 2)}\n`;
+  const value: TranscriptDocument = {
+    schemaVersion: transcript.schemaVersion,
+    words: transcript.words,
+    segments: transcript.segments,
+    removedWordIds: transcript.removedWordIds,
+    ...(transcript.silences === undefined || transcript.silences.length === 0
+      ? {}
+      : { silences: transcript.silences }),
+  };
+  return `${JSON.stringify(value, null, 2)}\n`;
 }
 
 function parseWord(value: unknown): TranscriptWord {
@@ -386,7 +407,7 @@ export function validateTranscript(value: unknown): TranscriptDocument {
     throw new TranscriptError("invalid-document", "transcript document must be an object");
   }
 
-  const { schemaVersion, words, segments, removedWordIds } = value;
+  const { schemaVersion, words, segments, removedWordIds, silences } = value;
 
   if (typeof schemaVersion !== "number" || !Number.isInteger(schemaVersion)) {
     throw new TranscriptError("invalid-document", "schemaVersion must be an integer");
@@ -427,6 +448,32 @@ export function validateTranscript(value: unknown): TranscriptDocument {
     removedSet.add(entry);
   }
 
+  let parsedSilences: TranscriptSilence[] | undefined;
+  if (silences !== undefined) {
+    if (!Array.isArray(silences)) {
+      throw new TranscriptError("invalid-document", "silences must be an array");
+    }
+    parsedSilences = silences.map((entry) => {
+      if (!isRecord(entry)) {
+        throw new TranscriptError("invalid-document", "silence entry must be an object");
+      }
+      const { afterWordId, seconds } = entry;
+      if (typeof afterWordId !== "string" || !wordIds.has(afterWordId)) {
+        throw new TranscriptError(
+          "invalid-document",
+          `silence has an unknown word id: ${String(afterWordId)}`,
+        );
+      }
+      if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
+        throw new TranscriptError("invalid-document", `silence after ${afterWordId} has invalid seconds`);
+      }
+      return { afterWordId, seconds };
+    });
+    if (parsedSilences.length === 0) {
+      parsedSilences = undefined;
+    }
+  }
+
   return {
     schemaVersion,
     words: parsedWords,
@@ -434,6 +481,7 @@ export function validateTranscript(value: unknown): TranscriptDocument {
     removedWordIds: parsedWords
       .filter((word) => removedSet.has(word.id))
       .map((word) => word.id),
+    ...(parsedSilences === undefined ? {} : { silences: parsedSilences }),
   };
 }
 

@@ -60,12 +60,15 @@ function optionalText(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-function parseTitle(value: unknown, field: string): BrandTitle {
+function parseTitle(value: unknown, field: string, required = true): BrandTitle {
   if (!isRecord(value)) {
     throw new BrandError(`${field} must be an object`);
   }
 
-  const title: BrandTitle = { text: requireText(value.text, `${field}.text`) };
+  const text = required
+    ? requireText(value.text, `${field}.text`)
+    : (optionalText(value.text) ?? "");
+  const title: BrandTitle = { text };
   const subtitle = optionalText(value.subtitle);
   if (subtitle !== undefined) {
     title.subtitle = subtitle;
@@ -76,8 +79,7 @@ function parseTitle(value: unknown, field: string): BrandTitle {
 /**
  * Validates a brand kit.
  *
- * Every element that ships with an export must be present: a missing contact
- * card is a missing deliverable, not a style choice.
+ * The title stays required. The outro, contact and lower third may be empty.
  */
 export function validateBrandKit(value: unknown): BrandKit {
   if (!isRecord(value)) {
@@ -85,12 +87,12 @@ export function validateBrandKit(value: unknown): BrandKit {
   }
 
   const title = parseTitle(value.title, "title");
-  const outro = parseTitle(value.outro, "outro");
+  const outro = parseTitle(value.outro, "outro", false);
 
   if (!isRecord(value.contact)) {
     throw new BrandError("contact must be an object");
   }
-  const contact: BrandContact = { name: requireText(value.contact.name, "contact.name") };
+  const contact: BrandContact = { name: optionalText(value.contact.name) ?? "" };
   const handle = optionalText(value.contact.handle);
   const url = optionalText(value.contact.url);
   if (handle !== undefined) {
@@ -104,7 +106,7 @@ export function validateBrandKit(value: unknown): BrandKit {
     throw new BrandError("lowerThird must be an object");
   }
   const lowerThird: BrandLowerThird = {
-    name: requireText(value.lowerThird.name, "lowerThird.name"),
+    name: optionalText(value.lowerThird.name) ?? "",
   };
   const role = optionalText(value.lowerThird.role);
   if (role !== undefined) {

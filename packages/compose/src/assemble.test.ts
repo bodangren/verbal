@@ -41,6 +41,51 @@ describe("planAssembly", () => {
     expect(plan.at(-1)).toMatchObject({ subtitle: "Daniel · @daniel · example.com" });
   });
 
+  it("omits the outro when its text and contact are empty", () => {
+    const plan = planAssembly({
+      scenes,
+      brand: { ...brand, outro: { text: "" }, contact: { name: "" } },
+    });
+
+    expect(plan).toHaveLength(3);
+    expect(plan.at(-1)).toMatchObject({ kind: "scene", sceneId: "s2" });
+  });
+
+  it("uses the contact line as outro text when the outro text is empty", () => {
+    const plan = planAssembly({
+      scenes: [],
+      brand: {
+        ...brand,
+        outro: { text: "" },
+        contact: { name: "Daniel", handle: "@daniel" },
+      },
+    });
+
+    expect(plan.at(-1)).toEqual({
+      kind: "brand",
+      role: "outro",
+      durationSeconds: 3,
+      text: "Daniel · @daniel",
+    });
+  });
+
+  it("keeps the outro text and contact subtitle when both are present", () => {
+    expect(planAssembly({ scenes, brand }).at(-1)).toEqual({
+      kind: "brand",
+      role: "outro",
+      durationSeconds: 3,
+      text: "Outro",
+      subtitle: "Name",
+    });
+  });
+
+  it("omits the title when its text is empty", () => {
+    const plan = planAssembly({ scenes, brand: { ...brand, title: { text: "  " } } });
+
+    expect(plan[0]).toMatchObject({ kind: "scene", sceneId: "s1" });
+    expect(plan.some((step) => step.kind === "brand" && step.role === "title")).toBe(false);
+  });
+
   it("omits brand elements when asked", () => {
     expect(planAssembly({ scenes, brand, includeBrand: false })).toEqual([
       { kind: "scene", sceneId: "s1", durationSeconds: 2 },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTranscript, removeWord } from "@verbal/core";
+import { createTranscript, insertSilence, removeWord } from "@verbal/core";
 import { freezeMaster, requiresReanchor } from "./freeze";
 import type { CleanupProposal } from "./types";
 
@@ -38,6 +38,23 @@ describe("freezeMaster", () => {
       { start: 0, end: 0.6 },
       { start: 1, end: 3 },
     ]);
+  });
+
+  it("gives an inserted silence no cut of its own", () => {
+    const input = {
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    };
+    const plain = freezeMaster({ transcript, ...input });
+    const withSilence = freezeMaster({
+      transcript: insertSilence(transcript, "w0", 1.5),
+      ...input,
+    });
+
+    expect(withSilence.cutList).toEqual(plain.cutList);
+    expect(withSilence.anchorWords).toEqual(plain.anchorWords);
+    expect(withSilence.fingerprint).toBe(plain.fingerprint);
   });
 
   it("counts a word that is both saved and accepted once", () => {

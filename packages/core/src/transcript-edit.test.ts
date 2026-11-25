@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createTranscript,
   insertSilence,
+  moveRange,
+  removeRange,
   splitSegment,
   TranscriptError,
   type TranscriptDocument,
@@ -21,14 +23,11 @@ function timings(transcript: TranscriptDocument): [number, number][] {
 }
 
 describe("insertSilence", () => {
-  it("shifts every later word and leaves the earlier ones alone", () => {
+  it("leaves every word time in source seconds and records the air", () => {
     const edited = insertSilence(fixture(), "w0", 1);
 
-    expect(timings(edited)).toEqual([
-      [0, 0.4],
-      [1.45, 1.9],
-      [2.8, 3.2],
-    ]);
+    expect(timings(edited)).toEqual(timings(fixture()));
+    expect(edited.silences).toEqual([{ afterWordId: "w0", seconds: 1 }]);
   });
 
   it("keeps ids and segment structure", () => {
@@ -42,7 +41,8 @@ describe("insertSilence", () => {
     const once = insertSilence(fixture(), "w0", 0.5);
     const twice = insertSilence(once, "w0", 0.5);
 
-    expect(timings(twice)[1]).toEqual([1.45, 1.9]);
+    expect(twice.silences).toEqual([{ afterWordId: "w0", seconds: 1 }]);
+    expect(timings(twice)).toEqual(timings(fixture()));
   });
 
   it("treats zero or negative seconds as no change", () => {
@@ -55,6 +55,20 @@ describe("insertSilence", () => {
 
   it("rejects an unknown anchor word", () => {
     expect(() => insertSilence(fixture(), "w9", 1)).toThrow(TranscriptError);
+  });
+
+  it("keeps the entry when its word is removed", () => {
+    const edited = removeRange(insertSilence(fixture(), "w1", 1.5), 1, 1);
+
+    expect(edited.silences).toEqual([{ afterWordId: "w1", seconds: 1.5 }]);
+    expect(timings(edited)).toEqual(timings(fixture()));
+  });
+
+  it("keeps the entry attached to its word after a move", () => {
+    const edited = moveRange(insertSilence(fixture(), "w1", 1.5), 1, 1, 2);
+
+    expect(edited.words.map((word) => word.id)).toEqual(["w0", "w2", "w1"]);
+    expect(edited.silences).toEqual([{ afterWordId: "w1", seconds: 1.5 }]);
   });
 });
 

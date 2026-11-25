@@ -82,3 +82,73 @@ export function buildVideoRangeArgs(request: VideoRangeRequest): string[] {
     request.outputPath,
   ];
 }
+
+export type SilenceRequest = {
+  durationSeconds: number;
+  outputPath: string;
+  width: number;
+  height: number;
+  fps: number;
+  videoCodec?: string;
+  audioCodec?: string;
+  videoArgs?: string[];
+  audioArgs?: string[];
+};
+
+/**
+ * Builds the argv for one silent, black segment.
+ *
+ * The sources come from lavfi, so no source media or slide renderer is needed.
+ * Codecs and size match the video-range segments so concat can join them.
+ */
+export function buildSilenceArgs(request: SilenceRequest): string[] {
+  if (!Number.isFinite(request.durationSeconds) || request.durationSeconds <= 0) {
+    throw new VideoRangeError("durationSeconds must be positive");
+  }
+  if (request.outputPath.trim() === "") {
+    throw new VideoRangeError("outputPath is required");
+  }
+  if (!Number.isFinite(request.width) || request.width < 2) {
+    throw new VideoRangeError("width must be at least 2");
+  }
+  if (!Number.isFinite(request.height) || request.height < 2) {
+    throw new VideoRangeError("height must be at least 2");
+  }
+  if (!Number.isFinite(request.fps) || request.fps <= 0) {
+    throw new VideoRangeError("fps must be positive");
+  }
+
+  const duration = request.durationSeconds.toFixed(3);
+  const { width: W, height: H } = request;
+
+  return [
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=black:s=${W}x${H}:r=${request.fps}:d=${duration}`,
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=r=48000:cl=mono",
+    "-t",
+    duration,
+    "-vf",
+    "setsar=1",
+    "-r",
+    String(request.fps),
+    "-c:v",
+    request.videoCodec ?? "libx264",
+    ...(request.videoArgs ?? ["-crf", "20", "-preset", "veryfast", "-pix_fmt", "yuv420p"]),
+    "-c:a",
+    request.audioCodec ?? "aac",
+    ...(request.audioArgs ?? ["-b:a", "192k"]),
+    "-ar",
+    "48000",
+    "-shortest",
+    "-progress",
+    "pipe:1",
+    "-nostats",
+    request.outputPath,
+  ];
+}

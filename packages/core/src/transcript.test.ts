@@ -4,6 +4,7 @@ import {
   TranscriptError,
   createTranscript,
   groupSegments,
+  insertSilence,
   keptWords,
   parseTranscript,
   removeRange,
@@ -149,5 +150,42 @@ describe("serialisation", () => {
 
   it("rejects invalid JSON", () => {
     expect(() => parseTranscript("{nope")).toThrow(TranscriptError);
+  });
+});
+
+describe("silence persistence", () => {
+  it("omits the key for new and old transcripts", () => {
+    const raw = serializeTranscript(createTranscript(SPOKEN));
+
+    expect(raw).not.toContain("silences");
+    expect("silences" in createTranscript(SPOKEN)).toBe(false);
+    expect(serializeTranscript(parseTranscript(raw))).toBe(raw);
+  });
+
+  it("round-trips inserted silences", () => {
+    const edited = insertSilence(createTranscript(SPOKEN), "w1", 1.5);
+    const parsed = parseTranscript(serializeTranscript(edited));
+
+    expect(parsed.silences).toEqual([{ afterWordId: "w1", seconds: 1.5 }]);
+    expect(parsed.words).toEqual(edited.words);
+    expect(serializeTranscript(parsed)).toBe(serializeTranscript(edited));
+  });
+
+  it("rejects an unknown silence anchor", () => {
+    const raw = serializeTranscript(createTranscript(SPOKEN));
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    value.silences = [{ afterWordId: "w9", seconds: 1 }];
+
+    expect(() => parseTranscript(JSON.stringify(value))).toThrow(TranscriptError);
+  });
+
+  it("rejects non-positive and non-finite silence durations", () => {
+    const raw = serializeTranscript(createTranscript(SPOKEN));
+    const value = JSON.parse(raw) as Record<string, unknown>;
+
+    for (const seconds of [0, -1, Number.NaN, "1"]) {
+      value.silences = [{ afterWordId: "w0", seconds }];
+      expect(() => parseTranscript(JSON.stringify(value))).toThrow(TranscriptError);
+    }
   });
 });

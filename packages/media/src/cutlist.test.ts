@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTranscript, removeRange } from "@verbal/core";
+import { createTranscript, insertSilence, removeRange } from "@verbal/core";
 import { buildCutList, CutListError, serializeCutList } from "./cutlist";
 
 const SPOKEN = [
@@ -31,6 +31,16 @@ describe("buildCutList", () => {
       { start: 0.95, end: 3 },
     ]);
     expect(cutList.keptDurationSeconds).toBe(2.45);
+  });
+
+  it("ignores inserted silences because word times stay in source seconds", () => {
+    const base = removeRange(createTranscript(SPOKEN), 1, 1);
+    const withSilence = insertSilence(base, "w0", 1.5);
+    const input = { durationSeconds: 3, handleSeconds: 0.05 };
+
+    expect(buildCutList({ transcript: withSilence, ...input })).toEqual(
+      buildCutList({ transcript: base, ...input }),
+    );
   });
 
   it("clamps a handle to the start of the media", () => {

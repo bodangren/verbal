@@ -147,14 +147,14 @@ describe("useTranscriptDocument", () => {
 
     act(() => result.current.insertSilence("w0", 2));
 
-    const shifted = result.current.document;
-    expect(shifted?.words[1]?.start).toBeCloseTo(2.45);
-    expect(shifted?.words[0]?.start).toBe(0);
+    const edited = result.current.document;
+    expect(edited?.words[1]?.start).toBeCloseTo(0.45);
+    expect(edited?.silences).toEqual([{ afterWordId: "w0", seconds: 2 }]);
     expect(result.current.dirty).toBe(true);
 
     act(() => result.current.undo());
     expect(removedWordIds(result.current.document)).toEqual([]);
-    expect(result.current.document?.words[1]?.start).toBeCloseTo(0.45);
+    expect(result.current.document?.silences).toBeUndefined();
     expect(result.current.canUndo).toBe(false);
   });
 

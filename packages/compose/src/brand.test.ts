@@ -24,16 +24,26 @@ describe("validateBrandKit", () => {
     expect(() => validateBrandKit({ ...KIT, title: {} })).toThrow(BrandError);
   });
 
-  it("rejects a missing outro text", () => {
-    expect(() => validateBrandKit({ ...KIT, outro: { text: "  " } })).toThrow(BrandError);
+  it("accepts an empty outro text", () => {
+    expect(validateBrandKit({ ...KIT, outro: { text: "" } })).toMatchObject({
+      outro: { text: "" },
+    });
   });
 
-  it("rejects a missing contact name", () => {
-    expect(() => validateBrandKit({ ...KIT, contact: {} })).toThrow(/contact/i);
+  it("accepts an empty contact name", () => {
+    expect(validateBrandKit({ ...KIT, contact: { name: "" } })).toMatchObject({
+      contact: { name: "" },
+    });
   });
 
-  it("rejects a missing lower-third name", () => {
-    expect(() => validateBrandKit({ ...KIT, lowerThird: {} })).toThrow(/lower/i);
+  it("accepts an empty lower-third name", () => {
+    expect(validateBrandKit({ ...KIT, lowerThird: { name: "" } })).toMatchObject({
+      lowerThird: { name: "" },
+    });
+  });
+
+  it("rejects a non-object contact", () => {
+    expect(() => validateBrandKit({ ...KIT, contact: "nobody" })).toThrow(/contact/i);
   });
 
   it("rejects an out-of-range loudness target", () => {

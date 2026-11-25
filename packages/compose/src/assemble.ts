@@ -50,12 +50,13 @@ function formatContact(contact: BrandKit["contact"]): string | undefined {
  * Orders the pieces of the final video: title, scenes, outro.
  *
  * Brand text travels with the steps, so a renderer never has to look the
- * brand kit up again. The contact card rides on the outro.
+ * brand kit up again. The contact card rides on the outro. Empty cards are
+ * skipped.
  */
 export function planAssembly(input: PlanAssemblyInput): AssemblyStep[] {
   const steps: AssemblyStep[] = [];
 
-  if (input.includeBrand !== false) {
+  if (input.includeBrand !== false && input.brand.title.text.trim() !== "") {
     steps.push({
       kind: "brand",
       role: "title",
@@ -79,18 +80,27 @@ export function planAssembly(input: PlanAssemblyInput): AssemblyStep[] {
   }
 
   if (input.includeBrand !== false) {
+    const contactLine = formatContact(input.brand.contact);
+    const outroText =
+      input.brand.outro.text.trim() === "" ? undefined : input.brand.outro.text;
+    // Without outro text, the contact line becomes the card text. The subtitle
+    // keeps only the outro subtitle, so the contact is not shown twice.
+    const text = outroText ?? contactLine ?? "";
+    const contactIsText = outroText === undefined && contactLine !== undefined;
     const subtitleParts = [
       input.brand.outro.subtitle,
-      formatContact(input.brand.contact),
+      contactIsText ? undefined : contactLine,
     ].filter((part): part is string => part !== undefined && part.trim() !== "");
 
-    steps.push({
-      kind: "brand",
-      role: "outro",
-      durationSeconds: input.outroDurationSeconds ?? 3,
-      text: input.brand.outro.text,
-      ...(subtitleParts.length === 0 ? {} : { subtitle: subtitleParts.join(" · ") }),
-    });
+    if (text.trim() !== "" || subtitleParts.length > 0) {
+      steps.push({
+        kind: "brand",
+        role: "outro",
+        durationSeconds: input.outroDurationSeconds ?? 3,
+        text,
+        ...(subtitleParts.length === 0 ? {} : { subtitle: subtitleParts.join(" · ") }),
+      });
+    }
   }
 
   return steps;
