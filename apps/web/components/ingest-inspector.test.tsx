@@ -86,4 +86,17 @@ describe("IngestInspector", () => {
 
     expect(screen.getByRole("alert").textContent).toContain("ffprobe failed");
   });
+
+  it("leaves the loading state when the probe finishes", () => {
+    setup({ hasMedia: true, probe: null, probeLoading: false });
+
+    expect(screen.queryByText("Reading media…")).toBeNull();
+    expect(screen.getByText("Details unavailable for this take.")).toBeTruthy();
+  });
+
+  it("shows loading only while the probe is running", () => {
+    setup({ hasMedia: true, probe: null, probeLoading: true });
+
+    expect(screen.getByText("Reading media…")).toBeTruthy();
+  });
 });

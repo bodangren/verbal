@@ -1638,6 +1638,21 @@ h2 {
   width: 68px;
 }
 
+/* A checkbox row: the control sits beside its label at its natural size. */
+.field--check {
+  align-items: center;
+  cursor: pointer;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+.field--check input {
+  accent-color: var(--primary);
+  margin: 0;
+  padding: 0;
+  width: auto;
+}
+
 .field textarea,
 .field select {
   background: var(--surface);

@@ -81,6 +81,18 @@ describe("IngestStage", () => {
     );
   });
 
+  it("shows the install hint when no speech engine is set up", () => {
+    setup({
+      provider: "No speech engine",
+      hint: "Install whisper (see README, Transcription setup) or set OPENAI_API_KEY.",
+    });
+
+    const line = screen.getByTestId("provider-line").textContent ?? "";
+    expect(line).toContain("No speech engine");
+    expect(line).toContain("Install whisper");
+    expect(line).not.toContain("Audio stays on this machine.");
+  });
+
   it("opens the batch dialog", () => {
     const props = setup();
 

@@ -41,6 +41,8 @@ import { errorCopyFor, type ErrorCopy } from "../lib/error-copy";
 import { MediaPicker } from "../components/MediaPicker";
 import { IngestStage, type MediaState } from "../components/IngestStage";
 import { IngestInspector, type ProbeSummary } from "../components/IngestInspector";
+import { ExportControls } from "../components/ExportControls";
+import { clearFinishedJob, jobStatusText } from "../components/job-status";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
 import {
@@ -255,6 +257,7 @@ export default function Home() {
   const [browserEntries, setBrowserEntries] = useState<FsEntry[]>([]);
   const [browserError, setBrowserError] = useState<string | null>(null);
   const [browserLoading, setBrowserLoading] = useState(false);
+  const browserPathRef = useRef("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPath, setPickerPath] = useState("");
   const [pickerParent, setPickerParent] = useState<string | null>(null);
@@ -276,7 +279,12 @@ export default function Home() {
   const [accepted, setAccepted] = useState<boolean[]>([]);
   const [probe, setProbe] = useState<ProbeSummary | null>(null);
   const [probeError, setProbeError] = useState<string | null>(null);
-  const [transcription, setTranscription] = useState({
+  const [probeLoading, setProbeLoading] = useState(false);
+  const [transcription, setTranscription] = useState<{
+    label: string;
+    cloud: boolean;
+    hint?: string;
+  }>({
     label: "Cloud (OpenAI-compatible)",
     cloud: true,
   });
@@ -290,11 +298,13 @@ export default function Home() {
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const [brand, setBrand] = useState({
-    title: "Untitled",
-    outro: "Thanks for watching",
-    contact: "Daniel",
+    title: "",
+    outro: "",
+    contact: "",
     loudness: -16,
   });
+  const [includeBrand, setIncludeBrand] = useState(true);
+  const brandTitleProjectRef = useRef<string | null>(null);
   const [job, setJob] = useState<JobRecord | null>(null);
   const [error, setError] = useState<ErrorCopy | null>(null);
   const [paneError, setPaneError] = useState<{
@@ -358,6 +368,7 @@ export default function Home() {
     pane: "browser" | "ingest" | "edit" | "deliver" = mode,
   ) {
     setError(null);
+    setJob(clearFinishedJob);
     try {
       await run();
       setPaneError(null);
@@ -396,6 +407,10 @@ export default function Home() {
   // otherwise fetch transcripts for the previous (or empty) project.
   async function loadProjectFiles(next: ProjectDocument, projectRoot: string = root) {
     setProject(next);
+    if (brandTitleProjectRef.current !== projectRoot) {
+      brandTitleProjectRef.current = projectRoot;
+      setBrand((current) => ({ ...current, title: next.name }));
+    }
     setOutputPath(defaultOutputPath(projectRoot, next.name, presetId));
 
     await loadTranscriptState(projectRoot);
@@ -404,6 +419,26 @@ export default function Home() {
       `/api/storyboard?root=${encodeURIComponent(projectRoot)}`,
     );
     setStoryboardText(JSON.stringify(storyboard, null, 2));
+
+    // The plan belongs to one project: drop the last one, then restore this
+    // project's scene list. The fast tier never starts a render, so reopening
+    // a project costs nothing and Deliver is not empty after a reload.
+    setPlan(null);
+    if (storyboard.scenes.length > 0) {
+      try {
+        setTier("fast");
+        setPlan(
+          await postJson<PreviewPlan>("/api/storyboard/preview", {
+            root: projectRoot,
+            tier: "fast",
+            version: 1,
+            geometry: GEOMETRY,
+          }),
+        );
+      } catch {
+        // The Render Preview button stays as the way to try again.
+      }
+    }
 
     try {
       const stored = await request<{ script: string }>(
@@ -427,6 +462,7 @@ export default function Home() {
     setPrompterOffset(0);
     setPrompterPlaying(false);
 
+    void refreshBrowser();
     setMessage(`Opened ${next.name}`);
   }
 
@@ -438,36 +474,51 @@ export default function Home() {
       );
       setRoot(target);
       await loadProjectFiles(opened, target);
-      setMode(opened.media === undefined ? "ingest" : "edit");
+      changeMode(opened.media === undefined ? "ingest" : "edit");
       setTranscribeFailure(null);
       setBrowserError(null);
     }, "browser");
   }
 
+  async function fetchBrowserListing(target?: string): Promise<void> {
+    const listing = await request<{
+      path: string;
+      parent: string | null;
+      entries: FsEntry[];
+    }>(`/api/fs/list${target === undefined ? "" : `?path=${encodeURIComponent(target)}`}`);
+
+    setBrowserPath(listing.path);
+    setBrowserParent(listing.parent);
+    setBrowserEntries(listing.entries);
+    setBrowserError(null);
+    browserPathRef.current = listing.path;
+
+    // Remember where you were, so the next launch opens your work, not home.
+    try {
+      window.localStorage.setItem(BROWSER_PATH_KEY, listing.path);
+    } catch {
+      // Storage can be unavailable; browsing still works without it.
+    }
+  }
+
   function loadFolder(target?: string) {
     return guard(async () => {
       try {
-        const listing = await request<{
-          path: string;
-          parent: string | null;
-          entries: FsEntry[];
-        }>(`/api/fs/list${target === undefined ? "" : `?path=${encodeURIComponent(target)}`}`);
-
-        setBrowserPath(listing.path);
-        setBrowserParent(listing.parent);
-        setBrowserEntries(listing.entries);
-        setBrowserError(null);
-
-        // Remember where you were, so the next launch opens your work, not home.
-        try {
-          window.localStorage.setItem(BROWSER_PATH_KEY, listing.path);
-        } catch {
-          // Storage can be unavailable; browsing still works without it.
-        }
+        await fetchBrowserListing(target);
       } catch (cause) {
         setBrowserError(cause instanceof Error ? cause.message : String(cause));
       }
     }, "browser");
+  }
+
+  /** Reloads the browsed folder so project rows carry current summaries. */
+  async function refreshBrowser(): Promise<void> {
+    try {
+      const current = browserPathRef.current;
+      await fetchBrowserListing(current === "" ? undefined : current);
+    } catch {
+      // The listing is advisory; keep the last good rows.
+    }
   }
 
   useEffect(() => {
@@ -515,6 +566,12 @@ export default function Home() {
       saveSession({ root, mode });
     }
   }, [project, root, mode]);
+
+  /** A mode switch ends the previous workspace's status text. */
+  function changeMode(next: WorkspaceMode) {
+    setJob(clearFinishedJob);
+    setMode(next);
+  }
 
   const runningJob =
     job !== null && (job.status === "queued" || job.status === "running");
@@ -632,6 +689,7 @@ export default function Home() {
       setProject(result.project);
       setTranscribeFailure(null);
       setMessage("Media imported");
+      void refreshBrowser();
     }, "ingest");
   }
 
@@ -646,12 +704,14 @@ export default function Home() {
         if (!cancelled) {
           setProbe(null);
           setProbeError(null);
+          setProbeLoading(false);
         }
         return;
       }
 
       setProbe(null);
       setProbeError(null);
+      setProbeLoading(true);
       try {
         const info = await postJson<MediaInfo>("/api/media/probe", { path: mediaPath });
         if (!cancelled) {
@@ -660,6 +720,10 @@ export default function Home() {
       } catch (cause) {
         if (!cancelled) {
           setProbeError(cause instanceof Error ? cause.message : String(cause));
+        }
+      } finally {
+        if (!cancelled) {
+          setProbeLoading(false);
         }
       }
     })();
@@ -675,7 +739,7 @@ export default function Home() {
     void (async () => {
       try {
         const system = await request<{
-          transcription?: { label: string; cloud: boolean };
+          transcription?: { label: string; cloud: boolean; hint?: string };
         }>("/api/system");
         if (!cancelled && system.transcription !== undefined) {
           setTranscription(system.transcription);
@@ -768,7 +832,7 @@ export default function Home() {
 
       setRoot(createdRoot);
       await loadProjectFiles(created, createdRoot);
-      setMode("ingest");
+      changeMode("ingest");
       setTranscribeFailure(null);
       setMessage(`Created ${created.name}`);
       void loadFolder(browserPath);
@@ -846,6 +910,7 @@ export default function Home() {
       await putJson<TranscriptDocument>("/api/transcript", { root, document: transcript });
       editing.markSaved();
       setMessage("Transcript saved");
+      void refreshBrowser();
     }, "edit");
   }
 
@@ -897,6 +962,7 @@ export default function Home() {
       }
 
       await loadTranscriptState();
+      void refreshBrowser();
 
       const result = finished.result as { words?: number } | null;
       setMessage(
@@ -905,7 +971,7 @@ export default function Home() {
           : `Transcribed ${result.words} words`,
       );
       // The transcript is the point of transcription; show it in Edit.
-      setMode("edit");
+      changeMode("edit");
     });
   }
 
@@ -1507,7 +1573,7 @@ export default function Home() {
 
   /** Export is always one click away: open Deliver and focus its panel. */
   function openExport() {
-    setMode("deliver");
+    changeMode("deliver");
     requestAnimationFrame(() => document.getElementById("export-panel")?.focus());
   }
 
@@ -1517,8 +1583,9 @@ export default function Home() {
         root,
         outputPath,
         preset: presetId,
+        includeBrand,
         brand: {
-          title: { text: brand.title },
+          title: { text: includeBrand ? brand.title : project?.name ?? "Export" },
           outro: { text: brand.outro },
           contact: { name: brand.contact },
           lowerThird: { name: brand.contact },
@@ -1658,7 +1725,7 @@ export default function Home() {
         projectRoot={root}
         mode={mode}
         saveState={saveState}
-        onMode={setMode}
+        onMode={changeMode}
         onExport={openExport}
       />
 
@@ -1703,6 +1770,7 @@ export default function Home() {
               state={mediaState}
               provider={transcription.label}
               cloud={transcription.cloud}
+              hint={transcription.hint}
               onImport={() => {
                 if (project !== null) {
                   openMediaPicker();
@@ -1774,13 +1842,13 @@ export default function Home() {
                 <EmptyState
                   title="No Project Open"
                   body="Open a project in Ingest to edit its transcript."
-                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                  action={{ label: "Go to Ingest", onClick: () => changeMode("ingest") }}
                 />
               ) : !hasMedia ? (
                 <EmptyState
                   title="No Media Yet"
                   body="Import a recording or file in Ingest, then transcribe it."
-                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                  action={{ label: "Go to Ingest", onClick: () => changeMode("ingest") }}
                 />
               ) : (
                 <>
@@ -2004,7 +2072,7 @@ export default function Home() {
                 <EmptyState
                   title="No Project Open"
                   body="Open a project in Ingest to build its storyboard."
-                  action={{ label: "Go to Ingest", onClick: () => setMode("ingest") }}
+                  action={{ label: "Go to Ingest", onClick: () => changeMode("ingest") }}
                 />
               ) : transcript === null ? (
                 <EmptyState
@@ -2220,10 +2288,11 @@ export default function Home() {
           <IngestInspector
             probe={probe}
             probeError={probeError}
+            probeLoading={probeLoading}
             hasMedia={hasMedia}
             hasTranscript={transcript !== null && liveWords > 0}
             transcribing={transcribing}
-            onOpenInEdit={() => setMode("edit")}
+            onOpenInEdit={() => changeMode("edit")}
           />
         )}
 
@@ -2313,45 +2382,58 @@ export default function Home() {
                   ))}
                 </select>
               </label>
-              <label className="field">
-                Title
+              <label className="field field--check">
                 <input
-                  autoComplete="off"
-                  value={brand.title}
-                  onChange={(event) => setBrand({ ...brand, title: event.target.value })}
+                  type="checkbox"
+                  checked={includeBrand}
+                  onChange={(event) => setIncludeBrand(event.target.checked)}
                 />
+                Add Title And Outro Cards
               </label>
-              <label className="field">
-                Outro
-                <input
-                  autoComplete="off"
-                  value={brand.outro}
-                  onChange={(event) => setBrand({ ...brand, outro: event.target.value })}
-                />
-              </label>
-              <label className="field">
-                Contact
-                <input
-                  autoComplete="off"
-                  value={brand.contact}
-                  onChange={(event) => setBrand({ ...brand, contact: event.target.value })}
-                />
-              </label>
-              <button
-                type="button"
-                className="button button--primary"
-                onClick={exportStoryboard}
-                disabled={project === null}
-              >
-                Export Storyboard
-              </button>
-              {job !== null && (
-                <p className="muted">
-                  Job {job.status} · {Math.round(job.progress * 100)}%
-                  {job.message !== null ? ` · ${job.message}` : ""}
-                  {job.error !== null ? ` · ${errorCopyFor(job.error).message}` : ""}
-                </p>
+              {includeBrand && (
+                <>
+                  <label className="field">
+                    Title
+                    <input
+                      autoComplete="off"
+                      value={brand.title}
+                      onChange={(event) => setBrand({ ...brand, title: event.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    Outro
+                    <input
+                      autoComplete="off"
+                      value={brand.outro}
+                      onChange={(event) => setBrand({ ...brand, outro: event.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    Contact
+                    <input
+                      autoComplete="off"
+                      value={brand.contact}
+                      onChange={(event) => setBrand({ ...brand, contact: event.target.value })}
+                    />
+                  </label>
+                </>
               )}
+              <ExportControls
+                disabled={
+                  project === null ||
+                  storyboardEmpty ||
+                  (includeBrand && brand.title.trim() === "")
+                }
+                reason={
+                  storyboardEmpty
+                    ? "Create a storyboard first."
+                    : includeBrand && brand.title.trim() === ""
+                      ? "Enter a title for the title card."
+                      : null
+                }
+                job={job}
+                onExport={exportStoryboard}
+              />
             </section>
           </aside>
         )}
@@ -2478,13 +2560,7 @@ export default function Home() {
       )}
 
       <footer className="statusbar">
-        <span className="statusbar__item">
-          {job !== null && (job.status === "queued" || job.status === "running")
-            ? `${job.kind}: ${Math.round(job.progress * 100)}%${
-                job.message !== null ? ` · ${job.message}` : ""
-              }`
-            : "Ready"}
-        </span>
+        <span className="statusbar__item">{jobStatusText(job) ?? "Ready"}</span>
         <span className="statusbar__item">{hasMedia ? "Media loaded" : "No media"}</span>
         <span
           className={`statusbar__message${error !== null ? " is-error" : ""}`}

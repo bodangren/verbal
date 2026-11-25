@@ -16,6 +16,8 @@ export type IngestStageProps = {
   provider: string;
   /** True when the provider sends audio off the machine. */
   cloud: boolean;
+  /** Next step when no speech engine is set up. */
+  hint?: string;
   onImport: () => void;
   onRecord: () => void;
   onTranscribe: () => void;
@@ -53,6 +55,7 @@ export function IngestStage({
   state,
   provider,
   cloud,
+  hint,
   onImport,
   onRecord,
   onTranscribe,
@@ -104,7 +107,11 @@ export function IngestStage({
         </div>
         <p className="muted" data-testid="provider-line">
           Provider: {provider}
-          {cloud ? " · Audio leaves this machine." : " · Audio stays on this machine."}
+          {hint !== undefined
+            ? ` · ${hint}`
+            : cloud
+              ? " · Audio leaves this machine."
+              : " · Audio stays on this machine."}
         </p>
       </div>
 

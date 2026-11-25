@@ -50,15 +50,22 @@ export function StoryboardPreview({ plan, tier, onTierChange }: StoryboardPrevie
       </header>
 
       <ol className="preview__scenes">
-        {plan.scenes.map((scene) => (
-          <li key={scene.sceneId} className="preview__scene" data-source={scene.source}>
-            <span className="preview__scene-id">{scene.sceneId}</span>
-            <span className="preview__scene-source">{SOURCE_LABEL[scene.source]}</span>
-            <span className="preview__scene-time">
-              {scene.startSeconds.toFixed(2)}–{scene.endSeconds.toFixed(2)}s
-            </span>
-          </li>
-        ))}
+        {plan.scenes.map((scene) => {
+          const span = `${scene.startSeconds.toFixed(2)}–${scene.endSeconds.toFixed(2)}s`;
+          return (
+            <li key={scene.sceneId} className="preview__scene" data-source={scene.source}>
+              <span className="preview__scene-id">{scene.sceneId}</span>
+              <span className="preview__scene-source">{SOURCE_LABEL[scene.source]}</span>
+              {scene.playSeconds === undefined ? (
+                <span className="preview__scene-time">{span}</span>
+              ) : (
+                <span className="preview__scene-time" title={`Source ${span}`}>
+                  {`Plays ${scene.playSeconds.toFixed(2)}s`}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

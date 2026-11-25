@@ -14,6 +14,7 @@ export type ProbeSummary = {
 export type IngestInspectorProps = {
   probe: ProbeSummary | null;
   probeError?: string | null;
+  probeLoading?: boolean;
   hasMedia: boolean;
   hasTranscript: boolean;
   transcribing: boolean;
@@ -72,6 +73,7 @@ function Step({ label, done }: { label: string; done: boolean }) {
 export function IngestInspector({
   probe,
   probeError = null,
+  probeLoading = false,
   hasMedia,
   hasTranscript,
   transcribing,
@@ -86,7 +88,13 @@ export function IngestInspector({
             {probeError}
           </p>
         ) : probe === null ? (
-          <p className="muted">{hasMedia ? "Reading media…" : "No media imported yet."}</p>
+          <p className="muted">
+            {probeLoading && hasMedia
+              ? "Reading media…"
+              : hasMedia
+                ? "Details unavailable for this take."
+                : "No media imported yet."}
+          </p>
         ) : (
           <dl className="details">
             <dt>Video codec</dt>
