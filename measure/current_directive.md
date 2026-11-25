@@ -73,8 +73,10 @@ Keep exact encoding as the fallback.
 - Capture success on real V4L2 hardware remains unverified on this machine.
 - Real paid provider checks need Daniel's separate approval.
   Tests use local fakes.
-- Real local ASR remains unverified until a supported binary and model exist.
-  Do not download a model or claim real ASR passed.
+- Local ASR is now verified for the project: whisper.cpp transcribed real Thai in dogfood runs 2–3.
+  Thai quality was evaluated on 2026-11-25 (`thai_stt_20261125`): Typhoon ASR Realtime 114M is much better than whisper small.
+  Adopting it is a pending decision; do not wire it in without Daniel's choice.
+  The earlier "do not download a model" gate was lifted for that evaluation only.
 
 ## Planning handoff
 

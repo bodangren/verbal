@@ -78,6 +78,13 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Not started. Priority 6; final acceptance follows the other five tracks. Documentation inventory and gate design can start earlier.*
   *Link: [./tracks/repository_contracts_20261122](./tracks/repository_contracts_20261122/)*
 
+### Evaluation tracks
+
+- [x] **Track: Thai STT Engine Evaluation** [created: 2026-11-25] [completed: 2026-11-25]
+  *Focus: Test whether a locally runnable engine transcribes Thai well enough to replace `whisper small`, which garbles Thai in dogfood runs 2–3.*
+  *Status: Complete — evaluation. Typhoon ASR Realtime 114M (SCB 10X, ONNX) scores CER 13.25 % vs 23.59 % for whisper small on 30 FLEURS Thai clips, and runs 15× faster (RTF 0.121 vs 1.882). The 0.6B streaming model is worse and 45× slower; whisper large-v3 is slightly more accurate but ~13 RTF. Recommendation and integration options are in `findings.md`; wiring it into `packages/ai` is Daniel's decision.*
+  *Link: [./tracks/thai_stt_20261125](./tracks/thai_stt_20261125/)*
+
 ### Earlier tracks
 
 - [x] **Track: Repository Review and Improvement Planning** [created: 2026-11-22] [completed: 2026-11-22]
