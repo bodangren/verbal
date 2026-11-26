@@ -1,0 +1,191 @@
+import path from "node:path";
+import { describe, expect, it, vi } from "vitest";
+import { AiError } from "./types";
+import {
+  createTyphoonProvider,
+  decodeWavPcm16,
+  hasTyphoonModel,
+  typhoonModelFiles,
+  type LocalTyphoonConfig,
+} from "./typhoon";
+
+function wavBytes(samples: readonly number[], options: { sampleRate?: number; channels?: number } = {}): Uint8Array {
+  const channels = options.channels ?? 1;
+  const sampleRate = options.sampleRate ?? 16000;
+  const dataSize = samples.length * 2;
+  const bytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(bytes.buffer);
+
+  const ascii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i += 1) {
+      bytes[offset + i] = text.charCodeAt(i);
+    }
+  };
+
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * channels * 2, true);
+  view.setUint16(32, channels * 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, "data");
+  view.setUint32(40, dataSize, true);
+  samples.forEach((sample, index) => {
+    view.setInt16(44 + index * 2, sample, true);
+  });
+
+  return bytes;
+}
+
+const MODEL_DIR = path.join(path.sep, "models", "typhoon");
+const FILES = typhoonModelFiles(MODEL_DIR);
+
+function config(overrides: Partial<LocalTyphoonConfig> = {}): LocalTyphoonConfig {
+  return {
+    modelDir: MODEL_DIR,
+    exists: () => true,
+    readText: async () => JSON.stringify(["<unk>", "สวัสดี"]),
+    wavPathFor: () => path.join(path.sep, "tmp", "take.wav"),
+    removeFile: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
+
+describe("decodeWavPcm16", () => {
+  it("reads mono 16-bit samples", () => {
+    const samples = decodeWavPcm16(wavBytes([0, 16384, -16384, 32767]));
+    expect([...samples]).toEqual([0, 0.5, -0.5, 32767 / 32768]);
+  });
+
+  it("averages channels", () => {
+    const samples = decodeWavPcm16(wavBytes([100, 300, 0, 0], { channels: 2 }));
+    expect(samples).toHaveLength(2);
+    expect(samples[0]).toBeCloseTo(200 / 32768, 6);
+    expect(samples[1]).toBe(0);
+  });
+
+  it("rejects a non-16 kHz or non-PCM file", () => {
+    expect(() => decodeWavPcm16(wavBytes([0], { sampleRate: 44100 }))).toThrow(/16000/);
+    expect(() => decodeWavPcm16(new Uint8Array(4))).toThrow(/RIFF/);
+  });
+});
+
+describe("hasTyphoonModel", () => {
+  it("requires all three files", () => {
+    const seen: string[] = [];
+    expect(
+      hasTyphoonModel(MODEL_DIR, (filePath) => {
+        seen.push(filePath);
+        return filePath !== FILES.vocabPath;
+      }),
+    ).toBe(false);
+    expect(seen).toEqual([FILES.encoderPath, FILES.decoderPath, FILES.vocabPath]);
+  });
+});
+
+describe("createTyphoonProvider", () => {
+  it("extracts 16 kHz mono audio, runs the engine, and reports progress", async () => {
+    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const removeFile = vi.fn(async () => undefined);
+    const audio = new Float32Array([0.1, 0.2, 0.3]);
+    const engine = {
+      transcribe: vi.fn(async (samples: Float32Array, options?: { onProgress?: (f: number) => void }) => {
+        expect([...samples]).toEqual([...audio]);
+        options?.onProgress?.(1);
+        return {
+          text: "สวัสดี",
+          language: "th",
+          words: [{ text: "สวัสดี", start: 0, end: 0.4 }],
+        };
+      }),
+    };
+    const progress: number[] = [];
+
+    const provider = createTyphoonProvider(
+      config({
+        run,
+        readWav: async () => audio,
+        engineFor: () => engine,
+        removeFile,
+      }),
+    );
+
+    const result = await provider.transcribe(
+      { filePath: path.join(path.sep, "media", "take.mp4") },
+      { onProgress: (fraction) => progress.push(fraction) },
+    );
+
+    expect(result.words).toEqual([{ text: "สวัสดี", start: 0, end: 0.4 }]);
+    expect(run).toHaveBeenCalledTimes(1);
+    const [binary, args] = run.mock.calls[0] as unknown as [string, string[]];
+    expect(binary).toBe("ffmpeg");
+    expect(args).toEqual([
+      "-v",
+      "error",
+      "-y",
+      "-i",
+      path.join(path.sep, "media", "take.mp4"),
+      "-vn",
+      "-ar",
+      "16000",
+      "-ac",
+      "1",
+      "-c:a",
+      "pcm_s16le",
+      path.join(path.sep, "tmp", "take.wav"),
+    ]);
+    expect(progress[0]).toBe(0.05);
+    expect(progress.at(-1)).toBe(1);
+    expect(removeFile).toHaveBeenCalledWith(path.join(path.sep, "tmp", "take.wav"));
+  });
+
+  it("fails as not-configured when the model is missing", async () => {
+    const provider = createTyphoonProvider(config({ exists: () => false }));
+
+    await expect(
+      provider.transcribe({ filePath: "/media/take.mp4" }),
+    ).rejects.toMatchObject({ code: "not-configured" });
+  });
+
+  it("maps a missing ffmpeg to not-configured", async () => {
+    const missing = Object.assign(new Error("spawn ffmpeg ENOENT"), { code: "ENOENT" });
+    const provider = createTyphoonProvider(
+      config({ run: async () => Promise.reject(missing) }),
+    );
+
+    await expect(provider.transcribe({ filePath: "/media/take.mp4" })).rejects.toMatchObject({
+      code: "not-configured",
+    });
+  });
+
+  it("reports cancellation before doing any work", async () => {
+    const provider = createTyphoonProvider(config());
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      provider.transcribe({ filePath: "/media/take.mp4" }, { signal: controller.signal }),
+    ).rejects.toBeInstanceOf(AiError);
+  });
+
+  it("treats an empty decode as an invalid response", async () => {
+    const provider = createTyphoonProvider(
+      config({
+        run: async () => ({ stdout: "", stderr: "" }),
+        readWav: async () => new Float32Array([0.1]),
+        engineFor: () => ({
+          transcribe: async () => ({ text: "", language: "th", words: [] }),
+        }),
+      }),
+    );
+
+    await expect(provider.transcribe({ filePath: "/media/take.mp4" })).rejects.toMatchObject({
+      code: "invalid-response",
+    });
+  });
+});

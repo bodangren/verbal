@@ -6,6 +6,10 @@ const DATA = path.join(path.sep, "data", "verbal");
 const BINARY = path.join(DATA, "bin", "whisper-cli");
 const MODELS = path.join(DATA, "models");
 const MODEL = path.join(MODELS, "ggml-small.bin");
+const TYPHOON_DIR = path.join(MODELS, "typhoon-asr-realtime");
+const TYPHOON_FILES = ["encoder.onnx", "decoder.onnx", "vocab.json"].map((name) =>
+  path.join(TYPHOON_DIR, name),
+);
 
 function input(overrides: Partial<AsrResolveInput> = {}): AsrResolveInput {
   return {
@@ -101,6 +105,56 @@ describe("resolveAsr", () => {
     );
 
     expect(resolved).toMatchObject({ mode: "local", modelName: "small" });
+  });
+
+  it("prefers a complete Typhoon model over whisper", () => {
+    const resolved = resolveAsr(
+      input({
+        exists: (candidate) =>
+          candidate === BINARY || candidate === MODEL || TYPHOON_FILES.includes(candidate),
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "typhoon", modelDir: TYPHOON_DIR, language: "th" });
+  });
+
+  it("falls back to whisper when the Typhoon model is incomplete", () => {
+    const resolved = resolveAsr(
+      input({
+        exists: (candidate) =>
+          candidate === BINARY ||
+          candidate === MODEL ||
+          candidate === path.join(TYPHOON_DIR, "encoder.onnx"),
+      }),
+    );
+
+    expect(resolved).toMatchObject({ mode: "local", modelName: "small" });
+  });
+
+  it("honours VERBAL_TYPHOON_MODEL", () => {
+    const custom = path.join(path.sep, "custom", "typhoon");
+    const resolved = resolveAsr(
+      input({
+        env: { VERBAL_TYPHOON_MODEL: custom },
+        exists: (candidate) =>
+          ["encoder.onnx", "decoder.onnx", "vocab.json"].some(
+            (name) => candidate === path.join(custom, name),
+          ),
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "typhoon", modelDir: custom, language: "th" });
+  });
+
+  it("still lets VERBAL_ASR=cloud override a local Typhoon model", () => {
+    const resolved = resolveAsr(
+      input({
+        env: { VERBAL_ASR: "cloud", OPENAI_API_KEY: "key" },
+        exists: () => true,
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "cloud" });
   });
 
   it("uses the cloud provider when VERBAL_ASR is cloud, even with a local install", () => {

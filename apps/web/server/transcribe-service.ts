@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   createLocalWhisperProvider,
+  createTyphoonProvider,
   createWhisperProvider,
   AiError,
   type TranscriptionProvider,
@@ -46,6 +47,13 @@ export function describeTranscriptionProvider(resolved: AsrResolution): Transcri
       cloud: false,
     };
   }
+  if (resolved.mode === "typhoon") {
+    return {
+      mode: "local",
+      label: "Local (Typhoon ASR, Thai)",
+      cloud: false,
+    };
+  }
   if (resolved.mode === "cloud") {
     return { mode: "cloud", label: "Cloud (OpenAI-compatible)", cloud: true };
   }
@@ -53,7 +61,7 @@ export function describeTranscriptionProvider(resolved: AsrResolution): Transcri
     mode: "none",
     label: "No speech engine",
     cloud: false,
-    hint: "Install whisper (see README, Transcription setup) or set OPENAI_API_KEY.",
+    hint: "Install whisper (see README, Transcription setup), run npm run fetch:typhoon, or set OPENAI_API_KEY.",
   };
 }
 
@@ -95,6 +103,7 @@ export type TranscribeServiceDeps = {
     binary?: string;
     language?: string;
   }) => TranscriptionProvider;
+  createTyphoonProvider: (config: { modelDir: string }) => TranscriptionProvider;
 };
 
 /**
@@ -114,6 +123,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     resolveAsr: () => resolveSystemAsr(),
     dataDir: () => verbalDataDir(),
     createLocalProvider: (config) => createLocalWhisperProvider(config),
+    createTyphoonProvider: (config) => createTyphoonProvider(config),
     ...overrides,
   };
 
@@ -124,8 +134,12 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     if (resolved.mode === "none") {
       throw new AiError(
         "not-configured",
-        `no speech engine is set up: install whisper-cli and a model in ${deps.dataDir()}, or set OPENAI_API_KEY`,
+        `no speech engine is set up: run npm run fetch:typhoon, install whisper-cli and a model in ${deps.dataDir()}, or set OPENAI_API_KEY`,
       );
+    }
+
+    if (resolved.mode === "typhoon") {
+      return deps.createTyphoonProvider({ modelDir: resolved.modelDir });
     }
 
     if (resolved.mode === "local") {

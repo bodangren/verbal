@@ -90,7 +90,7 @@ describe("GET /api/system", () => {
       mode: "none",
       label: "No speech engine",
       cloud: false,
-      hint: "Install whisper (see README, Transcription setup) or set OPENAI_API_KEY.",
+      hint: "Install whisper (see README, Transcription setup), run npm run fetch:typhoon, or set OPENAI_API_KEY.",
     });
   });
 });

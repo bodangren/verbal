@@ -85,6 +85,11 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete — evaluation. Typhoon ASR Realtime 114M (SCB 10X, ONNX) scores CER 13.25 % vs 23.59 % for whisper small on 30 FLEURS Thai clips, and runs 15× faster (RTF 0.121 vs 1.882). The 0.6B streaming model is worse and 45× slower; whisper large-v3 is slightly more accurate but ~13 RTF. Recommendation and integration options are in `findings.md`; wiring it into `packages/ai` is Daniel's decision.*
   *Link: [./tracks/thai_stt_20261125](./tracks/thai_stt_20261125/)*
 
+- [x] **Track: Typhoon ASR Integration** [created: 2026-11-25] [completed: 2026-11-25]
+  *Focus: Make Typhoon ASR Realtime the local Thai engine without adding a Python runtime.*
+  *Status: Complete — TypeScript port of the NeMo mel frontend and greedy RNNT decode on `onnxruntime-node`, provider/resolver wiring, `npm run fetch:typhoon`, CC-BY-4.0 notice. Verified against Python on a sine fixture (features < 2e-4) and the real model on a 5 s Thai clip: exact reference transcript, 16 monotonic word spans, 4.1 s including session load. The built standalone server reported `Local (Typhoon ASR, Thai)` and finished a real transcribe job in 5.0 s. `npm run check` green (928 tests, build OK).*
+  *Link: [./tracks/typhoon_integration_20261125](./tracks/typhoon_integration_20261125/)*
+
 ### Earlier tracks
 
 - [x] **Track: Repository Review and Improvement Planning** [created: 2026-11-22] [completed: 2026-11-22]

@@ -99,6 +99,9 @@ const server = spawn(process.execPath, ["dist/standalone/server.js"], {
     ...process.env,
     PORT: String(PORT),
     HOME: home,
+    // The app honours XDG_DATA_HOME; pin it so a sandbox that fixes HOME does
+    // not send the job registry to a read-only directory.
+    XDG_DATA_HOME: path.join(home, ".local", "share"),
     OPENAI_API_KEY: "e2e-fake-key",
     OPENAI_BASE_URL: asrBaseUrl,
     VERBAL_ASR: "cloud",

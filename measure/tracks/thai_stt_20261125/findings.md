@@ -96,6 +96,13 @@ WS   พวกเขาเดินทางกลับบ้าเรียด
 other languages and as a fallback. The model is CC-BY-4.0, 114M params,
 461 MB, and runs on CPU with ~1 GB RAM.
 
+**Adopted on 2026-11-25.** Integration is complete in
+`typhoon_integration_20261125`: the mel frontend and greedy RNNT decode are
+TypeScript ports running on `onnxruntime-node`; `npm run fetch:typhoon`
+installs the model. On the Common Voice Thai sample the port reproduces the
+Python transcript exactly, and the built server finished a real transcribe job
+in 5.0 s with 16 monotonic word spans.
+
 Integration is a separate decision; the options and costs are below.
 Nothing in this evaluation changed the repository's runtime.
 

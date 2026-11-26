@@ -19,6 +19,11 @@ const LOCAL: AsrResolution = {
   modelName: "small",
   language: "th",
 };
+const TYPHOON: AsrResolution = {
+  mode: "typhoon",
+  modelDir: "/models/typhoon-asr-realtime",
+  language: "th",
+};
 const CLOUD: AsrResolution = { mode: "cloud" };
 const NONE: AsrResolution = { mode: "none", missing: "both" };
 
@@ -66,6 +71,25 @@ describe("createTranscribeService provider selection", () => {
     expect(createProvider).not.toHaveBeenCalled();
   });
 
+  it("uses the Typhoon provider when the resolver selects it", async () => {
+    const createTyphoonProvider = vi.fn(() => stubProvider);
+    const createLocalProvider = vi.fn(() => stubProvider);
+
+    const service = createTranscribeService({
+      fs: projectFs(),
+      apiKey: () => "",
+      resolveAsr: () => TYPHOON,
+      createTyphoonProvider,
+      createLocalProvider,
+    });
+
+    await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
+    expect(createTyphoonProvider).toHaveBeenCalledWith({
+      modelDir: "/models/typhoon-asr-realtime",
+    });
+    expect(createLocalProvider).not.toHaveBeenCalled();
+  });
+
   it("requires an API key in cloud mode", async () => {
     const service = createTranscribeService({
       fs: projectFs(),
@@ -103,7 +127,7 @@ describe("createTranscribeService provider selection", () => {
 
     await expect(service.transcribeNow(ROOT)).rejects.toMatchObject({
       code: "not-configured",
-      message: `no speech engine is set up: install whisper-cli and a model in ${DATA}, or set OPENAI_API_KEY`,
+      message: `no speech engine is set up: run npm run fetch:typhoon, install whisper-cli and a model in ${DATA}, or set OPENAI_API_KEY`,
     });
   });
 });
@@ -182,6 +206,14 @@ describe("describeTranscriptionProvider", () => {
     });
   });
 
+  it("names the Typhoon engine", () => {
+    expect(describeTranscriptionProvider(TYPHOON)).toEqual({
+      mode: "local",
+      label: "Local (Typhoon ASR, Thai)",
+      cloud: false,
+    });
+  });
+
   it("names the cloud provider", () => {
     expect(describeTranscriptionProvider(CLOUD)).toEqual({
       mode: "cloud",
@@ -195,7 +227,7 @@ describe("describeTranscriptionProvider", () => {
       mode: "none",
       label: "No speech engine",
       cloud: false,
-      hint: "Install whisper (see README, Transcription setup) or set OPENAI_API_KEY.",
+      hint: "Install whisper (see README, Transcription setup), run npm run fetch:typhoon, or set OPENAI_API_KEY.",
     });
   });
 });

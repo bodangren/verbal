@@ -89,6 +89,11 @@ packages/ai         ASR + LLM provider abstraction (no vendor SDKs outside)
 tools/remotion      Remotion render entry point (Node CLI, frames out)
 ```
 
+Local ASR engines: Typhoon ASR Realtime (Thai, 114M, ONNX through
+`onnxruntime-node`, CC-BY-4.0) with whisper.cpp as the multilingual fallback.
+The Typhoon mel frontend and RNNT decode are TypeScript ports of the reference
+`pythaiasr` implementation; model weights are fetched separately, never bundled.
+
 ## Non-Functional Requirements
 
 - **Local-first:** every render and every media operation is local. Cloud is used only for ASR, LLM planning, and (later) generated assets.

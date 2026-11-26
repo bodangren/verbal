@@ -9,6 +9,11 @@ export type AsrResolution =
       modelPath: string;
       modelName: string;
       language: string;
+    }
+  | {
+      mode: "typhoon";
+      modelDir: string;
+      language: string;
     };
 
 /** Every environment and file-system read is supplied by the caller. */
@@ -21,6 +26,18 @@ export type AsrResolveInput = {
 };
 
 const MODEL_TIERS = ["large", "medium", "small", "base"];
+const TYPHOON_FILES = ["encoder.onnx", "decoder.onnx", "vocab.json"] as const;
+
+/** A complete Typhoon model directory, or undefined when any file is absent. */
+function completeTyphoonModel(
+  dataDir: string,
+  env: Readonly<Record<string, string | undefined>>,
+  exists: (filePath: string) => boolean,
+): string | undefined {
+  const configured = set(env.VERBAL_TYPHOON_MODEL);
+  const dir = configured ?? path.join(dataDir, "models", "typhoon-asr-realtime");
+  return TYPHOON_FILES.every((name) => exists(path.join(dir, name))) ? dir : undefined;
+}
 
 function set(value: string | undefined): string | undefined {
   if (value === undefined || value.trim() === "") {
@@ -72,6 +89,13 @@ export function resolveAsr(input: AsrResolveInput): AsrResolution {
 
   const explicitLocal = set(env.VERBAL_ASR) === "local";
   const models = path.join(dataDir, "models");
+
+  // Thai first: the Typhoon model is a better Thai engine than whisper and is
+  // the one the app fetches. Whisper stays the fallback and the multilingual path.
+  const typhoonDir = completeTyphoonModel(dataDir, env, exists);
+  if (typhoonDir !== undefined) {
+    return { mode: "typhoon", modelDir: typhoonDir, language: "th" };
+  }
 
   const configuredBinary = set(env.VERBAL_WHISPER_BIN);
   const installedBinary = path.join(dataDir, "bin", "whisper-cli");
