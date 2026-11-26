@@ -18,6 +18,14 @@ If `huggingface.co` is unreachable, set
 points at a different model directory (it must contain `encoder.onnx`,
 `decoder.onnx`, and `vocab.json`).
 
+If `~/.local/share` is not writable (containers, CI, sandboxes), set
+`XDG_DATA_HOME` to a writable directory for both the fetch and the app:
+
+```sh
+XDG_DATA_HOME=/path/to/share npm run fetch:typhoon
+XDG_DATA_HOME=/path/to/share npm run dev
+```
+
 The model is CC-BY-4.0 by SCB 10X (Typhoon). See
 `packages/ai/THIRD_PARTY_NOTICES.md`.
 

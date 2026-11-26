@@ -136,12 +136,30 @@ async function download(file, target, base) {
   }
 }
 
+async function ensureDir(dir) {
+  try {
+    await mkdir(dir, { recursive: true });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      [
+        `cannot create ${dir}: ${reason}`,
+        "Choose a writable data root. The app reads XDG_DATA_HOME too:",
+        `  XDG_DATA_HOME=/path/to/writable/share npm run fetch:typhoon`,
+        "or download somewhere else and point the app there:",
+        "  node tools/fetch-typhoon-model.mjs --dir /path/to/model",
+        "  VERBAL_TYPHOON_MODEL=/path/to/model npm run dev",
+      ].join("\n"),
+    );
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const dir = path.resolve(options.dir ?? defaultDir());
   const base = baseUrl();
 
-  await mkdir(dir, { recursive: true });
+  await ensureDir(dir);
   console.log(`Typhoon ASR model directory: ${dir}`);
 
   for (const file of FILES) {
