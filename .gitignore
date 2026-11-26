@@ -60,3 +60,6 @@ tools/remotion/out/
 
 # Reasonix session data
 .reasonix/
+
+# Local runtime data (models, job registry) in sandboxes
+.verbal-data/

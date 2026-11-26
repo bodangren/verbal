@@ -101,9 +101,18 @@ async function verify(target, expected) {
 async function download(file, target, base) {
   const url = `${base}/${REPO}/resolve/main/${file.remote}`;
   const part = `${target}.part`;
-  const response = await fetch(url, { redirect: "follow" });
+  const mirrorHint =
+    "If huggingface.co is blocked or slow, retry with VERBAL_HF_MIRROR=https://hf-mirror.com";
+
+  let response;
+  try {
+    response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(60_000) });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`cannot reach ${url}: ${reason}. ${mirrorHint}`);
+  }
   if (!response.ok || response.body === null) {
-    throw new Error(`${url} answered ${response.status}`);
+    throw new Error(`${url} answered ${response.status}. ${mirrorHint}`);
   }
 
   const total = Number(response.headers.get("content-length")) || file.bytes;
