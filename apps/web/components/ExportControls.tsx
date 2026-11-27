@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { JobRecord } from "@verbal/core/browser";
-import { jobResultText, jobStartText, jobStatusText } from "./job-status";
+import { errorCopyFor } from "../lib/error-copy";
+import { jobOutputPath, jobResultText, jobStartText, jobStatusText } from "./job-status";
 
 export type ExportControlsProps = {
   disabled: boolean;
@@ -30,6 +31,12 @@ export function ExportControls({
 }: ExportControlsProps) {
   const status = jobStatusText(job);
   const percent = progressPercent ?? (job === null ? 0 : Math.round(job.progress * 100));
+  const failed = job !== null && job.status === "failed";
+  const done = job !== null && job.status === "done";
+  const outputPath = job !== null && done ? jobOutputPath(job) : null;
+  const fileName =
+    outputPath === null ? null : (outputPath.split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? null);
+  const failure = failed && job !== null ? errorCopyFor(job.error) : null;
   const announced = useRef<string | null>(null);
 
   useEffect(() => {
@@ -38,13 +45,15 @@ export function ExportControls({
       return;
     }
 
-    const key = `${job.id}:${job.status}`;
+    // One start announcement per job: queued to running must not repeat.
+    const started = jobStartText(job);
+    const key = started !== null ? `start:${job.id}` : `${job.id}:${job.status}`;
     if (announced.current === key) {
       return;
     }
     announced.current = key;
 
-    const text = jobStartText(job) ?? jobResultText(job);
+    const text = started ?? jobResultText(job);
     if (text !== null) {
       onAnnounce(text);
     }
@@ -67,12 +76,36 @@ export function ExportControls({
           onClick={onPreview}
           disabled={previewDisabled || running}
         >
-          {running ? "Rendering…" : "Preview"}
+          Preview
         </button>
       )}
-      {running && <progress aria-label="Export progress" value={percent} max={100} />}
+      {running && (
+        <div className="export-busy">
+          <span className="export-busy__label">Exporting · {percent}%</span>
+          <progress aria-label="Export progress" value={percent} max={100} />
+        </div>
+      )}
       {reason !== null && <p className="muted">{reason}</p>}
-      {status !== null && !running && <p className="muted">{status}</p>}
+      {failure !== null && (
+        <div className="pane-alert export-error" role="alert">
+          <p className="pane-alert__message">{failure.message}</p>
+          <details className="export-error__detail">
+            <summary>Error detail</summary>
+            <pre className="pane-alert__detail">{failure.detail}</pre>
+          </details>
+        </div>
+      )}
+      {done && (
+        <p className="muted export-done">
+          Export finished
+          {outputPath !== null && fileName !== null ? (
+            <>
+              : <strong>{fileName}</strong> <span className="export-done__path">{outputPath}</span>
+            </>
+          ) : null}
+        </p>
+      )}
+      {status !== null && !running && !failed && !done && <p className="muted">{status}</p>}
     </>
   );
 }

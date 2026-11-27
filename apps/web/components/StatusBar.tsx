@@ -19,8 +19,8 @@ export function StatusBar({ jobText, mediaLabel, message, error }: StatusBarProp
         {error?.message ?? message ?? ""}
       </span>
       {error?.detail ? (
-        <details className="statusbar__error">
-          <summary tabIndex={0}>{error.message}</summary>
+        <details className="statusbar__error statusbar__error--popover">
+          <summary tabIndex={0}>Error: {error.message}</summary>
           <pre className="statusbar__detail">{error.detail}</pre>
         </details>
       ) : null}

@@ -1493,8 +1493,9 @@ h2 {
   display: flex;
   font-size: 11px;
   gap: var(--space-4);
-  overflow: hidden;
+  overflow: visible;
   padding: 0 var(--space-4);
+  position: relative;
   white-space: nowrap;
 }
 
@@ -1514,13 +1515,14 @@ h2 {
   color: var(--error);
 }
 
-.statusbar details {
+.statusbar__error--popover {
   color: var(--error);
   flex: 0 1 auto;
   max-width: 40%;
+  position: relative;
 }
 
-.statusbar details summary {
+.statusbar__error--popover summary {
   cursor: pointer;
   outline-offset: var(--space-1);
   overflow: hidden;
@@ -1528,8 +1530,25 @@ h2 {
   white-space: nowrap;
 }
 
-.statusbar details summary:focus-visible {
+.statusbar__error--popover summary:focus-visible {
   outline: 2px solid var(--focus-ring);
+}
+
+.statusbar__error--popover[open] .statusbar__detail {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-sm);
+  bottom: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  margin: 0 0 var(--space-1);
+  max-height: min(240px, 40vh);
+  max-width: min(420px, calc(100vw - var(--space-4)));
+  min-width: min(280px, calc(100vw - var(--space-4)));
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  width: max-content;
+  z-index: 20;
 }
 
 .statusbar__detail {
@@ -1629,6 +1648,39 @@ dialog.dialog::backdrop {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Export panel: the busy row, the done path, and the inline failure. */
+.export-busy {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.export-busy__label {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.export-busy progress {
+  flex: 1;
+  min-width: 0;
+}
+
+.export-done {
+  overflow-wrap: anywhere;
+}
+
+.export-done__path {
+  overflow-wrap: anywhere;
+}
+
+.export-error__detail summary {
+  cursor: pointer;
+}
+
+.export-error__detail summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
 }
 
 /* Edit holds the player and timeline still; only the transcript scrolls. */

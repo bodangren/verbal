@@ -198,7 +198,7 @@ describe("Export flow names and busy state", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Exporting…" })).toBeTruthy());
     const exportButton = screen.getByRole("button", { name: "Exporting…" }) as HTMLButtonElement;
-    const previewButton = screen.getByRole("button", { name: "Rendering…" }) as HTMLButtonElement;
+    const previewButton = screen.getByRole("button", { name: "Preview" }) as HTMLButtonElement;
     expect(exportButton.disabled).toBe(true);
     expect(previewButton.disabled).toBe(true);
 
@@ -223,6 +223,28 @@ describe("Export flow names and busy state", () => {
       () => expect(screen.getByRole("status").textContent).toBe("Export finished"),
       { timeout: 3000 },
     );
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("keeps the output path in the done text and the export panel", async () => {
+    await openExport();
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Exporting…" })).toBeTruthy());
+
+    current = job({
+      status: "done",
+      progress: 1,
+      message: null,
+      result: { outputPath: "/projects/demo/exports/Demo.mp4" },
+    });
+    await waitFor(
+      () => expect(screen.getByRole("status").textContent).toContain("/projects/demo/exports/Demo.mp4"),
+      { timeout: 3000 },
+    );
+
+    const panel = document.getElementById("export-panel") as HTMLElement;
+    expect(within(panel).getByText(/\/projects\/demo\/exports\/Demo\.mp4/)).toBeTruthy();
     expect(screen.getAllByRole("status")).toHaveLength(1);
   });
 

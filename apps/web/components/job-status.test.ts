@@ -1,7 +1,6 @@
 import type { JobRecord } from "@verbal/core/browser";
 import { describe, expect, it } from "vitest";
 import { clearFinishedJob, jobResultText, jobStartText, jobStatusText } from "./job-status";
-
 function job(overrides: Partial<JobRecord> = {}): JobRecord {
   return {
     id: "j1",
@@ -54,6 +53,19 @@ describe("jobStartText", () => {
 describe("jobResultText", () => {
   it("announces a done export", () => {
     expect(jobResultText(job({ status: "done", progress: 1 }))).toBe("Export finished");
+  });
+
+  it("keeps the output path in the done text", () => {
+    expect(
+      jobResultText(
+        job({
+          status: "done",
+          progress: 1,
+          message: null,
+          result: { outputPath: "/exports/Demo.mp4" },
+        }),
+      ),
+    ).toBe("Export finished: /exports/Demo.mp4");
   });
 
   it("announces a failure with the error copy", () => {

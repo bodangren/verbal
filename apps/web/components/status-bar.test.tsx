@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StatusBar, type StatusBarProps } from "./StatusBar";
@@ -28,7 +30,7 @@ describe("StatusBar", () => {
     expect(disclosure).not.toBeNull();
     expect(disclosure?.querySelector("pre.statusbar__detail")?.textContent).toBe(DETAIL);
 
-    const summary = within(disclosure as HTMLElement).getByText("Export failed. Try again.");
+    const summary = within(disclosure as HTMLElement).getByText("Error: Export failed. Try again.");
     expect(summary.tagName).toBe("SUMMARY");
     summary.focus();
     expect(document.activeElement).toBe(summary);
@@ -60,5 +62,24 @@ describe("StatusBar", () => {
     const status = screen.getByRole("status");
     expect(status.getAttribute("aria-live")).toBe("polite");
     expect(status.textContent).toBe("Export failed. Try again.");
+  });
+
+  it("opens the error detail upward as a popover above the bar", () => {
+    setup();
+
+    const disclosure = screen.getByText(DETAIL).closest("details");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.classList.contains("statusbar__error--popover")).toBe(true);
+
+    const css = readFileSync(join(__dirname, "..", "styles", "globals.css"), "utf8");
+    const popoverRules = [...css.matchAll(/\.statusbar__error--popover[^{]*\{[^}]*\}/g)].map(
+      (match) => match[0],
+    );
+    expect(popoverRules.length).toBeGreaterThan(0);
+    expect(popoverRules.some((rule) => rule.includes("bottom: 100%"))).toBe(true);
+    expect(popoverRules.some((rule) => rule.includes("position: absolute"))).toBe(true);
+
+    const barRule = css.match(/\.statusbar\s*\{[^}]*\}/);
+    expect(barRule?.[0]).not.toContain("overflow: hidden");
   });
 });

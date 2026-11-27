@@ -31,13 +31,25 @@ export function jobStartText(job: JobRecord | null): string | null {
   return "Export started";
 }
 
+/** The export destination a done job reports, or null when it reports none. */
+export function jobOutputPath(job: JobRecord): string | null {
+  const result = job.result as { outputPath?: unknown } | null;
+  if (result === null || typeof result !== "object") {
+    return null;
+  }
+  return typeof result.outputPath === "string" && result.outputPath !== ""
+    ? result.outputPath
+    : null;
+}
+
 /** Words for the live region when a job settles, or null while it runs. */
 export function jobResultText(job: JobRecord | null): string | null {
   if (job === null) {
     return null;
   }
   if (job.status === "done") {
-    return "Export finished";
+    const outputPath = jobOutputPath(job);
+    return outputPath === null ? "Export finished" : `Export finished: ${outputPath}`;
   }
   if (job.status === "failed") {
     return jobStatusText(job);
