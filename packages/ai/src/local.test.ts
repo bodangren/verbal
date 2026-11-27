@@ -1,11 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, promises as fs, readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { AiError } from "./types";
 import {
   appendStderrTail,
+  createLocalWhisperProvider,
   describeExit,
   parseWhisperJson,
   parseWhisperProgress,
+  type LocalRunner,
 } from "./local";
 
 function cliJson(entries: unknown[], extra: Record<string, unknown> = {}) {
@@ -178,5 +182,147 @@ describe("whisper CLI fixtures", () => {
     expect(result.words).toEqual([]);
     expect(result.text).toBe("");
     expect(result.language).toBe("th");
+  });
+});
+
+describe("local whisper scratch directory", () => {
+  const SCRATCH_PREFIX = path.join(os.tmpdir(), "verbal-asr-");
+  const MEDIA = path.join(path.sep, "media", "take.mp4");
+  const JSON_OUTPUT = JSON.stringify({
+    transcription: [{ text: " hello", offsets: { from: 0, to: 400 } }],
+  });
+
+  function scratchProvider(run: LocalRunner) {
+    return createLocalWhisperProvider({
+      modelPath: "/models/ggml-base.bin",
+      run,
+      readOutput: async () => JSON_OUTPUT,
+    });
+  }
+
+  it("gives two concurrent calls different private directories", async () => {
+    const dirs: string[] = [];
+    const live: { dir: string; existed: boolean }[] = [];
+    let arrived = 0;
+    let release: () => void = () => {};
+    const bothArrived = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const run: LocalRunner = async (binary, args) => {
+      if (binary === "ffmpeg") {
+        dirs.push(path.dirname(String(args.at(-1))));
+        arrived += 1;
+        if (arrived === 2) {
+          for (const dir of dirs) {
+            live.push({ dir, existed: existsSync(dir) });
+          }
+          release();
+        }
+        await bothArrived;
+      }
+      return { stdout: "", stderr: "" };
+    };
+
+    const provider = scratchProvider(run);
+    await Promise.all([
+      provider.transcribe({ filePath: MEDIA }),
+      provider.transcribe({ filePath: MEDIA }),
+    ]);
+
+    expect(live).toHaveLength(2);
+    expect(live[0]!.dir).not.toBe(live[1]!.dir);
+    for (const entry of live) {
+      expect(entry.dir.startsWith(SCRATCH_PREFIX)).toBe(true);
+      expect(entry.existed).toBe(true);
+      expect(existsSync(entry.dir)).toBe(false);
+    }
+  });
+
+  it("removes the private directory after success", async () => {
+    let wav = "";
+    const run: LocalRunner = async (binary, args) => {
+      if (binary === "ffmpeg") {
+        wav = String(args.at(-1));
+      }
+      return { stdout: "", stderr: "" };
+    };
+
+    const provider = scratchProvider(run);
+    const result = await provider.transcribe({ filePath: MEDIA });
+
+    expect(result.words).toHaveLength(1);
+    const dir = path.dirname(wav);
+    expect(dir.startsWith(SCRATCH_PREFIX)).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it("removes the private directory after a failure", async () => {
+    let wav = "";
+    const run: LocalRunner = async (binary, args) => {
+      if (binary === "ffmpeg") {
+        wav = String(args.at(-1));
+        return { stdout: "", stderr: "" };
+      }
+      throw new Error("model file not found");
+    };
+
+    const provider = scratchProvider(run);
+    await expect(provider.transcribe({ filePath: MEDIA })).rejects.toThrow(/model file not found/);
+
+    const dir = path.dirname(wav);
+    expect(dir.startsWith(SCRATCH_PREFIX)).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it("removes the private directory after an abort", async () => {
+    const controller = new AbortController();
+    let wav = "";
+    const run: LocalRunner = async (binary, args) => {
+      if (binary === "ffmpeg") {
+        wav = String(args.at(-1));
+        return { stdout: "", stderr: "" };
+      }
+      controller.abort();
+      throw new Error("killed");
+    };
+
+    const provider = scratchProvider(run);
+    await expect(
+      provider.transcribe({ filePath: MEDIA }, { signal: controller.signal }),
+    ).rejects.toMatchObject({ code: "request-failed", message: "transcription cancelled" });
+
+    const dir = path.dirname(wav);
+    expect(dir.startsWith(SCRATCH_PREFIX)).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it("writes outside a read-only source folder", async () => {
+    const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-readonly-"));
+    await fs.chmod(sourceDir, 0o555);
+    let wav = "";
+
+    try {
+      const run: LocalRunner = async (binary, args) => {
+        if (binary === "ffmpeg") {
+          wav = String(args.at(-1));
+        }
+        return { stdout: "", stderr: "" };
+      };
+
+      const provider = scratchProvider(run);
+      const result = await provider.transcribe({
+        filePath: path.join(sourceDir, "take.mp4"),
+      });
+
+      expect(result.words).toHaveLength(1);
+      expect(wav).not.toBe("");
+      expect(path.dirname(wav)).not.toBe(sourceDir);
+      expect(path.dirname(wav).startsWith(SCRATCH_PREFIX)).toBe(true);
+      expect(await fs.readdir(sourceDir)).toEqual([]);
+    } finally {
+      await fs.chmod(sourceDir, 0o755);
+      await fs.rm(sourceDir, { recursive: true, force: true });
+    }
   });
 });

@@ -1,4 +1,6 @@
 import { promises as nodeFs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   isMissingBinary,
   messageOf,
@@ -104,8 +106,8 @@ export type LocalWhisperConfig = {
   run?: LocalRunner;
   /** Reads the JSON the CLI wrote for a given output stem. */
   readOutput?: (stem: string) => Promise<string>;
-  /** Where the CLI should write its JSON, given the media path. */
-  stemFor?: (filePath: string) => string;
+  /** Builds the output stem from the media path and the private scratch directory. */
+  stemFor?: (filePath: string, scratchDir: string) => string;
   /** Removes the extracted WAV after transcription. */
   removeFile?: (path: string) => Promise<void>;
 };
@@ -142,6 +144,8 @@ export function buildLocalArgs(input: {
  * The binary and model are prerequisites the user installs: nothing is bundled
  * and no weights are downloaded. A missing binary is reported as
  * `not-configured` so the API answers 503, exactly as a missing API key does.
+ * Each call writes its WAV and JSON in a private temp directory and removes
+ * that directory when the call ends.
  */
 export function createLocalWhisperProvider(config: LocalWhisperConfig): TranscriptionProvider {
   const binary = config.binary ?? "whisper-cli";
@@ -149,14 +153,19 @@ export function createLocalWhisperProvider(config: LocalWhisperConfig): Transcri
   const readOutput =
     config.readOutput ??
     (async (stem: string) => nodeFs.readFile(`${stem}.json`, "utf8"));
-  const stemFor = config.stemFor ?? ((filePath: string) => `${filePath}.verbal`);
-  const removeFile = config.removeFile ?? ((path: string) => nodeFs.rm(path, { force: true }));
+  const stemFor =
+    config.stemFor ??
+    ((filePath: string, scratchDir: string) =>
+      path.join(scratchDir, `${path.parse(filePath).name || "audio"}.verbal`));
+  const removeFile =
+    config.removeFile ?? ((filePath: string) => nodeFs.rm(filePath, { force: true }));
 
   return {
     id: "local-whisper",
 
     async transcribe(request, options) {
-      const stem = stemFor(request.filePath);
+      const scratchDir = await nodeFs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
+      const stem = stemFor(request.filePath, scratchDir);
       const wavPath = `${stem}.wav`;
       let lastPercent = -1;
 
@@ -242,6 +251,7 @@ export function createLocalWhisperProvider(config: LocalWhisperConfig): Transcri
         return result;
       } finally {
         await removeFile(wavPath).catch(() => {});
+        await nodeFs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   };

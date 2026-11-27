@@ -1,4 +1,5 @@
 import { existsSync, promises as nodeFs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { isMissingBinary, messageOf, nodeRun, type LocalRunner } from "./process";
 import { createTyphoonEngine, type TyphoonEngine } from "./typhoon-engine";
@@ -110,18 +111,11 @@ export type LocalTyphoonConfig = {
   readText?: (filePath: string) => Promise<string>;
   readWav?: (filePath: string) => Promise<Float32Array>;
   removeFile?: (filePath: string) => Promise<void>;
-  /** Where the 16 kHz WAV is written; tests inject a fixed path. */
-  wavPathFor?: (filePath: string) => string;
+  /** Builds the WAV path from the media path and the private scratch directory. */
+  wavPathFor?: (filePath: string, scratchDir: string) => string;
   /** Test seam: supplies an engine without ONNX Runtime. */
   engineFor?: (files: TyphoonModelFiles, vocab: readonly string[]) => TyphoonEngine;
 };
-
-let wavCounter = 0;
-
-function defaultWavPath(filePath: string): string {
-  wavCounter += 1;
-  return `${filePath}.typhoon-${process.pid}-${wavCounter}.wav`;
-}
 
 async function readVocab(readText: (path: string) => Promise<string>, filePath: string): Promise<string[]> {
   let raw: string;
@@ -174,7 +168,8 @@ function engineFor(
  * directory, and a missing model is reported as `not-configured` (503), the
  * same way a missing API key is. Audio is extracted to 16 kHz mono WAV with
  * FFmpeg, exactly as for the whisper provider; Thai word boundaries come from
- * the engine's token spans.
+ * the engine's token spans. Each call writes its WAV in a private temp
+ * directory and removes that directory when the call ends.
  */
 export function createTyphoonProvider(config: LocalTyphoonConfig): TranscriptionProvider {
   const run: LocalRunner = config.run ?? nodeRun;
@@ -186,7 +181,10 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
     (async (filePath: string) => decodeWavPcm16(await nodeFs.readFile(filePath)));
   const removeFile =
     config.removeFile ?? ((filePath: string) => nodeFs.rm(filePath, { force: true }));
-  const wavPathFor = config.wavPathFor ?? defaultWavPath;
+  const wavPathFor =
+    config.wavPathFor ??
+    ((filePath: string, scratchDir: string) =>
+      path.join(scratchDir, `${path.parse(filePath).name || "audio"}.wav`));
 
   return {
     id: "local-typhoon",
@@ -201,7 +199,8 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
       }
 
       const vocab = await readVocab(readText, files.vocabPath);
-      const wavPath = wavPathFor(request.filePath);
+      const scratchDir = await nodeFs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
+      const wavPath = wavPathFor(request.filePath, scratchDir);
       let lastPercent = -1;
 
       const report = (fraction: number, force = false): void => {
@@ -281,6 +280,7 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
         return result;
       } finally {
         await removeFile(wavPath).catch(() => {});
+        await nodeFs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   };
