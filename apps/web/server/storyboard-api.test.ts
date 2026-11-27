@@ -236,6 +236,71 @@ describe("storyboard export API", () => {
     expect(response.status).toBe(400);
   });
 
+  async function setupRevision(
+    mediaRevision: string | undefined,
+    transcriptRevision: string | undefined,
+  ) {
+    const fs = createFakeFileSystem();
+    const root = "/projects/demo";
+    await seed(fs, root);
+    const project = await openProject(fs, root);
+    await saveProject(fs, root, {
+      ...project,
+      media:
+        mediaRevision === undefined
+          ? { assetPath: "assets/take.mp4" }
+          : { assetPath: "assets/take.mp4", mediaRevision },
+    });
+    await saveTranscript(fs, projectPaths(root).transcript, {
+      ...createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+      ]),
+      ...(transcriptRevision === undefined ? {} : { mediaRevision: transcriptRevision }),
+    });
+    await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+    const run = vi.fn(async () => undefined);
+    return { fs, root, registry, renderer, run };
+  }
+
+  it("rejects a storyboard export when the transcript belongs to different media", async () => {
+    const { fs, root, registry, renderer, run } = await setupRevision("rev-a", "rev-b");
+    const create = vi.spyOn(registry, "create");
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(409);
+    expect((response.body as { error: string }).error).toBe(
+      "The transcript belongs to different media. Transcribe again.",
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["matching revisions", "rev-a", "rev-a"],
+    ["missing media revision", undefined, "rev-a"],
+    ["missing transcript revision", "rev-a", undefined],
+    ["missing both revisions", undefined, undefined],
+  ])("exports when the revisions are %s", async (_label, mediaRevision, transcriptRevision) => {
+    const { fs, root, registry, renderer, run } = await setupRevision(
+      mediaRevision,
+      transcriptRevision,
+    );
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+  });
+
   it("refuses a renderer-dependent export when Remotion is not installed", async () => {
     const { fs, root, registry, renderer, run } = await setup({ media: true });
     const before = registry.list().length;

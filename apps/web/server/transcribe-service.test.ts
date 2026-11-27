@@ -241,6 +241,85 @@ describe("transcription media revisions", () => {
   });
 });
 
+describe("transcription job media revisions", () => {
+  it("stamps the transcript saved by a started job", async () => {
+    const fs = projectFs("rev-a");
+    const registry = await JobRegistry.open(createMemoryJobStore());
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => stubProvider,
+      registry: async () => registry,
+    });
+
+    const job = await service.start(ROOT);
+    for (let attempt = 0; attempt < 100 && registry.get(job.id)?.status !== "done"; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(job.id)?.status).toBe("done");
+    const stored = JSON.parse(
+      fs.files.get(path.join(ROOT, "transcript.json")) ?? "{}",
+    ) as { mediaRevision?: string };
+    expect(stored.mediaRevision).toBe("rev-a");
+  });
+
+  it("drops a started job's result when the media changed during transcription", async () => {
+    const fs = projectFs("rev-a");
+    const prior = serializeTranscript(createTranscript([{ text: "old", start: 0, end: 1 }]));
+    fs.files.set(path.join(ROOT, "transcript.json"), prior);
+
+    const registry = await JobRegistry.open(createMemoryJobStore());
+    let release!: () => void;
+    let entered = false;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const provider: TranscriptionProvider = {
+      id: "blocked",
+      async transcribe() {
+        entered = true;
+        await blocked;
+        return { text: "late", language: "en", words: [{ text: "late", start: 0, end: 1 }] };
+      },
+    };
+
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => provider,
+      registry: async () => registry,
+    });
+
+    const job = await service.start(ROOT);
+    await vi.waitFor(() => expect(entered).toBe(true));
+
+    // Import media B while the transcription of A runs.
+    fs.files.set(
+      path.join(ROOT, "project.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "p1",
+        name: "Local",
+        createdAt: "2026-11-21T00:00:00.000Z",
+        media: { externalPath: "/media/b.mp4", mediaRevision: "rev-b" },
+      }),
+    );
+    release();
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const status = registry.get(job.id)?.status;
+      if (status === "done" || status === "failed") {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    expect(registry.get(job.id)?.status).toBe("failed");
+    expect(fs.files.get(path.join(ROOT, "transcript.json"))).toBe(prior);
+  });
+});
+
 describe("transcription job progress", () => {
   it("writes rising job progress from the provider", async () => {
     const registry = await JobRegistry.open(createMemoryJobStore());
@@ -261,6 +340,7 @@ describe("transcription job progress", () => {
       resolveAsr: () => CLOUD,
       createProvider: () => provider,
       registry: async () => registry,
+      stat: fakeStat,
     });
 
     const job = await service.start(ROOT);
@@ -294,6 +374,7 @@ describe("transcription job progress", () => {
       resolveAsr: () => CLOUD,
       createProvider: () => provider,
       registry: async () => registry,
+      stat: fakeStat,
     });
 
     const job = await service.start(ROOT);

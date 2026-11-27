@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import {
+  mediaRevisionMismatch,
   nodeFileSystem,
   openProject,
   parseTranscript,
@@ -305,6 +306,12 @@ export async function startStoryboardExport(
     }
 
     const transcript = await readTranscriptDocument(deps.fs, root);
+    if (mediaRevisionMismatch(project.media?.mediaRevision, transcript.mediaRevision)) {
+      return {
+        status: 409,
+        body: { error: "The transcript belongs to different media. Transcribe again." },
+      };
+    }
     const storyboard = await readStoryboard(deps.fs, root);
     for (const scene of storyboard.scenes) {
       assertExportable(scene);
