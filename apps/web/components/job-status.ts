@@ -22,3 +22,28 @@ export function clearFinishedJob(job: JobRecord | null): JobRecord | null {
   }
   return null;
 }
+
+/** Words for the live region when a job starts, or null when nothing starts. */
+export function jobStartText(job: JobRecord | null): string | null {
+  if (job === null || (job.status !== "queued" && job.status !== "running")) {
+    return null;
+  }
+  return "Export started";
+}
+
+/** Words for the live region when a job settles, or null while it runs. */
+export function jobResultText(job: JobRecord | null): string | null {
+  if (job === null) {
+    return null;
+  }
+  if (job.status === "done") {
+    return "Export finished";
+  }
+  if (job.status === "failed") {
+    return jobStatusText(job);
+  }
+  if (job.status === "cancelled") {
+    return "Export cancelled";
+  }
+  return null;
+}
