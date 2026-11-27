@@ -20,6 +20,22 @@ describe("validateBrandKit", () => {
     expect(validateBrandKit(kit)).toEqual(kit);
   });
 
+  it("accepts a project-relative music path with Unicode and spaces", () => {
+    const kit = { ...KIT, music: { assetPath: "assets/bed one ✓.mp3", volume: 0.2 } };
+
+    expect(validateBrandKit(kit)).toEqual(kit);
+  });
+
+  it.each([
+    ["a parent-directory escape", "../../etc/passwd"],
+    ["an absolute path", "/etc/passwd"],
+    ["a null byte", "assets/music\0.mp3"],
+  ])("rejects music with %s", (_label, assetPath) => {
+    expect(() =>
+      validateBrandKit({ ...KIT, music: { assetPath, volume: 0.25 } }),
+    ).toThrow(BrandError);
+  });
+
   it("rejects a missing title text", () => {
     expect(() => validateBrandKit({ ...KIT, title: {} })).toThrow(BrandError);
   });

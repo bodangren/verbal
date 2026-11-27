@@ -9,6 +9,9 @@ import handler from "../pages/api/storyboard/prune";
 import { createPruneApi } from "./prune-api";
 import { createFakeFileSystem } from "./test-support";
 
+/** A stored asset id is the SHA-256 hex of its bytes; the parser enforces it. */
+const KEEP_ID = "a".repeat(64);
+
 const ROOT = path.join(path.sep, "tmp", "verbal-prune");
 const STORYBOARD = JSON.stringify({
   schemaVersion: 1,
@@ -18,7 +21,7 @@ const STORYBOARD = JSON.stringify({
       anchor: { startWordId: "w0", endWordId: "w0" },
       visual: "generated-image",
       layer: "full-frame",
-      assetId: "keep-me",
+      assetId: KEEP_ID,
     },
   ],
 });
@@ -35,7 +38,7 @@ describe("prune service", () => {
     const removeAsset = vi.fn(async () => undefined);
     const api = createPruneApi({
       fs,
-      listAssetIds: async () => ["keep-me", "old", "fresh"],
+      listAssetIds: async () => [KEEP_ID, "old", "fresh"],
       readAssetRecord: async (_directory, id) =>
         id === "fresh"
           ? record(id, "2026-11-21T11:59:00.000Z")
@@ -52,7 +55,7 @@ describe("prune service", () => {
 
     const result = await api.prune({ root: ROOT });
 
-    expect(result.plan.keep).toEqual(["keep-me"]);
+    expect(result.plan.keep).toEqual([KEEP_ID]);
     expect(result.plan.retained).toEqual(["fresh"]);
     expect(result.plan.prune).toEqual(["old"]);
     expect(result.deleted).toEqual([]);
@@ -87,7 +90,7 @@ describe("POST /api/storyboard/prune", () => {
     await mkdir(generated, { recursive: true });
     await writeFile(path.join(root, "storyboard.json"), STORYBOARD);
 
-    for (const id of ["keep-me", "old"]) {
+    for (const id of [KEEP_ID, "old"]) {
       await writeFile(path.join(generated, id), Buffer.from([1, 2, 3]));
       await writeFile(
         path.join(generated, `${id}.json`),
@@ -136,7 +139,7 @@ describe("POST /api/storyboard/prune", () => {
     const removed = await readFile(path.join(root, "assets", "generated", "old"), "utf8").catch(() => null);
     expect(removed).toBeNull();
 
-    const referenced = await readFile(path.join(root, "assets", "generated", "keep-me"), "utf8").catch(
+    const referenced = await readFile(path.join(root, "assets", "generated", KEEP_ID), "utf8").catch(
       () => null,
     );
     expect(referenced).not.toBeNull();

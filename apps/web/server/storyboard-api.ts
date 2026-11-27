@@ -6,11 +6,13 @@ import {
   openProject,
   parseTranscript,
   projectPaths,
+  resolveContainedFile,
   resolveInsideProject,
   writeFileAtomic,
   ProjectError,
   type FileSystem,
   type JobRegistry,
+  type RealpathFn,
   type TranscriptDocument,
 } from "@verbal/core";
 import {
@@ -34,13 +36,14 @@ import {
   planPreview,
   serializeProvenance,
   validateBrandKit,
+  type BrandKit,
   type PreviewGeometry,
   type PreviewTier,
   type SlideRenderer,
   type StepScene,
 } from "@verbal/compose";
 import { ExportError, resolvePreset, withPresetExtension } from "@verbal/media";
-import { failure } from "./api-errors";
+import { failure, messageOf } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
 import {
   rendererDependenciesInstalled,
@@ -193,6 +196,8 @@ export type StartStoryboardExportDeps = {
   rendererReady?: () => boolean;
   /** Removes a job's private work directory. Defaults to a recursive remove. */
   removeDirectory?: (directory: string) => Promise<void>;
+  /** Resolves asset and music files to their real paths. Defaults to `fs.realpath`. */
+  realpath?: RealpathFn;
 };
 
 /**
@@ -219,7 +224,12 @@ export async function startStoryboardExport(
       return { status: 400, body: { error: "includeBrand must be a boolean" } };
     }
     const outputPath = withPresetExtension(requestedOutput, preset);
-    const brand = validateBrandKit(body.brand);
+    let brand: BrandKit;
+    try {
+      brand = validateBrandKit(body.brand);
+    } catch (error) {
+      return { status: 400, body: { error: messageOf(error) } };
+    }
     const geometry = parseGeometry(body.geometry);
 
     const project = await openProject(deps.fs, root);
@@ -235,6 +245,16 @@ export async function startStoryboardExport(
     const transcript = await readTranscriptDocument(deps.fs, root);
     const storyboard = await readStoryboard(deps.fs, root);
     const anchors = anchorIndexFromTranscript(transcript);
+    const audioBrand =
+      brand.music === undefined
+        ? brand
+        : {
+            ...brand,
+            music: {
+              ...brand.music,
+              assetPath: await resolveContainedFile(root, brand.music.assetPath, deps.realpath),
+            },
+          };
 
     const scenes = new Map<string, StepScene>();
     const resolved: { sceneId: string; startSeconds: number; endSeconds: number }[] = [];
@@ -292,8 +312,13 @@ export async function startStoryboardExport(
         scene.assetId !== undefined
       ) {
         const times = resolveScene(scene, anchors);
+        const assetPath = await resolveContainedFile(
+          root,
+          `assets/generated/${scene.assetId}`,
+          deps.realpath,
+        );
         scenes.set(scene.id, {
-          assetPath: path.join(root, "assets", "generated", scene.assetId),
+          assetPath,
           assetKind: scene.visual === "generated-video" ? "video" : "image",
         });
         resolved.push({
@@ -349,7 +374,7 @@ export async function startStoryboardExport(
       workDirectory,
       geometry,
       speaker: { input: mediaPath },
-      audio: audioFromBrand(brand),
+      audio: audioFromBrand(audioBrand),
       scenes,
       codecs: preset.codecs,
     });

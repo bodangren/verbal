@@ -18,6 +18,8 @@ import { createStoryboardApi, startStoryboardExport } from "./storyboard-api";
 import { createFakeFileSystem } from "./test-support";
 
 const now = () => new Date("2026-11-20T00:00:00.000Z");
+const identity = async (value: string) => value;
+const ASSET_ID = "b".repeat(64);
 
 const MANIFEST: SlideManifest = {
   frames: 10,
@@ -607,7 +609,7 @@ describe("storyboard export API", () => {
             anchor: { startWordId: "w0", endWordId: "w1" },
             visual: "generated-image",
             layer: "full-frame",
-            assetId: "asset-1",
+            assetId: ASSET_ID,
           },
         ],
       },
@@ -621,6 +623,7 @@ describe("storyboard export API", () => {
         run,
         now,
         rendererReady: () => true,
+        realpath: identity,
       },
       {
         root,
@@ -644,9 +647,92 @@ describe("storyboard export API", () => {
     expect(registry.get(jobId)?.status).toBe("done");
     const calls = run.mock.calls as unknown as [string, string[]][];
     const usedAsset = calls.some(([, args]) =>
-      args.includes("/projects/demo/assets/generated/asset-1"),
+      args.includes(`/projects/demo/assets/generated/${ASSET_ID}`),
     );
     expect(usedAsset).toBe(true);
+  });
+
+  describe("generated asset and music containment", () => {
+    const GENERATED_STORYBOARD = (assetId: string) => ({
+      schemaVersion: 1,
+      scenes: [
+        {
+          id: "hero",
+          anchor: { startWordId: "w0", endWordId: "w1" },
+          visual: "generated-image",
+          layer: "full-frame",
+          assetId,
+        },
+      ],
+    });
+
+    it("rejects a generated asset id that climbs out of the asset folder", async () => {
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: GENERATED_STORYBOARD("../x"),
+      });
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toContain("scene hero");
+      expect(registry.list()).toHaveLength(0);
+    });
+
+    it("rejects an asset whose file is a symlink out of the project", async () => {
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: GENERATED_STORYBOARD(ASSET_ID),
+      });
+      const escaping = async (value: string) =>
+        value.endsWith(ASSET_ID) ? "/etc/passwd" : value;
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: escaping },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect(registry.list()).toHaveLength(0);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("rejects brand music that climbs out of the project", async () => {
+      const { fs, root, registry, renderer, run } = await setup({ media: true });
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        {
+          root,
+          outputPath: "/out/final.mp4",
+          brand: { ...BRAND, music: { assetPath: "../../etc/passwd", volume: 0.25 } },
+        },
+      );
+
+      expect(response.status).toBe(400);
+      expect(registry.list()).toHaveLength(0);
+    });
+
+    it("rejects brand music whose file is a symlink out of the project", async () => {
+      const { fs, root, registry, renderer, run } = await setup({ media: true });
+      const escaping = async (value: string) =>
+        value.endsWith("music.mp3") ? "/etc/music.mp3" : value;
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: escaping },
+        {
+          root,
+          outputPath: "/out/final.mp4",
+          brand: { ...BRAND, music: { assetPath: "assets/music.mp3", volume: 0.25 } },
+        },
+      );
+
+      expect(response.status).toBe(400);
+      expect(registry.list()).toHaveLength(0);
+    });
   });
 
   describe("private work directory", () => {

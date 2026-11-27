@@ -1,3 +1,4 @@
+import { assertProjectRelativePath, ProjectError } from "@verbal/core";
 import type { CompositeAudio } from "./composite";
 
 export type BrandTitle = {
@@ -54,6 +55,19 @@ function requireText(value: unknown, field: string): string {
     throw new BrandError(`${field} is required`);
   }
   return value;
+}
+
+function requireProjectPath(value: unknown, field: string): string {
+  const text = requireText(value, field);
+  try {
+    assertProjectRelativePath(text);
+  } catch (error) {
+    if (error instanceof ProjectError) {
+      throw new BrandError(`${field}: ${error.message}`);
+    }
+    throw error;
+  }
+  return text;
 }
 
 function optionalText(value: unknown): string | undefined {
@@ -134,7 +148,7 @@ export function validateBrandKit(value: unknown): BrandKit {
       throw new BrandError("music.volume must be between 0 and 1");
     }
     kit.music = {
-      assetPath: requireText(value.music.assetPath, "music.assetPath"),
+      assetPath: requireProjectPath(value.music.assetPath, "music.assetPath"),
       volume,
     };
   }

@@ -7,6 +7,9 @@ import {
   type StoryboardDocument,
 } from "./types";
 
+/** A stored asset id is the SHA-256 hex digest of the asset bytes. */
+const ASSET_ID_PATTERN = /^[0-9a-f]{64}$/;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -53,7 +56,14 @@ function parseScene(value: unknown, seenIds: Set<string>): Scene {
   };
 
   if (value.assetId !== undefined && value.assetId !== null) {
-    scene.assetId = nonEmptyString(value.assetId, "assetId");
+    const assetId = nonEmptyString(value.assetId, "assetId");
+    if (!ASSET_ID_PATTERN.test(assetId)) {
+      throw new StoryboardError(
+        "invalid-document",
+        `scene ${id}: assetId must be 64 lowercase hex characters`,
+      );
+    }
+    scene.assetId = assetId;
   }
   if (value.template !== undefined && value.template !== null) {
     scene.template = nonEmptyString(value.template, "template");

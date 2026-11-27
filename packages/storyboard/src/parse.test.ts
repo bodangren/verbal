@@ -78,6 +78,28 @@ describe("parseStoryboard", () => {
     expect(() => parseStoryboard(raw)).toThrow(/template|asset/i);
   });
 
+  it("accepts a generated asset id in SHA-256 hex form", () => {
+    const assetId = "a".repeat(64);
+    const raw = JSON.stringify(
+      documentOf([scene({ visual: "generated-image", template: undefined, assetId })]),
+    );
+
+    expect(parseStoryboard(raw).scenes[0]?.assetId).toBe(assetId);
+  });
+
+  it.each(["../x", "a/b", "asset-1", "A".repeat(64), "a".repeat(63), "g".repeat(64)])(
+    "rejects the asset id %s",
+    (assetId) => {
+      const raw = JSON.stringify(
+        documentOf([
+          scene({ id: "hero", visual: "generated-image", template: undefined, assetId }),
+        ]),
+      );
+
+      expect(() => parseStoryboard(raw)).toThrow(/scene hero: assetId/);
+    },
+  );
+
   it("allows a talk scene without a template", () => {
     const raw = JSON.stringify(
       documentOf([scene({ visual: "talk", template: undefined })]),

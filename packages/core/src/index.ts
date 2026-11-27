@@ -2,6 +2,7 @@
 export * from "./atomic";
 export * from "./batch";
 export * from "./byte-range";
+export * from "./contained-path";
 export * from "./errors";
 export * from "./history";
 export * from "./jobs";
