@@ -5,7 +5,7 @@
 **Focus:** Show the edit on the timeline and play the edit, not the source.
 
 **Check command:** `npm run check`, `npm run e2e`, and `node tools/e2e/ux-gates.mjs`.
-**Dependencies:** `export_fidelity_20261127`, `ux_transcript_document_20261122`, `ux_edit_inspector_20261122`.
+**Dependencies:** `export_fidelity_20261127`, `fe_transcript_20261127`, `ux_edit_inspector_20261122`.
 
 ---
 

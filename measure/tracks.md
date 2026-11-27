@@ -21,10 +21,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete — all three phases. Browser in every mode, top bar with save dot and Export, one Ingest surface with auto-import and a batch dialog, inline pane alerts, and session memory. New project to editable transcript is 5 clicks (was 9); transcript lines 9/7/4. The two tab-stop budgets remain with Transcript as a Document.*
   *Link: [./tracks/ux_shell_flow_20261122](./tracks/ux_shell_flow_20261122/)*
 
-- [ ] **Track: Transcript as a Document** [created: 2026-11-22]
-  *Focus: One focus target with a caret, keyboard and drag selection, restore of removed words, a floating selection toolbar, and follow-scroll.*
-  *Status: Not started. UX priority 3; depends on UX Gates and Shell and Core Flow.*
-  *Link: [./tracks/ux_transcript_document_20261122](./tracks/ux_transcript_document_20261122/)*
+> Transcript as a Document and Deliver Strip and Export Panel were archived on 2026-11-27 and rolled into the Frontend review tracks in Block 3 below.
 
 - [ ] **Track: Edit Inspector and Cleanup Review** [created: 2026-11-22]
   *Focus: Selection timecodes, cut summary, a cleanup review tied to the transcript, and a labelled undo history.*
@@ -35,11 +32,6 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Focus: Show kept and cut ranges on the waveform, play the edit, and make the timeline keyboard-operable.*
   *Status: Not started. UX priority 5; depends on Edit Timeline Integrity (one compiled timeline), Transcript as a Document, and Edit Inspector.*
   *Link: [./tracks/ux_timeline_playback_20261122](./tracks/ux_timeline_playback_20261122/)*
-
-- [ ] **Track: Deliver Strip and Export Panel** [created: 2026-11-22]
-  *Focus: A storyboard strip of scene cards, an export panel with progress, Cancel, done, and failed states, and one Advanced drawer.*
-  *Status: Not started. UX priority 6; depends on Job Lifecycle and Events (real Cancel), Save and Export Integrity (no overwrite), and Shell and Core Flow.*
-  *Link: [./tracks/ux_deliver_export_20261122](./tracks/ux_deliver_export_20261122/)*
 
 - [x] **Track: Webcam Recording with Teleprompter** [created: 2026-11-23] [completed: 2026-11-23]
   *Focus: Record the webcam from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.*
@@ -70,10 +62,34 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Not started. Findings H02, M06, M05, M07, H08; no dependency.*
   *Link: [./tracks/asr_hardening_20261127](./tracks/asr_hardening_20261127/)*
 
-- [ ] **Track: Typhoon Windowed Inference** [created: 2026-11-27]
+- [~] **Track: Typhoon Windowed Inference** [created: 2026-11-27]
   *Focus: Stop Typhoon from blocking the API process and holding a whole hour of features in memory.*
   *Status: Not started. Finding H07; depends on ASR Hardening.*
   *Link: [./tracks/typhoon_windowed_20261127](./tracks/typhoon_windowed_20261127/)*
+
+### Block 3 — Frontend review 2026-11-27 (Daniel: implement after the backend)
+
+> The Fable frontend review ([review-frontend-2026-11-27.md](./review-frontend-2026-11-27.md)) found 1 Blocker, 9 High, 8 Medium and 3 Low issues. The four tracks below fix them in this order: layout, transcript, export flow, page structure. They roll up Transcript as a Document and Deliver Strip and Export Panel (archived under `superseded_frontend_review_20261127_*`). Only one task at a time edits `index.tsx` and one at a time edits `globals.css`.
+
+- [~] **Track: Frontend Layout and Responsiveness** [created: 2026-11-27]
+  *Focus: Give the transcript room, stack the shell on narrow screens, fix first run and the hydration error, raise contrast and target size.*
+  *Status: Not started. Findings F01-F05, F11-F14, F19, F20; no dependency.*
+  *Link: [./tracks/fe_layout_20261127](./tracks/fe_layout_20261127/)*
+
+- [~] **Track: Frontend Transcript as a Document** [created: 2026-11-27]
+  *Focus: One tab stop with a caret, restore of removed words, honest feedback after each edit, safe re-transcription, a fast word list; rolls up Transcript as a Document.*
+  *Status: Not started. Findings F06-F09, F17; starts after the first Layout tasks.*
+  *Link: [./tracks/fe_transcript_20261127](./tracks/fe_transcript_20261127/)*
+
+- [~] **Track: Frontend Export Flow and Dialogs** [created: 2026-11-27]
+  *Focus: A truthful export panel with progress and a busy state, one name for the flow, accessible dialogs, reachable error detail; rolls up Deliver Strip and Export Panel.*
+  *Status: Not started. Findings F10, F15, F16, F21; the export panel switches to job events after Job Integrity J6.*
+  *Link: [./tracks/fe_export_flow_20261127](./tracks/fe_export_flow_20261127/)*
+
+- [~] **Track: Frontend Page Structure** [created: 2026-11-27]
+  *Focus: Split the 2,576-line page into workspaces and hooks, cut the state held in Home, and test each interactive path.*
+  *Status: Not started. Findings F17-F19; runs last, after the other three frontend tracks.*
+  *Link: [./tracks/fe_page_structure_20261127](./tracks/fe_page_structure_20261127/)*
 
 - [ ] **Track: Deliver Preview and Scene Controls** [created: 2026-11-22]
   *Focus: Play a composed preview, edit existing scene fields, and reuse versioned animation frames safely.*

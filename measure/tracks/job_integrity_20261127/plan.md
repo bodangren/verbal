@@ -27,24 +27,33 @@
 
 Each task is one worker: Red test, Green fix, orchestrator review, orchestrator commit.
 
-- [~] **J1** (M04 FR3): Serialise registry saves and reconcile restarts.
+- [x] **J1** (M04 FR3): Serialise registry saves and reconcile restarts. 9993e57
+      Evidence: 15 tests green in `packages/core/src/jobs.test.ts`; Red showed `step 4` for `step 9`. The restart reason string changed from `interrupted by restart` to `server restarted`.
       Wave 1. Worker: `deepseek/deepseek-flash`.
       Files: `packages/core/src/jobs.ts`, `packages/core/src/jobs.test.ts`.
       Red: Test: ten parallel `update` calls with randomised save delays end with the last call's state on disk. Test: a registry opened over a file with `running` and `queued` jobs marks them `failed: server restarted`.
       Green: Chain saves on one promise queue. Add the reconcile step to `open`.
       Check: `npx vitest run packages/core/src/jobs.test.ts`
-- [ ] **J2** (H04 FR1+FR2): Register one controller per job and pass the signal through every worker.
+- [x] **J2** (H04 FR1+FR2): Register one controller per job and pass the signal through every worker. 2ccf869
+      Evidence: 195 core and server tests green. First pass was sent back (signal did not reach `transcribeNow`, no unhandled-rejection test, controllers never removed). Gap: a provider that ignores `signal` still runs to the end; the check runs before the save.
       Wave 2. Worker: `openai/gpt-6-luna`.
       Files: `packages/core/src/jobs.ts`, `apps/web/server/export-job.ts`, `apps/web/server/transcribe-job.ts`, `apps/web/pages/api/transcribe/batch.ts`, `apps/web/pages/api/jobs/[id].ts`, tests (not under `pages/`). Depends on J1 and S1.
       Red: Test: cancel aborts the controller; a fake spawner sees `signal.aborted`. Test: after cancel no output is published and no transcript is saved. Test: batch cancel leaves no unhandled rejection.
       Green: Create the controller in `registry.create`. Expose `registry.signalOf(id)`. Pass it from each runner. Await progress writes. Check `signal.aborted` before publishing.
       Check: `npx vitest run packages/core apps/web/server`
-- [ ] **J3** (H09 FR4): Stamp media revisions and reject stale transcripts.
+- [x] **J3** (H09 FR4): Stamp media revisions and reject stale transcripts. 20040fb
+      Evidence: 86 core and server tests green; 14 Red failures shown with production files stashed. Commit `a582319` swept J3's export route change in half-finished, so `master` did not build between `a582319` and this commit.
       Wave 3. Worker: `deepseek/deepseek-v4-pro`.
       Files: `apps/web/server/media-api.ts`, `apps/web/server/transcribe-service.ts`, `packages/core/src/project.ts`, tests. Depends on J2.
       Red: Test: import media B while a transcription of A runs; the A result is dropped. Test: export of a project whose transcript revision differs from the media revision answers 409 with a clear message. Test: an old project without revision opens and is stamped.
       Green: Add `mediaRevision` to the project and transcript documents (optional field, no schema break). Compare at save and at export.
       Check: `npx vitest run packages/core apps/web/server`
+- [x] **J3b** (H09 follow-up from J3): Stamp the single transcription job path and check the revision in the storyboard export. f282cbc
+      Evidence: 57 service and storyboard tests green; Red showed an unstamped transcript, a stale result saved, and a mismatched export returning 202. The worker called a `transcribe-api.test.ts` failure pre-existing; it was a regression from A5 (cloud extraction now runs ffmpeg), fixed in `496060e`.
+      Wave 6. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/transcribe-job.ts`, `apps/web/server/storyboard-api.ts`, tests.
+      Red: a transcript saved by `/api/transcribe` carries `mediaRevision`; a storyboard export of mismatched media answers 409.
+      Green: reuse `mediaRevisionMismatch` and the stamp helper from J3.
 
 ## Phase 2: Rolled up from archived tracks
 
@@ -66,6 +75,7 @@ These phases came from older tracks that overlapped this one. The archived plan 
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.
+- [ ] Independent acceptance review by `openai/gpt-6.2-sol`, report-only, before the track closes.
 - [ ] `npm run check` green through the heavy lock.
 - [ ] `npm run e2e` PASS through the heavy lock.
 - [ ] Commit each task; record the 7-character SHA on its line.

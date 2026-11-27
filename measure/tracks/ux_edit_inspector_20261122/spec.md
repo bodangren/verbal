@@ -76,7 +76,7 @@ and the target screen `target-edit.jpg`.
 ## Dependencies
 
 - `ux_gates_20261122` for the gate.
-- `ux_transcript_document_20261122` for the selection model and `restoreRange`.
+- `fe_transcript_20261127` for the selection model and `restoreRange`.
 
 ## Risks
 

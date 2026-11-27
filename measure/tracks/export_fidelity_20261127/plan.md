@@ -27,31 +27,41 @@
 
 Each task is one worker: Red test, Green fix, orchestrator review, orchestrator commit.
 
-- [~] **E1** (M01 FR3): Merge overlapping unedited words into one range.
-      Wave 1. Worker: `opencode/hy4-flash-free`.
+- [x] **E1** (M01 FR3): Merge overlapping unedited words into one range. 120adb8
+      Evidence: 26 talk-range tests green; Red showed ranges 0-1 and 0.8-2.
+      Wave 1. Worker: `opencode-go/hy4-flash-free`.
       Files: `apps/web/server/talk-ranges.ts`, `apps/web/server/talk-ranges.test.ts`.
       Red: Test: unedited words `0-1` and `0.8-2` give one range `0-2`. Test: the same words with a deletion between them stay split. Test: a reorder across the overlap stays split.
       Green: Merge ranges when the next start is before the previous end and no edit lies between them.
       Check: `npx vitest run apps/web/server/talk-ranges.test.ts`
-- [~] **E3** (H03 FR2): Carry the scene start into composites and seek the speaker input.
+- [x] **E3** (H03 FR2): Carry the scene start into composites and seek the speaker input. 90fcc79
       Wave 1. Worker: `opencode-go/muse-spark-1.3-contributor`.
       Files: `packages/compose/src/assemble.ts`, `packages/compose/src/render-step.ts`, `packages/compose/src/composite.ts`, tests. Add a measured test in `packages/compose/src/render-step.integration.test.ts` with a scene at 30 s and two tones.
       Red: Unit test: the composite argv holds `-ss <start>` before the speaker `-i`. Integration test (needs ffmpeg, runs through the heavy lock): speech under a slide at 30 s matches the 30 s tone.
       Green: Add `startSeconds` to the scene step. Pass it into `CompositeRequest.speaker`. Emit `-ss` in `buildCompositeArgs`.
       Check: `npx vitest run packages/compose`
-- [ ] **E2** (H01 FR1): One ordered timeline for plain export, freeze and Deliver talk scenes.
+- [x] **E2** (H01 FR1): One ordered timeline for plain export, freeze and Deliver talk scenes. a582319
+      Evidence: 201 media, cleanup, talk-range, route and storyboard tests green. First pass was sent back (it dropped the head and tail of an unedited file and required geometry for plain cuts). Gap: `buildCutList` still serves `computeTalkRanges` and the freeze cut list; silence audio is fixed 48 kHz stereo (E8).
       Wave 3. Worker: `deepseek/deepseek-v4-pro`.
       Files: `apps/web/server/talk-ranges.ts` (move or re-export), `packages/media/src/cutlist.ts`, `apps/web/pages/api/export.ts`, `packages/cleanup/src/freeze.ts`, tests. Depends on S1 and E1.
       Red: Test: plain export of a reordered transcript passes the new order to the runner. Test: inserted silence reaches the plain export. Test: changing only the order changes the freeze fingerprint. Test: equivalence with `computeTalkItems` on the existing fixtures.
       Green: Extract the pure timeline builder. Make `buildCutList` consume it. Keep the old output for transcripts without reorder or silence (snapshot test).
       Check: `npx vitest run packages/media packages/cleanup apps/web/server/talk-ranges.test.ts apps/web/server/export-route.test.ts`
-- [ ] **E4** (M02 FR4): Audio-only presets and silent-audio synthesis.
+- [x] **E4** (M02 FR4): Audio-only presets and silent-audio synthesis. 3c587f9
+      Evidence: 227 media and compose tests green; a measured audio-only export has one audio stream and no video. Gap: no caller passes `speaker.hasAudio` yet; silent audio is fixed 48 kHz stereo (E8).
       Wave 3. Worker: `opencode-go/mimo-v2.6-flash`.
       Files: `packages/media/src/presets.ts`, `packages/media/src/export.ts`, `packages/compose/src/composite.ts`, tests. Depends on S1 (same `export.ts`).
       Red: Test: an audio-only preset yields argv with no `-map [vout]` and no `[0:v]`. Test: a source without audio and a recipe that needs audio gets `anullsrc` input.
       Green: Build the stream map from the preset and the probed streams.
       Check: `npx vitest run packages/media packages/compose`
-- [ ] **E5** (H10 FR5): Reject unsupported scene kinds before the job starts.
+- [x] **E4b** (M02 follow-up from E4): Pass the probed `hasAudio` into the compositor. 86ea2ba
+      Evidence: 161 compose and storyboard tests green; Red showed the no-audio export reading `[1:a]`. Note: the probe runs before the job starts, one ffprobe call; a failed probe returns true.
+      Wave 6. Worker: `claude-agent/haiku`.
+      Files: `apps/web/server/storyboard-api.ts`, `packages/compose/src/render-step.ts`, tests.
+      Red: a storyboard export over a source with no audio stream builds composites with `speaker.hasAudio: false`.
+      Green: read the audio stream from the existing probe and pass it into `speakerFor`.
+- [x] **E5** (H10 FR5): Reject unsupported scene kinds before the job starts. e42cfbb
+      Evidence: 103 storyboard tests green; Red showed 202 for static, asset-only slide and asset-less generated scenes. Gap: the preview route still lists unsupported scenes.
       Wave 3. Worker: `claude-agent/haiku`.
       Files: `packages/storyboard/src/parse.ts`, `apps/web/server/storyboard-api.ts`, tests. Depends on S4 (same files).
       Red: Test: storyboard with a static scene or an asset-only slide is rejected with the scene id before `registry.create`. Test: every supported kind still exports.
@@ -82,6 +92,7 @@ These phases came from older tracks that overlapped this one. The archived plan 
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.
+- [ ] Independent acceptance review by `openai/gpt-6.2-sol`, report-only, before the track closes.
 - [ ] `npm run check` green through the heavy lock.
 - [ ] `npm run e2e` PASS through the heavy lock.
 - [ ] Commit each task; record the 7-character SHA on its line.

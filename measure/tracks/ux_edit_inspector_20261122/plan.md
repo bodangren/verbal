@@ -5,7 +5,7 @@
 **Focus:** Selection, cuts, cleanup review, and history in the Edit inspector.
 
 **Check command:** `npm run check`, `npm run e2e`, and `node tools/e2e/ux-gates.mjs`.
-**Dependencies:** `ux_gates_20261122`, `ux_transcript_document_20261122`.
+**Dependencies:** `ux_gates_20261122`, `fe_transcript_20261127`.
 
 ---
 

@@ -64,7 +64,7 @@ and the target screen `target-edit.jpg`.
 
 - `export_fidelity_20261127`. The overlay and playback need one compiled edited timeline.
   Without it, the timeline would show cuts that playback and export ignore (F01, F02).
-- `ux_transcript_document_20261122` for the selection model.
+- `fe_transcript_20261127` for the selection model.
 - `ux_edit_inspector_20261122` for the cut count that the overlay must match.
 
 ## Risks

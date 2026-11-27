@@ -97,7 +97,7 @@ Rule: each change fixes a failure seen in a real run. No change is made only to 
       `playSeconds` on `PreviewScene`, computed in the preview API from `computeTalkItems`. 4 new tests.
       Gate: `npm run check` 898 tests, `npm run e2e` PASS.
 - [x] Low items fixed: progress label switches to "Transcribing audio…" at 5%; Deliver restores the fast preview when a project opens (and drops the previous project's plan); the title-cards checkbox has its own `field--check` style. 731c14b
-      Gate: `npm run check` 901 tests, `npm run e2e` PASS, UX gate unchanged (2 transcript tab-stop failures, owned by `ux_transcript_document_20261122`).
+      Gate: `npm run check` 901 tests, `npm run e2e` PASS, UX gate unchanged (2 transcript tab-stop failures, owned by `fe_transcript_20261127`).
       Not checked by eye: the checkbox alignment (CSS only; no automated check).
 - [x] Open, limit: `small` garbles Thai. A larger model is a download and a speed cost; Daniel decides. a64b8e3
       Resolved by Typhoon ASR (track `typhoon_integration_20261125`): CER 13.25 % vs 23.59 % for whisper small, 15x faster. Not re-run on the dogfood media.

@@ -28,7 +28,7 @@ re-recording one flubbed line. See `apps/web/server/capture-api.ts`,
 - Green-screen keying changes. The take is still recorded un-keyed and keyed at composite time.
 - Multi-camera switching, live streaming, or remote guests.
 - A general non-linear editor; the EDL is script-ordered.
-- Transcript text correction; `ux_transcript_document_20261122` owns the transcript model.
+- Transcript text correction; `fe_transcript_20261127` owns the transcript model.
 - Automatic publishing or distribution.
 - Paid provider calls in tests or without explicit approval.
 
