@@ -76,6 +76,17 @@ The second independent review verified these defects, some of them caused by the
       Red: Test: two copies of one word at 28.95 s and 29.04 s across a seam keep one; matching picks the nearest start, not the first.
       Green: Align the two overlap sequences by text and minimum time distance; widen the overlap membership by the tolerance.
 
+## Phase R4: Acceptance fixes, final round (Sol and Opus round 3, 2026-11-28)
+
+The third review found no Blocker. These High and Medium findings remain. Same worker rules as Phase 1.
+
+- [x] **T1f** (R3-M01, R3-M02 (Sol: verified by execution)): Reject every short window read and pair seam words as an ordered sequence. ebb9e30
+      Evidence: 161 `packages/ai` tests green; Red showed a one-byte-short final read passing, three words for two repeats and a crossed pair. Real model, 40 s clip: 128 words = 8 times 16 over 10 windows. Limit: a genuinely reversed seam (a-b against b-a) keeps three words, by design, rather than cross a pair.
+      Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/typhoon.ts`, `packages/ai/src/typhoon-window.ts`, tests.
+      Red: Tests: a file one byte shorter than its header claims is rejected, also in the last window; two matching repeated words in each window give two words, not three.
+      Green: Throw on any short read; pair overlap words with an order-preserving alignment that maximises matches before it minimises time distance.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

@@ -121,6 +121,22 @@ The second independent review verified these defects, some of them caused by the
       Red: Test: the skip link is the first focusable element in the document; the gate's tab-stop count from the Edit button stays at most 6; DESIGN.md documents the danger button and has the right tertiary text value (`#909090`).
       Green: Move the link before the top bar; add the two DESIGN.md lines.
 
+## Phase R4: Acceptance fixes, final round (Sol and Opus round 3, 2026-11-28)
+
+The third review found no Blocker. These High and Medium findings remain. Same worker rules as Phase 1.
+
+- [x] **L6f** (R3-1 High, R3-4, R3-2 (Opus: verified)): Keep transcript words on screen at 360 px and 200 percent zoom, and set the toolbar height whenever the toolbar appears. 4212ee9
+      Evidence: 342 component, lib, hook and tools tests green; five Red failures. Own measurement: footer 121 px (4 rows) at 360 px, 63 px (2 rows) at 1440 px. Deviation: buttons use `flex: 1 1 6rem`, not 6.5rem, because 6.5rem produced five rows (150 px) at 360 px. The gate run is the proof.
+      Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/styles/globals.css` (footer toolbar block), `apps/web/components/EditWorkspace.tsx`, tests, `tools/e2e/ux-gates.mjs`.
+      Red: Gate rule: on the first Edit view at 360x740 and at 720x450 (device scale 2) at least two transcript lines show above the toolbar; test: the height variable is set when the toolbar mounts after the effect first ran; CSS-source test: the fallback is at least 15rem and the Silence field is not a full grid row.
+      Green: Put the Silence field inline with the buttons so the footer is at most two rows at 360 px; run the height effect when the toolbar mounts (callback ref or the transcript in the dependencies); raise the fallback.
+- [x] **L3d** (L6f follow-up, orchestrator): Re-read the browser's collapse default when the window is resized. d9c5d77
+      Evidence: 308 component, lib and tools tests green; the new test failed first. A phone loads at its own width, so Opus never saw this; a user narrowing a desktop window did.
+      Files: `apps/web/components/ProjectBrowser.tsx`, `apps/web/components/project-browser.test.tsx`.
+      Red: the gate's `firstEditView` rule found 0 transcript lines above the footer at 360x740 (stage top 437 px) after a live resize from 1440 px, because the project browser's store never listens to the viewport media query and stays expanded.
+      Green: the collapse store subscribes to the `(max-width: 1100px)` media query change event.
+
 ## Phase 2: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

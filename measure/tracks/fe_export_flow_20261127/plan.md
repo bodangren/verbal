@@ -97,6 +97,17 @@ The second independent review verified these defects, some of them caused by the
       Red: Tests: a failed export REQUEST (HTTP 500) renders its message in the Export panel; one export produces one done message in the status region (no `Exported to` then `Export finished`); the top-bar button has the accessible name `Export Video` while the mode tab stays `Export`; the walkthrough, gate and recorder select the new name.
       Green: Route request errors to the panel failure slot; drop the duplicate message; set `aria-label` on the top-bar button.
 
+## Phase R4: Acceptance fixes, final round (Sol and Opus round 3, 2026-11-28)
+
+The third review found no Blocker. These High and Medium findings remain. Same worker rules as Phase 1.
+
+- [x] **X34d** (R3-3, R3-5 (Opus: verified)): Clear the old success message when an export request fails and record the alert style. a2dae1d
+      Evidence: 323 component, lib and hook tests green; both new tests failed first (the old `Export finished` text stayed). The status shows `Export failed`; the full message is in the panel alert. Not re-checked in a browser.
+      Worker: `claude-agent/haiku`.
+      Files: `apps/web/components/DeliverWorkspace.tsx`, tests, `DESIGN.md`.
+      Red: Test: after a done export and then an HTTP 500 request, the status region does not show the old `Export finished` text; DESIGN.md states the filled red `pane-alert` as a second exception to the left-border rule.
+      Green: Set or clear the status message in the request failure branch; add one DESIGN.md sentence.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

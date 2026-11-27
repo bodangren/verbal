@@ -112,6 +112,27 @@ The second independent review verified these defects, some of them caused by the
       Red: Test with a delayed store: a concurrent import and take upload end with the newer media reference; a transcript save compares the revision inside the lock; the capture job reports done only after the project save and surfaces a save error.
       Green: One per-project promise queue used by every project mutation; await the capture save.
 
+## Phase R4: Acceptance fixes, final round (Sol and Opus round 3, 2026-11-28)
+
+The third review found no Blocker. These High and Medium findings remain. Same worker rules as Phase 1.
+
+- [x] **J4a** (R3-H01, R3-L02 (Sol: H01 verified by execution)): Put capture under the registry signal and the publication boundary. 2412a5f
+      Evidence: 658 core, media and server tests green; Red showed 12 failures (private controller, no beginPublish, save failure ignored). Cleanup left: `capture-registry.ts` `registerCapture` and `clearCapture` are dead code now.
+      Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/capture-job.ts`, `apps/web/server/capture-api.ts`, `apps/web/pages/api/capture.ts` (wiring only), tests.
+      Red: Test: a cancel that arrives while the project save runs does not delete the recorded file (the job ends done), and a cancel before `beginPublish` removes the partial and saves nothing; the registry signal reaches the capture FFmpeg child; `onOutput` is a job input, not a field of the capture request type.
+      Green: Use `registry.signalOf` and `beginPublish` like the export jobs; write a partial file and rename atomically; move `onOutput` out of `CaptureRequest`.
+- [x] **J4b** (R3-H02, R3-H03, R3-L01 (Sol: H02 verified by execution)): Lock the take manifest, publish takes under new names, document the lock contract. d0667db
+      Evidence: 666 core, media and server tests green; Red showed a lost manifest entry, a replaced take after a failed save, a nested-lock deadlock, and (rework) a deleted canonical file. First pass was sent back for the canonical-name regression. Gaps: if the final rename fails after both saves, the project already points at the canonical path while the file holds the old bytes (the job is failed so the user retries); two concurrent first uploads of the same take id still race on the manifest entry.
+      Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/take-api.ts`, `apps/web/server/take-store.ts`, `apps/web/server/normalize-job.ts`, `packages/media/src/publish.ts` (read), `apps/web/server/project-lock.ts`, tests.
+      Red: Tests: two concurrent `addTake` calls on an empty manifest keep both takes; a normalise whose project save fails leaves the previous take file and manifest entry intact (the new file is removed); a nested `withProjectLock` on the same root rejects with a clear error instead of deadlocking.
+      Green: Run `addTake` inside the project lock; give each normalised take a new file name and commit the manifest reference only after the file is published and the save succeeds; reject re-entry in `withProjectLock`.
+
+## Decision for Daniel: transcripts saved before media revisions existed (R3-M03)
+
+A transcript with no `mediaRevision` is treated as a match for any media, so an old transcript can be stamped with the revision of media it never described. Options: (a) keep it (no data loss, a stale transcript is possible only for projects whose media changed before this build); (b) invalidate unstamped transcripts on first open and offer Transcribe Again (safe, costs a transcription). Recommendation: (a) now, because no production project exists yet; revisit when real projects exist.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.
