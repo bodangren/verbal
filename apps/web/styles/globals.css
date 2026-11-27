@@ -867,6 +867,12 @@ h2 {
   margin: 0 auto;
 }
 
+/* The narrow strip elements stay out of the desktop rail. */
+.browser__current,
+.browser--collapsed .browser__strip-button {
+  display: none;
+}
+
 .sidebar:has(.browser--collapsed) {
   min-width: 40px;
   width: 40px;
@@ -1189,8 +1195,25 @@ h2 {
 .card__head {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
   justify-content: space-between;
+}
+
+/* The head wraps so the search toolbar never pushes past the card. */
+.card__head .toolbar {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.card__head .search {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.card__head .search input {
+  max-width: 200px;
+  width: 100%;
 }
 
 .card__head h3 {
@@ -1771,7 +1794,9 @@ dialog.dialog::backdrop {
 
 .media-row__name {
   font-weight: 600;
+  min-width: 0;
   overflow: hidden;
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2262,6 +2287,41 @@ dialog.dialog::backdrop {
     width: auto;
   }
 
+  /* The collapsed rail becomes a horizontal strip: the open project stays
+     named and one Projects button brings the full list back in place. */
+  .browser--collapsed {
+    align-items: center;
+    flex-direction: row;
+    gap: var(--space-2);
+    min-height: 32px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .browser--collapsed .browser__rail-button {
+    display: none;
+  }
+
+  .browser--collapsed .browser__current {
+    display: block;
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .browser--collapsed .browser__strip-button {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  /* The open list scrolls in place instead of pushing the stage away. */
+  .browser__list {
+    max-height: 40vh;
+  }
+
   /* The stage takes its natural height and the workspace scrolls, so the
      transcript is never squeezed to nothing between the strip and the inspector. */
   .stage {
@@ -2315,6 +2375,27 @@ dialog.dialog::backdrop {
     grid-row: 3;
     justify-self: start;
     max-width: 100%;
+  }
+
+  /* The transcript search takes its own row, so the counter and both match
+     buttons stay inside the card. */
+  .card__head .toolbar {
+    flex-basis: 100%;
+  }
+
+  /* The media row stacks: the name gets its own line, status and action sit
+     below it. */
+  .media-row {
+    flex-wrap: wrap;
+  }
+
+  .media-row__name {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .media-row__state {
+    margin-left: 0;
   }
 }
 

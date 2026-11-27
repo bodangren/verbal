@@ -94,6 +94,11 @@ export function IngestStage({
     onTranscribe();
   }
 
+  // On first run the New Project action leads, so it sits above the
+  // disabled Import and Media cards instead of below them.
+  const lead = projectName === null ? children : null;
+  const trail = projectName === null ? null : children;
+
   return (
     <div className="stage__scroll">
       <header className="stage__head">
@@ -109,6 +114,8 @@ export function IngestStage({
           {state.kind === "transcribed" ? "Transcript ready" : "No transcript"}
         </span>
       </header>
+
+      {lead}
 
       <div className="card">
         <h3>Import</h3>
@@ -227,7 +234,7 @@ export function IngestStage({
         </button>
       </div>
 
-      {children}
+      {trail}
     </div>
   );
 }

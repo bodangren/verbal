@@ -281,6 +281,7 @@ try {
   const headings = [];
   const disabledPrimary = [];
   const exportVisibility = [];
+  const narrowLayout = [];
 
   for (const [width, height] of VIEWPORTS) {
     await page.setViewportSize({ width, height });
@@ -345,6 +346,125 @@ try {
           `${exportBox.right},${exportBox.bottom} leaves the ` +
           `${exportBox.innerWidth}x${exportBox.innerHeight} viewport`;
       }
+    }
+
+    // At phone width the review saw what the budgets cannot: the collapsed
+    // browser must stay usable, the search controls must stay on screen, and
+    // the media name must stay readable.
+    if (key === "360x740") {
+      const strip = await page.evaluate(() => {
+        const root = document.querySelector(".sidebar .browser");
+        if (root === null) {
+          return null;
+        }
+        const rect = root.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          right: Math.round(rect.right),
+          bottom: Math.round(rect.bottom),
+          height: Math.round(rect.height),
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+        };
+      });
+      narrowLayout.push({ viewport: key, check: "browser strip", box: strip });
+      if (strip === null) {
+        narrowLayout[narrowLayout.length - 1].failure =
+          `${key}: no project browser in the sidebar`;
+      } else if (
+        strip.height < 32 ||
+        strip.left < 0 ||
+        strip.top < 0 ||
+        strip.right > strip.innerWidth ||
+        strip.bottom > strip.innerHeight
+      ) {
+        narrowLayout[narrowLayout.length - 1].failure =
+          `${key}: browser strip ${strip.left},${strip.top} to ` +
+          `${strip.right},${strip.bottom} (height ${strip.height}) leaves the ` +
+          `${strip.innerWidth}x${strip.innerHeight} viewport or is under 32 px high`;
+      }
+
+      await modeButton(page, "Ingest").click();
+      await page.waitForTimeout(250);
+      const media = await page.evaluate(() => {
+        const element = document.querySelector(".media-row__name");
+        if (element === null) {
+          return null;
+        }
+        const text = (element.textContent ?? "").trim();
+        return {
+          text: text.slice(0, 40),
+          capacity:
+            text.length === 0 || element.scrollWidth === 0
+              ? 0
+              : (element.clientWidth * text.length) / element.scrollWidth,
+        };
+      });
+      narrowLayout.push({ viewport: key, check: "media name", box: media });
+      if (media === null) {
+        narrowLayout[narrowLayout.length - 1].failure = `${key}: no media file name row`;
+      } else if (media.capacity < 12) {
+        narrowLayout[narrowLayout.length - 1].failure =
+          `${key}: media name "${media.text}" fits ` +
+          `${media.capacity.toFixed(1)} characters (needs 12)`;
+      }
+
+      await modeButton(page, "Edit").click();
+      await page.waitForTimeout(250);
+      await page.getByPlaceholder("Find in Transcript…").fill("a");
+      await page.waitForTimeout(250);
+      const search = await page.evaluate(() => {
+        const head = document.querySelector(".card__head");
+        if (head === null) {
+          return null;
+        }
+        const boxOf = (element) => {
+          if (element === null) {
+            return null;
+          }
+          const rect = element.getBoundingClientRect();
+          return {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            right: Math.round(rect.right),
+            bottom: Math.round(rect.bottom),
+          };
+        };
+        return {
+          counter: boxOf(head.querySelector(".toolbar > .muted")),
+          previous: boxOf(head.querySelector("[aria-label='Previous match']")),
+          next: boxOf(head.querySelector("[aria-label='Next match']")),
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+        };
+      });
+      narrowLayout.push({ viewport: key, check: "search controls", box: search });
+      if (search === null) {
+        narrowLayout.push({
+          viewport: key,
+          check: "search controls",
+          failure: `${key}: no transcript search head`,
+        });
+      } else {
+        for (const name of ["counter", "previous", "next"]) {
+          const box = search[name];
+          if (
+            box === null ||
+            box.left < 0 ||
+            box.top < 0 ||
+            box.right > search.innerWidth ||
+            box.bottom > search.innerHeight
+          ) {
+            narrowLayout.push({
+              viewport: key,
+              check: "search controls",
+              failure: `${key}: search ${name} leaves the viewport`,
+            });
+          }
+        }
+      }
+      await page.getByPlaceholder("Find in Transcript…").fill("");
     }
   }
 
@@ -552,6 +672,7 @@ try {
     },
     disabledPrimary: unique(disabledPrimary),
     exportVisibility,
+    narrowLayout,
     pageErrors,
   };
 
@@ -601,6 +722,9 @@ try {
       (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
     ),
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...narrowLayout
+      .filter((item) => item.failure !== undefined)
+      .map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),

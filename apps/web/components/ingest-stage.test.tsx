@@ -158,4 +158,36 @@ describe("IngestStage", () => {
     expect(props.onTranscribe).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("group", { name: "Confirm transcribing again" })).toBeNull();
   });
+
+  it("shows the New Project action above the disabled cards on first run", () => {
+    render(
+      <IngestStage
+        projectName={null}
+        mediaName={null}
+        state={{ kind: "none" }}
+        provider="Cloud (OpenAI-compatible)"
+        cloud
+        onImport={vi.fn()}
+        onRecord={vi.fn()}
+        onTranscribe={vi.fn()}
+        onRetry={vi.fn()}
+        onTranscribeSeveral={vi.fn()}
+      >
+        <div className="empty">
+          <p className="empty__title">No Project Open</p>
+          <button type="button" className="button button--primary">
+            New Project
+          </button>
+        </div>
+      </IngestStage>,
+    );
+
+    const action = screen.getByRole("button", { name: "New Project" });
+    const importButton = screen.getByRole("button", { name: "Import Media" });
+
+    expect(importButton.hasAttribute("disabled")).toBe(true);
+    expect(
+      Boolean(action.compareDocumentPosition(importButton) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
 });

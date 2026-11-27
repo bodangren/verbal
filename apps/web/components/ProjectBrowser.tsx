@@ -148,6 +148,10 @@ export function ProjectBrowser({
   }
 
   if (isCollapsed) {
+    // At narrow widths the rail becomes a strip: the open project stays
+    // named and one Projects button brings the full list back in place.
+    const current = entries.find((entry) => entry.path === currentRoot);
+    const currentName = current?.summary?.name ?? current?.name ?? currentRoot ?? "";
     return (
       <div className="browser browser--collapsed">
         <button
@@ -158,6 +162,17 @@ export function ProjectBrowser({
           onClick={toggleCollapsed}
         >
           ▸
+        </button>
+        <span className="browser__current" title={currentRoot ?? undefined}>
+          {currentName}
+        </span>
+        <button
+          type="button"
+          className="button button--ghost browser__strip-button"
+          onClick={toggleCollapsed}
+          aria-expanded="false"
+        >
+          Projects
         </button>
       </div>
     );
