@@ -25,6 +25,8 @@ const VIEWPORTS = [
   [1440, 900],
   [1280, 800],
   [1024, 700],
+  [768, 1024],
+  [360, 740],
 ];
 const PROJECT = "UX gate";
 
@@ -280,6 +282,7 @@ try {
   const nameless = [];
   const headings = [];
   const disabledPrimary = [];
+  const exportVisibility = [];
 
   for (const [width, height] of VIEWPORTS) {
     await page.setViewportSize({ width, height });
@@ -306,6 +309,41 @@ try {
       nameless.push(...measured.nameless);
       headings.push(...measured.headings.map((heading) => ({ mode, ...heading })));
       disabledPrimary.push(...measured.disabledPrimary);
+    }
+
+    // At stacked widths the top bar wraps; Export must stay on screen and
+    // the page itself must never scroll horizontally.
+    if (width <= 900) {
+      const exportBox = await page.evaluate(() => {
+        const button = document.querySelector(".bar__export");
+        if (button === null) {
+          return null;
+        }
+        const rect = button.getBoundingClientRect();
+        return {
+          left: rect.left,
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+        };
+      });
+      exportVisibility.push({ viewport: key, box: exportBox });
+      if (exportBox === null) {
+        exportVisibility[exportVisibility.length - 1].failure =
+          `${key}: no Export button in the top bar`;
+      } else if (
+        exportBox.left < 0 ||
+        exportBox.top < 0 ||
+        exportBox.right > exportBox.innerWidth ||
+        exportBox.bottom > exportBox.innerHeight
+      ) {
+        exportVisibility[exportVisibility.length - 1].failure =
+          `${key}: Export rect ${exportBox.left},${exportBox.top} to ` +
+          `${exportBox.right},${exportBox.bottom} leaves the ` +
+          `${exportBox.innerWidth}x${exportBox.innerHeight} viewport`;
+      }
     }
   }
 
@@ -470,6 +508,7 @@ try {
       violations: [...new Set(headingViolations)],
     },
     disabledPrimary: unique(disabledPrimary),
+    exportVisibility,
     pageErrors,
   };
 
@@ -518,6 +557,9 @@ try {
     ...report.disabledPrimary.map(
       (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
     ),
+    ...exportVisibility
+      .filter((item) => item.failure !== undefined)
+      .map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),

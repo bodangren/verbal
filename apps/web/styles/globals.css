@@ -410,7 +410,10 @@ code {
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 2px 4px;
+  text-align: left;
 }
 
 .transcript__word:hover:enabled {
@@ -2388,4 +2391,60 @@ h2 {
   z-index: 6;
   width: min(640px, 92vw);
   transform: translateX(-50%);
+}
+
+/* Stacked shell: one column at 900 px and below. Desktop is unchanged. */
+@media (max-width: 900px) {
+  .app {
+    grid-template-rows: auto minmax(0, 1fr) 32px;
+  }
+
+  /* The bar wraps so Export stays on screen. */
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    row-gap: var(--space-2);
+  }
+
+  .bar__document {
+    flex: 1 1 8rem;
+  }
+
+  .bar__save {
+    min-width: 0;
+  }
+
+  /* One column: browser strip, stage, then the inspector below the stage. */
+  .workspace {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar {
+    border-bottom: 1px solid var(--border);
+    border-right: 0;
+    min-width: 0;
+    width: auto;
+  }
+
+  .sidebar:has(.browser--collapsed) {
+    min-width: 0;
+    width: auto;
+  }
+
+  .stage {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .inspector {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    min-width: 0;
+    overflow-y: visible;
+    width: auto;
+  }
 }
