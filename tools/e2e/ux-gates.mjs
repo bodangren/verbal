@@ -370,8 +370,7 @@ try {
       });
       narrowLayout.push({ viewport: key, check: "browser strip", box: strip });
       if (strip === null) {
-        narrowLayout[narrowLayout.length - 1].failure =
-          `${key}: no project browser in the sidebar`;
+        narrowLayout[narrowLayout.length - 1].failure = `${key}: no project browser in the sidebar`;
       } else if (
         strip.height < 32 ||
         strip.left < 0 ||
@@ -395,6 +394,8 @@ try {
         const text = (element.textContent ?? "").trim();
         return {
           text: text.slice(0, 40),
+          // A name that fits whole is not truncated, whatever its length.
+          truncated: element.scrollWidth > element.clientWidth + 1,
           capacity:
             text.length === 0 || element.scrollWidth === 0
               ? 0
@@ -404,7 +405,7 @@ try {
       narrowLayout.push({ viewport: key, check: "media name", box: media });
       if (media === null) {
         narrowLayout[narrowLayout.length - 1].failure = `${key}: no media file name row`;
-      } else if (media.capacity < 12) {
+      } else if (media.truncated && media.capacity < 12) {
         narrowLayout[narrowLayout.length - 1].failure =
           `${key}: media name "${media.text}" fits ` +
           `${media.capacity.toFixed(1)} characters (needs 12)`;
@@ -722,9 +723,7 @@ try {
       (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
     ),
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
-    ...narrowLayout
-      .filter((item) => item.failure !== undefined)
-      .map((item) => item.failure),
+    ...narrowLayout.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
