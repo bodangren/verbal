@@ -59,6 +59,23 @@ The independent acceptance review rejected or conditionally accepted this track.
       Red: Test: a word recognised in both windows with different times (within 0.3 s) is kept once; no window is planned when the previous one already reaches the end. Test with a 90 second synthetic seam.
       Green: Align the two word sequences across the overlap by text and nearest time; drop the duplicate.
 
+## Phase R3: Acceptance fixes, round 2 (Sol round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **T1d** (R2-M02 (Sol: verified by execution)): Reject a truncated WAV. 2b4e8bc
+      Evidence: typhoon tests 26/26; Red showed a truncated WAV passing and `openWavFile` unexported. A short window read now throws.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/typhoon.ts`, tests.
+      Red: Test: a WAV whose data chunk claims more bytes than the file holds is rejected with a clear error; a short read of a window throws.
+      Green: Check the data extent against the file size and every read length.
+- [x] **T1e** (R2-M03 (Sol: verified by execution)): Align words across the seam by sequence and pick the nearest match. 2701daf
+      Evidence: window tests 18/18; Red showed duplicate seam words and first-match pairing. Real model, 40 s clip (eight copies): 128 words = 8 times 16, over 10 windows. Limit: greedy pairing is not a strict non-crossing constraint.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/typhoon-window.ts`, tests.
+      Red: Test: two copies of one word at 28.95 s and 29.04 s across a seam keep one; matching picks the nearest start, not the first.
+      Green: Align the two overlap sequences by text and minimum time distance; widen the overlap membership by the tolerance.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

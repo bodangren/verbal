@@ -71,7 +71,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 > The Fable frontend review ([review-frontend-2026-11-27.md](./review-frontend-2026-11-27.md)) found 1 Blocker, 9 High, 8 Medium and 3 Low issues. The four tracks below fix them in this order: layout, transcript, export flow, page structure. They roll up Transcript as a Document and Deliver Strip and Export Panel (archived under `superseded_frontend_review_20261127_*`). Only one task at a time edits `index.tsx` and one at a time edits `globals.css`.
 
-- [~] **Track: Frontend Layout and Responsiveness** [created: 2026-11-27]
+- [ ] **Track: Frontend Layout and Responsiveness** [created: 2026-11-27]
   *Focus: Give the transcript room, stack the shell on narrow screens, fix first run and the hydration error, raise contrast and target size.*
   *Status: Not started. Findings F01-F05, F11-F14, F19, F20; no dependency.*
   *Link: [./tracks/fe_layout_20261127](./tracks/fe_layout_20261127/)*

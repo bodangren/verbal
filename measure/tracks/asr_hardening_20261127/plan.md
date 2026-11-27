@@ -86,6 +86,17 @@ The independent acceptance review rejected or conditionally accepted this track.
       Red: Test: a 206 whose Content-Range start differs from the `.part` size is not appended; the download restarts from zero.
       Green: Parse Content-Range and compare its start with the part size.
 
+## Phase R3: Acceptance fixes, round 2 (Sol round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **A5c** (R2-L01 (Sol: verified by inspection)): Create the scratch directories inside the cleanup scope. 11cd06c
+      Evidence: 156 `packages/ai` tests green; Red showed a failing second mkdir leaving the scratch root.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/openai.ts`, tests.
+      Red: Test: a failing directory creation does not leave the scratch directory.
+      Green: Move both `mkdir` calls inside `try/finally`.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

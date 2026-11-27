@@ -93,6 +93,34 @@ The independent acceptance review (real browser, 54 screenshots) rejected or con
       Red: Test: a `Skip to project browser` link exists, is the first focusable element after the top bar actions, and moves focus to the browser. DESIGN.md has one transcript font rule and one accent value.
       Green: Add the skip link; fix the contradiction in DESIGN.md lines 166 to 170; set the four plan statuses; correct the DOM order in the T3 note (stage, inspector, browser).
 
+## Phase R3: Acceptance fixes, round 2 (Opus round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **L3c** (N1 Blocker, N2, N4 (Opus: verified)): Show the project browser on narrow screens and stop a long status line from widening the app. 5c1ac47
+      Evidence: 292 component, lib and tools tests green; four CSS-source tests failed first. The new gate rules (fresh-visit browser height and click, strip click, 60 character name, long status line) have not run in a browser yet; the next gate run is the proof.
+      wave 1. Worker: `opencode-go/muse-spark-1.3-contributor`.
+      Files: `apps/web/styles/globals.css`, `tools/e2e/ux-gates.mjs`, tests.
+      Red: Gate rules at 360x740 and 768x1024: with NO project open the sidebar is at least 120 px high and a project row is clickable by its centre point; with a project open the Projects button is clickable by its centre point; after a long status message (set through a long export path) the document scroll width equals the viewport width and Export is on screen; a 60 character project name keeps Export on screen.
+      Green: Add `flex: 0 0 auto` to `.sidebar` under 900 px; `grid-template-columns: minmax(0, 1fr)` on `.app`; `min-width: 0` and wrapping on `.statusbar`; ellipsis on the top-bar document name.
+- [x] **L6d** (N3, N8, N9 (Opus: verified)): Keep the caret visible above the sticky toolbar, remember the player choice, even footer buttons. 0fa9d24
+      Evidence: 335 component, lib, hook and tools tests green; 7 Red failures (4 CSS-source, 3 persistence). The toolbar height variable is hand-measured at 13.5rem; the gate run is the proof.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/styles/globals.css`, `apps/web/components/EditWorkspace.tsx`, tests, `tools/e2e/ux-gates.mjs`.
+      Red: Gate rule at 360x740: after End the last word lies above the toolbar top; test that the player toggle persists in localStorage and wins over the viewport default; footer buttons share equal widths when the row wraps (grid).
+      Green: `scroll-padding-bottom` equal to the toolbar height on the scroller; persist the choice; use a grid for the footer.
+- [x] **L6e** (L6d follow-up, orchestrator): Follow the sticky toolbar's real height and fix three gate-rule artifacts. 46fb12d
+      Evidence: 302 component, lib and tools tests green; the hook is tested with a ResizeObserver stub. Browser proof comes from the gate run on this commit.
+      Files: `apps/web/components/EditWorkspace.tsx`, `apps/web/components/edit-workspace.test.tsx`, `tools/e2e/ux-gates.mjs`.
+      Red: the gate run after L6d failed four rules: the click budget (6, the rules' own clicks counted), the caret 12 px below the toolbar top at 360x740 (the toolbar was taller than the 13.5rem constant), and the Projects strip covered at 768 and 360 (the workspace was left scrolled by the caret rule).
+      Green: a hook sets `--edit-toolbar-height` from the toolbar's measured height; the rules use raw clicks and scroll to the top before the strip check.
+- [x] **L7c** (N5, N11 (Opus: verified)): Make the skip link the first focusable element and fix the DESIGN.md gaps. 7353fa8
+      Evidence: 307 component, lib and hook tests green; Red showed `Ingest` as the first tabbable. The test counts tabbables with tabindex -1 too, so it is stricter than the gate. Browser check with the next gate.
+      wave 1. Worker: `opencode-go/hy4-flash-free`.
+      Files: `apps/web/pages/index.tsx`, `apps/web/styles/globals.css` (`.skip-link` block), `DESIGN.md`, `apps/web/components/skip-link.test.tsx`.
+      Red: Test: the skip link is the first focusable element in the document; the gate's tab-stop count from the Edit button stays at most 6; DESIGN.md documents the danger button and has the right tertiary text value (`#909090`).
+      Green: Move the link before the top bar; add the two DESIGN.md lines.
+
 ## Phase 2: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

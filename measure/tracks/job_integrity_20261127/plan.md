@@ -95,6 +95,23 @@ The independent acceptance review rejected or conditionally accepted this track.
       Red: Test: a transcription that starts on a project without a revision gets the starting revision computed first, and a later import drops its result. Test: take, capture and assembly media replacement write a new revision. Test: a transcript PUT with a stale revision is rejected.
       Green: One shared `replaceProjectMedia` and one revision comparison used by every path; stamp missing revisions once.
 
+## Phase R3: Acceptance fixes, round 2 (Sol round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **J2d** (R2-H02 (Sol: verified by inspection)): Put assembly and normalise jobs under the registry signal and the publication boundary. 0630cbf
+      Evidence: same run. The registry signal now reaches the normalise and assembly children.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/assembly-job.ts`, `apps/web/server/normalize-job.ts`, tests.
+      Red: Test: cancel stops the child process of an assembly and a normalise job; neither publishes after cancel; beginPublish guards their output.
+      Green: Use `registry.signalOf` and `beginPublish` as the export jobs do; drop the private controllers.
+- [x] **J3d** (R2-H03, R2-M04 (Sol: verified by inspection)): Serialise project mutations and save the capture before it reports done. 5afc163
+      Evidence: 512 core and server tests green; Red showed no lock module, capture done before the save and a save failure swallowed. Seven sections are locked. Gaps: `addTake` writes takes.json outside the lock; the import-versus-take race test passed on the old code by timing, so the ten-way serialisation test is the real proof; `onOutput` rides inside the capture request type.
+      wave 3. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/project-lock.ts` (new), `apps/web/server/transcribe-service.ts`, `take-api.ts`, `capture-api.ts`, `media-api.ts`, tests.
+      Red: Test with a delayed store: a concurrent import and take upload end with the newer media reference; a transcript save compares the revision inside the lock; the capture job reports done only after the project save and surfaces a save error.
+      Green: One per-project promise queue used by every project mutation; await the capture save.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

@@ -101,6 +101,23 @@ The independent acceptance review rejected or conditionally accepted this track.
       Red: Read how vinext applies a body size limit (the installed parser stops at 1 MB before the handler runs); add the route config that raises it to the take limit, and a test that the config export exists with the limit. Record how to prove it on the built server.
       Green: Export the route `config` with an explicit `sizeLimit` and keep the 413 mapping.
 
+## Phase R3: Acceptance fixes, round 2 (Sol and Opus round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **S1c** (R2-B01 (Sol: verified by inspection)): Fail closed in the destination check and cover every input media. 6231961
+      Evidence: 435 media and server tests green; 4 Red failures (EACCES accepted twice, asset and music aliases returned 202). The storyboard reads one media file in this codebase; generated assets and brand music get a second message. Gap: `POST /api/export` maps the new error to 502, where 400 fits (E2g carries the fix).
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/media/src/export.ts` (`resolveExportDestination`), `apps/web/server/storyboard-api.ts`, tests.
+      Red: Test: an unexpected filesystem error (EACCES) during validation rejects the export; only ENOENT of the destination or its missing parent falls back to the lexical path and ONLY when the parent resolves to a directory that does not alias a source; the storyboard check covers the project media, every take file and every generated asset the storyboard reads.
+      Green: Narrow the catch to ENOENT; resolve the nearest existing ancestor and compare it; collect every input path and run the check for each.
+- [x] **S1d** (R2-H01 (Sol: verified by inspection)): Publish a normalised take atomically. 0630cbf
+      Evidence: 632 core, media and server tests green; 12 Red failures (final file deleted on failure, private controller, cancel never killed the child). Gap: capture still writes its timestamped MP4 straight to its final path (a unique name, so no overwrite); if `onOutput` throws after the rename the job ends failed with the file published.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/normalize-job.ts`, `apps/web/server/take-api.ts`, tests.
+      Red: Test: a failing normalise leaves an existing take file byte-identical and removes only the partial; success renames.
+      Green: Use `publishAtomically` from `packages/media/src/publish.ts`.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

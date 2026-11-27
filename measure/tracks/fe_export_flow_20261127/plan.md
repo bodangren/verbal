@@ -86,6 +86,17 @@ The independent acceptance review (real browser, 54 screenshots) rejected or con
       Red: Tests: the export result text keeps the output path (`Exported to <path>`) in the panel and the status region (the generic `Export finished` does not replace it); the busy panel shows `Exporting · N%` as visible text beside a full-width progress bar; Preview keeps its idle label and is only disabled; a failed export shows its message and detail INSIDE the Export panel next to the button; the status bar error detail opens upward as a popover that is not clipped (height not limited by the 30 px row); `Export started` is announced once per job.
       Green: Fold the path into `jobResultText`; announce per job id once; render the failure in the panel; position the disclosure with `bottom: 100%`.
 
+## Phase R3: Acceptance fixes, round 2 (Opus round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **X34c** (N6, N7, N10 (Opus: verified)): Show request failures in the Export panel, one message per event, distinct button names. 53d5f70
+      Evidence: Red showed the request error outside the panel, two done messages and no distinct bar name. Names chosen: top-bar button `Open Export`, mode tab `Export`, panel button `Export Video`. Component tests green; the three skip-link failures belong to L7c (duplicate link while it was mid-edit). Browser verification comes with the next gate.
+      wave 1. Worker: `claude-agent/haiku`.
+      Files: `apps/web/components/DeliverWorkspace.tsx`, `apps/web/components/ExportControls.tsx`, `apps/web/components/TopBar.tsx`, `tools/e2e/walkthrough.mjs`, `tools/e2e/ux-gates.mjs`, `tools/dogfood/record-howto.mjs`, tests.
+      Red: Tests: a failed export REQUEST (HTTP 500) renders its message in the Export panel; one export produces one done message in the status region (no `Exported to` then `Export finished`); the top-bar button has the accessible name `Export Video` while the mode tab stays `Export`; the walkthrough, gate and recorder select the new name.
+      Green: Route request errors to the panel failure slot; drop the duplicate message; set `aria-label` on the top-bar button.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

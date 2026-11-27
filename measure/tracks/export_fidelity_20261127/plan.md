@@ -124,6 +124,29 @@ The independent acceptance review rejected or conditionally accepted this track.
       Red: Test: a mixed storyboard with talk, template slide, generated image and generated video completes assembly. Test: a document scene id that equals a derived talk-piece id does not collide.
       Green: Use internal identifiers that a document id cannot equal (a reserved prefix).
 
+## Phase R3: Acceptance fixes, round 2 (Sol round 2 review, 2026-11-28)
+
+The second independent review verified these defects, some of them caused by the round 2 fixes. Same worker rules as Phase 1.
+
+- [x] **E2e** (R2-H04 (Sol: verified by execution)): Never emit an empty or reversed video range. 2049401
+      Evidence: 209 media, cleanup and route tests green; Red showed a reversed range `2.05-1` and a seeded property failure. The final filter drops a kept word that lies wholly inside a removed word's handle.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/media/src/timeline.ts`, tests.
+      Red: Test: a transcript with overlapping words, a removal and a silence gives no item with end <= start (the reviewer's input gave `0-0`); a property test over generated transcripts with deletes, reorders and silences: every video item has end > start.
+      Green: Validate and drop or merge each interval before it joins the timeline.
+- [x] **E2f** (R2-H05 (Sol: verified by execution)): Accept a legacy fingerprint only for eligible timelines. f2bff7e
+      Evidence: freeze tests 20/20; Red showed a silence after the last word still matching the legacy fingerprint. `legacyEligible` is computed fresh for the current timeline, so projects frozen earlier are not forced to re-anchor.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/cleanup/src/freeze.ts`, tests.
+      Red: Test: adding silence after the last word makes `requiresReanchor` true even with a matching legacy fingerprint; an unedited deletion-only project still matches the legacy value.
+      Green: Allow the legacy comparison only when the timeline has no silence and no reorder.
+- [x] **E2g** (R2-M01 (Sol: verified by FFmpeg)): Keep the display aspect ratio of a non-square-pixel source. 0a34860
+      Evidence: 148 media and route tests green; Red showed 9 failures. Measured: coded 160x120, SAR 2:1, rotation 90 exports at 120x320 (the task text said 240; 160 times 2 is 320), durations 3.000 s. Gaps: an odd coded height on a rotated source is not evened; a display aspect ratio that already includes rotation could double-apply.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/media/src/export.ts`, `packages/media/src/probe.ts`, tests.
+      Red: Measured test: a 160x120 source with SAR 2:1 and a 90 degree rotation exports with the display aspect ratio of the source (width over height equals the source display aspect within 1 percent), then SAR 1:1.
+      Green: Compute square-pixel width from the source SAR and rotation before scaling the pieces and the silence.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.
