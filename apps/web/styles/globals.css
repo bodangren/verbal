@@ -245,7 +245,7 @@ body {
 }
 
 .app button:not([class]) {
-  background: var(--primary);
+  background: var(--primary-focus);
   border: none;
   border-radius: var(--radius);
   color: var(--on-primary);
@@ -256,7 +256,8 @@ body {
 }
 
 .app button:not([class]):hover:enabled {
-  background: var(--primary-hover);
+  background: var(--primary-focus);
+  box-shadow: inset 0 0 0 1px var(--primary-hover);
 }
 
 .app button:not([class]):disabled {
@@ -431,8 +432,8 @@ code {
   color: var(--on-primary);
 }
 
-.transcript__word[data-selected="true"] {
-  background: color-mix(in srgb, var(--selection) 24%, transparent);
+.transcript__word[role="option"][aria-selected="true"] {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
   border-color: var(--primary);
 }
 
@@ -560,7 +561,7 @@ code {
 }
 
 .playback__button {
-  background: var(--primary);
+  background: var(--primary-focus);
   border: 1px solid transparent;
   border-radius: var(--radius);
   color: var(--on-primary);
@@ -572,7 +573,8 @@ code {
 }
 
 .playback__button:hover {
-  background: var(--primary-hover);
+  background: var(--primary-focus);
+  box-shadow: inset 0 0 0 1px var(--primary-hover);
 }
 
 .preview {
@@ -609,8 +611,8 @@ code {
 }
 
 .preview__tier[aria-pressed="true"] {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary-focus);
+  border-color: var(--primary-focus);
   color: var(--on-primary);
 }
 
@@ -767,7 +769,7 @@ code {
 
 .cleanup__freeze {
   align-self: flex-start;
-  background: var(--primary);
+  background: var(--primary-focus);
   border: none;
   border-radius: var(--radius);
   color: var(--on-primary);
@@ -778,7 +780,8 @@ code {
 }
 
 .cleanup__freeze:hover {
-  background: var(--primary-hover);
+  background: var(--primary-focus);
+  box-shadow: inset 0 0 0 1px var(--primary-hover);
 }
 
 .patches {
@@ -847,13 +850,14 @@ code {
 }
 
 .patches__apply {
-  background: var(--primary);
+  background: var(--primary-focus);
   border: none;
   color: var(--on-primary);
 }
 
 .patches__apply:hover {
-  background: var(--primary-hover);
+  background: var(--primary-focus);
+  box-shadow: inset 0 0 0 1px var(--primary-hover);
 }
 
 .patches__discard {
@@ -1144,6 +1148,7 @@ h2 {
   font: inherit;
   font-size: 12px;
   font-weight: 500;
+  min-height: 32px;
   padding: 4px 14px;
 }
 
@@ -1152,7 +1157,7 @@ h2 {
 }
 
 .segmented__option[aria-current="page"] {
-  background: var(--primary);
+  background: var(--primary-focus);
   color: var(--on-primary);
 }
 
@@ -1567,13 +1572,13 @@ h2 {
 }
 
 .button--primary {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--primary-focus);
+  border-color: var(--primary-focus);
   color: var(--on-primary);
 }
 
 .button--primary:hover:enabled {
-  background: var(--primary-hover);
+  background: var(--primary-focus);
   border-color: var(--primary-hover);
 }
 
@@ -1689,11 +1694,14 @@ h2 {
 }
 
 .disclosure > summary {
+  align-items: center;
   color: var(--text-secondary);
   cursor: pointer;
+  display: flex;
   font-size: 12px;
   font-weight: 600;
   list-style: none;
+  min-height: 32px;
 }
 
 .disclosure > summary::-webkit-details-marker {
@@ -2495,5 +2503,33 @@ h2 {
     grid-row: 3;
     justify-self: start;
     max-width: 100%;
+  }
+}
+
+/* Touch targets: 44 px under a coarse pointer. Keep this block last. */
+/* A checkbox or radio is small by design, so its label is the click target.
+   Keep that label at least 24 px high. Zero specificity: a class still wins. */
+:where(label:has(> input[type="checkbox"]), label:has(> input[type="radio"])) {
+  align-items: center;
+  display: inline-flex;
+  min-height: 24px;
+}
+
+@media (pointer: coarse) {
+  button,
+  [role="tab"],
+  summary,
+  a[href],
+  select,
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]),
+  .segmented__option {
+    min-height: 44px;
+  }
+
+  .icon-button {
+    height: 44px;
+    min-width: 44px;
+    width: 44px;
   }
 }

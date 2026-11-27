@@ -167,6 +167,7 @@ Fast and subtle. 100-200ms transitions. No bounces or playful animations. The to
 - Highlighted word: indigo background (#6366F1), white text, no border
 - Hover: subtle background shift on word labels
 - Selection: indigo tint background, thin indigo border
+- On 2026-11-27 the transcript words use the UI face, Inter, for Thai coverage and legibility.
 
 ### Waveform Display
 - Monospace timestamps (word indices or time)

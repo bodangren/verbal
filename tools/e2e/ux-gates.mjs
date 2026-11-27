@@ -352,18 +352,58 @@ try {
   await modeButton(page, "Edit").click();
   await page.waitForTimeout(300);
 
-  const tabStopsPerWord = await page.locator(".transcript__word").count();
+  // Fine pointer: tabs and summaries reach 32 px, nothing falls under 24 px.
+  const targetSizes = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(
+        "button, [role='tab'], summary, a[href], select, input[type='checkbox'], input[type='radio']",
+      ),
+    ]
+      .map((element) => ({
+        tag: element.tagName.toLowerCase(),
+        text: (element.textContent ?? "").trim().slice(0, 30),
+        tab: element.matches("[role='tab'], .segmented__option, .disclosure > summary"),
+        // A native checkbox or radio is small by design; its label is the target.
+        height: Math.round(
+          (element.matches("input[type='checkbox'], input[type='radio']")
+            ? (element.closest("label") ?? element)
+            : element
+          ).getBoundingClientRect().height,
+        ),
+      }))
+      .filter((target) => target.height > 0),
+  );
+
+  // Tab stops inside the transcript: every tabbable element in the listbox that
+  // holds the words, plus the listbox itself. The budget is one.
+  const tabStopsPerWord = await page.evaluate(() => {
+    const listbox = document.querySelector("[role='listbox']:has(.transcript__word)");
+    if (listbox === null) {
+      return document.querySelectorAll(".transcript__word").length;
+    }
+    return [listbox, ...listbox.querySelectorAll("*")].filter(
+      (element) =>
+        element instanceof HTMLElement &&
+        element.tabIndex >= 0 &&
+        !element.matches(":disabled") &&
+        element.getClientRects().length > 0,
+    ).length;
+  });
 
   await modeButton(page, "Edit").focus();
   let tabStopsBeforeFirstWord = 0;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     await page.keyboard.press("Tab");
     tabStopsBeforeFirstWord += 1;
-    const onWord = await page.evaluate(
-      () =>
-        document.activeElement !== null &&
-        document.activeElement.classList.contains("transcript__word"),
-    );
+    const onWord = await page.evaluate(() => {
+      const active = document.activeElement;
+      const listbox = document.querySelector("[role='listbox']:has(.transcript__word)");
+      return (
+        active !== null &&
+        ((listbox !== null && listbox.contains(active)) ||
+          active.classList.contains("transcript__word"))
+      );
+    });
     if (onWord) {
       break;
     }
@@ -482,6 +522,13 @@ try {
     });
   };
 
+  const targets = {
+    checked: targetSizes.length,
+    under44: targetSizes.filter((target) => target.height < 44).length,
+    under24: targetSizes.filter((target) => target.height < 24),
+    tabsOrSummariesUnder32: targetSizes.filter((target) => target.tab && target.height < 32),
+  };
+
   const report = {
     generatedAt: new Date().toISOString(),
     steps: {
@@ -489,6 +536,7 @@ try {
     },
     viewports,
     transcript: { tabStopsBeforeFirstWord, tabStopsPerWord },
+    targets,
     liveRegions,
     studio,
     accessibleNames: {
@@ -510,9 +558,18 @@ try {
   const cssSource = await readFile(path.join("apps", "web", "styles", "globals.css"), "utf8");
   const token = (name) =>
     new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`).exec(cssSource)?.[1] ?? "";
+  const fillOf = (selector) =>
+    new RegExp(`${selector}\\s*\\{[^}]*background:\\s*var\\(--([\\w-]+)\\)`).exec(cssSource)?.[1] ??
+    "";
   const contrastPairs = [
     ["removed word", token("text-secondary"), token("card")],
     ["active word", token("on-primary"), token("primary-focus")],
+    ["filled primary", token("on-primary"), token(fillOf("\\.button--primary"))],
+    [
+      "filled primary hover",
+      token("on-primary"),
+      token(fillOf("\\.button--primary:hover:enabled")),
+    ],
     ["error on surface", token("error"), token("surface")],
     ["error on error-surface", token("error"), token("error-surface")],
     ["tertiary on card", token("text-tertiary"), token("card")],
@@ -547,6 +604,12 @@ try {
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
+    ...targets.under24.map(
+      (target) => `target: ${target.tag} "${target.text}" is ${target.height} px high (needs 24)`,
+    ),
+    ...targets.tabsOrSummariesUnder32.map(
+      (target) => `target: ${target.tag} "${target.text}" is ${target.height} px high (needs 32)`,
+    ),
     ...studioFailures,
     ...pageErrors,
   ];
@@ -554,6 +617,9 @@ try {
   console.log(
     `ux gate: clicks ${counts.clicks}, tab stops ${tabStopsBeforeFirstWord}, ` +
       `per word ${tabStopsPerWord}, live regions ${liveRegions}`,
+  );
+  console.log(
+    `  targets (Edit, 1440x900, fine pointer): ${targets.under44} of ${targets.checked} under 44 px`,
   );
   for (const [viewport, metrics] of Object.entries(viewports)) {
     console.log(
