@@ -67,6 +67,10 @@ export function EditWorkspace({
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const transcriptCardRef = useRef<HTMLDivElement | null>(null);
+  const focusTokenRef = useRef(0);
+  const [focusRequest, setFocusRequest] = useState<{ index: number; token: number } | undefined>(
+    undefined,
+  );
 
   const hasMedia = project?.media !== undefined;
   const liveWords =
@@ -153,6 +157,60 @@ export function EditWorkspace({
     });
   }
 
+  /** Asks the editor to place the caret on a word, once, with a fresh token. */
+  function requestCaretAt(index: number) {
+    if (index < 0) {
+      return;
+    }
+    focusTokenRef.current += 1;
+    setFocusRequest({ index, token: focusTokenRef.current });
+  }
+
+  /**
+   * The word to put the caret on after removing `[fromIndex, toIndex]`: the
+   * next kept word after the range, or the previous kept word when none follows.
+   */
+  function nextKeptIndexAfter(fromIndex: number, toIndex: number): number {
+    if (transcript === null) {
+      return -1;
+    }
+    const removed = new Set(transcript.removedWordIds);
+    for (let index = fromIndex; index <= toIndex; index += 1) {
+      const word = transcript.words[index];
+      if (word !== undefined) {
+        removed.add(word.id);
+      }
+    }
+    for (let index = toIndex + 1; index < transcript.words.length; index += 1) {
+      const word = transcript.words[index];
+      if (word !== undefined && !removed.has(word.id)) {
+        return index;
+      }
+    }
+    for (let index = fromIndex - 1; index >= 0; index -= 1) {
+      const word = transcript.words[index];
+      if (word !== undefined && !removed.has(word.id)) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  /** The first removed word in a range, or -1 when the range is all kept. */
+  function firstRemovedIndex(fromIndex: number, toIndex: number): number {
+    if (transcript === null) {
+      return -1;
+    }
+    const removed = new Set(transcript.removedWordIds);
+    for (let index = fromIndex; index <= toIndex; index += 1) {
+      const word = transcript.words[index];
+      if (word !== undefined && removed.has(word.id)) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
   function deleteSelection() {
     if (selection === null || transcript === null) {
       return;
@@ -163,10 +221,12 @@ export function EditWorkspace({
       .slice(selection.fromIndex, selection.toIndex + 1)
       .filter((word) => !removedSet.has(word.id)).length;
 
+    const focusIndex = nextKeptIndexAfter(selection.fromIndex, selection.toIndex);
     editing.removeRange(selection.fromIndex, selection.toIndex);
     setSelection(null);
     setMessage(`Removed ${removedCount} ${removedCount === 1 ? "word" : "words"}`);
     focusTranscript();
+    requestCaretAt(focusIndex);
   }
 
   function restoreRange(fromIndex: number, toIndex: number) {
@@ -191,7 +251,9 @@ export function EditWorkspace({
       return;
     }
 
+    const focusIndex = firstRemovedIndex(selection.fromIndex, selection.toIndex);
     restoreRange(selection.fromIndex, selection.toIndex);
+    requestCaretAt(focusIndex);
   }
 
   function removeAcceptedProposals() {
@@ -406,6 +468,7 @@ export function EditWorkspace({
                     onSelectionClear={() => setSelection(null)}
                     onDeleteSelection={deleteSelection}
                     onRestore={restoreRange}
+                    focusRequest={focusRequest}
                   />
 
                   <div className="toolbar toolbar--wrap toolbar--footer">

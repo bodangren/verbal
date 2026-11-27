@@ -166,6 +166,47 @@ describe("Edit toolbar focus and announcements", () => {
     expect(screen.getByRole("status").textContent).toBe("Restored 2 words");
   });
 
+  it("moves the caret to the next kept word after a toolbar Delete", async () => {
+    await openEdit();
+    selectRange("w1", "w2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("listbox", { name: "Transcript" }).getAttribute("aria-activedescendant"),
+      ).toBe("transcript-word-w3"),
+    );
+  });
+
+  it("moves the caret to the previous kept word after deleting the last words", async () => {
+    await openEdit();
+    selectRange("w4", "w5");
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("listbox", { name: "Transcript" }).getAttribute("aria-activedescendant"),
+      ).toBe("transcript-word-w3"),
+    );
+  });
+
+  it("moves the caret to the first restored word after a toolbar Restore", async () => {
+    await openEdit();
+    selectRange("w1", "w2");
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    selectRange("w1", "w2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("listbox", { name: "Transcript" }).getAttribute("aria-activedescendant"),
+      ).toBe("transcript-word-w1"),
+    );
+  });
+
   it("announces the match position when Next moves to another match", async () => {
     texts = ["alpha", "echo", "bravo", "echo", "charlie", "echo"];
     await openEdit();

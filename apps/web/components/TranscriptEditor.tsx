@@ -17,6 +17,12 @@ export type WordSelection = {
   toIndex: number;
 };
 
+/** A one-shot caret move. A changed `token` applies `index` once. */
+export type FocusRequest = {
+  index: number;
+  token: number;
+};
+
 export type TranscriptEditorProps = {
   transcript: TranscriptDocument;
   /** Accessible name of the region. Distinct labels keep two editors apart. */
@@ -37,6 +43,8 @@ export type TranscriptEditorProps = {
   onDeleteSelection?: () => void;
   onRestore?: (fromIndex: number, toIndex: number) => void;
   caretIndex?: number;
+  /** Moves the caret to `index` once, when `token` changes. */
+  focusRequest?: FocusRequest;
   /** Test-only: reports a render of the word at `index`. */
   onWordRender?: (index: number) => void;
 };
@@ -56,7 +64,8 @@ type SelectionAction =
   | { type: "selectAll"; count: number }
   | { type: "clear" }
   | { type: "click"; index: number; shift: boolean }
-  | { type: "sync" };
+  | { type: "sync" }
+  | { type: "focus"; index: number };
 
 /**
  * One reducer for the caret and the local selection. `anchor` is null while
@@ -108,6 +117,8 @@ function selectionReducer(state: SelectionState, action: SelectionAction): Selec
       return { caret: action.index, anchor: null, lastReported: null };
     case "sync":
       return { caret: state.caret, anchor: null, lastReported: null };
+    case "focus":
+      return { caret: action.index, anchor: null, lastReported: null };
   }
 }
 
@@ -197,6 +208,7 @@ export function TranscriptEditor({
   onDeleteSelection,
   onRestore,
   caretIndex,
+  focusRequest,
   onWordRender,
 }: TranscriptEditorProps) {
   const [state, dispatch] = useReducer(selectionReducer, {
@@ -210,6 +222,16 @@ export function TranscriptEditor({
       .getElementById(`transcript-word-${transcript.words[index]?.id}`)
       ?.scrollIntoView?.({ block: "nearest" });
   };
+
+  // A one-shot caret move from the page (toolbar Delete or Restore). Comparing
+  // the last token during render applies the move without a state-setting
+  // effect, and leaves the reducer caret free for later arrow keys.
+  const [lastFocusToken, setLastFocusToken] = useState(focusRequest?.token ?? 0);
+  if (focusRequest !== undefined && focusRequest.token !== lastFocusToken) {
+    setLastFocusToken(focusRequest.token);
+    dispatch({ type: "focus", index: focusRequest.index });
+    scrollToWord(focusRequest.index);
+  }
 
   // When the page changes the controlled range on its own, yield to it and
   // scroll the new range into view. An echo of the range the editor just
