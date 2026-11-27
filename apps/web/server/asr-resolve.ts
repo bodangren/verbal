@@ -89,10 +89,14 @@ export function resolveAsr(input: AsrResolveInput): AsrResolution {
 
   const explicitLocal = set(env.VERBAL_ASR) === "local";
   const models = path.join(dataDir, "models");
+  const requestedLanguage = set(env.VERBAL_ASR_LANGUAGE);
+  const language = requestedLanguage ?? "auto";
+  const typhoonAllowed =
+    requestedLanguage === undefined || requestedLanguage.toLowerCase() === "th";
 
-  // Thai first: the Typhoon model is a better Thai engine than whisper and is
-  // the one the app fetches. Whisper stays the fallback and the multilingual path.
-  const typhoonDir = completeTyphoonModel(dataDir, env, exists);
+  // Typhoon is a better Thai engine. An explicit non-Thai language needs
+  // whisper, so the resolver never runs Thai on an English request.
+  const typhoonDir = typhoonAllowed ? completeTyphoonModel(dataDir, env, exists) : undefined;
   if (typhoonDir !== undefined) {
     return { mode: "typhoon", modelDir: typhoonDir, language: "th" };
   }
@@ -118,8 +122,6 @@ export function resolveAsr(input: AsrResolveInput): AsrResolution {
       modelPath = path.join(models, chosen);
     }
   }
-
-  const language = set(env.VERBAL_ASR_LANGUAGE) ?? "auto";
 
   if (binary !== undefined && modelPath !== undefined) {
     const fileName = configuredModel !== undefined && modelPath === configuredModel

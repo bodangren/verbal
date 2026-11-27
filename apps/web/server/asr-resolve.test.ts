@@ -22,6 +22,14 @@ function input(overrides: Partial<AsrResolveInput> = {}): AsrResolveInput {
   };
 }
 
+function typhoonInput(overrides: Partial<AsrResolveInput> = {}): AsrResolveInput {
+  return input({
+    exists: (candidate) =>
+      candidate === BINARY || candidate === MODEL || TYPHOON_FILES.includes(candidate),
+    ...overrides,
+  });
+}
+
 describe("resolveAsr", () => {
   it("finds a local install with no environment variables", () => {
     expect(resolveAsr(input())).toEqual({
@@ -206,6 +214,46 @@ describe("resolveAsr", () => {
       input({
         env: { VERBAL_ASR: "local", OPENAI_API_KEY: "key" },
         exists: () => false,
+        list: () => [],
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "none", missing: "both" });
+  });
+
+  it("uses whisper for an explicit non-Thai language with Typhoon installed", () => {
+    const resolved = resolveAsr(typhoonInput({ env: { VERBAL_ASR_LANGUAGE: "en" } }));
+
+    expect(resolved).toEqual({
+      mode: "local",
+      binary: BINARY,
+      modelPath: MODEL,
+      modelName: "small",
+      language: "en",
+    });
+  });
+
+  it("chooses Typhoon when the language is unset", () => {
+    expect(resolveAsr(typhoonInput())).toEqual({
+      mode: "typhoon",
+      modelDir: TYPHOON_DIR,
+      language: "th",
+    });
+  });
+
+  it("chooses Typhoon for Thai", () => {
+    expect(resolveAsr(typhoonInput({ env: { VERBAL_ASR_LANGUAGE: "th" } }))).toEqual({
+      mode: "typhoon",
+      modelDir: TYPHOON_DIR,
+      language: "th",
+    });
+  });
+
+  it("reports none for a non-Thai language without whisper", () => {
+    const resolved = resolveAsr(
+      typhoonInput({
+        env: { VERBAL_ASR_LANGUAGE: "en" },
+        exists: (candidate) => TYPHOON_FILES.includes(candidate),
         list: () => [],
       }),
     );
