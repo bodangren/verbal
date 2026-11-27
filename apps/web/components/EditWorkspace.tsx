@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { ProjectDocument, TranscriptDocument } from "@verbal/core/browser";
 import { searchTranscript } from "@verbal/core/browser";
 import { resolveAccepted, type Acceptance, type CleanupProposal } from "@verbal/cleanup";
@@ -12,6 +19,23 @@ import { TranscriptEditor, type WordSelection } from "./TranscriptEditor";
 import { CleanupReview } from "./CleanupReview";
 import { EmptyState } from "./EmptyState";
 import { PaneAlert } from "./PaneAlert";
+
+const SHORT_VIEWPORT = "(max-height: 800px), (max-width: 900px)";
+
+/** True while the viewport is short or narrow enough to fold the player. */
+function viewportIsShort(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia(SHORT_VIEWPORT).matches;
+}
+
+/** The default follows a resize; the user's own toggle overrides it. */
+function subscribeShortViewport(listener: () => void): () => void {
+  if (typeof window.matchMedia !== "function") {
+    return () => undefined;
+  }
+  const query = window.matchMedia(SHORT_VIEWPORT);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
 
 export type EditWorkspaceProps = {
   /** True only while Edit is the active mode; hides the pane, not the state. */
@@ -63,7 +87,13 @@ export function EditWorkspace({
   const [silenceSeconds, setSilenceSeconds] = useState(1);
   const [query, setQuery] = useState("");
   const [matchCursor, setMatchCursor] = useState(0);
-  const [playerCollapsed, setPlayerCollapsed] = useState(false);
+  const defaultPlayerCollapsed = useSyncExternalStore(
+    subscribeShortViewport,
+    viewportIsShort,
+    () => false,
+  );
+  const [playerCollapsedOverride, setPlayerCollapsedOverride] = useState<boolean | null>(null);
+  const playerCollapsed = playerCollapsedOverride ?? defaultPlayerCollapsed;
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const transcriptCardRef = useRef<HTMLDivElement | null>(null);
@@ -361,7 +391,7 @@ export function EditWorkspace({
                   }}
                   waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
                   collapsed={playerCollapsed}
-                  onToggleCollapsed={() => setPlayerCollapsed((value) => !value)}
+                  onToggleCollapsed={() => setPlayerCollapsedOverride(!playerCollapsed)}
                 />
               </div>
 
@@ -532,7 +562,6 @@ export function EditWorkspace({
                     >
                       Restore
                     </button>
-                    <span className="toolbar__spacer" />
                     <button
                       type="button"
                       className="button button--ghost"

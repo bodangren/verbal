@@ -1,0 +1,124 @@
+// @vitest-environment jsdom
+// The Edit player folds by default on a short or narrow viewport, and the
+// structural edit toolbar sticks to the bottom of the stage.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import type { Acceptance } from "@verbal/cleanup";
+import type { ProjectDocument } from "@verbal/core/browser";
+import { EditWorkspace } from "./EditWorkspace";
+import { JobProvider } from "../hooks/use-job";
+import type { TranscriptDocumentController } from "../hooks/use-transcript-document";
+
+const css = readFileSync(join(__dirname, "..", "styles", "globals.css"), "utf8");
+
+function mockMatchMedia(matches: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+const savedMatchMedia = window.matchMedia;
+
+afterEach(() => {
+  cleanup();
+  window.matchMedia = savedMatchMedia;
+});
+
+const editing: TranscriptDocumentController = {
+  document: null,
+  dirty: false,
+  canUndo: false,
+  canRedo: false,
+  removeRange: () => undefined,
+  removeRanges: () => undefined,
+  restore: () => undefined,
+  insertSilence: () => undefined,
+  splitSegment: () => undefined,
+  moveRange: () => undefined,
+  undo: () => undefined,
+  redo: () => undefined,
+  markSaved: () => undefined,
+  reset: () => undefined,
+};
+
+const project: ProjectDocument = {
+  schemaVersion: 1,
+  id: "p1",
+  name: "Demo",
+  createdAt: "2026-11-28T00:00:00.000Z",
+  media: { assetPath: "take.mp4" },
+};
+
+const acceptance: Acceptance = { categories: [], ids: [], aggressiveness: 0.5 };
+
+function renderWorkspace() {
+  return render(
+    <JobProvider>
+      <EditWorkspace
+        active
+        root="/projects/demo"
+        project={project}
+        transcript={null}
+        selection={null}
+        setSelection={() => undefined}
+        editing={editing}
+        proposals={[]}
+        acceptance={acceptance}
+        setProposals={() => undefined}
+        setAcceptance={() => undefined}
+        setMessage={() => undefined}
+        guard={async (run) => run()}
+        paneError={null}
+        onDismissPaneError={() => undefined}
+        onTranscribe={() => undefined}
+        onGoToIngest={() => undefined}
+      />
+    </JobProvider>,
+  );
+}
+
+describe("EditWorkspace player collapse", () => {
+  it("collapses the player by default on a short or narrow viewport", () => {
+    mockMatchMedia(true);
+    const { container } = renderWorkspace();
+
+    expect(container.querySelector(".playback--collapsed")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Expand Player" })).toBeTruthy();
+  });
+
+  it("keeps the player expanded by default on a roomy viewport", () => {
+    mockMatchMedia(false);
+    const { container } = renderWorkspace();
+
+    expect(container.querySelector(".playback--collapsed")).toBeNull();
+    expect(screen.getByRole("button", { name: "Collapse Player" })).toBeTruthy();
+  });
+
+  it("lets the user's toggle override the default", () => {
+    mockMatchMedia(true);
+    const { container } = renderWorkspace();
+    expect(container.querySelector(".playback--collapsed")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Player" }));
+
+    expect(container.querySelector(".playback--collapsed")).toBeNull();
+    expect(screen.getByRole("button", { name: "Collapse Player" })).toBeTruthy();
+  });
+});
+
+describe("edit toolbar footer CSS", () => {
+  it("sticks the footer toolbar to the bottom of the stage", () => {
+    const rule = css.match(/\.toolbar--footer\s*\{[^}]*\}/);
+    expect(rule?.[0]).toContain("position: sticky");
+    expect(rule?.[0]).toContain("bottom: 0");
+  });
+});

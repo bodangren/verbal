@@ -282,6 +282,7 @@ try {
   const disabledPrimary = [];
   const exportVisibility = [];
   const narrowLayout = [];
+  const editToolbar = [];
 
   for (const [width, height] of VIEWPORTS) {
     await page.setViewportSize({ width, height });
@@ -466,6 +467,74 @@ try {
         }
       }
       await page.getByPlaceholder("Find in Transcript…").fill("");
+    }
+
+    // The edit toolbar must stay reachable without scrolling the stage: the
+    // Delete, Restore and Undo buttons sit inside the viewport at both sizes.
+    if (key === "1024x700" || key === "360x740") {
+      await modeButton(page, "Edit").click();
+      await page.waitForTimeout(250);
+      const toolbar = await page.evaluate(() => {
+        const boxOf = (element) => {
+          if (element === null) {
+            return null;
+          }
+          const rect = element.getBoundingClientRect();
+          return {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            right: Math.round(rect.right),
+            bottom: Math.round(rect.bottom),
+          };
+        };
+        const buttonByName = (name) => {
+          const footer = document.querySelector(".toolbar--footer");
+          if (footer === null) {
+            return null;
+          }
+          return (
+            [...footer.querySelectorAll("button")].find(
+              (button) => (button.textContent ?? "").trim() === name,
+            ) ?? null
+          );
+        };
+        return {
+          delete: boxOf(buttonByName("Delete")),
+          restore: boxOf(buttonByName("Restore")),
+          undo: boxOf(buttonByName("Undo")),
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+        };
+      });
+      editToolbar.push({ viewport: key, box: toolbar });
+      if (toolbar === null) {
+        editToolbar[editToolbar.length - 1].failure = `${key}: no edit toolbar`;
+      } else {
+        for (const name of ["delete", "restore", "undo"]) {
+          const box = toolbar[name];
+          if (box === null) {
+            editToolbar.push({
+              viewport: key,
+              check: name,
+              failure: `${key}: no ${name} button in the edit toolbar`,
+            });
+          } else if (
+            box.left < 0 ||
+            box.top < 0 ||
+            box.right > toolbar.innerWidth ||
+            box.bottom > toolbar.innerHeight
+          ) {
+            editToolbar.push({
+              viewport: key,
+              check: name,
+              failure:
+                `${key}: ${name} ${box.left},${box.top} to ` +
+                `${box.right},${box.bottom} leaves the ` +
+                `${toolbar.innerWidth}x${toolbar.innerHeight} viewport`,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -674,6 +743,7 @@ try {
     disabledPrimary: unique(disabledPrimary),
     exportVisibility,
     narrowLayout,
+    editToolbar,
     pageErrors,
   };
 
@@ -724,6 +794,7 @@ try {
     ),
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowLayout.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...editToolbar.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),

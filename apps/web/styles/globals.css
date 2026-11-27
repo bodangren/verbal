@@ -1403,13 +1403,18 @@ h2 {
 }
 
 .toolbar--footer {
+  background: var(--surface-elevated);
   border-top: 1px solid var(--border-subtle);
+  bottom: 0;
   margin-top: var(--space-2);
   padding-top: var(--space-3);
+  position: sticky;
+  z-index: 1;
 }
 
-.toolbar__spacer {
-  flex: 1;
+/* The footer buttons share the row evenly, so a wrap never strands one. */
+.toolbar--footer > .button {
+  flex: 1 1 auto;
 }
 
 .search input {
@@ -1755,7 +1760,6 @@ dialog.dialog::backdrop {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
 }
 
 .stage__scroll--edit .playback__video {
