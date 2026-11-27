@@ -1709,38 +1709,6 @@ export default function Home() {
       />
 
       <div className="workspace">
-        <aside className="sidebar" aria-label="Project browser">
-            {paneError?.pane === "browser" && (
-              <PaneAlert
-                message={paneError.copy.message}
-                detail={paneError.copy.detail}
-                onDismiss={() => setPaneError(null)}
-              />
-            )}
-            <ProjectBrowser
-              path={browserPath}
-              parent={browserParent}
-              entries={browserEntries}
-              loading={browserLoading}
-              error={browserError}
-              onCreate={(projectName) => void createProject(projectName)}
-              onHome={() => void loadFolder()}
-              onUp={() => {
-                if (browserParent !== null) {
-                  void loadFolder(browserParent);
-                }
-              }}
-              onNavigate={(target) => {
-                setBrowserLoading(true);
-                void loadFolder(target).finally(() => setBrowserLoading(false));
-              }}
-              onOpen={(target) => {
-                void openProjectAt(target);
-              }}
-              currentRoot={root}
-            />
-        </aside>
-
         <section className="stage" aria-label={`${mode} workspace`}>
           {mode === "ingest" && (
             <IngestStage
@@ -2266,6 +2234,39 @@ export default function Home() {
             </div>
           )}
         </section>
+
+        {/* DOM order is stage, then browser: Tab reaches the transcript before the project rows. CSS `order` keeps the browser on the left. */}
+        <aside className="sidebar" aria-label="Project browser">
+            {paneError?.pane === "browser" && (
+              <PaneAlert
+                message={paneError.copy.message}
+                detail={paneError.copy.detail}
+                onDismiss={() => setPaneError(null)}
+              />
+            )}
+            <ProjectBrowser
+              path={browserPath}
+              parent={browserParent}
+              entries={browserEntries}
+              loading={browserLoading}
+              error={browserError}
+              onCreate={(projectName) => void createProject(projectName)}
+              onHome={() => void loadFolder()}
+              onUp={() => {
+                if (browserParent !== null) {
+                  void loadFolder(browserParent);
+                }
+              }}
+              onNavigate={(target) => {
+                setBrowserLoading(true);
+                void loadFolder(target).finally(() => setBrowserLoading(false));
+              }}
+              onOpen={(target) => {
+                void openProjectAt(target);
+              }}
+              currentRoot={root}
+            />
+        </aside>
 
         {mode === "ingest" && (
           <IngestInspector

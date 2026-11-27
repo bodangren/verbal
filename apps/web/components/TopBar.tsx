@@ -67,7 +67,23 @@ export function TopBar({
             type="button"
             className="segmented__option"
             aria-current={mode === entry.id ? "page" : undefined}
+            tabIndex={mode === entry.id ? 0 : -1}
             onClick={() => onMode(entry.id)}
+            onKeyDown={(event) => {
+              const index = MODES.findIndex((item) => item.id === entry.id);
+              const nextIndex =
+                event.key === "ArrowRight" ? (index + 1) % MODES.length :
+                event.key === "ArrowLeft" ? (index + MODES.length - 1) % MODES.length :
+                event.key === "Home" ? 0 :
+                event.key === "End" ? MODES.length - 1 : -1;
+              if (nextIndex < 0) return;
+              event.preventDefault();
+              const next = MODES[nextIndex]!;
+              onMode(next.id);
+              event.currentTarget.parentElement
+                ?.querySelectorAll<HTMLButtonElement>("button")[nextIndex]
+                ?.focus();
+            }}
           >
             {entry.label}
           </button>

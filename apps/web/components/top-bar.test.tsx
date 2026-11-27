@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TopBar } from "./TopBar";
 
@@ -38,6 +39,45 @@ describe("TopBar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
     expect(props.onMode).toHaveBeenCalledWith("deliver");
+  });
+
+  it("uses one roving tab stop and supports tab-list navigation keys", () => {
+    const onMode = vi.fn();
+    function Controlled() {
+      const [mode, setMode] = useState<"ingest" | "edit" | "deliver">("edit");
+      return (
+        <TopBar
+          projectName="Alpha"
+          projectRoot="/home/me/alpha"
+          mode={mode}
+          saveState="saved"
+          onMode={(next) => {
+            onMode(next);
+            setMode(next);
+          }}
+          onExport={vi.fn()}
+        />
+      );
+    }
+    render(<Controlled />);
+    const edit = screen.getByRole("button", { name: "Edit" });
+    const ingest = screen.getByRole("button", { name: "Ingest" });
+    const deliver = screen.getByRole("button", { name: "Deliver" });
+    expect([ingest, edit, deliver].filter((button) => button.tabIndex === 0)).toEqual([edit]);
+
+    edit.focus();
+    fireEvent.keyDown(edit, { key: "ArrowRight" });
+    expect(deliver.tabIndex).toBe(0);
+    expect(edit.tabIndex).toBe(-1);
+    expect(document.activeElement).toBe(deliver);
+    expect(onMode).toHaveBeenLastCalledWith("deliver");
+
+    fireEvent.keyDown(deliver, { key: "Home" });
+    expect(ingest.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(ingest);
+    fireEvent.keyDown(ingest, { key: "End" });
+    expect(deliver.tabIndex).toBe(0);
+    expect(document.activeElement).toBe(deliver);
   });
 
   it("exports from the bar", () => {

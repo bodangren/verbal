@@ -1,6 +1,6 @@
 {
   "maxClicksToEditableTranscript": 5,
-  "maxTabStopsBeforeTranscript": 2,
+  "maxTabStopsBeforeTranscript": 6,
   "maxTabStopsInTranscript": 1,
   "maxPageScroll": 0,
   "minTranscriptLines": 3,

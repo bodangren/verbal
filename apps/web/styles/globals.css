@@ -1168,11 +1168,17 @@ h2 {
   overflow: hidden;
 }
 
+/* DOM order is stage, sidebar, inspector. The visual order stays sidebar, stage, inspector. */
+.workspace > .inspector {
+  order: 3;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Project browser                                                         */
 /* ---------------------------------------------------------------------- */
 
 .sidebar {
+  order: 1;
   background: var(--surface-elevated);
   border-right: 1px solid var(--border);
   display: flex;
@@ -1360,6 +1366,7 @@ h2 {
 /* ---------------------------------------------------------------------- */
 
 .stage {
+  order: 2;
   background: var(--surface);
   display: flex;
   flex: 1;
