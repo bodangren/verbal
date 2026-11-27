@@ -58,7 +58,7 @@ export function ExportControls({
         onClick={onExport}
         disabled={disabled || running}
       >
-        {running ? "Exporting…" : "Export Storyboard"}
+        {running ? "Exporting…" : "Export Video"}
       </button>
       {onPreview !== null && (
         <button
@@ -72,7 +72,7 @@ export function ExportControls({
       )}
       {running && <progress aria-label="Export progress" value={percent} max={100} />}
       {reason !== null && <p className="muted">{reason}</p>}
-      {status !== null && <p className="muted">{status}</p>}
+      {status !== null && !running && <p className="muted">{status}</p>}
     </>
   );
 }

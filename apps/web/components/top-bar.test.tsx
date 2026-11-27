@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TopBar } from "./TopBar";
 
 afterEach(cleanup);
+
+function modeTab(name: string) {
+  return within(screen.getByRole("navigation", { name: "Workspace mode" })).getByRole("button", {
+    name,
+  });
+}
+
+function barExport() {
+  const actions = screen.getByRole("banner").querySelector<HTMLElement>(".bar__actions");
+  return within(actions as HTMLElement).getByRole("button", { name: "Export" });
+}
 
 function setup(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
   const props = {
@@ -27,7 +38,7 @@ describe("TopBar", () => {
 
     expect(screen.getByText("Alpha")).toBeTruthy();
     expect(screen.getByText("Saved")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
+    expect(barExport()).toBeTruthy();
   });
 
   it("marks the current mode and switches on click", () => {
@@ -37,7 +48,7 @@ describe("TopBar", () => {
       screen.getByRole("button", { name: "Edit" }).getAttribute("aria-current"),
     ).toBe("page");
 
-    fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
+    fireEvent.click(modeTab("Export"));
     expect(props.onMode).toHaveBeenCalledWith("deliver");
   });
 
@@ -62,7 +73,7 @@ describe("TopBar", () => {
     render(<Controlled />);
     const edit = screen.getByRole("button", { name: "Edit" });
     const ingest = screen.getByRole("button", { name: "Ingest" });
-    const deliver = screen.getByRole("button", { name: "Deliver" });
+    const deliver = modeTab("Export");
     expect([ingest, edit, deliver].filter((button) => button.tabIndex === 0)).toEqual([edit]);
 
     edit.focus();
@@ -83,7 +94,7 @@ describe("TopBar", () => {
   it("exports from the bar", () => {
     const props = setup();
 
-    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(barExport());
 
     expect(props.onExport).toHaveBeenCalledTimes(1);
   });

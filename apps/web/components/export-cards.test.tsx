@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "../pages/index";
 
@@ -50,7 +50,7 @@ function job(status: "queued" | "done", result: unknown = null) {
   };
 }
 
-describe("Deliver export cards", () => {
+describe("Export cards", () => {
   let exportBody: Record<string, unknown> | null;
 
   beforeEach(() => {
@@ -145,8 +145,14 @@ describe("Deliver export cards", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Open" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Edit" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Storyboard" })).toBeTruthy());
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Workspace mode" })).getByRole("button", {
+        name: "Export",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Export", level: 2 })).toBeTruthy(),
+    );
   }
 
   it("defaults the title to the project name and leaves other cards empty", async () => {
@@ -174,7 +180,7 @@ describe("Deliver export cards", () => {
     expect(screen.queryByLabelText("Outro")).toBeNull();
     expect(screen.queryByLabelText("Contact")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Export Storyboard" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
     await waitFor(() => expect(exportBody).not.toBeNull());
     expect(exportBody?.includeBrand).toBe(false);
   });
@@ -184,7 +190,7 @@ describe("Deliver export cards", () => {
 
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "" } });
 
-    const button = screen.getByRole("button", { name: "Export Storyboard" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: "Export Video" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(screen.getByText("Enter a title for the title card.")).toBeTruthy();
   });

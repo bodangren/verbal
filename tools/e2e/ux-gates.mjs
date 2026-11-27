@@ -287,7 +287,7 @@ try {
     const key = `${width}x${height}`;
     viewports[key] = { pageScrollX: 0, pageScrollY: 0, transcriptLines: 0 };
 
-    for (const mode of ["Ingest", "Edit", "Deliver"]) {
+    for (const mode of ["Ingest", "Edit", "Export"]) {
       await modeButton(page, mode).click();
       await page.waitForTimeout(250);
       const measured = await measureMode(page, mode);

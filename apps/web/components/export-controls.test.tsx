@@ -34,7 +34,7 @@ describe("ExportControls", () => {
       />,
     );
 
-    const button = screen.getByRole("button", { name: "Export Storyboard" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: "Export Video" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(screen.getByText("Create a storyboard first.")).toBeTruthy();
     fireEvent.click(button);
@@ -45,17 +45,20 @@ describe("ExportControls", () => {
     const onExport = vi.fn();
     render(<ExportControls disabled={false} job={null} onExport={onExport} />);
 
-    const button = screen.getByRole("button", { name: "Export Storyboard" }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: "Export Video" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
     expect(screen.queryByText("Create a storyboard first.")).toBeNull();
     fireEvent.click(button);
     expect(onExport).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the running export while it works", () => {
-    render(<ExportControls disabled={false} job={job()} onExport={vi.fn()} />);
+  it("shows the progress bar, not the job text, while the export runs", () => {
+    render(
+      <ExportControls disabled={false} job={job()} running progressPercent={42} onExport={vi.fn()} />,
+    );
 
-    expect(screen.getByText("Job running · 42% · Rendering step 1 of 6")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Export progress" })).toBeTruthy();
+    expect(screen.queryByText(/Job running/)).toBeNull();
   });
 
   it("shows only the failure copy when an export fails", () => {

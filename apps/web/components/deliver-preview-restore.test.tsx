@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "../pages/index";
 
@@ -32,7 +32,7 @@ const PLAN = {
   ],
 };
 
-describe("Deliver preview after a reload", () => {
+describe("Export preview after a reload", () => {
   let scenes: unknown[];
   let previewBodies: { tier?: string }[];
 
@@ -126,7 +126,11 @@ describe("Deliver preview after a reload", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Edit" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Workspace mode" })).getByRole("button", {
+        name: "Export",
+      }),
+    );
 
     await waitFor(() => expect(screen.getByText("Plays 53.40s")).toBeTruthy());
     expect(screen.queryByText("No Preview Yet")).toBeNull();
@@ -140,7 +144,11 @@ describe("Deliver preview after a reload", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     await waitFor(() => expect(screen.getByRole("heading", { name: "Edit" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Workspace mode" })).getByRole("button", {
+        name: "Export",
+      }),
+    );
 
     await waitFor(() => expect(screen.getByText("No Scenes Yet")).toBeTruthy());
     expect(previewBodies).toEqual([]);

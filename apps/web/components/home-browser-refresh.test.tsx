@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createTranscript } from "@verbal/core/browser";
 import Home from "../pages/index";
 
 const ROOT = "/projects/demo";
@@ -14,17 +15,13 @@ function project() {
 }
 
 function transcript(words: number) {
-  return {
-    schemaVersion: 1,
-    words: Array.from({ length: words }, (_, index) => ({
-      id: `w${index}`,
+  return createTranscript(
+    Array.from({ length: words }, (_, index) => ({
       text: `word-${index}`,
       start: index,
       end: index + 0.9,
     })),
-    segments: [],
-    removedWordIds: [],
-  };
+  );
 }
 
 describe("Home browser summaries", () => {
@@ -162,8 +159,12 @@ describe("Home browser summaries", () => {
     fireEvent.click(screen.getByRole("button", { name: "Transcribe" }));
     await waitFor(() => expect(screen.getByText("Transcribed 1 words")).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("button", { name: "Deliver" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Storyboard" })).toBeTruthy());
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Workspace mode" })).getByRole("button", {
+        name: "Export",
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Export", level: 2 })).toBeTruthy());
     expect(screen.queryByText(/Job done/)).toBeNull();
   });
 
@@ -189,7 +190,13 @@ describe("Home browser summaries", () => {
     await waitFor(() => expect(screen.getByText(/1 word.*Media/)).toBeTruthy());
     const afterTranscribe = lists;
 
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(lists).toBeGreaterThan(afterTranscribe));
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    await waitFor(() => expect(document.querySelector('[role="option"][data-word-id]')).toBeTruthy());
+    const beforeEdit = lists;
+    fireEvent.click(document.querySelector('[role="option"][data-word-id]') as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    // Auto-save writes the edit after a pause, then refreshes the browser.
+    await waitFor(() => expect(lists).toBeGreaterThan(beforeEdit), { timeout: 4000 });
+    expect(lists).toBeGreaterThan(afterTranscribe);
   });
 });

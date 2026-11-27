@@ -556,6 +556,11 @@ export default function Home() {
   const runningJob =
     job !== null && (job.status === "queued" || job.status === "running");
 
+  // The export panel reads only export jobs, so a transcription never disables Export.
+  const exportJob = job !== null && job.kind === "export" ? job : null;
+  const exportRunning =
+    exportJob !== null && (exportJob.status === "queued" || exportJob.status === "running");
+
   // Warn before leaving while an edit is unsaved or a job is running.
   useEffect(() => {
     if (!editing.dirty && !runningJob) {
@@ -1113,7 +1118,7 @@ export default function Home() {
     setMessage(
       `Removed ${acceptedProposals.length} cleanup ${
         acceptedProposals.length === 1 ? "proposal" : "proposals"
-      }. Save the transcript to keep it.`,
+      }.`,
     );
   }
 
@@ -2021,14 +2026,6 @@ export default function Home() {
                       >
                         Redo
                       </button>
-                      <button
-                        type="button"
-                        className="button button--primary"
-                        onClick={saveTranscriptDocument}
-                        disabled={project === null}
-                      >
-                        Save
-                      </button>
                     </div>
                   </div>
                   )}
@@ -2041,29 +2038,9 @@ export default function Home() {
             <div className="stage__scroll">
               <header className="stage__head">
                 <div>
-                  <h2>Storyboard</h2>
+                  <h2>Export</h2>
                   <p className="stage__sub">Preview the cut, then export it.</p>
                 </div>
-                {!storyboardEmpty && (
-                  <div className="toolbar">
-                    <button
-                      type="button"
-                      className="button button--ghost"
-                      onClick={() => preview("fast")}
-                      disabled={project === null}
-                    >
-                      Fast Preview
-                    </button>
-                    <button
-                      type="button"
-                      className="button button--primary"
-                      onClick={() => preview("full")}
-                      disabled={project === null}
-                    >
-                      Render Preview
-                    </button>
-                  </div>
-                )}
               </header>
 
               {paneError?.pane === "deliver" && (
@@ -2470,8 +2447,13 @@ export default function Home() {
                       ? "Enter a title for the title card."
                       : null
                 }
-                job={job}
+                job={exportJob}
                 onExport={exportStoryboard}
+                running={exportRunning}
+                progressPercent={exportJob === null ? 0 : Math.round(exportJob.progress * 100)}
+                onPreview={storyboardEmpty ? null : () => void preview(tier)}
+                previewDisabled={project === null}
+                onAnnounce={setMessage}
               />
             </section>
           </aside>

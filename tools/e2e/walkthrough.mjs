@@ -409,7 +409,6 @@ try {
     "the accepted filler should be removed from the document",
   );
 
-  await editorPanel.getByRole("button", { name: "Save" }).click();
   await waitForSavedState(true);
   await page.getByText("Transcript saved").waitFor();
   console.log("cleanup: reviewed, removed, and saved");
@@ -509,12 +508,12 @@ try {
   );
   console.log("transcript: saved edit survives a reload");
 
-  await page.getByRole("button", { name: "Deliver", exact: true }).click();
+  page.getByRole("navigation", { name: "Workspace mode" }).getByRole("button", { name: "Export", exact: true }).click();
   await page.getByText("Advanced: Storyboard Document").click();
   const storyboardText = page.getByLabel("Storyboard JSON");
   assert((await storyboardText.inputValue()).includes("Walkthrough"), "storyboard should load");
 
-  await page.getByRole("button", { name: "Fast Preview" }).click();
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
   await page.getByRole("region", { name: "Storyboard preview" }).waitFor();
   await page.getByText("Placeholder").first().waitFor();
   console.log("preview: fast tier planned a placeholder");

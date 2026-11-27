@@ -5,7 +5,7 @@ export type SaveState = "none" | "saving" | "unsaved" | "saved";
 const MODES: readonly { id: WorkspaceMode; label: string }[] = [
   { id: "ingest", label: "Ingest" },
   { id: "edit", label: "Edit" },
-  { id: "deliver", label: "Deliver" },
+  { id: "deliver", label: "Export" },
 ];
 
 const SAVE_LABEL: Record<SaveState, string> = {

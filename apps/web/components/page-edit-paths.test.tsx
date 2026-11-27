@@ -197,9 +197,10 @@ describe("Home edit paths", () => {
       expect(screen.getByRole("status").textContent).toBe("Inserted 2s of silence"),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() =>
-      expect(savedDocuments.at(-1)?.silences).toEqual([{ afterWordId: "w1", seconds: 2 }]),
+    // Auto-save writes the edit after a pause; no Save button remains.
+    await waitFor(
+      () => expect(savedDocuments.at(-1)?.silences).toEqual([{ afterWordId: "w1", seconds: 2 }]),
+      { timeout: 4000 },
     );
   });
 

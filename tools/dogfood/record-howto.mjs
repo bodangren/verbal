@@ -65,7 +65,7 @@ const SCRIPT =
   "Now scrub the timeline, or drag the range under the video. " +
   "Click any word to jump straight to it. " +
   "Select a filler, um, and delete it. The cut follows the text. " +
-  "When you are happy, switch to Deliver to preview and export.";
+  "When you are happy, switch to Export to preview and export.";
 
 function transcriptDocument(durationSeconds) {
   const tokens = SCRIPT.replace(/,/g, "").split(/\s+/).filter(Boolean);
@@ -262,10 +262,10 @@ async function main() {
     await page.waitForTimeout(1500);
     console.log("record: project open");
 
-    mark("deliver", "Deliver starts with no scenes");
+    mark("deliver", "Export starts with no scenes");
     await page
       .getByRole("navigation", { name: "Workspace mode" })
-      .getByRole("button", { name: "Deliver", exact: true })
+      .getByRole("button", { name: "Export", exact: true })
       .click();
     await page.waitForTimeout(900);
 
@@ -291,10 +291,10 @@ async function main() {
     await page.waitForTimeout(1400);
     console.log("record: project open");
 
-    mark("deliver", "Deliver: four scenes are ready");
+    mark("deliver", "Export: four scenes are ready");
     await page
       .getByRole("navigation", { name: "Workspace mode" })
-      .getByRole("button", { name: "Deliver", exact: true })
+      .getByRole("button", { name: "Export", exact: true })
       .click();
     await page.waitForTimeout(800);
 
@@ -302,7 +302,7 @@ async function main() {
     await page.waitForTimeout(900);
 
     mark("export", "Export the storyboard");
-    await page.getByRole("button", { name: "Export Storyboard", exact: true }).click();
+    await page.getByRole("button", { name: "Export Video", exact: true }).click();
     await page.getByText(/Job done/).waitFor({ timeout: 180000 });
     await page.waitForTimeout(1200);
     console.log("record: exported");
@@ -352,13 +352,13 @@ async function main() {
   await page.waitForTimeout(900);
   console.log("record: edited");
 
-  mark("deliver", "Deliver: preview and export");
+  mark("deliver", "Export: preview and export");
   await page
     .getByRole("navigation", { name: "Workspace mode" })
-    .getByRole("button", { name: "Deliver", exact: true })
+    .getByRole("button", { name: "Export", exact: true })
     .click();
   await page.waitForTimeout(600);
-  await page.getByRole("button", { name: "Fast Preview", exact: true }).click();
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
   await page.waitForTimeout(2400);
   console.log("record: deliver");
   }
