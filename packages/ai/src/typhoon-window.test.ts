@@ -283,6 +283,112 @@ describe("mergeWindowResults", () => {
       expect(merged[i]!.start).toBeGreaterThanOrEqual(merged[i - 1]!.start);
     }
   });
+
+  it("pairs two repeated seam words in each window into two words", () => {
+    // Two "no" words, where the later window reports both slightly earlier.
+    // Greedy nearest-first pairs the first left word with the second right
+    // word (0.05 s), which strands the other two and leaves three words.
+    // Order-preserving alignment pairs them in order and leaves two.
+    const results = [
+      [
+        { text: "no", start: 29.15, end: 29.55 },
+        { text: "no", start: 29.4, end: 29.8 },
+      ],
+      [
+        { text: "no", start: 0.0, end: 0.4 },
+        { text: "no", start: 0.2, end: 0.6 },
+      ],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "no", start: 29.15, end: 29.55 },
+      { text: "no", start: 29.4, end: 29.8 },
+    ]);
+  });
+
+  it("does not cross pairs when the two windows report a reversed order", () => {
+    // Window 0 says a then b; window 1 says b then a (28.95 then 29.05).
+    // The two orders conflict, so only one non-crossing pair can form: the
+    // closest, b-b at 0.05 s. The other word is kept from both windows, so
+    // the merged list has three words and never a crossed pair.
+    const results = [
+      [
+        { text: "a", start: 28.9, end: 29.3 },
+        { text: "b", start: 29.0, end: 29.4 },
+      ],
+      [
+        { text: "b", start: -0.05, end: 0.35 },
+        { text: "a", start: 0.05, end: 0.45 },
+      ],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "a", start: 28.9, end: 29.3 },
+      { text: "b", start: 29.0, end: 29.4 },
+      { text: "a", start: 29.05, end: 29.45 },
+    ]);
+  });
+});
+
+describe("mergeWindowResults order-preserving properties", () => {
+  it("never adds words and stays ordered by start across 200 seeded cases", () => {
+    let state = 0x9e3779b9;
+    const random = (): number => {
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      state >>>= 0;
+      return state / 0xffffffff;
+    };
+    const VOCAB = ["a", "b", "c", "d"];
+    const sampleRate = 16000;
+
+    for (let caseIndex = 0; caseIndex < 200; caseIndex += 1) {
+      const seconds = 15 + random() * 30;
+      const windows = planWindows(Math.round(sampleRate * seconds), sampleRate, {
+        windowSeconds: 5,
+        overlapSeconds: 1,
+      });
+
+      const trueWords: Array<{ text: string; start: number }> = [];
+      let cursor = 0.3;
+      while (cursor < seconds - 0.3) {
+        const text = VOCAB[Math.floor(random() * VOCAB.length)]!;
+        trueWords.push({ text, start: cursor });
+        cursor += 0.5 + random() * 0.7;
+      }
+
+      const perWindow: SpokenWord[][] = windows.map(() => []);
+      for (const word of trueWords) {
+        for (let k = 0; k < windows.length; k += 1) {
+          const window = windows[k]!;
+          const jittered = word.start + (random() - 0.5) * 0.2;
+          if (
+            jittered >= window.startSeconds &&
+            jittered <= window.endSample / sampleRate
+          ) {
+            perWindow[k]!.push({
+              text: word.text,
+              start: jittered - window.startSeconds,
+              end: jittered - window.startSeconds + 0.4,
+            });
+          }
+        }
+      }
+
+      const totalWords = perWindow.reduce((sum, list) => sum + list.length, 0);
+      const merged = mergeWindowResults(windows, perWindow);
+
+      // Never more words than the union minus matched pairs: every true word
+      // appears at most once in the merged list.
+      expect(merged.length).toBeLessThanOrEqual(totalWords);
+      expect(merged.length).toBe(trueWords.length);
+
+      for (let i = 1; i < merged.length; i += 1) {
+        expect(merged[i]!.start).toBeGreaterThanOrEqual(merged[i - 1]!.start);
+      }
+    }
+  });
 });
 
 describe("window features", () => {

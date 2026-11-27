@@ -84,17 +84,111 @@ export function planWindows(
   return windows;
 }
 
+type AbsoluteWord = {
+  text: string;
+  start: number;
+  end: number;
+  windowIndex: number;
+};
+
+function byStart(a: AbsoluteWord, b: AbsoluteWord): number {
+  return a.start - b.start || a.end - b.end || a.windowIndex - b.windowIndex;
+}
+
+/** Turns a second offset into integer microseconds, to sum without float drift. */
+function toMicros(seconds: number): number {
+  return Math.round(seconds * 1_000_000);
+}
+
+/**
+ * Aligns two overlap word lists as ordered sequences.
+ *
+ * A longest-common-subsequence dynamic program pairs words with equal
+ * normalised text whose starts sit within the match tolerance, so pairs never
+ * cross. It maximises the number of matched pairs first and minimises the
+ * summed start difference second. Unmatched words are left for the caller.
+ */
+function alignOverlapWords(
+  leftWords: readonly AbsoluteWord[],
+  rightWords: readonly AbsoluteWord[],
+): Array<{ left: AbsoluteWord; right: AbsoluteWord }> {
+  const n = leftWords.length;
+  const m = rightWords.length;
+
+  const count: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  const distance: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+
+  for (let i = 0; i <= n; i += 1) {
+    for (let j = 0; j <= m; j += 1) {
+      if (i === 0 || j === 0) {
+        continue;
+      }
+      let bestCount = count[i - 1]![j]!;
+      let bestDistance = distance[i - 1]![j]!;
+      if (
+        count[i]![j - 1]! > bestCount ||
+        (count[i]![j - 1]! === bestCount && distance[i]![j - 1]! < bestDistance)
+      ) {
+        bestCount = count[i]![j - 1]!;
+        bestDistance = distance[i]![j - 1]!;
+      }
+      const left = leftWords[i - 1]!;
+      const right = rightWords[j - 1]!;
+      const separation = Math.abs(left.start - right.start);
+      if (
+        normalizeText(left.text) === normalizeText(right.text) &&
+        separation <= MATCH_TOLERANCE_SECONDS
+      ) {
+        const matchCount = count[i - 1]![j - 1]! + 1;
+        const matchDistance = distance[i - 1]![j - 1]! + toMicros(separation);
+        if (matchCount > bestCount || (matchCount === bestCount && matchDistance < bestDistance)) {
+          bestCount = matchCount;
+          bestDistance = matchDistance;
+        }
+      }
+      count[i]![j] = bestCount;
+      distance[i]![j] = bestDistance;
+    }
+  }
+
+  const pairs: Array<{ left: AbsoluteWord; right: AbsoluteWord }> = [];
+  let i = n;
+  let j = m;
+  while (i > 0 && j > 0) {
+    const left = leftWords[i - 1]!;
+    const right = rightWords[j - 1]!;
+    const separation = Math.abs(left.start - right.start);
+    const canMatch =
+      normalizeText(left.text) === normalizeText(right.text) &&
+      separation <= MATCH_TOLERANCE_SECONDS;
+    if (
+      canMatch &&
+      count[i]![j]! === count[i - 1]![j - 1]! + 1 &&
+      distance[i]![j]! === distance[i - 1]![j - 1]! + toMicros(separation)
+    ) {
+      pairs.push({ left, right });
+      i -= 1;
+      j -= 1;
+    } else if (count[i]![j]! === count[i - 1]![j]! && distance[i]![j]! === distance[i - 1]![j]!) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+  pairs.reverse();
+  return pairs;
+}
+
 /**
  * Merges per-window word lists into one list with absolute times.
  *
  * Each word's start and end are relative to its window, so the window start is
  * added. Across a seam, a word whose start lies within the match tolerance of
- * the overlap counts as an overlap word. Overlap words are matched by
- * normalised text, then by the smallest absolute start difference, greedily by
- * increasing distance, each word matched at most once. A matched pair keeps the
- * copy whose midpoint is farther from its own window's edge, so the copy with
- * more context wins. An unmatched word is kept, so no word is lost and none is
- * duplicated.
+ * the overlap counts as an overlap word. The two overlap lists are aligned as
+ * ordered sequences: pairs share normalised text, sit within the tolerance,
+ * and never cross. A matched pair keeps the copy whose midpoint is farther
+ * from its own window's edge, so the copy with more context wins. An unmatched
+ * word is kept, so no word is lost and none is duplicated.
  */
 export function mergeWindowResults(
   windows: readonly WindowPlan[],
@@ -112,13 +206,6 @@ export function mergeWindowResults(
         (windows[1]!.startSeconds - windows[0]!.startSeconds)
       : 1;
 
-  type AbsoluteWord = {
-    text: string;
-    start: number;
-    end: number;
-    windowIndex: number;
-  };
-
   const absolute: AbsoluteWord[][] = windows.map((window, k) =>
     (results[k] ?? []).map((word) => ({
       text: word.text,
@@ -135,51 +222,22 @@ export function mergeWindowResults(
     const rightStart = windows[k + 1]!.startSeconds;
     const overlapStart = rightStart - MATCH_TOLERANCE_SECONDS;
     const overlapEnd = leftEnd + MATCH_TOLERANCE_SECONDS;
-    const leftWords = absolute[k]!.filter(
-      (word) => word.start >= overlapStart && word.start <= overlapEnd,
-    );
-    const rightWords = absolute[k + 1]!.filter(
-      (word) => word.start >= overlapStart && word.start <= overlapEnd,
-    );
+    const leftWords = absolute[k]!
+      .filter((word) => word.start >= overlapStart && word.start <= overlapEnd)
+      .sort(byStart);
+    const rightWords = absolute[k + 1]!
+      .filter((word) => word.start >= overlapStart && word.start <= overlapEnd)
+      .sort(byStart);
 
-    type Candidate = { left: AbsoluteWord; right: AbsoluteWord; distance: number };
-    const candidates: Candidate[] = [];
-    for (const left of leftWords) {
-      for (const right of rightWords) {
-        if (normalizeText(left.text) !== normalizeText(right.text)) {
-          continue;
-        }
-        const distance = Math.abs(left.start - right.start);
-        if (distance > MATCH_TOLERANCE_SECONDS) {
-          continue;
-        }
-        candidates.push({ left, right, distance });
-      }
-    }
-
-    candidates.sort(
-      (a, b) =>
-        a.distance - b.distance ||
-        a.left.start - b.left.start ||
-        a.right.start - b.right.start,
-    );
-
-    const matchedLeft = new Set<AbsoluteWord>();
-    const matchedRight = new Set<AbsoluteWord>();
-    for (const candidate of candidates) {
-      if (matchedLeft.has(candidate.left) || matchedRight.has(candidate.right)) {
-        continue;
-      }
-      matchedLeft.add(candidate.left);
-      matchedRight.add(candidate.right);
-      const leftMidpoint = (candidate.left.start + candidate.left.end) / 2;
-      const rightMidpoint = (candidate.right.start + candidate.right.end) / 2;
+    for (const pair of alignOverlapWords(leftWords, rightWords)) {
+      const leftMidpoint = (pair.left.start + pair.left.end) / 2;
+      const rightMidpoint = (pair.right.start + pair.right.end) / 2;
       const leftContext = leftEnd - leftMidpoint;
       const rightContext = rightMidpoint - rightStart;
       if (rightContext > leftContext) {
-        dropped.add(candidate.left);
+        dropped.add(pair.left);
       } else {
-        dropped.add(candidate.right);
+        dropped.add(pair.right);
       }
     }
   }

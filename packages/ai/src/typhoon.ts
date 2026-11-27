@@ -250,17 +250,12 @@ export async function openWavFile(filePath: string): Promise<WavReader> {
           dataStart + startSample * channels * 2,
         );
         if (readLength !== byteLength) {
-          const isLastPartial =
-            endSample === totalSamples && byteLength - readLength < channels * 2;
-          if (!isLastPartial) {
-            throw new AiError(
-              "request-failed",
-              `audio file is truncated: expected ${byteLength} bytes of audio, found ${readLength}`,
-            );
-          }
+          throw new AiError(
+            "request-failed",
+            `audio file is truncated: expected ${byteLength} bytes of audio, found ${readLength}`,
+          );
         }
-        const pcm = readLength === byteLength ? buffer : buffer.subarray(0, readLength);
-        return decodePcm16(pcm, channels);
+        return decodePcm16(buffer, channels);
       },
       async close() {
         await handle.close();
@@ -521,6 +516,13 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
               }
               const window = windows[i]!;
               const slice = await reader.read(window.startSample, window.endSample);
+              const expectedSamples = window.endSample - window.startSample;
+              if (slice.length !== expectedSamples) {
+                throw new AiError(
+                  "request-failed",
+                  `audio file is truncated: expected ${expectedSamples} samples, found ${slice.length}`,
+                );
+              }
               const words = await abortable(
                 windowWorker.run(
                   slice,

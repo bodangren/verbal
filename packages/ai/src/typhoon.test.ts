@@ -750,6 +750,55 @@ describe("createTyphoonProvider rejects a truncated WAV", () => {
       await fs.rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("rejects a last-window read one byte short after the file is truncated", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-trunc-last-"));
+    try {
+      const wavPath = path.join(dir, "trunc-last.wav");
+      await fs.writeFile(wavPath, wavBytes(new Array(1000).fill(0)));
+
+      const reader = await openWavFile(wavPath);
+      try {
+        // Truncate one byte after the header was validated at open.
+        await fs.truncate(wavPath, 44 + 1000 * 2 - 1);
+        // The last window requests the whole signal; one byte is now missing.
+        await expect(reader.read(0, 1000)).rejects.toThrow("audio file is truncated");
+      } finally {
+        await reader.close();
+      }
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an injected reader that returns fewer samples than requested", async () => {
+    const openWav = vi.fn(async () => ({
+      totalSamples: 1000,
+      async read() {
+        return new Float32Array(10);
+      },
+      async close() {},
+    }));
+
+    const provider = createTyphoonProvider(
+      config({
+        openWav,
+        run: async () => ({ stdout: "", stderr: "" }),
+        engineFor: () => ({
+          transcribe: async () => ({
+            text: "w",
+            language: "th",
+            words: [{ text: "w", start: 0, end: 0.1 }],
+          }),
+        }),
+      }),
+    );
+
+    await expect(provider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
+      code: "request-failed",
+      message: expect.stringContaining("audio file is truncated"),
+    });
+  });
 });
 
 describe("createTyphoonProvider streaming memory", () => {
