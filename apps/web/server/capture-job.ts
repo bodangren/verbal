@@ -18,6 +18,12 @@ export type CaptureJobDeps = {
   signal?: AbortSignal;
 };
 
+/** A capture request plus the project save that runs before the job is done. */
+export type CaptureJobRequest = CaptureRequest & {
+  /** Runs after the recording succeeds and before the job is marked done. */
+  onOutput?: (outputPath: string) => Promise<void>;
+};
+
 /**
  * Records one capture and tracks it as a job.
  *
@@ -26,7 +32,7 @@ export type CaptureJobDeps = {
  */
 export async function runCaptureJob(
   deps: CaptureJobDeps,
-  input: { jobId: string; request: CaptureRequest },
+  input: { jobId: string; request: CaptureJobRequest },
 ): Promise<void> {
   const args = buildCaptureArgs(input.request);
   const controller = new AbortController();
@@ -49,6 +55,10 @@ export async function runCaptureJob(
       await deps.unlink(input.request.outputPath).catch(() => undefined);
       return;
     }
+
+    // The project save runs before the job reports done, so a save failure
+    // fails the job instead of leaving a done job with an old reference.
+    await input.request.onOutput?.(input.request.outputPath);
 
     await deps.registry.complete(input.jobId, { outputPath: input.request.outputPath });
   } catch (error) {

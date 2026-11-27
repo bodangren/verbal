@@ -17,6 +17,7 @@ import { failure } from "./api-errors";
 import { PayloadTooLargeError } from "./http";
 import type { ApiResponse } from "./jobs-api";
 import type { NormalizeJobInput } from "./normalize-job";
+import { withProjectLock } from "./project-lock";
 import { addTake, readTakes, TAKES_DIR } from "./take-store";
 import { asRecord, requireAbsolutePath } from "./validation";
 
@@ -134,7 +135,7 @@ export function createTakeApi(overrides: TakeApiDeps) {
           throw new ProjectError("invalid-document", "recording is empty");
         }
 
-        const project = await openProject(fs, root);
+        await openProject(fs, root);
         await nodeFs.mkdir(path.join(root, TAKES_DIR), { recursive: true });
 
         const uploadPath = uploadedTakePath(root, takeId);
@@ -157,12 +158,16 @@ export function createTakeApi(overrides: TakeApiDeps) {
                 createdAt: now().toISOString(),
                 durationSeconds: duration,
               });
-              const updated = await replaceProjectMedia(
-                project,
-                { assetPath: `takes/${fileName}` },
-                { mediaPath: outputPath, stat },
-              );
-              await saveProject(fs, root, updated);
+              await withProjectLock(root, async () => {
+                // Re-read inside the lock: the normalize ran since the fail-fast read.
+                const current = await openProject(fs, root);
+                const updated = await replaceProjectMedia(
+                  current,
+                  { assetPath: `takes/${fileName}` },
+                  { mediaPath: outputPath, stat },
+                );
+                await saveProject(fs, root, updated);
+              });
             },
           })
           .finally(() => {

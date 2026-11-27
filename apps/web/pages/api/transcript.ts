@@ -10,6 +10,7 @@ import {
 } from "@verbal/core";
 import { failure } from "../../server/api-errors";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
+import { withProjectLock } from "../../server/project-lock";
 import { asRecord, requireAbsolutePath } from "../../server/validation";
 
 function isNotFound(error: unknown): boolean {
@@ -51,27 +52,31 @@ export default async function handler(
       const body = asRecord(await readJsonBody(request));
       const root = requireAbsolutePath(body.root, "root");
       const transcript = validateTranscript(body.document);
-      const project = await openProject(nodeFileSystem, root);
-      const projectRevision = project.media?.mediaRevision;
 
-      if (mediaRevisionMismatch(projectRevision, transcript.mediaRevision)) {
+      const stamped = await withProjectLock(root, async () => {
+        const project = await openProject(nodeFileSystem, root);
+        const projectRevision = project.media?.mediaRevision;
+
+        if (mediaRevisionMismatch(projectRevision, transcript.mediaRevision)) {
+          return null;
+        }
+
+        const next =
+          transcript.mediaRevision === undefined && projectRevision !== undefined
+            ? { ...transcript, mediaRevision: projectRevision }
+            : transcript;
+
+        await saveTranscript(nodeFileSystem, projectPaths(root).transcript, next);
+        return next;
+      });
+
+      if (stamped === null) {
         sendJson(response, {
           status: 409,
           body: { error: "The transcript belongs to different media. Transcribe again." },
         });
         return;
       }
-
-      const stamped =
-        transcript.mediaRevision === undefined && projectRevision !== undefined
-          ? { ...transcript, mediaRevision: projectRevision }
-          : transcript;
-
-      await saveTranscript(
-        nodeFileSystem,
-        projectPaths(root).transcript,
-        stamped,
-      );
 
       sendJson(response, { status: 200, body: stamped });
       return;

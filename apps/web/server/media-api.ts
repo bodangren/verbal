@@ -18,6 +18,7 @@ import {
 } from "@verbal/media";
 import { failure } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
+import { withProjectLock } from "./project-lock";
 import { asRecord, requireAbsolutePath } from "./validation";
 import { stat as statFile } from "node:fs/promises";
 
@@ -63,7 +64,7 @@ export function createMediaApi(overrides: Partial<MediaApiDeps> = {}) {
         const sourcePath = requireAbsolutePath(body.sourcePath, "sourcePath");
         const mode: ImportMode = body.mode === "reference" ? "reference" : "copy";
 
-        const project = await openProject(deps.fs, projectRoot);
+        await openProject(deps.fs, projectRoot);
         const result = await deps.importMedia(deps.importFs, { mode, sourcePath, projectRoot });
 
         const mediaPath = result.mode === "copy" ? result.absolutePath : result.externalPath;
@@ -72,11 +73,16 @@ export function createMediaApi(overrides: Partial<MediaApiDeps> = {}) {
             ? { assetPath: result.assetPath }
             : { externalPath: result.externalPath };
 
-        const updated = await replaceProjectMedia(project, newMedia, {
-          mediaPath,
-          stat: deps.stat,
+        const updated = await withProjectLock(projectRoot, async () => {
+          // Re-read inside the lock: the copy ran since the fail-fast read.
+          const current = await openProject(deps.fs, projectRoot);
+          const next = await replaceProjectMedia(current, newMedia, {
+            mediaPath,
+            stat: deps.stat,
+          });
+          await saveProject(deps.fs, projectRoot, next);
+          return next;
         });
-        await saveProject(deps.fs, projectRoot, updated);
 
         return { status: 200, body: { project: updated, import: result } };
       } catch (error) {

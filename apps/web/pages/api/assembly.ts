@@ -8,6 +8,7 @@ import { runAssemblyJob } from "../../server/assembly-job";
 import { spawnCapture } from "../../server/capture-spawn";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
 import { getJobRegistry } from "../../server/registry";
+import { withProjectLock } from "../../server/project-lock";
 import { createScriptApi } from "../../server/script-api";
 import { normalizeTakeId } from "../../server/take-api";
 import { takeMediaPath } from "../../server/take-store";
@@ -91,19 +92,21 @@ export default async function handler(
         height: 720,
         fps: 30,
         onOutput: async () => {
-          const project = await openProject(nodeFileSystem, root);
-          const updated = await replaceProjectMedia(
-            project,
-            { assetPath: `assets/${fileName}` },
-            {
-              mediaPath: outputPath,
-              stat: async (mediaPath) => {
-                const info = await nodeFs.stat(mediaPath);
-                return { size: info.size, mtimeMs: info.mtimeMs };
+          await withProjectLock(root, async () => {
+            const project = await openProject(nodeFileSystem, root);
+            const updated = await replaceProjectMedia(
+              project,
+              { assetPath: `assets/${fileName}` },
+              {
+                mediaPath: outputPath,
+                stat: async (mediaPath) => {
+                  const info = await nodeFs.stat(mediaPath);
+                  return { size: info.size, mtimeMs: info.mtimeMs };
+                },
               },
-            },
-          );
-          await saveProject(nodeFileSystem, root, updated);
+            );
+            await saveProject(nodeFileSystem, root, updated);
+          });
         },
       },
     );

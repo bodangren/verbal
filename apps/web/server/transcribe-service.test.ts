@@ -2,11 +2,22 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { AsrResolution } from "./asr-resolve";
 import type { TranscriptionProvider } from "@verbal/ai";
-import { JobRegistry, computeMediaRevision, createMemoryJobStore, createTranscript, serializeTranscript } from "@verbal/core";
+import {
+  JobRegistry,
+  computeMediaRevision,
+  createMemoryJobStore,
+  createTranscript,
+  openProject,
+  replaceProjectMedia,
+  saveProject,
+  serializeTranscript,
+  type FileSystem,
+} from "@verbal/core";
 import {
   createTranscribeService,
   describeTranscriptionProvider,
 } from "./transcribe-service";
+import { withProjectLock } from "./project-lock";
 import { createFakeFileSystem } from "./test-support";
 
 const ROOT = path.join(path.sep, "tmp", "verbal-local");
@@ -47,6 +58,38 @@ function projectFs(mediaRevision?: string) {
 }
 
 const fakeStat = async () => ({ size: 123, mtimeMs: 456 });
+
+/** Wraps a file system so every operation pauses for the next delay. */
+function delayingFs(inner: FileSystem, delays: readonly number[]): FileSystem {
+  let index = 0;
+  const wait = async () => {
+    const ms = delays[index % delays.length] ?? 0;
+    index += 1;
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  };
+  return {
+    async mkdir(p) {
+      await wait();
+      return inner.mkdir(p);
+    },
+    async readFile(p) {
+      await wait();
+      return inner.readFile(p);
+    },
+    async writeFileDurable(p, d) {
+      await wait();
+      return inner.writeFileDurable(p, d);
+    },
+    async rename(f, t) {
+      await wait();
+      return inner.rename(f, t);
+    },
+    async unlink(p) {
+      await wait();
+      return inner.unlink(p);
+    },
+  };
+}
 
 const stubProvider: TranscriptionProvider = {
   id: "stub",
@@ -254,6 +297,50 @@ describe("transcription media revisions", () => {
       fs.files.get(path.join(ROOT, "transcript.json")) ?? "{}",
     ) as { mediaRevision?: string };
     expect(stored.mediaRevision).toBe(expected);
+  });
+
+  it("drops a transcript save that waited behind a media replacement", async () => {
+    const fs = projectFs("rev-a");
+    const delaying = delayingFs(fs, [2, 1]);
+    let entered = false;
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const provider: TranscriptionProvider = {
+      id: "blocked",
+      async transcribe() {
+        entered = true;
+        await blocked;
+        return { text: "late", language: "en", words: [{ text: "late", start: 0, end: 1 }] };
+      },
+    };
+    const service = createTranscribeService({
+      fs: delaying,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => provider,
+      stat: fakeStat,
+    });
+
+    const running = service.transcribeNow(ROOT);
+    await vi.waitFor(() => expect(entered).toBe(true));
+
+    // A media replacement the save must wait behind in the queue.
+    const replacement = withProjectLock(ROOT, async () => {
+      const project = await openProject(delaying, ROOT);
+      const updated = await replaceProjectMedia(
+        project,
+        { externalPath: "/media/b.mp4" },
+        { mediaPath: "/media/b.mp4", stat: async () => ({ size: 999, mtimeMs: 888 }) },
+      );
+      await saveProject(delaying, ROOT, updated);
+    });
+
+    release();
+    await replacement;
+    await expect(running).rejects.toThrow(/stale/i);
+    expect(fs.files.has(path.join(ROOT, "transcript.json"))).toBe(false);
   });
 
   it("stamps a legacy project first, so a later import drops the result", async () => {

@@ -56,4 +56,49 @@ describe("runCaptureJob", () => {
 
     expect(registry.get(job.id)?.status).toBe("done");
   });
+
+  it("runs onOutput after the recording and before the job is done", async () => {
+    const { registry, job } = await makeJob();
+    const spawn = vi.fn(async () => undefined);
+    const order: string[] = [];
+
+    await runCaptureJob(
+      { registry, spawn, unlink: vi.fn(async () => undefined) },
+      {
+        jobId: job.id,
+        request: {
+          outputPath: "/out/cap.mp4",
+          durationSeconds: 5,
+          onOutput: async () => {
+            order.push("save");
+            expect(registry.get(job.id)?.status).toBe("running");
+          },
+        },
+      },
+    );
+
+    expect(order).toEqual(["save"]);
+    expect(registry.get(job.id)).toMatchObject({ status: "done" });
+  });
+
+  it("fails the job when the project save throws", async () => {
+    const { registry, job } = await makeJob();
+    const spawn = vi.fn(async () => undefined);
+
+    await runCaptureJob(
+      { registry, spawn, unlink: vi.fn(async () => undefined) },
+      {
+        jobId: job.id,
+        request: {
+          outputPath: "/out/cap.mp4",
+          durationSeconds: 5,
+          onOutput: async () => {
+            throw new Error("disk full");
+          },
+        },
+      },
+    );
+
+    expect(registry.get(job.id)).toMatchObject({ status: "failed", error: "disk full" });
+  });
 });

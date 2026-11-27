@@ -26,6 +26,7 @@ import {
 } from "@verbal/core";
 import { resolveAsr, type AsrResolution } from "./asr-resolve";
 import { getJobRegistry, verbalDataDir } from "./registry";
+import { withProjectLock } from "./project-lock";
 import { runTranscriptionJob } from "./transcribe-job";
 import { stat as statFile } from "node:fs/promises";
 
@@ -187,28 +188,30 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     mediaPath: string;
     startRevision: string;
   }> {
-    const startProject = await openProject(deps.fs, root);
-    const mediaPath = resolveMediaPath(startProject, root);
-    if (mediaPath === null) {
-      throw new ProjectError("invalid-document", "project has no media");
-    }
+    return withProjectLock(root, async () => {
+      const startProject = await openProject(deps.fs, root);
+      const mediaPath = resolveMediaPath(startProject, root);
+      if (mediaPath === null) {
+        throw new ProjectError("invalid-document", "project has no media");
+      }
 
-    const media = startProject.media;
-    if (media === undefined) {
-      throw new ProjectError("invalid-document", "project has no media");
-    }
+      const media = startProject.media;
+      if (media === undefined) {
+        throw new ProjectError("invalid-document", "project has no media");
+      }
 
-    const existing = media.mediaRevision;
-    if (existing !== undefined) {
-      return { mediaPath, startRevision: existing };
-    }
+      const existing = media.mediaRevision;
+      if (existing !== undefined) {
+        return { mediaPath, startRevision: existing };
+      }
 
-    const startRevision = await computeMediaRevision({ mediaPath, stat: deps.stat });
-    await saveProject(deps.fs, root, {
-      ...startProject,
-      media: { ...media, mediaRevision: startRevision },
+      const startRevision = await computeMediaRevision({ mediaPath, stat: deps.stat });
+      await saveProject(deps.fs, root, {
+        ...startProject,
+        media: { ...media, mediaRevision: startRevision },
+      });
+      return { mediaPath, startRevision };
     });
-    return { mediaPath, startRevision };
   }
 
   /**
@@ -222,20 +225,22 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     startRevision: string,
     result: TranscriptionResult,
   ): Promise<number> {
-    const currentProject = await openProject(deps.fs, root);
-    const currentRevision = currentProject.media?.mediaRevision;
+    return withProjectLock(root, async () => {
+      const currentProject = await openProject(deps.fs, root);
+      const currentRevision = currentProject.media?.mediaRevision;
 
-    if (mediaRevisionMismatch(startRevision, currentRevision)) {
-      throw new Error("transcription is stale: media changed during transcription");
-    }
+      if (mediaRevisionMismatch(startRevision, currentRevision)) {
+        throw new Error("transcription is stale: media changed during transcription");
+      }
 
-    await saveTranscript(
-      deps.fs,
-      projectPaths(root).transcript,
-      { ...createTranscript(result.words), mediaRevision: startRevision },
-    );
+      await saveTranscript(
+        deps.fs,
+        projectPaths(root).transcript,
+        { ...createTranscript(result.words), mediaRevision: startRevision },
+      );
 
-    return result.words.length;
+      return result.words.length;
+    });
   }
 
   return {
