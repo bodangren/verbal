@@ -26,8 +26,8 @@ describe("planAssembly", () => {
   it("brackets scenes with a title and an outro", () => {
     expect(planAssembly({ scenes, brand })).toEqual([
       { kind: "brand", role: "title", durationSeconds: 3, text: "Title" },
-      { kind: "scene", sceneId: "s1", durationSeconds: 2 },
-      { kind: "scene", sceneId: "s2", durationSeconds: 1 },
+      { kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 0 },
+      { kind: "scene", sceneId: "s2", durationSeconds: 1, startSeconds: 2 },
       { kind: "brand", role: "outro", durationSeconds: 3, text: "Outro", subtitle: "Name" },
     ]);
   });
@@ -88,8 +88,8 @@ describe("planAssembly", () => {
 
   it("omits brand elements when asked", () => {
     expect(planAssembly({ scenes, brand, includeBrand: false })).toEqual([
-      { kind: "scene", sceneId: "s1", durationSeconds: 2 },
-      { kind: "scene", sceneId: "s2", durationSeconds: 1 },
+      { kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 0 },
+      { kind: "scene", sceneId: "s2", durationSeconds: 1, startSeconds: 2 },
     ]);
   });
 
@@ -103,6 +103,13 @@ describe("planAssembly", () => {
 
     expect(plan[0]).toMatchObject({ durationSeconds: 1.5 });
     expect(plan.at(-1)).toMatchObject({ durationSeconds: 2 });
+  });
+
+  it("carries the scene start on each scene step", () => {
+    expect(planAssembly({ scenes, brand, includeBrand: false })).toEqual([
+      { kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 0 },
+      { kind: "scene", sceneId: "s2", durationSeconds: 1, startSeconds: 2 },
+    ]);
   });
 });
 

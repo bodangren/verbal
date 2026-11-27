@@ -117,4 +117,29 @@ describe("buildCompositeArgs", () => {
 
     expect(graph).toContain("loudnorm=I=-23");
   });
+
+  it("seeks the speaker input to the scene start", () => {
+    const args = buildCompositeArgs(
+      request({ speaker: { input: "/media/speaker.mp4", seekSeconds: 30 } }),
+    );
+
+    const seek = args.indexOf("-ss");
+    const speakerIndex = args.indexOf("/media/speaker.mp4");
+
+    expect(seek).toBeGreaterThanOrEqual(0);
+    expect(args[seek + 1]).toBe("30.000");
+    expect(args[seek + 2]).toBe("-i");
+    expect(speakerIndex).toBe(seek + 3);
+    expect(args.indexOf("/cache/abc/frame-%04d.png")).toBeLessThan(seek);
+  });
+
+  it("opens the speaker input without a seek by default", () => {
+    expect(buildCompositeArgs(request())).not.toContain("-ss");
+  });
+
+  it("rejects a negative speaker seek", () => {
+    expect(() =>
+      buildCompositeArgs(request({ speaker: { input: "/media/speaker.mp4", seekSeconds: -1 } })),
+    ).toThrow(CompositeError);
+  });
 });

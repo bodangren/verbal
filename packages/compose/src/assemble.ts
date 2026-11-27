@@ -1,7 +1,7 @@
 import type { BrandKit } from "./brand";
 
 export type AssemblyStep =
-  | { kind: "scene"; sceneId: string; durationSeconds: number }
+  | { kind: "scene"; sceneId: string; durationSeconds: number; startSeconds?: number }
   | {
       kind: "brand";
       role: "title" | "outro";
@@ -51,7 +51,8 @@ function formatContact(contact: BrandKit["contact"]): string | undefined {
  *
  * Brand text travels with the steps, so a renderer never has to look the
  * brand kit up again. The contact card rides on the outro. Empty cards are
- * skipped.
+ * skipped. Each scene step carries its source start, so composites seek the
+ * speaker to the anchored time instead of playing it from zero.
  */
 export function planAssembly(input: PlanAssemblyInput): AssemblyStep[] {
   const steps: AssemblyStep[] = [];
@@ -76,7 +77,12 @@ export function planAssembly(input: PlanAssemblyInput): AssemblyStep[] {
         `scene ${scene.sceneId} has a non-positive duration`,
       );
     }
-    steps.push({ kind: "scene", sceneId: scene.sceneId, durationSeconds: duration });
+    steps.push({
+      kind: "scene",
+      sceneId: scene.sceneId,
+      durationSeconds: duration,
+      startSeconds: scene.startSeconds,
+    });
   }
 
   if (input.includeBrand !== false) {

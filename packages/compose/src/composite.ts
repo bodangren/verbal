@@ -7,6 +7,8 @@ export type CompositeSource = {
   frameRate?: number;
   /** Loop a single still image for the whole duration. */
   loop?: boolean;
+  /** Seconds to seek the input before reading it; omitted means no seek. */
+  seekSeconds?: number;
 };
 
 export type CompositeKey = {
@@ -70,9 +72,18 @@ function sourceArgs(source: CompositeSource): string[] {
   if (source.frameRate !== undefined) {
     args.push("-framerate", String(source.frameRate));
   }
+  if (source.seekSeconds !== undefined && source.seekSeconds > 0) {
+    args.push("-ss", source.seekSeconds.toFixed(3));
+  }
 
   args.push("-i", source.input);
   return args;
+}
+
+function checkSeek(source: CompositeSource, name: string): void {
+  if (source.seekSeconds !== undefined && (!Number.isFinite(source.seekSeconds) || source.seekSeconds < 0)) {
+    throw new CompositeError("invalid-request", `${name} seekSeconds must be zero or positive`);
+  }
 }
 
 function validate(request: CompositeRequest): void {
@@ -94,13 +105,16 @@ function validate(request: CompositeRequest): void {
   if (request.slide.input.trim() === "" || request.speaker.input.trim() === "") {
     throw new CompositeError("invalid-request", "slide and speaker inputs are required");
   }
+  checkSeek(request.slide, "slide");
+  checkSeek(request.speaker, "speaker");
 }
 
 /**
  * Builds the ffmpeg argv for a composite.
  *
  * Inputs are ordered slide (0), speaker (1), music (2). Paths appear only in
- * argv; the filtergraph carries timestamps, labels, and numbers.
+ * argv; the filtergraph carries timestamps, labels, and numbers. A speaker
+ * seek lands before its `-i`, so composites play the anchored source time.
  */
 export function buildCompositeArgs(request: CompositeRequest): string[] {
   validate(request);

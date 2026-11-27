@@ -79,6 +79,12 @@ function slideFor(
   return { sceneId: step.sceneId, template: scene.template, props: scene.props ?? {} };
 }
 
+/** Seeks the speaker to the scene start; brand steps need no seek. */
+function speakerFor(step: AssemblyStep, input: string): { input: string; seekSeconds?: number } {
+  const start = step.kind === "scene" ? (step.startSeconds ?? 0) : 0;
+  return start > 0 ? { input, seekSeconds: start } : { input };
+}
+
 /**
  * Builds the concrete step renderer used by assembly.
  *
@@ -146,7 +152,8 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
     }
 
     // An asset-backed scene skips the renderer entirely: the image already
-    // exists, so it only needs the composite.
+    // exists, so it only needs the composite. The speaker starts at the
+    // scene start, so the slide plays the anchored speech.
     if (scene?.assetPath !== undefined) {
       const assetRequest: CompositeRequest = {
         outputPath,
@@ -159,7 +166,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           scene.assetKind === "video"
             ? { input: scene.assetPath }
             : { input: scene.assetPath, loop: true },
-        speaker: { input: deps.speaker.input },
+        speaker: speakerFor(step, deps.speaker.input),
         key: {},
         audio: deps.audio,
         ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),
@@ -203,7 +210,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
         input: path.join(outcome.directory, outcome.manifest.pattern),
         frameRate: outcome.manifest.fps,
       },
-      speaker: { input: deps.speaker.input },
+      speaker: speakerFor(step, deps.speaker.input),
       key: {},
       audio: deps.audio,
       ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),

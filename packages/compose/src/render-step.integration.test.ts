@@ -140,3 +140,138 @@ describe.skipIf(!enabled || !existsSync(rendererPath) || !hasBinary("ffmpeg"))(
     }, 180_000);
   },
 );
+
+/** Reads the `mean_volume` line that `volumedetect` prints to stderr. */
+function meanVolumeDb(stderr: string): number {
+  const match = stderr.match(/mean_volume:\s*(-inf|-?\d+(?:\.\d+)?)\s*dB/);
+  if (match === null || match[1] === undefined) {
+    throw new Error("volumedetect reported no mean_volume");
+  }
+  return match[1] === "-inf" ? -100 : Number(match[1]);
+}
+
+describe.skipIf(!hasBinary("ffmpeg"))("slide scene seeks the speaker", () => {
+  let directory = "";
+  let slide = "";
+  let speaker = "";
+
+  beforeAll(async () => {
+    directory = await mkdtemp(path.join(tmpdir(), "verbal-slide-seek-"));
+    slide = path.join(directory, "slide.png");
+    speaker = path.join(directory, "speaker.mp4");
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x101014:s=320x180",
+      "-frames:v",
+      "1",
+      slide,
+    ]);
+
+    // The speaker plays 440 Hz for 30 s, then 880 Hz for 5 s.
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x00FF00:s=320x180:d=35:r=10",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:duration=30",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=880:duration=5",
+      "-filter_complex",
+      "[1:a][2:a]concat=n=2:v=0:a=1[a]",
+      "-map",
+      "0:v",
+      "-map",
+      "[a]",
+      "-c:v",
+      "mpeg4",
+      "-q:v",
+      "5",
+      "-c:a",
+      "aac",
+      "-shortest",
+      speaker,
+    ]);
+  }, 120_000);
+
+  afterAll(async () => {
+    if (directory !== "") {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("plays the 30 s tone under a slide anchored at 30 s", async () => {
+    const plan = planAssembly({
+      scenes: [{ sceneId: "slide30", startSeconds: 30, endSeconds: 32 }],
+      brand: {
+        title: { text: "" },
+        outro: { text: "" },
+        contact: { name: "" },
+        lowerThird: { name: "" },
+        loudnessLufs: -16,
+      },
+      includeBrand: false,
+    });
+
+    const step = plan[0];
+    if (step === undefined) {
+      throw new Error("the plan holds one scene");
+    }
+
+    const render = createStepRenderer({
+      renderer: {
+        render: async () => {
+          throw new Error("asset scenes must not render a slide");
+        },
+      },
+      cache: createFileSlideCache(nodeFileSystem, path.join(directory, "cache")),
+      run: runCommand,
+      workDirectory: directory,
+      geometry: { fps: 10, width: 320, height: 180 },
+      speaker: { input: speaker },
+      audio: { loudnessLufs: -16 },
+      scenes: new Map([["slide30", { assetPath: slide }]]),
+      codecs: { videoCodec: "mpeg4", videoArgs: ["-q:v", "5"] },
+    });
+
+    const file = await render(step, 0);
+    expect(file).toBe(path.join(directory, "step-000.mp4"));
+
+    const info = await probeMedia(runCommand, file);
+    expect(info.durationSeconds ?? 0).toBeCloseTo(2, 0);
+
+    // 880 Hz survives a 600 Hz highpass and dies in a 600 Hz lowpass;
+    // 440 Hz does the opposite. The segment must look like 880 Hz.
+    const high = await runCommand("ffmpeg", [
+      "-hide_banner",
+      "-i",
+      file,
+      "-af",
+      "highpass=f=600,volumedetect",
+      "-f",
+      "null",
+      "-",
+    ]);
+    const low = await runCommand("ffmpeg", [
+      "-hide_banner",
+      "-i",
+      file,
+      "-af",
+      "lowpass=f=600,volumedetect",
+      "-f",
+      "null",
+      "-",
+    ]);
+
+    expect(meanVolumeDb(high.stderr)).toBeGreaterThan(meanVolumeDb(low.stderr) + 6);
+  }, 180_000);
+});

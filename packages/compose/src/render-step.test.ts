@@ -162,4 +162,46 @@ describe("createStepRenderer", () => {
     expect(args).not.toContain("-loop");
     expect(args).toContain("/project/assets/generated/clip");
   });
+
+  it("seeks the speaker to the scene start for a slide scene", async () => {
+    const { deps, run } = makeDeps();
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 30 }, 0);
+
+    const args = argsOf(run);
+    const seek = args.indexOf("-ss");
+    const speakerIndex = args.indexOf("/media/speaker.mp4");
+
+    expect(seek).toBeGreaterThanOrEqual(0);
+    expect(args[seek + 1]).toBe("30.000");
+    expect(speakerIndex).toBeGreaterThan(seek);
+  });
+
+  it("seeks the speaker to the scene start for an asset scene", async () => {
+    const { deps, renderer, run } = makeDeps({
+      scenes: new Map([["img", { assetPath: "/project/assets/generated/abc" }]]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "img", durationSeconds: 2, startSeconds: 30 }, 0);
+
+    expect(renderer.render).not.toHaveBeenCalled();
+    const args = argsOf(run);
+    const seek = args.indexOf("-ss");
+    const speakerIndex = args.indexOf("/media/speaker.mp4");
+
+    expect(seek).toBeGreaterThanOrEqual(0);
+    expect(args[seek + 1]).toBe("30.000");
+    expect(speakerIndex).toBeGreaterThan(seek);
+  });
+
+  it("opens the speaker without a seek when the step has no start", async () => {
+    const { deps, run } = makeDeps();
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "s1", durationSeconds: 1 }, 1);
+
+    expect(argsOf(run)).not.toContain("-ss");
+  });
 });
