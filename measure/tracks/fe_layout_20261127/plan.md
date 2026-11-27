@@ -81,6 +81,11 @@ The independent acceptance review (real browser, 54 screenshots) rejected or con
       Files: `apps/web/styles/globals.css`, `apps/web/components/EditWorkspace.tsx`, `apps/web/components/PlaybackScreen.tsx`, tests.
       Red: Gate rule: at 1024x700 and 360x740 the Delete, Restore and Undo buttons are inside the viewport without scrolling the stage. Test: the player collapses by default under a short or narrow viewport (the F01 recommendation) and the toggle still works.
       Green: Make the edit toolbar sticky at the bottom of the stage; default `playerCollapsed` from `matchMedia('(max-height: 800px), (max-width: 900px)')` read through an external store (no state-setting effect).
+- [x] **L6c** (L6b follow-up, orchestrator): The e2e walkthrough expands the collapsed player before it uses the waveform. d3d7f6a
+      Evidence: `npm run e2e` PASS with no console or page errors after the player is expanded.
+      Files: `tools/e2e/walkthrough.mjs`.
+      Red: `npm run e2e` failed at `playback: waveform seek` because L6b starts the player collapsed on a short viewport and hides the waveform.
+      Green: click `Expand Player` when it is present, as a user does.
 - [x] **L7b** (M7, L6, L7 (Opus: verified)): Correct the records and the focus-order note. 6e82d49
       Evidence: 296 component, lib and hook tests green; Red showed no link and no CSS rule. The T3 note now says stage, inspector, browser. Check in a browser: the focus-visible look and the six-stop budget.
       wave 3. Worker: `opencode-go/hy4-flash-free`.

@@ -42,27 +42,27 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
 
 > The Astra backend review ([review-backend-2026-11-27.md](./review-backend-2026-11-27.md)) found 1 Blocker, 10 High and 7 Medium issues. The five tracks below fix them. They also roll up the four older security and integrity tracks, which are archived under `superseded_backend_review_20261127_*`.
 
-- [~] **Track: Export Safety** [created: 2026-11-27]
+- [ ] **Track: Export Safety** [created: 2026-11-27]
   *Focus: Never delete the source video, isolate concurrent exports, contain storyboard paths, bound upload size; rolls up Local Safety Boundaries and the export half of Save and Export Integrity.*
   *Status: In progress. Findings B01, H05, H06, M03; rolled-up loopback contract, schemas, filtergraph escaper, provenance.*
   *Link: [./tracks/export_safety_20261127](./tracks/export_safety_20261127/)*
 
-- [~] **Track: Export Fidelity** [created: 2026-11-27]
+- [ ] **Track: Export Fidelity** [created: 2026-11-27]
   *Focus: Make every export path play what the Edit view shows: reorder, silence, slide offsets, overlaps, audio-only; rolls up Edit Timeline Integrity and measured export reuse.*
   *Status: Not started. Findings H01, H03, M01, M02, H10; depends on Export Safety for the shared export route.*
   *Link: [./tracks/export_fidelity_20261127](./tracks/export_fidelity_20261127/)*
 
-- [~] **Track: Job Integrity** [created: 2026-11-27]
+- [ ] **Track: Job Integrity** [created: 2026-11-27]
   *Focus: Cancellation stops real work, saved job state never goes backwards, a new media file invalidates the old transcript; rolls up Job Lifecycle and Events and the save coordinator.*
   *Status: Not started. Findings H04, H09, M04; rolled-up save coordinator, slow work in jobs, SSE events.*
   *Link: [./tracks/job_integrity_20261127](./tracks/job_integrity_20261127/)*
 
-- [~] **Track: ASR Hardening** [created: 2026-11-27]
+- [ ] **Track: ASR Hardening** [created: 2026-11-27]
   *Focus: Thai-safe cleanup, correct language choice, private scratch files, resumable model download, audio-only cloud upload.*
   *Status: Not started. Findings H02, M06, M05, M07, H08; no dependency.*
   *Link: [./tracks/asr_hardening_20261127](./tracks/asr_hardening_20261127/)*
 
-- [~] **Track: Typhoon Windowed Inference** [created: 2026-11-27]
+- [ ] **Track: Typhoon Windowed Inference** [created: 2026-11-27]
   *Focus: Stop Typhoon from blocking the API process and holding a whole hour of features in memory.*
   *Status: Not started. Finding H07; depends on ASR Hardening.*
   *Link: [./tracks/typhoon_windowed_20261127](./tracks/typhoon_windowed_20261127/)*
@@ -76,17 +76,17 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Not started. Findings F01-F05, F11-F14, F19, F20; no dependency.*
   *Link: [./tracks/fe_layout_20261127](./tracks/fe_layout_20261127/)*
 
-- [~] **Track: Frontend Transcript as a Document** [created: 2026-11-27]
+- [ ] **Track: Frontend Transcript as a Document** [created: 2026-11-27]
   *Focus: One tab stop with a caret, restore of removed words, honest feedback after each edit, safe re-transcription, a fast word list; rolls up Transcript as a Document.*
   *Status: Not started. Findings F06-F09, F17; starts after the first Layout tasks.*
   *Link: [./tracks/fe_transcript_20261127](./tracks/fe_transcript_20261127/)*
 
-- [~] **Track: Frontend Export Flow and Dialogs** [created: 2026-11-27]
+- [ ] **Track: Frontend Export Flow and Dialogs** [created: 2026-11-27]
   *Focus: A truthful export panel with progress and a busy state, one name for the flow, accessible dialogs, reachable error detail; rolls up Deliver Strip and Export Panel.*
   *Status: Not started. Findings F10, F15, F16, F21; the export panel switches to job events after Job Integrity J6.*
   *Link: [./tracks/fe_export_flow_20261127](./tracks/fe_export_flow_20261127/)*
 
-- [~] **Track: Frontend Page Structure** [created: 2026-11-27]
+- [ ] **Track: Frontend Page Structure** [created: 2026-11-27]
   *Focus: Split the 2,576-line page into workspaces and hooks, cut the state held in Home, and test each interactive path.*
   *Status: Not started. Findings F17-F19; runs last, after the other three frontend tracks.*
   *Link: [./tracks/fe_page_structure_20261127](./tracks/fe_page_structure_20261127/)*
