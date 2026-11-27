@@ -187,4 +187,23 @@ describe("assembleStoryboard", () => {
     ).rejects.toThrow(/render failed/);
     expect(concat).not.toHaveBeenCalled();
   });
+
+  it("concatenates into the provided output path, including a partial path", async () => {
+    const concat = vi.fn(async () => undefined);
+    const deps: AssemblyDeps = {
+      renderStep: async (step) =>
+        `/tmp/${step.kind === "scene" ? step.sceneId : step.role}.mp4`,
+      concat,
+    };
+
+    const partial = "/out/final.job.partial.mp4";
+    const result = await assembleStoryboard(
+      deps,
+      planAssembly({ scenes, brand, includeBrand: false }),
+      partial,
+    );
+
+    expect(concat).toHaveBeenCalledWith(["/tmp/s1.mp4", "/tmp/s2.mp4"], partial);
+    expect(result.outputPath).toBe(partial);
+  });
 });

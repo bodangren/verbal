@@ -28,6 +28,8 @@ describe("runStoryboardExport", () => {
       outputPath: "/out/final.mp4",
       assemble,
       writeProvenance,
+      rename: vi.fn(async () => undefined),
+      unlink: vi.fn(async () => undefined),
     });
 
     expect(assemble).toHaveBeenCalledTimes(1);
@@ -42,8 +44,55 @@ describe("runStoryboardExport", () => {
     });
   });
 
+  it("concatenates into a partial path and renames it over the destination", async () => {
+    const { registry, job } = await makeJob();
+    const assemble = vi.fn(async () => ({ files: [] }));
+    const writeProvenance = vi.fn(async () => "/out/manifest.json");
+    const rename = vi.fn(async () => undefined);
+
+    await runStoryboardExport({
+      registry,
+      jobId: job.id,
+      plan,
+      outputPath: "/out/final.mp4",
+      assemble,
+      writeProvenance,
+      rename,
+      unlink: vi.fn(async () => undefined),
+    });
+
+    expect(assemble).toHaveBeenCalledWith(plan, `/out/final.${job.id}.partial.mp4`, expect.anything(), expect.anything());
+    expect(rename).toHaveBeenCalledWith(`/out/final.${job.id}.partial.mp4`, "/out/final.mp4");
+  });
+
+  it("renames before it writes provenance", async () => {
+    const { registry, job } = await makeJob();
+    const events: string[] = [];
+    const rename = vi.fn(async () => {
+      events.push("rename");
+    });
+    const writeProvenance = vi.fn(async () => {
+      events.push("provenance");
+      return "/out/manifest.json";
+    });
+
+    await runStoryboardExport({
+      registry,
+      jobId: job.id,
+      plan,
+      outputPath: "/out/final.mp4",
+      assemble: vi.fn(async () => ({ files: [] })),
+      writeProvenance,
+      rename,
+      unlink: vi.fn(async () => undefined),
+    });
+
+    expect(events).toEqual(["rename", "provenance"]);
+  });
+
   it("fails the job when assembly fails", async () => {
     const { registry, job } = await makeJob();
+    const unlink = vi.fn(async () => undefined);
 
     await runStoryboardExport({
       registry,
@@ -54,17 +103,20 @@ describe("runStoryboardExport", () => {
         throw new Error("concat failed");
       },
       writeProvenance: async () => "/out/manifest.json",
+      unlink,
     });
 
     expect(registry.get(job.id)).toMatchObject({
       status: "failed",
       error: "concat failed",
     });
+    expect(unlink).toHaveBeenCalledWith(`/out/final.${job.id}.partial.mp4`);
   });
 
   it("does not write provenance when assembly fails", async () => {
     const { registry, job } = await makeJob();
     const writeProvenance = vi.fn(async () => "/out/manifest.json");
+    const rename = vi.fn(async () => undefined);
 
     await runStoryboardExport({
       registry,
@@ -75,8 +127,11 @@ describe("runStoryboardExport", () => {
         throw new Error("nope");
       },
       writeProvenance,
+      rename,
+      unlink: vi.fn(async () => undefined),
     });
 
     expect(writeProvenance).not.toHaveBeenCalled();
+    expect(rename).not.toHaveBeenCalled();
   });
 });

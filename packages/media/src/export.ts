@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { promises as nodeFs } from "node:fs";
-import { dirname, basename, extname, resolve } from "node:path";
+import { dirname, basename, resolve } from "node:path";
+import { publishAtomically } from "./publish";
 import type { CutRange } from "./cutlist";
 import type { TimelineItem } from "./timeline";
 
@@ -361,20 +362,25 @@ export async function resolveExportDestination(
   realpath: Realpath = nodeFs.realpath,
 ): Promise<string> {
   const [sourceReal, destinationReal] = await Promise.all([
-    realpath(resolve(source)),
+    realpath(resolve(source)).catch(() => resolve(source)),
     realpath(resolve(destination)).catch(() =>
-      realpath(dirname(resolve(destination))).then((parent) =>
-        resolve(parent, basename(destination)),
-      ),
+      realpath(dirname(resolve(destination)))
+        .catch(() => dirname(resolve(destination)))
+        .then((parent) => resolve(parent, basename(destination))),
     ),
   ]);
   const sameRealPath = sourceReal === destinationReal;
-  const sameInode = await nodeFs.stat(resolve(source)).then(async (sourceStat) => {
-    const destinationStat = await nodeFs.stat(resolve(destination)).catch(() => undefined);
-    return destinationStat !== undefined &&
-      sourceStat.dev === destinationStat.dev &&
-      sourceStat.ino === destinationStat.ino;
-  });
+  const sameInode = await nodeFs
+    .stat(resolve(source))
+    .then(async (sourceStat) => {
+      const destinationStat = await nodeFs.stat(resolve(destination)).catch(() => undefined);
+      return (
+        destinationStat !== undefined &&
+        sourceStat.dev === destinationStat.dev &&
+        sourceStat.ino === destinationStat.ino
+      );
+    })
+    .catch(() => false);
   if (sameRealPath || sameInode) {
     throw new ExportError("invalid-option", "outputPath must not be the source video");
   }
@@ -388,10 +394,6 @@ export async function resolveExportDestination(
  * like a finished one.
  */
 export async function runExport(input: RunExportInput): Promise<void> {
-  const extension = extname(input.outputPath);
-  const stem = extension === "" ? input.outputPath : input.outputPath.slice(0, -extension.length);
-  const partialPath = `${stem}.${input.jobId ?? randomUUID()}.partial${extension}`;
-  const args = buildExportArgs({ ...input, outputPath: partialPath });
   const expectedSeconds = resolveItems(input).reduce(
     (total, item) =>
       total + (item.kind === "video" ? item.endSeconds - item.startSeconds : item.durationSeconds),
@@ -401,21 +403,18 @@ export async function runExport(input: RunExportInput): Promise<void> {
   const onProgress = input.onProgress ?? (() => undefined);
   const feed = createProgressParser(expectedSeconds, onProgress);
   const spawner = input.spawner ?? spawnProcess;
-  const rename = input.rename ?? (async (from: string, to: string) => nodeFs.rename(from, to));
-  const unlink =
-    input.unlink ??
-    (async (path: string) => {
-      await nodeFs.unlink(path);
-    });
 
-  try {
-    await spawner("ffmpeg", args, {
-      signal: input.signal,
-      onStdout: feed,
-    });
-    await rename(partialPath, input.outputPath);
-  } catch (error) {
-    await unlink(partialPath).catch(() => undefined);
-    throw error;
-  }
+  await publishAtomically({
+    outputPath: input.outputPath,
+    jobId: input.jobId ?? randomUUID(),
+    write: async (partialPath) => {
+      const args = buildExportArgs({ ...input, outputPath: partialPath });
+      await spawner("ffmpeg", args, {
+        signal: input.signal,
+        onStdout: feed,
+      });
+    },
+    rename: input.rename,
+    unlink: input.unlink,
+  });
 }

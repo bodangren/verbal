@@ -1,4 +1,6 @@
 import path from "node:path";
+import { link, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { describe, expect, it, vi } from "vitest";
 import {
   JobRegistry,
@@ -63,6 +65,19 @@ async function seed(fs: ReturnType<typeof createFakeFileSystem>, root: string) {
       { text: "two", start: 1, end: 2 },
     ]),
   );
+}
+
+/** Mocks ffmpeg for the concat step by writing the output file it names. */
+function concatWritingRun(fs: ReturnType<typeof createFakeFileSystem>) {
+  return async (_file: string, args: readonly string[]) => {
+    const f = args.indexOf("-f");
+    if (f !== -1 && args[f + 1] === "concat") {
+      const out = args[args.length - 1];
+      if (out !== undefined) {
+        await fs.writeFileDurable(out, "assembled");
+      }
+    }
+  };
 }
 
 describe("storyboard document API", () => {
@@ -220,7 +235,7 @@ describe("storyboard export API", () => {
 
     const registry = await JobRegistry.open(createMemoryJobStore(), now);
     const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
-    const run = vi.fn(async () => undefined);
+    const run = vi.fn(concatWritingRun(fs));
 
     return { fs, root, registry, renderer, run };
   }
@@ -261,7 +276,7 @@ describe("storyboard export API", () => {
     await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
     const registry = await JobRegistry.open(createMemoryJobStore(), now);
     const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
-    const run = vi.fn(async () => undefined);
+    const run = vi.fn(concatWritingRun(fs));
     return { fs, root, registry, renderer, run };
   }
 
@@ -889,6 +904,10 @@ describe("storyboard export API", () => {
         if (failConcat) {
           throw new Error("concat failed");
         }
+        const out = args[args.length - 1];
+        if (out !== undefined) {
+          await fs.writeFileDurable(out, "assembled");
+        }
       });
       return { run, concatLists };
     }
@@ -1028,7 +1047,7 @@ describe("storyboard export API", () => {
       await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
       const registry = await JobRegistry.open(createMemoryJobStore(), now);
       const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
-      const run = vi.fn(async () => undefined);
+      const run = vi.fn(concatWritingRun(fs));
 
       const response = await startStoryboardExport(
         { fs, registry, renderer, run, now, rendererReady: () => true, probe, realpath: identity },
@@ -1079,5 +1098,180 @@ describe("storyboard export API", () => {
       expect(status).toBe("done");
       expect(filters.some((filter) => filter.includes("[1:a]"))).toBe(true);
     });
+  });
+});
+
+describe("storyboard export atomic publication", () => {
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function waitForJob(registry: JobRegistry, jobId: string) {
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const status = registry.get(jobId)?.status;
+      if (status === "done" || status === "failed") {
+        return;
+      }
+      await delay(10);
+    }
+  }
+
+  async function externalProject(directory: string) {
+    const source = path.join(directory, "take.mp4");
+    await writeFile(source, "source");
+    const fs = createFakeFileSystem();
+    const root = "/projects/demo";
+    await seed(fs, root);
+    const project = await openProject(fs, root);
+    await saveProject(fs, root, { ...project, media: { externalPath: source } });
+    await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+    return { fs, root, registry, renderer, source };
+  }
+
+  it("rejects a destination equal to the source before creating a job", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "sb-alias-"));
+    try {
+      const { fs, root, registry, renderer, source } = await externalProject(directory);
+      const run = vi.fn(async () => undefined);
+      const create = vi.spyOn(registry, "create");
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true },
+        { root, outputPath: source, brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be the source video",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a destination symlink to the source before creating a job", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "sb-alias-"));
+    try {
+      const { fs, root, registry, renderer, source } = await externalProject(directory);
+      const alias = path.join(directory, "alias.mp4");
+      await symlink(source, alias);
+      const run = vi.fn(async () => undefined);
+      const create = vi.spyOn(registry, "create");
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true },
+        { root, outputPath: alias, brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be the source video",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a destination hardlink to the source before creating a job", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "sb-alias-"));
+    try {
+      const { fs, root, registry, renderer, source } = await externalProject(directory);
+      const alias = path.join(directory, "hard.mp4");
+      await link(source, alias);
+      const run = vi.fn(async () => undefined);
+      const create = vi.spyOn(registry, "create");
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true },
+        { root, outputPath: alias, brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be the source video",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves a pre-existing destination byte-identical and no partial when the concat fails", async () => {
+    const fs = createFakeFileSystem();
+    const root = "/projects/demo";
+    await seed(fs, root);
+    const project = await openProject(fs, root);
+    await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+    await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+    const destination = "/out/final.mp4";
+    fs.files.set(destination, "old-bytes");
+
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+    const run = vi.fn(async (_file: string, args: readonly string[]) => {
+      if (args[args.indexOf("-f") + 1] === "concat") {
+        const out = args[args.length - 1];
+        if (out !== undefined) {
+          await fs.writeFileDurable(out, "corrupt-bytes");
+        }
+        throw new Error("concat failed");
+      }
+    });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: destination, brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    await waitForJob(registry, jobId);
+
+    expect(registry.get(jobId)?.status).toBe("failed");
+    expect(fs.files.get(destination)).toBe("old-bytes");
+    const partialKeys = [...fs.files.keys()].filter((key) => key.includes(".partial"));
+    expect(partialKeys).toEqual([]);
+  });
+
+  it("renames the partial over the destination before writing provenance", async () => {
+    const fs = createFakeFileSystem();
+    const root = "/projects/demo";
+    await seed(fs, root);
+    const project = await openProject(fs, root);
+    await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+    await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+    const run = vi.fn(concatWritingRun(fs));
+
+    const renamed: string[] = [];
+    const originalRename = fs.rename.bind(fs);
+    vi.spyOn(fs, "rename").mockImplementation(async (from: string, to: string) => {
+      renamed.push(to);
+      return originalRename(from, to);
+    });
+
+    const response = await startStoryboardExport(
+      { fs, registry, renderer, run, now, rendererReady: () => true },
+      { root, outputPath: "/out/final.mp4", brand: BRAND },
+    );
+
+    expect(response.status).toBe(202);
+    const jobId = (response.body as { id: string }).id;
+    await waitForJob(registry, jobId);
+
+    expect(registry.get(jobId)?.status).toBe("done");
+    expect(fs.files.get("/out/final.mp4")).toBe("assembled");
+    expect(fs.files.has("/out/final.mp4.provenance.json")).toBe(true);
+    expect(renamed.indexOf("/out/final.mp4")).toBeGreaterThan(-1);
+    expect(renamed.indexOf("/out/final.mp4.provenance.json")).toBeGreaterThan(
+      renamed.indexOf("/out/final.mp4"),
+    );
   });
 });

@@ -7,5 +7,6 @@ export * from "./probe";
 export * from "./system";
 export * from "./thumbnail";
 export * from "./presets";
+export * from "./publish";
 export * from "./timeline";
 export * from "./waveform";

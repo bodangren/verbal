@@ -49,6 +49,7 @@ import {
 import {
   ExportError,
   probeMedia,
+  resolveExportDestination,
   resolvePreset,
   runCommand,
   withPresetExtension,
@@ -304,6 +305,14 @@ export async function startStoryboardExport(
     if (mediaPath === undefined) {
       return { status: 400, body: { error: "project has no media" } };
     }
+    try {
+      await resolveExportDestination(mediaPath, outputPath, deps.realpath);
+    } catch (error) {
+      if (error instanceof Error && error.message === "outputPath must not be the source video") {
+        return { status: 400, body: { error: error.message } };
+      }
+      return failure(error);
+    }
 
     const transcript = await readTranscriptDocument(deps.fs, root);
     if (mediaRevisionMismatch(project.media?.mediaRevision, transcript.mediaRevision)) {
@@ -458,6 +467,8 @@ export async function startStoryboardExport(
       jobId: job.id,
       plan,
       outputPath,
+      rename: (from, to) => deps.fs.rename(from, to),
+      unlink: (path) => deps.fs.unlink(path),
       assemble: async (steps, target, report, signal) => {
         await deps.fs.mkdir(workDirectory);
         const total = steps.length + 1;
