@@ -221,13 +221,22 @@ async function readWavFileHeader(handle: FileHandle): Promise<WavHeader> {
 }
 
 /** Opens a WAV on disk and reads one window's PCM at a time by offset. */
-async function openWavFile(filePath: string): Promise<WavReader> {
+export async function openWavFile(filePath: string): Promise<WavReader> {
   const handle = await nodeFs.open(filePath, "r");
   try {
     const header = await readWavFileHeader(handle);
     const channels = header.channels;
     const dataStart = header.dataStart;
-    const totalSamples = Math.floor(header.dataSize / (channels * 2));
+    const dataSize = header.dataSize;
+    const fileSize = (await handle.stat()).size;
+    const dataEnd = dataStart + dataSize;
+    if (dataEnd > fileSize) {
+      throw new AiError(
+        "request-failed",
+        `audio file is truncated: expected ${dataSize} bytes of audio, found ${Math.max(0, fileSize - dataStart)}`,
+      );
+    }
+    const totalSamples = Math.floor(dataSize / (channels * 2));
 
     return {
       totalSamples,
@@ -240,6 +249,16 @@ async function openWavFile(filePath: string): Promise<WavReader> {
           buffer,
           dataStart + startSample * channels * 2,
         );
+        if (readLength !== byteLength) {
+          const isLastPartial =
+            endSample === totalSamples && byteLength - readLength < channels * 2;
+          if (!isLastPartial) {
+            throw new AiError(
+              "request-failed",
+              `audio file is truncated: expected ${byteLength} bytes of audio, found ${readLength}`,
+            );
+          }
+        }
         const pcm = readLength === byteLength ? buffer : buffer.subarray(0, readLength);
         return decodePcm16(pcm, channels);
       },

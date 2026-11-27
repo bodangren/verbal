@@ -8,6 +8,7 @@ import {
   createTyphoonProvider,
   decodeWavPcm16,
   hasTyphoonModel,
+  openWavFile,
   typhoonModelFiles,
   type LocalTyphoonConfig,
 } from "./typhoon";
@@ -44,6 +45,44 @@ function wavBytes(samples: readonly number[], options: { sampleRate?: number; ch
   view.setUint32(40, dataSize, true);
   samples.forEach((sample, index) => {
     view.setInt16(44 + index * 2, sample, true);
+  });
+
+  return bytes;
+}
+
+function wavWithList(samples: readonly number[]): Uint8Array {
+  const dataSize = samples.length * 2;
+  const listSize = 8;
+  const total = 12 + 8 + 16 + 8 + listSize + 8 + dataSize;
+  const bytes = new Uint8Array(total);
+  const view = new DataView(bytes.buffer);
+
+  const ascii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i += 1) {
+      bytes[offset + i] = text.charCodeAt(i);
+    }
+  };
+
+  ascii(0, "RIFF");
+  view.setUint32(4, total - 8, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 16000, true);
+  view.setUint32(28, 32000, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, "LIST");
+  view.setUint32(40, listSize, true);
+  ascii(44, "INFO");
+  ascii(48, "abcd");
+  const dataOffset = 36 + 8 + listSize;
+  ascii(dataOffset, "data");
+  view.setUint32(dataOffset + 4, dataSize, true);
+  samples.forEach((sample, index) => {
+    view.setInt16(dataOffset + 8 + index * 2, sample, true);
   });
 
   return bytes;
@@ -627,6 +666,86 @@ describe("createTyphoonProvider streams the WAV", () => {
         code: "request-failed",
         message: expect.stringContaining("16-bit PCM"),
       });
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("createTyphoonProvider rejects a truncated WAV", () => {
+  const MEDIA = path.join(path.sep, "media", "take.mp4");
+
+  it("rejects a WAV whose data chunk claims more bytes than the file holds", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-trunc-"));
+    try {
+      const wavPath = path.join(dir, "trunc.wav");
+      const full = wavBytes(new Array(1000).fill(0));
+      await fs.writeFile(wavPath, full.subarray(0, 44 + 1000));
+
+      const provider = createTyphoonProvider(
+        config({
+          wavPathFor: () => wavPath,
+          run: async () => ({ stdout: "", stderr: "" }),
+          engineFor: () => ({
+            transcribe: async () => ({ text: "w", language: "th", words: [{ text: "w", start: 0, end: 0.1 }] }),
+          }),
+        }),
+      );
+
+      await expect(provider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
+        code: "request-failed",
+        message: expect.stringContaining("audio file is truncated"),
+      });
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads a WAV with a LIST chunk before the data", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-list-"));
+    try {
+      const wavPath = path.join(dir, "list.wav");
+      await fs.writeFile(wavPath, wavWithList([100, 200, 300]));
+
+      let received: Float32Array | undefined;
+      const engine = {
+        transcribe: vi.fn(async (samples: Float32Array) => {
+          received = samples;
+          return { text: "w", language: "th", words: [{ text: "w", start: 0, end: 0.1 }] };
+        }),
+      };
+      const provider = createTyphoonProvider(
+        config({
+          wavPathFor: () => wavPath,
+          run: async () => ({ stdout: "", stderr: "" }),
+          engineFor: () => engine,
+        }),
+      );
+
+      const result = await provider.transcribe({ filePath: MEDIA });
+
+      expect(result.words).toHaveLength(1);
+      expect(received).toHaveLength(3);
+      expect(received![0]).toBeCloseTo(100 / 32768, 6);
+      expect(received![1]).toBeCloseTo(200 / 32768, 6);
+      expect(received![2]).toBeCloseTo(300 / 32768, 6);
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when a window read returns fewer bytes than requested", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-short-"));
+    try {
+      const wavPath = path.join(dir, "short.wav");
+      await fs.writeFile(wavPath, wavBytes(new Array(1000).fill(0)));
+
+      const reader = await openWavFile(wavPath);
+      try {
+        await expect(reader.read(0, 1001)).rejects.toThrow("audio file is truncated");
+      } finally {
+        await reader.close();
+      }
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }
