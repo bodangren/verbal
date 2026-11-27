@@ -366,6 +366,13 @@ try {
     await playback.getByRole("button", { name: "Pause", exact: true }).click();
     console.log("playback: click-to-seek");
 
+    // The player starts collapsed on a short or narrow viewport; a user expands
+    // it to reach the waveform, so the walkthrough does the same.
+    const expand = playback.getByRole("button", { name: "Expand Player", exact: true });
+    if ((await expand.count()) > 0) {
+      await expand.click();
+    }
+
     // The waveform is rendered from the real clip and seeks where it is clicked.
     const waveform = playback.locator(".playback__waveform");
     await waveform.waitFor({ timeout: 20000 });
