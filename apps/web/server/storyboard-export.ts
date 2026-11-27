@@ -43,6 +43,7 @@ export async function runStoryboardExport(input: StoryboardExportInput): Promise
       },
       rename: input.rename,
       unlink: input.unlink,
+      beforeRename: () => input.registry.beginPublish(input.jobId),
       afterRename: async () => {
         manifestPath = await input.writeProvenance(input.outputPath);
       },

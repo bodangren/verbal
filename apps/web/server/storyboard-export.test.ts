@@ -134,4 +134,61 @@ describe("runStoryboardExport", () => {
     expect(writeProvenance).not.toHaveBeenCalled();
     expect(rename).not.toHaveBeenCalled();
   });
+
+  it("a cancel before publish skips the rename and removes the partial", async () => {
+    const { registry, job } = await makeJob();
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const assemble = vi.fn(async () => {
+      await blocked;
+      return { files: [] };
+    });
+    const rename = vi.fn(async () => undefined);
+    const unlink = vi.fn(async () => undefined);
+
+    const running = runStoryboardExport({
+      registry,
+      jobId: job.id,
+      plan,
+      outputPath: "/out/final.mp4",
+      assemble,
+      writeProvenance: vi.fn(async () => "/out/manifest.json"),
+      rename,
+      unlink,
+    });
+
+    await vi.waitFor(() => expect(assemble).toHaveBeenCalled());
+    await registry.cancel(job.id);
+    release();
+    await running;
+
+    expect(rename).not.toHaveBeenCalled();
+    expect(unlink).toHaveBeenCalledWith(`/out/final.${job.id}.partial.mp4`);
+    expect(registry.get(job.id)?.status).toBe("cancelled");
+  });
+
+  it("rejects a cancel that arrives after beginPublish and ends the job done", async () => {
+    const { registry, job } = await makeJob();
+    let cancelError: unknown;
+    const rename = vi.fn(async () => {
+      cancelError = await registry.cancel(job.id).catch((error) => error);
+    });
+
+    await runStoryboardExport({
+      registry,
+      jobId: job.id,
+      plan,
+      outputPath: "/out/final.mp4",
+      assemble: vi.fn(async () => ({ files: [] })),
+      writeProvenance: vi.fn(async () => "/out/manifest.json"),
+      rename,
+      unlink: vi.fn(async () => undefined),
+    });
+
+    expect(cancelError).toMatchObject({ code: "publishing" });
+    expect(rename).toHaveBeenCalled();
+    expect(registry.get(job.id)?.status).toBe("done");
+  });
 });

@@ -108,4 +108,53 @@ describe("publishAtomically", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("skips the rename and unlinks the partial when beforeRename returns false", async () => {
+    const events: string[] = [];
+
+    await publishAtomically({
+      outputPath: "/out/final.mp4",
+      jobId: "job",
+      write: async (partialPath) => {
+        events.push(`write:${partialPath}`);
+      },
+      beforeRename: () => false,
+      rename: async (from, to) => {
+        events.push(`rename:${from}->${to}`);
+      },
+      unlink: async (path) => {
+        events.push(`unlink:${path}`);
+      },
+      afterRename: async () => {
+        events.push("afterRename");
+      },
+    });
+
+    expect(events).toEqual([
+      "write:/out/final.job.partial.mp4",
+      "unlink:/out/final.job.partial.mp4",
+    ]);
+  });
+
+  it("leaves the destination untouched when beforeRename returns false", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "publish-"));
+    try {
+      const destination = join(directory, "out.mp4");
+      await writeFile(destination, "old");
+
+      await publishAtomically({
+        outputPath: destination,
+        jobId: "job",
+        write: async (partialPath) => {
+          await writeFile(partialPath, "new-bytes");
+        },
+        beforeRename: () => false,
+      });
+
+      expect(await readFile(destination, "utf8")).toBe("old");
+      expect(await readdir(directory)).toEqual(["out.mp4"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });

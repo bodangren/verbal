@@ -25,7 +25,7 @@ export type JobRecord = {
   error: string | null;
 };
 
-export type JobErrorCode = "not-found" | "illegal-transition";
+export type JobErrorCode = "not-found" | "illegal-transition" | "publishing";
 
 /** Error raised when a job transition is not allowed. */
 export class JobError extends Error {
@@ -117,6 +117,7 @@ export type JobListener = (jobs: readonly JobRecord[]) => void;
 export class JobRegistry {
   private jobs: JobRecord[] = [];
   private readonly controllers = new Map<string, AbortController>();
+  private readonly publishing = new Set<string>();
   private readonly listeners = new Set<JobListener>();
   private saveChain: Promise<void> = Promise.resolve();
 
@@ -143,6 +144,27 @@ export class JobRegistry {
 
   signalOf(id: string): AbortSignal | undefined {
     return this.controllers.get(id)?.signal;
+  }
+
+  /**
+   * Marks a running job as publishing its result.
+   *
+   * Returns false when the job is not running (for example after a cancel),
+   * so the caller skips the publication. When it returns true, a later cancel
+   * is rejected until the job completes or fails.
+   */
+  beginPublish(id: string): boolean {
+    const job = this.get(id);
+    if (job === undefined || job.status !== "running") {
+      return false;
+    }
+    this.publishing.add(id);
+    return true;
+  }
+
+  /** Clears the publishing mark so a later cancel can win again. */
+  endPublish(id: string): void {
+    this.publishing.delete(id);
   }
 
   subscribe(listener: JobListener): () => void {
@@ -196,6 +218,7 @@ export class JobRegistry {
     try {
       return await this.transition(id, "done", { progress: 1, result, error: null });
     } finally {
+      this.publishing.delete(id);
       if (this.get(id)?.status === "done") this.controllers.delete(id);
     }
   }
@@ -204,12 +227,16 @@ export class JobRegistry {
     try {
       return await this.transition(id, "failed", { error });
     } finally {
+      this.publishing.delete(id);
       if (this.get(id)?.status === "failed") this.controllers.delete(id);
     }
   }
 
   async cancel(id: string): Promise<JobRecord> {
     this.require(id);
+    if (this.publishing.has(id)) {
+      throw new JobError("publishing", "The job is already publishing its result.");
+    }
     this.controllers.get(id)?.abort();
     try {
       return await this.transition(id, "cancelled");

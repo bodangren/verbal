@@ -298,4 +298,39 @@ describe("JobRegistry", () => {
     await registry.complete(job.id);
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it("returns false from beginPublish after a cancel", async () => {
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const job = await registry.create("export");
+    await registry.start(job.id);
+
+    await registry.cancel(job.id);
+
+    expect(registry.beginPublish(job.id)).toBe(false);
+  });
+
+  it("rejects a cancel after beginPublish and lets the job end done", async () => {
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const job = await registry.create("export");
+    await registry.start(job.id);
+
+    expect(registry.beginPublish(job.id)).toBe(true);
+    await expect(registry.cancel(job.id)).rejects.toMatchObject({
+      code: "publishing",
+      message: "The job is already publishing its result.",
+    });
+    expect(registry.get(job.id)?.status).toBe("running");
+
+    const done = await registry.complete(job.id, { output: "/out.mp4" });
+    expect(done.status).toBe("done");
+  });
+
+  it("returns false from beginPublish on a finished job", async () => {
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const job = await registry.create("export");
+    await registry.start(job.id);
+    await registry.complete(job.id);
+
+    expect(registry.beginPublish(job.id)).toBe(false);
+  });
 });

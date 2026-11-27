@@ -23,6 +23,11 @@ export type PublishOptions = {
   unlink?: (path: string) => Promise<void>;
   /** Runs after a successful rename, before the publication resolves. */
   afterRename?: () => Promise<void>;
+  /**
+   * Runs after `write`, before the rename. Return false to skip the rename and
+   * remove the partial, so a cancelled job publishes nothing.
+   */
+  beforeRename?: () => boolean | Promise<boolean>;
 };
 
 /**
@@ -44,6 +49,11 @@ export async function publishAtomically(options: PublishOptions): Promise<void> 
 
   try {
     await options.write(partialPath);
+    const proceed = await options.beforeRename?.();
+    if (proceed === false) {
+      await unlink(partialPath).catch(() => undefined);
+      return;
+    }
     await rename(partialPath, options.outputPath);
     await options.afterRename?.();
   } catch (error) {

@@ -228,7 +228,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       return providerFor();
     },
 
-    async transcribeNow(root: string, signal?: AbortSignal): Promise<number> {
+    async transcribeNow(root: string, signal?: AbortSignal, jobId?: string): Promise<number> {
       if (signal?.aborted) throw new Error("transcription cancelled");
       const provider = providerFor();
 
@@ -246,7 +246,21 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
 
       if (signal?.aborted) throw new Error("transcription cancelled");
 
-      return saveStampedTranscript(root, mediaPath, startRevision, result);
+      const save = () => saveStampedTranscript(root, mediaPath, startRevision, result);
+
+      if (jobId === undefined) {
+        return save();
+      }
+
+      const registry = await deps.registry();
+      if (!registry.beginPublish(jobId)) {
+        throw new Error("transcription cancelled");
+      }
+      try {
+        return await save();
+      } finally {
+        registry.endPublish(jobId);
+      }
     },
 
     async start(root: string): Promise<JobRecord> {

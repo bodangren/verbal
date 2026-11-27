@@ -95,6 +95,7 @@ export default async function handler(
         codecs: preset.codecs,
         video,
         signal,
+        beforeRename: () => registry.beginPublish(job.id),
         onProgress: (event) => {
           report(event.percent);
         },

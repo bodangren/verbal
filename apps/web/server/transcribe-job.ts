@@ -42,6 +42,7 @@ export async function runTranscriptionJob(input: TranscriptionJobInput): Promise
 
     await registry.progress(jobId, 1, "saving transcript");
     if (signal.aborted) return;
+    if (!registry.beginPublish(jobId)) return;
     await input.onTranscript(result);
 
     await registry.complete(jobId, { words: result.words.length });

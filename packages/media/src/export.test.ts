@@ -327,6 +327,31 @@ describe("runExport", () => {
     expect(removed).toEqual([]);
     expect(renamed).toEqual([["/media/out.test-job.partial.mp4", "/media/out.mp4"]]);
   });
+
+  it("skips the rename and removes the partial when beforeRename returns false", async () => {
+    const removed: string[] = [];
+    const renamed: string[][] = [];
+    const spawner: Spawner = async () => undefined;
+
+    await runExport({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      kept,
+      hasAudio: true,
+      spawner,
+      jobId: "test-job",
+      unlink: async (path) => {
+        removed.push(path);
+      },
+      rename: async (from, to) => {
+        renamed.push([from, to]);
+      },
+      beforeRename: () => false,
+    });
+
+    expect(removed).toEqual(["/media/out.test-job.partial.mp4"]);
+    expect(renamed).toEqual([]);
+  });
 });
 
 describe("resolveExportDestination", () => {

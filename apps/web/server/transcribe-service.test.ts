@@ -402,6 +402,48 @@ describe("transcription job progress", () => {
   });
 });
 
+describe("transcription batch publication boundary", () => {
+  it("skips the batch transcript save when beginPublish returns false", async () => {
+    const fs = projectFs("rev-a");
+    const registry = await JobRegistry.open(createMemoryJobStore());
+    const job = await registry.create("transcribe");
+    await registry.start(job.id);
+    const beginPublish = vi.spyOn(registry, "beginPublish").mockReturnValue(false);
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => stubProvider,
+      registry: async () => registry,
+      stat: fakeStat,
+    });
+
+    await expect(service.transcribeNow(ROOT, undefined, job.id)).rejects.toThrow(/cancel/i);
+    expect(beginPublish).toHaveBeenCalledWith(job.id);
+    expect(fs.files.has(path.join(ROOT, "transcript.json"))).toBe(false);
+  });
+
+  it("saves the batch transcript and ends publish when beginPublish succeeds", async () => {
+    const fs = projectFs("rev-a");
+    const registry = await JobRegistry.open(createMemoryJobStore());
+    const job = await registry.create("transcribe");
+    await registry.start(job.id);
+    const endPublish = vi.spyOn(registry, "endPublish");
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => stubProvider,
+      registry: async () => registry,
+      stat: fakeStat,
+    });
+
+    await expect(service.transcribeNow(ROOT, undefined, job.id)).resolves.toBe(1);
+    expect(endPublish).toHaveBeenCalledWith(job.id);
+    expect(fs.files.has(path.join(ROOT, "transcript.json"))).toBe(true);
+  });
+});
+
 describe("describeTranscriptionProvider", () => {
   it("names the local model", () => {
     expect(describeTranscriptionProvider(LOCAL)).toEqual({

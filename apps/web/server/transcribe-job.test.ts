@@ -145,4 +145,49 @@ describe("runTranscriptionJob", () => {
     expect(signal?.aborted).toBe(true);
     expect(onTranscript).not.toHaveBeenCalled();
   });
+
+  it("skips the transcript save when beginPublish returns false", async () => {
+    const { registry, job } = await makeRegistry();
+    const onTranscript = vi.fn(async () => undefined);
+    vi.spyOn(registry, "beginPublish").mockReturnValue(false);
+
+    await runTranscriptionJob({
+      registry,
+      jobId: job.id,
+      provider: provider({
+        text: "hello",
+        language: "en",
+        words: [{ text: "hello", start: 0, end: 0.4 }],
+      }),
+      request: { filePath: "/media/a.mp4" },
+      onTranscript,
+    });
+
+    expect(onTranscript).not.toHaveBeenCalled();
+    expect(registry.get(job.id)?.status).not.toBe("done");
+  });
+
+  it("rejects a cancel that arrives during the save and ends the job done", async () => {
+    const { registry, job } = await makeRegistry();
+    let cancelError: unknown;
+    const onTranscript = vi.fn(async () => {
+      cancelError = await registry.cancel(job.id).catch((error) => error);
+    });
+
+    await runTranscriptionJob({
+      registry,
+      jobId: job.id,
+      provider: provider({
+        text: "hello",
+        language: "en",
+        words: [{ text: "hello", start: 0, end: 0.4 }],
+      }),
+      request: { filePath: "/media/a.mp4" },
+      onTranscript,
+    });
+
+    expect(onTranscript).toHaveBeenCalled();
+    expect(cancelError).toMatchObject({ code: "publishing" });
+    expect(registry.get(job.id)?.status).toBe("done");
+  });
 });

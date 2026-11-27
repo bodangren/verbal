@@ -361,6 +361,8 @@ export type RunExportInput = BuildExportArgsInput & {
   spawner?: Spawner;
   unlink?: (path: string) => Promise<void>;
   rename?: (from: string, to: string) => Promise<void>;
+  /** Runs after encoding, before the rename. Return false to skip the rename. */
+  beforeRename?: () => boolean | Promise<boolean>;
 };
 
 export type Realpath = (path: string) => Promise<string>;
@@ -425,5 +427,6 @@ export async function runExport(input: RunExportInput): Promise<void> {
     },
     rename: input.rename,
     unlink: input.unlink,
+    beforeRename: input.beforeRename,
   });
 }

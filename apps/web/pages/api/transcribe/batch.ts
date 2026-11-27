@@ -67,7 +67,7 @@ export default async function handler(
           plan,
           transcribe: async (root) => {
             if (signal.aborted) throw new Error("transcription cancelled");
-            await service.transcribeNow(root, signal);
+            await service.transcribeNow(root, signal, job.id);
             if (signal.aborted) throw new Error("transcription cancelled");
           },
           report: progress.report,
