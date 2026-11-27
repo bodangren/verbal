@@ -179,6 +179,73 @@ describe("mergeWindowResults", () => {
     ]);
   });
 
+  it("keeps one copy of a word whose left copy sits just before the overlap", () => {
+    const results = [
+      [{ text: "word", start: 28.95, end: 29.5 }],
+      [{ text: "word", start: 0.04, end: 0.6 }],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "word", start: 28.95, end: 29.5 },
+    ]);
+  });
+
+  it("keeps two equal words near the seam when they are really two", () => {
+    const results = [
+      [
+        { text: "no", start: 28.9, end: 29.3 },
+        { text: "no", start: 29.1, end: 29.5 },
+      ],
+      [
+        { text: "no", start: 0.0, end: 0.4 },
+        { text: "no", start: 0.2, end: 0.6 },
+      ],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "no", start: 28.9, end: 29.3 },
+      { text: "no", start: 29.1, end: 29.5 },
+    ]);
+  });
+
+  it("matches the nearest same-text word, not the first in the list", () => {
+    const results = [
+      [
+        { text: "dup", start: 29.1, end: 29.5 },
+        { text: "dup", start: 29.3, end: 29.7 },
+      ],
+      [{ text: "dup", start: 0.35, end: 0.75 }],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "dup", start: 29.1, end: 29.5 },
+      { text: "dup", start: 29.35, end: 29.75 },
+    ]);
+  });
+
+  it("keeps one copy when two windows report the word 0.29 s apart", () => {
+    const results = [
+      [{ text: "w", start: 29.0, end: 29.5 }],
+      [{ text: "w", start: 0.29, end: 0.79 }],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "w", start: 29.0, end: 29.5 },
+    ]);
+  });
+
+  it("keeps two copies when two windows report the word 0.31 s apart", () => {
+    const results = [
+      [{ text: "w", start: 29.0, end: 29.5 }],
+      [{ text: "w", start: 0.31, end: 0.81 }],
+    ];
+
+    expect(mergeWindowResults(WINDOWS, results)).toEqual([
+      { text: "w", start: 29.0, end: 29.5 },
+      { text: "w", start: 29.31, end: 29.81 },
+    ]);
+  });
+
   it("merges a 90 s transcript with jittered overlaps to one copy per word", () => {
     const sampleRate = 16000;
     const seconds = 90;

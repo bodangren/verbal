@@ -88,10 +88,13 @@ export function planWindows(
  * Merges per-window word lists into one list with absolute times.
  *
  * Each word's start and end are relative to its window, so the window start is
- * added. Across a seam, the words that start in the overlap are matched by
- * normalised text and start time. A matched pair keeps the copy whose midpoint
- * is farther from its own window's edge, so the copy with more context wins.
- * An unmatched word is kept, so no word is lost and none is duplicated.
+ * added. Across a seam, a word whose start lies within the match tolerance of
+ * the overlap counts as an overlap word. Overlap words are matched by
+ * normalised text, then by the smallest absolute start difference, greedily by
+ * increasing distance, each word matched at most once. A matched pair keeps the
+ * copy whose midpoint is farther from its own window's edge, so the copy with
+ * more context wins. An unmatched word is kept, so no word is lost and none is
+ * duplicated.
  */
 export function mergeWindowResults(
   windows: readonly WindowPlan[],
@@ -130,36 +133,53 @@ export function mergeWindowResults(
   for (let k = 0; k < windows.length - 1; k += 1) {
     const leftEnd = windows[k]!.endSample / sampleRate;
     const rightStart = windows[k + 1]!.startSeconds;
+    const overlapStart = rightStart - MATCH_TOLERANCE_SECONDS;
+    const overlapEnd = leftEnd + MATCH_TOLERANCE_SECONDS;
     const leftWords = absolute[k]!.filter(
-      (word) => word.start >= rightStart && word.start <= leftEnd,
+      (word) => word.start >= overlapStart && word.start <= overlapEnd,
     );
     const rightWords = absolute[k + 1]!.filter(
-      (word) => word.start >= rightStart && word.start <= leftEnd,
+      (word) => word.start >= overlapStart && word.start <= overlapEnd,
     );
 
-    const matchedLeft = new Set<AbsoluteWord>();
-    for (const right of rightWords) {
-      for (const left of leftWords) {
-        if (matchedLeft.has(left)) {
-          continue;
-        }
+    type Candidate = { left: AbsoluteWord; right: AbsoluteWord; distance: number };
+    const candidates: Candidate[] = [];
+    for (const left of leftWords) {
+      for (const right of rightWords) {
         if (normalizeText(left.text) !== normalizeText(right.text)) {
           continue;
         }
-        if (Math.abs(left.start - right.start) > MATCH_TOLERANCE_SECONDS) {
+        const distance = Math.abs(left.start - right.start);
+        if (distance > MATCH_TOLERANCE_SECONDS) {
           continue;
         }
-        matchedLeft.add(left);
-        const leftMidpoint = (left.start + left.end) / 2;
-        const rightMidpoint = (right.start + right.end) / 2;
-        const leftContext = leftEnd - leftMidpoint;
-        const rightContext = rightMidpoint - rightStart;
-        if (rightContext > leftContext) {
-          dropped.add(left);
-        } else {
-          dropped.add(right);
-        }
-        break;
+        candidates.push({ left, right, distance });
+      }
+    }
+
+    candidates.sort(
+      (a, b) =>
+        a.distance - b.distance ||
+        a.left.start - b.left.start ||
+        a.right.start - b.right.start,
+    );
+
+    const matchedLeft = new Set<AbsoluteWord>();
+    const matchedRight = new Set<AbsoluteWord>();
+    for (const candidate of candidates) {
+      if (matchedLeft.has(candidate.left) || matchedRight.has(candidate.right)) {
+        continue;
+      }
+      matchedLeft.add(candidate.left);
+      matchedRight.add(candidate.right);
+      const leftMidpoint = (candidate.left.start + candidate.left.end) / 2;
+      const rightMidpoint = (candidate.right.start + candidate.right.end) / 2;
+      const leftContext = leftEnd - leftMidpoint;
+      const rightContext = rightMidpoint - rightStart;
+      if (rightContext > leftContext) {
+        dropped.add(candidate.left);
+      } else {
+        dropped.add(candidate.right);
       }
     }
   }
