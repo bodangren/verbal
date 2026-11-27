@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 
 const files = [
   "apps/web/pages/index.tsx",
+  "apps/web/components/IngestWorkspace.tsx",
+  "apps/web/components/EditWorkspace.tsx",
+  "apps/web/components/DeliverWorkspace.tsx",
   "apps/web/components/CapturePanel.tsx",
   "apps/web/components/CleanupReview.tsx",
   "apps/web/components/PatchReview.tsx",

@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobRecord } from "@verbal/core/browser";
-import { useStudio, type StudioDeps } from "./use-studio";
+import { useStudio, type StudioController, type StudioDeps } from "./use-studio";
 
 const api = vi.hoisted(() => ({
   listTakes: vi.fn(),
@@ -194,5 +194,62 @@ describe("useStudio", () => {
     expect(deps.setMessage).toHaveBeenCalledWith("Take saved");
     expect(deps.setJob).toHaveBeenCalled();
     expect(result.current.capture.state).toBe("idle");
+  });
+
+  async function openReview(result: { current: StudioController }) {
+    api.startTakeTranscript.mockResolvedValue(doneJob("job-1"));
+    api.getTakeTranscript.mockResolvedValue({ words: [] });
+
+    await act(async () => {
+      result.current.onReview("take-1");
+    });
+    await waitFor(() => expect(result.current.review?.takeId).toBe("take-1"));
+  }
+
+  it("renderCut sets rendering true, then false once, on success", async () => {
+    let resolveRender!: (job: JobRecord) => void;
+    api.renderCut.mockReturnValue(
+      new Promise<JobRecord>((resolve) => {
+        resolveRender = resolve;
+      }),
+    );
+    api.getProject.mockResolvedValue(projectFixture);
+
+    const deps = makeDeps();
+    const { result } = renderHook(() => useStudio(deps));
+    await openReview(result);
+
+    act(() => {
+      result.current.onRenderCut();
+    });
+    expect(result.current.rendering).toBe(true);
+
+    await act(async () => {
+      resolveRender(doneJob("job-1"));
+    });
+    await waitFor(() => expect(result.current.rendering).toBe(false));
+    expect(deps.setMessage).toHaveBeenCalledWith("Cut rendered");
+  });
+
+  it("renderCut resets rendering once when the render fails", async () => {
+    api.renderCut.mockRejectedValue(new Error("render failed"));
+    api.getProject.mockResolvedValue(projectFixture);
+
+    const deps = makeDeps({
+      guard: async (run: () => Promise<void>) => {
+        try {
+          await run();
+        } catch {
+          // The page turns this into a pane error; the hook must still reset.
+        }
+      },
+    });
+    const { result } = renderHook(() => useStudio(deps));
+    await openReview(result);
+
+    await act(async () => {
+      result.current.onRenderCut();
+    });
+    await waitFor(() => expect(result.current.rendering).toBe(false));
   });
 });

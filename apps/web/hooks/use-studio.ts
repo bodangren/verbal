@@ -419,7 +419,6 @@ export function useStudio(deps: StudioDeps): StudioController {
       setLlmReview(null);
       setCut(null);
       setRendering(false);
-      setRendering(false);
       setTakeState("idle");
       setElapsedSeconds(0);
     });
@@ -441,7 +440,6 @@ export function useStudio(deps: StudioDeps): StudioController {
       setLlmReview(null);
       setRereadTarget(null);
       setCut(null);
-      setRendering(false);
       setRendering(false);
     }).finally(() => setReviewing(false));
   }
