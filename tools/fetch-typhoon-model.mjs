@@ -17,6 +17,7 @@ import os from "node:os";
 import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { pathToFileURL } from "node:url";
 
 const REPO = "wannaphong/typhoon-asr-realtime-onnx";
 const LICENSE = "CC-BY-4.0 — Typhoon ASR Realtime, SCB 10X (https://opentyphoon.ai)";
@@ -98,51 +99,125 @@ async function verify(target, expected) {
   return digest === expected.sha256 ? null : `sha256 ${digest} != ${expected.sha256}`;
 }
 
-async function download(file, target, base) {
+const INACTIVITY_MS = 60_000;
+
+export async function download(file, target, base, options = {}) {
   const url = `${base}/${REPO}/resolve/main/${file.remote}`;
   const part = `${target}.part`;
+  const inactivityMs = options.inactivityMs ?? INACTIVITY_MS;
   const mirrorHint =
     "If huggingface.co is blocked or slow, retry with VERBAL_HF_MIRROR=https://hf-mirror.com";
 
-  let response;
+  let partSize = 0;
   try {
-    response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(60_000) });
+    partSize = (await stat(part)).size;
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`cannot reach ${url}: ${reason}. ${mirrorHint}`);
-  }
-  if (!response.ok || response.body === null) {
-    throw new Error(`${url} answered ${response.status}. ${mirrorHint}`);
-  }
-
-  const total = Number(response.headers.get("content-length")) || file.bytes;
-  let received = 0;
-  let lastPercent = -1;
-  const progress = new Transform({
-    transform(chunk, _encoding, callback) {
-      received += chunk.length;
-      const percent = Math.min(100, Math.floor((received / total) * 100));
-      if (percent !== lastPercent) {
-        lastPercent = percent;
-        process.stderr.write(`\r  ${file.local}: ${percent}%   `);
-      }
-      callback(null, chunk);
-    },
-  });
-
-  try {
-    await pipeline(Readable.fromWeb(response.body), progress, createWriteStream(part));
-    process.stderr.write("\n");
-
-    const reason = await verify(part, file);
-    if (reason !== null) {
-      throw new Error(`${file.local} failed verification: ${reason}`);
+    if (error?.code !== "ENOENT") {
+      throw error;
     }
-    await rename(part, target);
-  } catch (error) {
-    await rm(part, { force: true });
-    throw error;
   }
+
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer;
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, inactivityMs);
+  };
+  const stalled = () =>
+    new Error(`inactivity timeout: no bytes from ${url} for ${inactivityMs} ms. ${mirrorHint}`);
+  const unreachable = (error) => {
+    if (timedOut) {
+      return stalled();
+    }
+    const reason = error instanceof Error ? error.message : String(error);
+    return new Error(`cannot reach ${url}: ${reason}. ${mirrorHint}`);
+  };
+
+  let resume = partSize > 0;
+  arm();
+  try {
+    let response;
+    try {
+      response = await fetch(url, {
+        redirect: "follow",
+        signal: controller.signal,
+        ...(resume ? { headers: { Range: `bytes=${partSize}-` } } : {}),
+      });
+    } catch (error) {
+      throw unreachable(error);
+    }
+
+    if (response.status === 416 && resume) {
+      const reason = await verify(part, file);
+      if (reason === null) {
+        await rename(part, target);
+        return;
+      }
+      resume = false;
+      partSize = 0;
+      arm();
+      try {
+        response = await fetch(url, { redirect: "follow", signal: controller.signal });
+      } catch (error) {
+        throw unreachable(error);
+      }
+    }
+
+    if (!response.ok || response.body === null) {
+      throw new Error(`${url} answered ${response.status}. ${mirrorHint}`);
+    }
+    if (resume && response.status !== 206) {
+      resume = false;
+      partSize = 0;
+    }
+
+    let received = partSize;
+    let lastPercent = -1;
+    const progress = new Transform({
+      transform(chunk, _encoding, callback) {
+        arm();
+        received += chunk.length;
+        const percent = Math.min(100, Math.floor((received / file.bytes) * 100));
+        if (percent !== lastPercent) {
+          lastPercent = percent;
+          process.stderr.write(`\r  ${file.local}: ${percent}%   `);
+        }
+        callback(null, chunk);
+      },
+    });
+
+    try {
+      await pipeline(
+        Readable.fromWeb(response.body),
+        progress,
+        createWriteStream(part, { flags: resume ? "a" : "w" }),
+      );
+    } catch (error) {
+      if (timedOut) {
+        throw stalled();
+      }
+      throw error;
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+
+  process.stderr.write("\n");
+  const reason = await verify(part, file);
+  if (reason !== null) {
+    if (reason.startsWith("size ")) {
+      throw new Error(
+        `${file.local} failed verification: ${reason}; keeping ${path.basename(part)}`,
+      );
+    }
+    await rm(part, { force: true });
+    throw new Error(`${file.local} failed verification: ${reason}`);
+  }
+  await rename(part, target);
 }
 
 async function ensureDir(dir) {
@@ -191,7 +266,9 @@ async function main() {
   console.log(`Ready. ${LICENSE}`);
 }
 
-main().catch((error) => {
-  console.error(`fetch-typhoon-model failed: ${error instanceof Error ? error.message : error}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`fetch-typhoon-model failed: ${error instanceof Error ? error.message : error}`);
+    process.exitCode = 1;
+  });
+}

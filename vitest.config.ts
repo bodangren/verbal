@@ -12,6 +12,7 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
       "tools/e2e/**/*.test.ts",
+      "tools/**/*.test.mjs",
     ],
     environment: "node",
     passWithNoTests: false,
