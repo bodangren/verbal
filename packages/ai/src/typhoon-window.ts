@@ -22,6 +22,8 @@ export type WindowOptions = {
 
 const DEFAULT_WINDOW_SECONDS = 30;
 const DEFAULT_OVERLAP_SECONDS = 1;
+/** A seam word reported closer than this in two windows is the same word. */
+const MATCH_TOLERANCE_SECONDS = 0.3;
 
 /**
  * Splits a signal into fixed windows that cover it with no gap.
@@ -73,6 +75,9 @@ export function planWindows(
       endSample,
       startSeconds: startSample / sampleRate,
     });
+    if (endSample >= totalSamples) {
+      break;
+    }
     index += 1;
     startSample += stepSamples;
   }
@@ -83,52 +88,90 @@ export function planWindows(
  * Merges per-window word lists into one list with absolute times.
  *
  * Each word's start and end are relative to its window, so the window start is
- * added. A word spoken inside the overlap appears in two windows. Its midpoint
- * falls on only one side of the overlap's middle, so each copy is kept by
- * exactly one window: the earlier copy wins before the middle, the later copy
- * wins after it. The result stays in order with no duplicate.
+ * added. Across a seam, the words that start in the overlap are matched by
+ * normalised text and start time. A matched pair keeps the copy whose midpoint
+ * is farther from its own window's edge, so the copy with more context wins.
+ * An unmatched word is kept, so no word is lost and none is duplicated.
  */
 export function mergeWindowResults(
   windows: readonly WindowPlan[],
   results: readonly (readonly SpokenWord[])[],
 ): SpokenWord[] {
-  const merged: SpokenWord[] = [];
   if (windows.length === 0) {
-    return merged;
+    return [];
   }
 
   // Recover the sample rate from the uniform window spacing, to turn sample
-  // offsets into seconds for the overlap midpoints.
+  // offsets into seconds for the overlap boundaries.
   const sampleRate =
     windows.length > 1
       ? (windows[1]!.startSample - windows[0]!.startSample) /
         (windows[1]!.startSeconds - windows[0]!.startSeconds)
       : 1;
 
-  for (let k = 0; k < windows.length; k += 1) {
-    const window = windows[k]!;
-    const endSeconds = window.endSample / sampleRate;
+  type AbsoluteWord = {
+    text: string;
+    start: number;
+    end: number;
+    windowIndex: number;
+  };
 
-    const leftBoundary =
-      k === 0
-        ? Number.NEGATIVE_INFINITY
-        : (window.startSeconds + windows[k - 1]!.endSample / sampleRate) / 2;
-    const rightBoundary =
-      k === windows.length - 1
-        ? Number.POSITIVE_INFINITY
-        : (windows[k + 1]!.startSeconds + endSeconds) / 2;
+  const absolute: AbsoluteWord[][] = windows.map((window, k) =>
+    (results[k] ?? []).map((word) => ({
+      text: word.text,
+      start: window.startSeconds + word.start,
+      end: window.startSeconds + word.end,
+      windowIndex: k,
+    })),
+  );
 
-    for (const word of results[k] ?? []) {
-      const start = window.startSeconds + word.start;
-      const end = window.startSeconds + word.end;
-      const midpoint = (start + end) / 2;
-      if (midpoint >= leftBoundary && midpoint < rightBoundary) {
-        merged.push({ text: word.text, start: round(start), end: round(end) });
+  const dropped = new Set<AbsoluteWord>();
+
+  for (let k = 0; k < windows.length - 1; k += 1) {
+    const leftEnd = windows[k]!.endSample / sampleRate;
+    const rightStart = windows[k + 1]!.startSeconds;
+    const leftWords = absolute[k]!.filter(
+      (word) => word.start >= rightStart && word.start <= leftEnd,
+    );
+    const rightWords = absolute[k + 1]!.filter(
+      (word) => word.start >= rightStart && word.start <= leftEnd,
+    );
+
+    const matchedLeft = new Set<AbsoluteWord>();
+    for (const right of rightWords) {
+      for (const left of leftWords) {
+        if (matchedLeft.has(left)) {
+          continue;
+        }
+        if (normalizeText(left.text) !== normalizeText(right.text)) {
+          continue;
+        }
+        if (Math.abs(left.start - right.start) > MATCH_TOLERANCE_SECONDS) {
+          continue;
+        }
+        matchedLeft.add(left);
+        const leftMidpoint = (left.start + left.end) / 2;
+        const rightMidpoint = (right.start + right.end) / 2;
+        const leftContext = leftEnd - leftMidpoint;
+        const rightContext = rightMidpoint - rightStart;
+        if (rightContext > leftContext) {
+          dropped.add(left);
+        } else {
+          dropped.add(right);
+        }
+        break;
       }
     }
   }
 
-  return merged;
+  const kept = absolute.flat().filter((word) => !dropped.has(word));
+  kept.sort((a, b) => a.start - b.start || a.end - b.end || a.windowIndex - b.windowIndex);
+
+  return kept.map((word) => ({ text: word.text, start: round(word.start), end: round(word.end) }));
+}
+
+function normalizeText(text: string): string {
+  return text.toLowerCase().trim();
 }
 
 function round(value: number): number {

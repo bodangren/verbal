@@ -1,6 +1,7 @@
-import { existsSync, promises as fs } from "node:fs";
+import { existsSync, promises as fs, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { AiError, type SpokenWord } from "./types";
 import {
@@ -10,7 +11,8 @@ import {
   typhoonModelFiles,
   type LocalTyphoonConfig,
 } from "./typhoon";
-import type { RunWindow } from "./typhoon-worker";
+import { createWindowWorker, type RunWindow } from "./typhoon-worker";
+import { mergeWindowResults, planWindows } from "./typhoon-window";
 
 const TMPDIR = process.env.TMPDIR ?? os.tmpdir();
 
@@ -679,6 +681,96 @@ describe("createTyphoonProvider streaming memory", () => {
         expect(growth).toBeLessThan(150 * 1024 * 1024);
       } finally {
         await fs.rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
+});
+
+function wavFromFloat32(samples: Float32Array, sampleRate = 16000): Uint8Array {
+  const dataSize = samples.length * 2;
+  const bytes = new Uint8Array(44 + dataSize);
+  const view = new DataView(bytes.buffer);
+  const ascii = (offset: number, text: string): void => {
+    for (let i = 0; i < text.length; i += 1) {
+      bytes[offset + i] = text.charCodeAt(i);
+    }
+  };
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, "data");
+  view.setUint32(40, dataSize, true);
+  for (let i = 0; i < samples.length; i += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[i]!));
+    view.setInt16(44 + i * 2, Math.round(sample * 32767), true);
+  }
+  return bytes;
+}
+
+const REAL_HERE = path.dirname(fileURLToPath(import.meta.url));
+const REAL_MODEL_DIR =
+  process.env.VERBAL_TYPHOON_MODEL ??
+  path.join(
+    process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share"),
+    "verbal",
+    "models",
+    "typhoon-asr-realtime",
+  );
+const REAL_SAMPLE = path.join(REAL_HERE, "..", "testdata", "thai", "common-voice-th.wav");
+const realModelAvailable = ["encoder.onnx", "decoder.onnx", "vocab.json"].every((name) =>
+  existsSync(path.join(REAL_MODEL_DIR, name)),
+);
+
+describe.skipIf(!realModelAvailable)("Typhoon window seam with the real model", () => {
+  it(
+    "reports the merged 3x repeat against the one-window result",
+    { timeout: 300_000 },
+    async () => {
+      const audio = decodeWavPcm16(readFileSync(REAL_SAMPLE));
+      const tripled = new Float32Array(audio.length * 3);
+      for (let i = 0; i < 3; i += 1) {
+        tripled.set(audio, i * audio.length);
+      }
+
+      const wavPath = path.join(TMPDIR, `typhoon-seam-${process.pid}.wav`);
+      await fs.writeFile(wavPath, wavFromFloat32(tripled));
+
+      const runner = createWindowWorker(REAL_MODEL_DIR);
+      try {
+        const windows = planWindows(tripled.length, 16000, {
+          windowSeconds: 5,
+          overlapSeconds: 1,
+        });
+        const perWindow: SpokenWord[][] = [];
+        for (let i = 0; i < windows.length; i += 1) {
+          const window = windows[i]!;
+          perWindow.push(
+            await runner.run(
+              tripled.slice(window.startSample, window.endSample),
+              i,
+              () => {},
+            ),
+          );
+        }
+        const merged = mergeWindowResults(windows, perWindow);
+        const oneShot = await runner.run(tripled.slice(), 0, () => {});
+
+        console.log(
+          `seam merged (${windows.length} windows): ${merged.map((w) => w.text).join(" ")}`,
+        );
+        console.log(`seam one-shot: ${oneShot.map((w) => w.text).join(" ")}`);
+        console.log(`seam merged ${merged.length} words, one-shot ${oneShot.length} words`);
+      } finally {
+        await runner.terminate();
+        await fs.rm(wavPath, { force: true });
       }
     },
   );
