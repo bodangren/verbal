@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTranscript, insertSilence, moveRange, removeWord } from "@verbal/core";
-import { freezeMaster, requiresReanchor } from "./freeze";
+import { buildTimeline } from "@verbal/media";
+import { freezeMaster, legacyFingerprint, requiresReanchor } from "./freeze";
 import type { CleanupProposal } from "./types";
 
 const transcript = createTranscript([
@@ -40,7 +41,7 @@ describe("freezeMaster", () => {
     ]);
   });
 
-  it("keeps inserted silence out of the cut list and anchors but not the fingerprint", () => {
+  it("adds inserted silence to the master duration and shifts later anchors", () => {
     const input = {
       accepted: [proposal()],
       sourceDurationSeconds: 3,
@@ -52,9 +53,69 @@ describe("freezeMaster", () => {
       ...input,
     });
 
-    expect(withSilence.cutList).toEqual(plain.cutList);
-    expect(withSilence.anchorWords).toEqual(plain.anchorWords);
+    expect(withSilence.cutList.kept).toEqual([
+      { start: 0, end: 0.5 },
+      { start: 1, end: 3 },
+    ]);
+    expect(withSilence.anchorWords).toEqual([
+      { id: "w0", start: 0, end: 0.5 },
+      { id: "w2", start: 2.5, end: 3 },
+    ]);
+    expect(withSilence.masterDurationSeconds).toBe(4);
     expect(withSilence.fingerprint).not.toBe(plain.fingerprint);
+  });
+
+  it("derives the cut list, anchors and duration from the timeline after a reorder", () => {
+    const reordered = moveRange(transcript, 0, 0, 2);
+
+    const frozen = freezeMaster({
+      transcript: reordered,
+      accepted: [],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    expect(frozen.cutList.kept).toEqual([
+      { start: 0.6, end: 2 },
+      { start: 0, end: 0.5 },
+    ]);
+    expect(frozen.anchorWords).toEqual([
+      { id: "w1", start: 0, end: 0.4 },
+      { id: "w2", start: 0.9, end: 1.4 },
+      { id: "w0", start: 1.4, end: 1.9 },
+    ]);
+    expect(frozen.masterDurationSeconds).toBe(1.9);
+  });
+
+  it("keeps the deletion-only cut list and anchors unchanged", () => {
+    const frozen = freezeMaster({
+      transcript,
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    const videos = buildTimeline({
+      transcript: { ...transcript, removedWordIds: ["w1"] },
+      handleSeconds: 0,
+      durationSeconds: 3,
+    }).map((item) =>
+      item.kind === "video" ? { start: item.startSeconds, end: item.endSeconds } : item,
+    );
+
+    expect(frozen.cutList.kept).toEqual([
+      { start: 0, end: 0.6 },
+      { start: 1, end: 3 },
+    ]);
+    expect(videos).toEqual([
+      { start: 0, end: 0.6 },
+      { start: 1, end: 3 },
+    ]);
+    expect(frozen.anchorWords).toEqual([
+      { id: "w0", start: 0, end: 0.5 },
+      { id: "w2", start: 1.1, end: 1.6 },
+    ]);
+    expect(frozen.masterDurationSeconds).toBe(2.6);
   });
 
   it("changes its fingerprint when only the order changes", () => {
@@ -173,6 +234,19 @@ describe("freezeMaster", () => {
 
     expect(first.fingerprint).not.toBe(second.fingerprint);
   });
+
+  it("reproduces the legacy fingerprint for a fixed unedited cut", () => {
+    const frozen = freezeMaster({
+      transcript,
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    expect(legacyFingerprint(frozen)).toBe(
+      "716863fec07fa194d0b49bc5b7d8cc8ddb51b43315a62a2fef553e4f026507b9",
+    );
+  });
 });
 
 describe("requiresReanchor", () => {
@@ -196,5 +270,45 @@ describe("requiresReanchor", () => {
     });
 
     expect(requiresReanchor(frozen, "stale-fingerprint")).toBe(true);
+  });
+
+  it("treats a stored legacy fingerprint as fresh", () => {
+    const frozen = freezeMaster({
+      transcript,
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    expect(requiresReanchor(frozen, legacyFingerprint(frozen))).toBe(false);
+  });
+
+  it("treats a stored v2 fingerprint as fresh", () => {
+    const frozen = freezeMaster({
+      transcript,
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    expect(requiresReanchor(frozen, frozen.fingerprint)).toBe(false);
+  });
+
+  it("refuses a changed order under both the v2 and the legacy fingerprint", () => {
+    const plain = freezeMaster({
+      transcript,
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+    const reordered = freezeMaster({
+      transcript: moveRange(transcript, 0, 0, 2),
+      accepted: [proposal()],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    });
+
+    expect(requiresReanchor(plain, reordered.fingerprint)).toBe(true);
+    expect(requiresReanchor(plain, legacyFingerprint(reordered))).toBe(true);
   });
 });
