@@ -442,10 +442,18 @@ code {
   text-decoration: underline;
 }
 
-.transcript__word[data-removed="true"] {
+.transcript__word[aria-disabled="true"] {
   color: var(--text-secondary);
   cursor: default;
   text-decoration: line-through;
+}
+
+.transcript__silence {
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--rounded-sm);
+  font-size: 11px;
+  padding: 2px var(--space-1);
 }
 
 .playback {

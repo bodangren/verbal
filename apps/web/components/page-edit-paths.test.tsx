@@ -165,8 +165,9 @@ describe("Home edit paths", () => {
     expect(isRemoved("w1")).toBe(true);
     expect(isRemoved("w2")).toBe(true);
     expect(isRemoved("w0")).toBe(false);
-    // KNOWN ISSUE F09: focus stays on the removed, disabled word in jsdom.
-    expect(document.activeElement).toBe(listbox);
+    // The caret moves to the next kept word after the removed range.
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("transcript-word-w3");
+    expect(screen.getByRole("status").textContent).toContain("Removed 2 words");
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(isRemoved("w1")).toBe(false);
@@ -212,21 +213,22 @@ describe("Home edit paths", () => {
     expect(word("w1").dataset.match).toBe("true");
     expect(word("w3").dataset.match).toBe("true");
     expect(word("w5").dataset.match).toBe("true");
+    // Match 1 is selected as soon as a query is typed.
+    expect(word("w1").dataset.selected).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Next match" }));
     expect(screen.getByText("2 of 3")).toBeTruthy();
-    // KNOWN ISSUE F09: the first Next selects match 2, not match 1.
     expect(word("w3").dataset.selected).toBe("true");
     expect(word("w1").hasAttribute("data-selected")).toBe(false);
 
-    // KNOWN ISSUE F09: Enter in the search field does nothing.
+    // Enter in the search field moves to the next match.
     fireEvent.keyDown(find, { key: "Enter" });
-    expect(screen.getByText("2 of 3")).toBeTruthy();
-    expect(word("w3").dataset.selected).toBe("true");
+    expect(screen.getByText("3 of 3")).toBeTruthy();
+    expect(word("w5").dataset.selected).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Previous match" }));
-    expect(screen.getByText("1 of 3")).toBeTruthy();
-    expect(word("w1").dataset.selected).toBe("true");
+    expect(screen.getByText("2 of 3")).toBeTruthy();
+    expect(word("w3").dataset.selected).toBe("true");
   });
 
   it("applies every current keyboard shortcut", async () => {

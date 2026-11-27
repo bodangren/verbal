@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { TranscriptDocument, TranscriptWord } from "@verbal/core/browser";
 import { clearSelection, extendSelection, moveCaret, selectAll } from "../lib/caret";
 
@@ -58,6 +58,14 @@ export function TranscriptEditor({
 
   const removed = useMemo(() => new Set(transcript.removedWordIds), [transcript.removedWordIds]);
 
+  const silencesByWord = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const silence of transcript.silences ?? []) {
+      map.set(silence.afterWordId, silence.seconds);
+    }
+    return map;
+  }, [transcript.silences]);
+
   const { indexById, wordById } = useMemo(() => {
     const indices = new Map<string, number>();
     const words = new Map<string, TranscriptWord>();
@@ -69,8 +77,24 @@ export function TranscriptEditor({
   }, [transcript.words]);
 
   const activeCaret = caretIndex ?? caret.index;
+  const nextKeptWordIndex = (range: WordSelection): number | null => {
+    for (let index = range.toIndex + 1; index < transcript.words.length; index += 1) {
+      const word = transcript.words[index];
+      if (word !== undefined && !removed.has(word.id)) {
+        return index;
+      }
+    }
+    for (let index = range.fromIndex - 1; index >= 0; index -= 1) {
+      const word = transcript.words[index];
+      if (word !== undefined && !removed.has(word.id)) {
+        return index;
+      }
+    }
+    return null;
+  };
   const activate = (word: TranscriptWord, index: number, shiftKey: boolean) => {
     setCaret({ index, anchor: shiftKey ? (caret.anchor ?? caret.index) : index });
+    document.getElementById(`transcript-word-${word.id}`)?.scrollIntoView?.({ block: "nearest" });
     if (shiftKey && (caret.anchor !== null || caret.index !== null)) {
       const anchor = caret.anchor ?? caret.index;
       const fromIndex = Math.min(anchor, index);
@@ -164,6 +188,10 @@ export function TranscriptEditor({
         ) {
           event.preventDefault();
           onDeleteSelection?.();
+          const nextKept = nextKeptWordIndex(effectiveSelection);
+          if (nextKept !== null) {
+            setCaret({ index: nextKept, anchor: null });
+          }
         } else if (event.key === " " && effectiveSelection != null) {
           event.preventDefault();
           const range = effectiveSelection;
@@ -189,26 +217,38 @@ export function TranscriptEditor({
               effectiveSelection != null &&
               index >= effectiveSelection.fromIndex &&
               index <= effectiveSelection.toIndex;
+            const silenceSeconds = silencesByWord.get(wordId);
 
             return (
-              <span
-                key={word.id}
-                className="transcript__word"
-                id={`transcript-word-${word.id}`}
-                role="option"
-                aria-selected={isSelected}
-                aria-disabled={isRemoved || undefined}
-                data-word-id={word.id}
-                data-removed={isRemoved ? "true" : undefined}
-                data-active={isActive ? "true" : undefined}
-                data-selected={isSelected ? "true" : undefined}
-                data-caret={index === activeCaret ? "true" : undefined}
-                data-match={isMatch ? "true" : undefined}
-                aria-current={isActive ? "true" : undefined}
-                onClick={(event) => activate(word, index, event.shiftKey)}
-              >
-                {word.text}
-              </span>
+              <Fragment key={word.id}>
+                <span
+                  className="transcript__word"
+                  id={`transcript-word-${word.id}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  aria-disabled={isRemoved || undefined}
+                  data-word-id={word.id}
+                  data-removed={isRemoved ? "true" : undefined}
+                  data-active={isActive ? "true" : undefined}
+                  data-selected={isSelected ? "true" : undefined}
+                  data-caret={index === activeCaret ? "true" : undefined}
+                  data-match={isMatch ? "true" : undefined}
+                  aria-current={isActive ? "true" : undefined}
+                  onClick={(event) => activate(word, index, event.shiftKey)}
+                >
+                  {word.text}
+                </span>
+                {silenceSeconds !== undefined && (
+                  <span
+                    className="transcript__silence"
+                    aria-label={`${silenceSeconds} second${
+                      silenceSeconds === 1 ? "" : "s"
+                    } of silence`}
+                  >
+                    {silenceSeconds} s silence
+                  </span>
+                )}
+              </Fragment>
             );
           })}
         </p>

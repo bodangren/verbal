@@ -1072,12 +1072,26 @@ export default function Home() {
   }
 
   function deleteSelection() {
+    if (selection === null || transcript === null) {
+      return;
+    }
+
+    const removedSet = new Set(transcript.removedWordIds);
+    const removedCount = transcript.words
+      .slice(selection.fromIndex, selection.toIndex + 1)
+      .filter((word) => !removedSet.has(word.id)).length;
+
+    editing.removeRange(selection.fromIndex, selection.toIndex);
+    setSelection(null);
+    setMessage(`Removed ${removedCount} ${removedCount === 1 ? "word" : "words"}`);
+  }
+
+  function restoreSelection() {
     if (selection === null) {
       return;
     }
 
-    editing.removeRange(selection.fromIndex, selection.toIndex);
-    setSelection(null);
+    editing.restore(selection.fromIndex, selection.toIndex);
   }
 
   const acceptedProposals = resolveAccepted(proposals, acceptance);
@@ -1662,6 +1676,13 @@ export default function Home() {
     transcript === null ? 0 : transcript.words.length - transcript.removedWordIds.length;
   const scriptWords = countWords(script);
 
+  const selectionHasRemoved =
+    selection !== null &&
+    transcript !== null &&
+    transcript.words
+      .slice(selection.fromIndex, selection.toIndex + 1)
+      .some((word) => transcript.removedWordIds.includes(word.id));
+
   const mediaState: MediaState = (() => {
     if (!hasMedia) {
       return { kind: "none" };
@@ -1842,8 +1863,24 @@ export default function Home() {
                             autoComplete="off"
                             value={query}
                             onChange={(event) => {
-                              setQuery(event.target.value);
+                              const value = event.target.value;
+                              setQuery(value);
                               setMatchCursor(0);
+                              const nextMatches =
+                                transcript === null ? [] : searchTranscript(transcript, value);
+                              const first = nextMatches[0];
+                              setSelection(
+                                first === undefined
+                                  ? null
+                                  : { fromIndex: first.fromIndex, toIndex: first.toIndex },
+                              );
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter") {
+                                return;
+                              }
+                              event.preventDefault();
+                              stepMatch(event.shiftKey ? -1 : 1);
                             }}
                             placeholder="Find in Transcript…"
                           />
@@ -1895,6 +1932,7 @@ export default function Home() {
                       }}
                       onSelectionChange={setSelection}
                       onDeleteSelection={deleteSelection}
+                      onRestore={editing.restore}
                     />
 
                     <div className="toolbar toolbar--wrap toolbar--footer">
@@ -1948,6 +1986,15 @@ export default function Home() {
                         disabled={selection === null}
                       >
                         Delete
+                      </button>
+                      <button
+                        type="button"
+                        className="button button--ghost"
+                        onClick={restoreSelection}
+                        disabled={!selectionHasRemoved}
+                        title="Space"
+                      >
+                        Restore
                       </button>
                       <span className="toolbar__spacer" />
                       <button
