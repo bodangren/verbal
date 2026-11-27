@@ -142,19 +142,28 @@ export function buildExportArgs(input: BuildExportArgsInput): string[] {
     }
   }
 
+  // A silence piece is generated at the requested geometry while the source
+  // frames are read at the same geometry (autorotated by ffmpeg). Normalise
+  // every piece to one size, sample aspect ratio and frame rate before concat.
+  const normaliseVideo = hasSilence && wantsVideo;
+
   const filters: string[] = [];
   const labels: string[] = [];
 
   items.forEach((item, index) => {
     if (wantsVideo) {
       if (item.kind === "video") {
+        const size = geometry as ExportVideoGeometry;
+        const normalise = normaliseVideo
+          ? `,scale=${size.width}:${size.height},setsar=1,fps=${seconds(size.fps)}`
+          : "";
         filters.push(
-          `[0:v]trim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},setpts=PTS-STARTPTS[v${index}]`,
+          `[0:v]trim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},setpts=PTS-STARTPTS${normalise}[v${index}]`,
         );
       } else {
         const size = geometry as ExportVideoGeometry;
         filters.push(
-          `color=c=black:s=${size.width}x${size.height}:r=${seconds(size.fps)}:d=${seconds(item.durationSeconds)},setpts=PTS-STARTPTS[v${index}]`,
+          `color=c=black:s=${size.width}x${size.height}:r=${seconds(size.fps)}:d=${seconds(item.durationSeconds)},setpts=PTS-STARTPTS,setsar=1[v${index}]`,
         );
       }
     }

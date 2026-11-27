@@ -194,6 +194,43 @@ describe("POST /api/export timeline", () => {
     expect(input.video).toEqual({ width: 1280, height: 720, fps: 25 });
   });
 
+  it("passes the display geometry to the runner for a rotated source", async () => {
+    const transcript = insertSilence(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+      ]),
+      "w0",
+      1.5,
+    );
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+    probeMedia.mockResolvedValue({
+      durationSeconds: 2,
+      streams: [
+        {
+          kind: "video",
+          width: 160,
+          height: 120,
+          displayWidth: 120,
+          displayHeight: 160,
+          frameRate: 25,
+          rotation: 90,
+        },
+        { kind: "audio" },
+      ],
+    });
+    create.mockResolvedValue({ id: "job-rot" });
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(202);
+    const input = runExport.mock.calls[0]?.[0] as {
+      video: { width: number; height: number; fps: number };
+    };
+    expect(input.video).toEqual({ width: 120, height: 160, fps: 25 });
+  });
+
   it("extends an unedited transcript to the probed media duration", async () => {
     const transcript = createTranscript([
       { text: "start", start: 2, end: 30 },

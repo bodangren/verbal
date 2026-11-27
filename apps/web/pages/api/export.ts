@@ -69,13 +69,15 @@ export default async function handler(
     const items = buildTimeline({ transcript, durationSeconds: info.durationSeconds ?? 0 });
     const hasAudio = info.streams.some((stream) => stream.kind === "audio");
     const videoStream = info.streams.find((stream) => stream.kind === "video");
+    const videoWidth = videoStream?.displayWidth ?? videoStream?.width;
+    const videoHeight = videoStream?.displayHeight ?? videoStream?.height;
     const video =
-      videoStream?.width !== undefined &&
-      videoStream.height !== undefined &&
-      videoStream.frameRate !== undefined
+      videoWidth !== undefined &&
+      videoHeight !== undefined &&
+      videoStream?.frameRate !== undefined
         ? {
-            width: videoStream.width,
-            height: videoStream.height,
+            width: videoWidth,
+            height: videoHeight,
             fps: videoStream.frameRate,
           }
         : undefined;

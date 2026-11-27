@@ -121,4 +121,92 @@ describe.skipIf(!ffmpegAvailable)("export integration", () => {
     expect(info.streams[0]?.kind).toBe("audio");
     expect(info.streams.some((stream) => stream.kind === "video")).toBe(false);
   }, 60_000);
+
+  it("exports a rotated source with an inserted silence at the display size", async () => {
+    const plain = path.join(directory, "rotated-source.mp4");
+    const rotated = path.join(directory, "rotated.mp4");
+    const rotatedOut = path.join(directory, "rotated-out.mp4");
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=size=160x120:rate=25:duration=2",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=duration=2",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      plain,
+    ]);
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-display_rotation",
+      "90",
+      "-i",
+      plain,
+      "-map",
+      "0",
+      "-c",
+      "copy",
+      rotated,
+    ]);
+
+    const sourceInfo = await probeMedia(runCommand, rotated);
+    const sourceVideo = sourceInfo.streams.find((stream) => stream.kind === "video");
+
+    expect(sourceVideo?.width).toBe(160);
+    expect(sourceVideo?.height).toBe(120);
+    expect(sourceVideo?.displayWidth).toBe(120);
+    expect(sourceVideo?.displayHeight).toBe(160);
+
+    const geometry = {
+      width: sourceVideo?.displayWidth ?? sourceVideo?.width ?? 0,
+      height: sourceVideo?.displayHeight ?? sourceVideo?.height ?? 0,
+      fps: sourceVideo?.frameRate ?? 25,
+    };
+
+    await runExport({
+      inputPath: rotated,
+      outputPath: rotatedOut,
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 2 },
+        { kind: "silence", durationSeconds: 1 },
+      ],
+      hasAudio: true,
+      video: geometry,
+    });
+
+    const { stdout } = await runCommand("ffprobe", [
+      "-v",
+      "error",
+      "-print_format",
+      "json",
+      "-show_entries",
+      "stream=codec_type,width,height,duration",
+      rotatedOut,
+    ]);
+    const streams = (JSON.parse(stdout).streams ?? []) as Array<{
+      codec_type: string;
+      width?: number;
+      height?: number;
+      duration?: string;
+    }>;
+    const video = streams.find((stream) => stream.codec_type === "video");
+    const audio = streams.find((stream) => stream.codec_type === "audio");
+
+    expect(video).toBeDefined();
+    expect(audio).toBeDefined();
+    expect(video?.width).toBe(120);
+    expect(video?.height).toBe(160);
+    expect(Math.abs(Number(video?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
+    expect(Math.abs(Number(audio?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
+  }, 60_000);
 });

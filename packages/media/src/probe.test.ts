@@ -55,6 +55,43 @@ const ROTATED_VIA_TAGS = JSON.stringify({
   format: { format_name: "mov", duration: "5.0" },
 });
 
+const ROTATED_SIDE_DATA_160 = JSON.stringify({
+  streams: [
+    {
+      index: 0,
+      codec_name: "h264",
+      codec_type: "video",
+      width: 160,
+      height: 120,
+      r_frame_rate: "25/1",
+      side_data_list: [{ side_data_type: "Display Matrix", rotation: -90 }],
+    },
+  ],
+  format: { format_name: "mp4", duration: "2.0" },
+});
+
+const ROTATED_TAG_160 = JSON.stringify({
+  streams: [
+    {
+      index: 0,
+      codec_name: "h264",
+      codec_type: "video",
+      width: 160,
+      height: 120,
+      r_frame_rate: "25/1",
+      tags: { rotate: "90" },
+    },
+  ],
+  format: { format_name: "mp4", duration: "2.0" },
+});
+
+const UNROTATED_160 = JSON.stringify({
+  streams: [
+    { index: 0, codec_name: "h264", codec_type: "video", width: 160, height: 120, r_frame_rate: "25/1" },
+  ],
+  format: { format_name: "mp4", duration: "2.0" },
+});
+
 describe("parseProbeOutput", () => {
   it("parses a video with audio", () => {
     const info = parseProbeOutput(VIDEO_AUDIO);
@@ -98,6 +135,41 @@ describe("parseProbeOutput", () => {
     const info = parseProbeOutput(ROTATED_VIA_TAGS);
 
     expect(info.streams[0]?.rotation).toBe(90);
+  });
+
+  it("reports display geometry swapped for a 90 degree rotation side data", () => {
+    const info = parseProbeOutput(ROTATED_SIDE_DATA_160);
+
+    expect(info.streams[0]).toMatchObject({
+      width: 160,
+      height: 120,
+      rotation: -90,
+      displayWidth: 120,
+      displayHeight: 160,
+    });
+  });
+
+  it("reports display geometry swapped for a legacy rotate tag", () => {
+    const info = parseProbeOutput(ROTATED_TAG_160);
+
+    expect(info.streams[0]).toMatchObject({
+      width: 160,
+      height: 120,
+      rotation: 90,
+      displayWidth: 120,
+      displayHeight: 160,
+    });
+  });
+
+  it("reports the coded size as display geometry without rotation", () => {
+    const info = parseProbeOutput(UNROTATED_160);
+
+    expect(info.streams[0]).toMatchObject({
+      width: 160,
+      height: 120,
+      displayWidth: 160,
+      displayHeight: 120,
+    });
   });
 
   it("reports a missing duration as null", () => {

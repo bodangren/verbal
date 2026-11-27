@@ -8,6 +8,9 @@ export type MediaStream = {
   codec: string | null;
   width?: number;
   height?: number;
+  /** Size after the stream rotation is applied; equals width/height when none. */
+  displayWidth?: number;
+  displayHeight?: number;
   frameRate?: number;
   channels?: number;
   sampleRate?: number;
@@ -108,6 +111,12 @@ function parseRotation(stream: Record<string, unknown>): number | null {
   return null;
 }
 
+/** True when a rotation swaps width and height (90 or 270 degrees). */
+function swapsDimensions(rotation: number): boolean {
+  const normalised = ((rotation % 360) + 360) % 360;
+  return normalised === 90 || normalised === 270;
+}
+
 function parseStream(value: unknown): MediaStream {
   if (!isRecord(value)) {
     throw new ProbeError("ffprobe stream entry is not an object");
@@ -133,6 +142,15 @@ function parseStream(value: unknown): MediaStream {
     const rotation = parseRotation(value);
     if (rotation !== null) {
       stream.rotation = rotation;
+    }
+    if (stream.width !== undefined && stream.height !== undefined) {
+      if (rotation !== null && swapsDimensions(rotation)) {
+        stream.displayWidth = stream.height;
+        stream.displayHeight = stream.width;
+      } else {
+        stream.displayWidth = stream.width;
+        stream.displayHeight = stream.height;
+      }
     }
   }
 

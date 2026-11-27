@@ -145,6 +145,43 @@ describe("buildExportArgs", () => {
     expect(filter).toContain("[0:v]trim=start=0.000000:end=0.400000");
     expect(filter).toContain("concat=n=2:v=1:a=1[vout][aout]");
   });
+
+  it("normalises the sample aspect ratio of every concat leg", () => {
+    const args = buildExportArgs({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 1 },
+        { kind: "silence", durationSeconds: 1 },
+        { kind: "video", startSeconds: 1, endSeconds: 2 },
+      ],
+      hasAudio: true,
+      video: { width: 120, height: 160, fps: 25 },
+    });
+
+    const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+
+    expect(filter.match(/setsar=1/g)).toHaveLength(3);
+  });
+
+  it("scales video legs and sizes the silence to the display geometry", () => {
+    const args = buildExportArgs({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 1 },
+        { kind: "silence", durationSeconds: 1 },
+      ],
+      hasAudio: true,
+      video: { width: 120, height: 160, fps: 25 },
+    });
+
+    const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+
+    expect(filter).toContain("scale=120:160");
+    expect(filter).toContain("fps=25.000000");
+    expect(filter).toContain("color=c=black:s=120x160:r=25.000000");
+  });
 });
 
 describe("createProgressParser", () => {
