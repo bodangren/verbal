@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   computeMediaRevision,
@@ -107,5 +108,26 @@ describe("withProjectLock", () => {
       await saveProject(fs, ROOT, await openProject(fs, ROOT));
     });
     await vi.waitFor(() => expect(pendingProjectLocks()).toBe(0));
+  });
+
+  it(
+    "rejects a nested lock on the same root instead of deadlocking",
+    { timeout: 2000 },
+    async () => {
+      await expect(
+        withProjectLock(ROOT, () => withProjectLock(ROOT, async () => undefined)),
+      ).rejects.toThrow(`withProjectLock is not re-entrant: ${path.resolve(ROOT)}`);
+    },
+  );
+
+  it("allows nesting locks for different roots", async () => {
+    const order: string[] = [];
+    await withProjectLock("/a", async () => {
+      order.push("a");
+      await withProjectLock("/b", async () => {
+        order.push("b");
+      });
+    });
+    expect(order).toEqual(["a", "b"]);
   });
 });

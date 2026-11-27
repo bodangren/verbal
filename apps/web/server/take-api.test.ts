@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -6,14 +6,82 @@ import {
   nodeFileSystem,
   openProject,
   saveProject,
+  type FileSystem,
   type JobKind,
   type JobRecord,
   type JobRegistry,
 } from "@verbal/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NormalizeJobInput } from "./normalize-job";
 import { createTakeApi, normalizeTakeId, normalizedTakePath, uploadedTakePath } from "./take-api";
-import { readTakes } from "./take-store";
+import { addTake, readTakes, takeMediaPath } from "./take-store";
+
+function jobRecord(id: string, kind: JobKind): JobRecord {
+  return {
+    id,
+    kind,
+    status: "queued",
+    createdAt: "2026-11-23T10:00:00.000Z",
+    updatedAt: "2026-11-23T10:00:00.000Z",
+    progress: 0,
+    message: null,
+    result: null,
+    error: null,
+  };
+}
+
+/**
+ * Drives `api.upload` with a fake normalize that writes a distinct byte string
+ * to the temporary output and then runs `onOutput`, so the full commit path is
+ * exercised. Errors thrown by `onOutput` are captured for the failure tests.
+ */
+function createUploader(
+  root: string,
+  opts: { fs?: FileSystem; statValue?: { size: number; mtimeMs: number } } = {},
+) {
+  const fs = opts.fs ?? nodeFileSystem;
+  const statValue = opts.statValue ?? { size: 111, mtimeMs: 111 };
+  const normalizes: Promise<void>[] = [];
+  const errors: unknown[] = [];
+  let jobCount = 0;
+  let uploadCount = 0;
+
+  const api = createTakeApi({
+    registry: {
+      create: async (kind: JobKind) => jobRecord(`job-${++jobCount}`, kind),
+    } as unknown as JobRegistry,
+    now: () => new Date("2026-11-23T10:00:00.000Z"),
+    fs,
+    stat: async () => statValue,
+    runNormalize: async (input) => {
+      const task = (async () => {
+        uploadCount += 1;
+        await writeFile(input.outputPath, `take bytes ${uploadCount}`);
+        try {
+          await input.onOutput?.(input.outputPath);
+        } catch (error) {
+          errors.push(error);
+        }
+      })();
+      normalizes.push(task);
+      await task;
+    },
+  });
+
+  return {
+    async upload(takeId: string, durationSeconds: number) {
+      const response = await api.upload({
+        root,
+        takeId,
+        durationSeconds,
+        dataBase64: Buffer.from("x").toString("base64"),
+      });
+      expect(response.status).toBe(202);
+      await Promise.all(normalizes);
+    },
+    errors,
+  };
+}
 
 const roots: string[] = [];
 
@@ -52,6 +120,7 @@ async function setup() {
     now: () => new Date("2026-11-23T10:00:00.000Z"),
     runNormalize: async (input) => {
       normalized.push(input);
+      await writeFile(input.outputPath, "normalized bytes");
       await input.onOutput?.(input.outputPath);
     },
     stat: async () => ({ size: 123, mtimeMs: 456 }),
@@ -188,5 +257,241 @@ describe("take api", () => {
     expect(normalizeTakeId("take-2026-1")).toBe("take-2026-1");
     expect(() => normalizeTakeId("../escape")).toThrow(/slug/);
     expect(() => normalizeTakeId("UPPER")).toThrow(/slug/);
+  });
+
+  it("leaves the old take and manifest intact when the project save fails", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "verbal-take-api-fail-"));
+    roots.push(root);
+    await saveProject(nodeFileSystem, root, {
+      schemaVersion: 1,
+      id: "project-1",
+      name: "Take",
+      createdAt: "2026-11-23T09:00:00.000Z",
+    });
+    await mkdir(path.join(root, "takes"), { recursive: true });
+    await writeFile(path.join(root, "takes", "take-1.mp4"), "old take bytes");
+    await addTake(nodeFileSystem, root, {
+      id: "take-1",
+      fileName: "take-1.mp4",
+      createdAt: "2026-11-23T10:00:00.000Z",
+      durationSeconds: 12,
+    });
+
+    const failingFs: FileSystem = {
+      ...nodeFileSystem,
+      async rename(from: string, to: string) {
+        if (to.endsWith("project.json")) {
+          throw new Error("save failed");
+        }
+        return nodeFileSystem.rename(from, to);
+      },
+    };
+
+    const normalizes: Promise<void>[] = [];
+    let normalizeError: unknown;
+    const api = createTakeApi({
+      registry: {
+        create: async (kind: JobKind) => jobRecord("job-2", kind),
+      } as unknown as JobRegistry,
+      now: () => new Date("2026-11-23T10:00:00.000Z"),
+      fs: failingFs,
+      stat: async () => ({ size: 123, mtimeMs: 456 }),
+      runNormalize: async (input) => {
+        const task = (async () => {
+          await writeFile(input.outputPath, "new take bytes");
+          try {
+            await input.onOutput?.(input.outputPath);
+          } catch (error) {
+            normalizeError = error;
+          }
+        })();
+        normalizes.push(task);
+        await task;
+      },
+    });
+
+    const response = await api.upload({
+      root,
+      takeId: "take-1",
+      durationSeconds: 12,
+      dataBase64: Buffer.from("recorded bytes").toString("base64"),
+    });
+    expect(response.status).toBe(202);
+    await Promise.all(normalizes);
+
+    expect(normalizeError).toMatchObject({ message: "save failed" });
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("old take bytes");
+    expect((await readTakes(nodeFileSystem, root)).takes).toEqual([
+      {
+        id: "take-1",
+        fileName: "take-1.mp4",
+        createdAt: "2026-11-23T10:00:00.000Z",
+        durationSeconds: 12,
+      },
+    ]);
+    await expect(readFile(path.join(root, "takes", "take-1.job-2.mp4"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("a re-upload lands the new bytes at the canonical path and leaves no temporary", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "verbal-take-api-reup-"));
+    roots.push(root);
+    await saveProject(nodeFileSystem, root, {
+      schemaVersion: 1,
+      id: "project-1",
+      name: "Take",
+      createdAt: "2026-11-23T09:00:00.000Z",
+    });
+
+    const uploader = createUploader(root);
+    await uploader.upload("take-1", 12);
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("take bytes 1");
+
+    await uploader.upload("take-1", 20);
+
+    expect(takeMediaPath(root, "take-1")).toBe(path.join(root, "takes", "take-1.mp4"));
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("take bytes 2");
+    await expect(readFile(path.join(root, "takes", "take-1.job-1.mp4"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(path.join(root, "takes", "take-1.job-2.mp4"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    const takes = (await readTakes(nodeFileSystem, root)).takes;
+    expect(takes).toHaveLength(1);
+    expect(takes[0]?.fileName).toBe("take-1.mp4");
+    expect(takes[0]?.durationSeconds).toBe(20);
+  });
+
+  it("keeps the old canonical bytes until the save commits", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "verbal-take-api-gate-"));
+    roots.push(root);
+    await saveProject(nodeFileSystem, root, {
+      schemaVersion: 1,
+      id: "project-1",
+      name: "Take",
+      createdAt: "2026-11-23T09:00:00.000Z",
+    });
+    await mkdir(path.join(root, "takes"), { recursive: true });
+    await writeFile(path.join(root, "takes", "take-1.mp4"), "old bytes");
+    await addTake(nodeFileSystem, root, {
+      id: "take-1",
+      fileName: "take-1.mp4",
+      createdAt: "2026-11-23T10:00:00.000Z",
+      durationSeconds: 12,
+    });
+
+    let releaseSave!: () => void;
+    const saveGate = new Promise<void>((resolve) => {
+      releaseSave = resolve;
+    });
+    let saveStarted = false;
+    const gatedFs: FileSystem = {
+      ...nodeFileSystem,
+      async rename(from: string, to: string) {
+        if (to.endsWith("project.json")) {
+          saveStarted = true;
+          await saveGate;
+        }
+        return nodeFileSystem.rename(from, to);
+      },
+    };
+
+    const normalizes: Promise<void>[] = [];
+    const api = createTakeApi({
+      registry: {
+        create: async (kind: JobKind) => jobRecord("job-2", kind),
+      } as unknown as JobRegistry,
+      now: () => new Date("2026-11-23T10:00:00.000Z"),
+      fs: gatedFs,
+      stat: async () => ({ size: 222, mtimeMs: 222 }),
+      runNormalize: async (input) => {
+        const task = (async () => {
+          await writeFile(input.outputPath, "new bytes");
+          await input.onOutput?.(input.outputPath);
+        })();
+        normalizes.push(task);
+        await task;
+      },
+    });
+
+    const response = await api.upload({
+      root,
+      takeId: "take-1",
+      durationSeconds: 20,
+      dataBase64: Buffer.from("x").toString("base64"),
+    });
+    expect(response.status).toBe(202);
+
+    await vi.waitFor(() => expect(saveStarted).toBe(true));
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("old bytes");
+
+    releaseSave();
+    await Promise.all(normalizes);
+
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("new bytes");
+    await expect(readFile(path.join(root, "takes", "take-1.job-2.mp4"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("a failing final rename keeps the old bytes, removes the temporary, and fails the job", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "verbal-take-api-renf-"));
+    roots.push(root);
+    await saveProject(nodeFileSystem, root, {
+      schemaVersion: 1,
+      id: "project-1",
+      name: "Take",
+      createdAt: "2026-11-23T09:00:00.000Z",
+    });
+    await mkdir(path.join(root, "takes"), { recursive: true });
+    await writeFile(path.join(root, "takes", "take-1.mp4"), "old bytes");
+    await addTake(nodeFileSystem, root, {
+      id: "take-1",
+      fileName: "take-1.mp4",
+      createdAt: "2026-11-23T10:00:00.000Z",
+      durationSeconds: 12,
+    });
+
+    const failingRenameFs: FileSystem = {
+      ...nodeFileSystem,
+      async rename(from: string, to: string) {
+        if (to.endsWith("take-1.mp4")) {
+          throw new Error("rename failed");
+        }
+        return nodeFileSystem.rename(from, to);
+      },
+    };
+
+    const uploader = createUploader(root, { fs: failingRenameFs });
+    await uploader.upload("take-1", 20);
+
+    expect(uploader.errors).toHaveLength(1);
+    expect(uploader.errors[0]).toMatchObject({ message: "rename failed" });
+    expect(await readFile(path.join(root, "takes", "take-1.mp4"), "utf8")).toBe("old bytes");
+    await expect(readFile(path.join(root, "takes", "take-1.job-1.mp4"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("a consumer resolving takeMediaPath after a re-upload finds the new file", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "verbal-take-api-consumer-"));
+    roots.push(root);
+    await saveProject(nodeFileSystem, root, {
+      schemaVersion: 1,
+      id: "project-1",
+      name: "Take",
+      createdAt: "2026-11-23T09:00:00.000Z",
+    });
+
+    const uploader = createUploader(root);
+    await uploader.upload("take-1", 12);
+    await uploader.upload("take-1", 20);
+
+    const mediaPath = takeMediaPath(root, "take-1");
+    expect(mediaPath).toBe(path.join(root, "takes", "take-1.mp4"));
+    await expect(stat(mediaPath)).resolves.toMatchObject({ size: expect.any(Number) });
+    expect(await readFile(mediaPath, "utf8")).toBe("take bytes 2");
   });
 });

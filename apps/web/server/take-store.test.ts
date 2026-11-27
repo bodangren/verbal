@@ -1,8 +1,9 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { nodeFileSystem } from "@verbal/core";
+import { nodeFileSystem, type FileSystem } from "@verbal/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { createFakeFileSystem } from "./test-support";
 import {
   addTake,
   parseTakes,
@@ -31,6 +32,38 @@ const take = {
   createdAt: "2026-11-23T10:00:00.000Z",
   durationSeconds: 12,
 };
+
+/** Wraps a file system so every operation pauses for the next delay. */
+function delayingFs(inner: FileSystem, delays: readonly number[]): FileSystem {
+  let index = 0;
+  const wait = async () => {
+    const ms = delays[index % delays.length] ?? 0;
+    index += 1;
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  };
+  return {
+    async mkdir(p) {
+      await wait();
+      return inner.mkdir(p);
+    },
+    async readFile(p) {
+      await wait();
+      return inner.readFile(p);
+    },
+    async writeFileDurable(p, d) {
+      await wait();
+      return inner.writeFileDurable(p, d);
+    },
+    async rename(f, t) {
+      await wait();
+      return inner.rename(f, t);
+    },
+    async unlink(p) {
+      await wait();
+      return inner.unlink(p);
+    },
+  };
+}
 
 describe("take store", () => {
   it("reads an empty manifest when none exists", async () => {
@@ -65,6 +98,26 @@ describe("take store", () => {
     await removeTake(nodeFileSystem, root, take.id);
 
     expect(await readTakes(nodeFileSystem, root)).toEqual({ takes: [] });
+  });
+
+  it("keeps both takes when two addTake calls race on an empty manifest", async () => {
+    const inner = createFakeFileSystem();
+    // Slow reads and fast writes make the two sections each read an empty
+    // manifest before either writes, so an unlocked read-modify-write loses one.
+    const fs = delayingFs(inner, [40, 40, 0, 0, 0, 0]);
+
+    await Promise.all([
+      addTake(fs, "/projects/demo", { ...take, id: "take-a", fileName: "take-a.mp4" }),
+      addTake(fs, "/projects/demo", {
+        ...take,
+        id: "take-b",
+        fileName: "take-b.mp4",
+        durationSeconds: 20,
+      }),
+    ]);
+
+    const document = await readTakes(inner, "/projects/demo");
+    expect(document.takes.map((entry) => entry.id).sort()).toEqual(["take-a", "take-b"]);
   });
 
   it("drops malformed manifest entries", () => {

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { nodeFileSystem, writeFileAtomic, type FileSystem } from "@verbal/core";
+import { withProjectLock } from "./project-lock";
 
 export type Take = {
   id: string;
@@ -97,7 +98,27 @@ export async function saveTakes(
   );
 }
 
+/**
+ * Adds or replaces one take and writes `takes.json`.
+ *
+ * The read-modify-write runs inside `withProjectLock`, so two concurrent
+ * additions cannot each read an empty manifest and write back one entry.
+ */
 export async function addTake(
+  fs: FileSystem,
+  root: string,
+  take: Take,
+): Promise<TakesDocument> {
+  return withProjectLock(root, () => addTakeUnlocked(fs, root, take));
+}
+
+/**
+ * The manifest read-modify-write without the lock.
+ *
+ * Use it only inside `withProjectLock` for `root`, where the caller updates the
+ * manifest and the project document in one section.
+ */
+export async function addTakeUnlocked(
   fs: FileSystem,
   root: string,
   take: Take,
@@ -115,8 +136,10 @@ export async function removeTake(
   root: string,
   id: string,
 ): Promise<TakesDocument> {
-  const document = await readTakes(fs, root);
-  const next = { takes: document.takes.filter((entry) => entry.id !== id) };
-  await saveTakes(fs, root, next);
-  return next;
+  return withProjectLock(root, async () => {
+    const document = await readTakes(fs, root);
+    const next = { takes: document.takes.filter((entry) => entry.id !== id) };
+    await saveTakes(fs, root, next);
+    return next;
+  });
 }

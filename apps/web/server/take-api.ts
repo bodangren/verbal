@@ -18,7 +18,7 @@ import { PayloadTooLargeError } from "./http";
 import type { ApiResponse } from "./jobs-api";
 import type { NormalizeJobInput } from "./normalize-job";
 import { withProjectLock } from "./project-lock";
-import { addTake, readTakes, TAKES_DIR } from "./take-store";
+import { addTakeUnlocked, readTakes, TAKES_DIR } from "./take-store";
 import { asRecord, requireAbsolutePath } from "./validation";
 
 /** A 30-minute 1080p WebM is well under this; it is a guard, not a target. */
@@ -38,6 +38,15 @@ function* decodeBase64Chunks(encoded: string): Generator<Buffer> {
   for (let start = 0; start < encoded.length; start += BASE64_CHUNK_CHARS) {
     yield Buffer.from(encoded.slice(start, start + BASE64_CHUNK_CHARS), "base64");
   }
+}
+
+function isNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
 }
 
 /** Writes the decoded bytes to a private temporary file, then moves it into place. */
@@ -141,9 +150,13 @@ export function createTakeApi(overrides: TakeApiDeps) {
         const uploadPath = uploadedTakePath(root, takeId);
         await writeRecording(input.dataBase64, uploadPath);
 
-        const outputPath = normalizedTakePath(root, takeId);
-        const fileName = `${takeId}.mp4`;
         const job = await overrides.registry.create("capture");
+
+        // Normalize to a unique temporary name, then rename it over the
+        // canonical path only after the project and manifest saves succeed.
+        const fileName = `${takeId}.mp4`;
+        const canonicalPath = normalizedTakePath(root, takeId);
+        const outputPath = path.join(root, TAKES_DIR, `${takeId}.${job.id}.mp4`);
 
         void overrides
           .runNormalize({
@@ -152,22 +165,33 @@ export function createTakeApi(overrides: TakeApiDeps) {
             outputPath,
             durationSeconds: duration,
             onOutput: async () => {
-              await addTake(fs, root, {
-                id: takeId,
-                fileName,
-                createdAt: now().toISOString(),
-                durationSeconds: duration,
-              });
-              await withProjectLock(root, async () => {
-                // Re-read inside the lock: the normalize ran since the fail-fast read.
-                const current = await openProject(fs, root);
-                const updated = await replaceProjectMedia(
-                  current,
-                  { assetPath: `takes/${fileName}` },
-                  { mediaPath: outputPath, stat },
-                );
-                await saveProject(fs, root, updated);
-              });
+              try {
+                await withProjectLock(root, async () => {
+                  // Re-read inside the lock: the normalize ran since the fail-fast read.
+                  const current = await openProject(fs, root);
+                  const updated = await replaceProjectMedia(
+                    current,
+                    { assetPath: `takes/${fileName}` },
+                    { mediaPath: canonicalPath, stat: async () => stat(outputPath) },
+                  );
+                  await saveProject(fs, root, updated);
+                  await addTakeUnlocked(fs, root, {
+                    id: takeId,
+                    fileName,
+                    createdAt: now().toISOString(),
+                    durationSeconds: duration,
+                  });
+                });
+                // Both saves succeeded; move the new file over the canonical path.
+                await fs.rename(outputPath, canonicalPath).catch((error: unknown) => {
+                  // A normalize that produced no output leaves nothing to rename.
+                  if (!isNotFound(error)) throw error;
+                });
+              } catch (error) {
+                // A failed save or rename leaves the old file and manifest intact.
+                await nodeFs.unlink(outputPath).catch(() => undefined);
+                throw error;
+              }
             },
           })
           .finally(() => {
