@@ -4,6 +4,8 @@ export type UxBudgets = {
   maxTabStopsInTranscript: number;
   maxPageScroll: number;
   minTranscriptLines: number;
+  /** Lines required at 900 px wide or less, where the shell stacks and scrolls. Defaults to `minTranscriptLines`. */
+  minTranscriptLinesNarrow?: number;
   maxLiveRegions: number;
 };
 
@@ -35,6 +37,9 @@ export type BudgetViolation = {
   limit: number;
   message: string;
 };
+
+/** The shell stacks into one scrolling column at this width or less. */
+const NARROW_WIDTH = 900;
 
 function overBudget(
   step: string,
@@ -116,13 +121,18 @@ export function checkBudgets(report: UxReport, budgets: UxBudgets): BudgetViolat
         ),
       );
     }
-    if (metrics.transcriptLines < budgets.minTranscriptLines) {
+    const width = Number(viewport.split("x")[0]);
+    const minLines =
+      Number.isFinite(width) && width <= NARROW_WIDTH
+        ? (budgets.minTranscriptLinesNarrow ?? budgets.minTranscriptLines)
+        : budgets.minTranscriptLines;
+    if (metrics.transcriptLines < minLines) {
       violations.push(
         overBudget(
           viewport,
           "transcriptLines",
           metrics.transcriptLines,
-          budgets.minTranscriptLines,
+          minLines,
           "Keep enough transcript visible to edit.",
         ),
       );

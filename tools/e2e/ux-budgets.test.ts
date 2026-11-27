@@ -46,8 +46,7 @@ describe("checkBudgets", () => {
     expect(
       violations.some(
         (violation) =>
-          violation.step === "transcript" &&
-          violation.metric === "tabStopsBeforeFirstWord",
+          violation.step === "transcript" && violation.metric === "tabStopsBeforeFirstWord",
       ),
     ).toBe(true);
     expect(violations.some((violation) => violation.step === "liveRegions")).toBe(true);
@@ -69,5 +68,28 @@ describe("checkBudgets", () => {
 
     expect(violations.some((violation) => violation.metric === "pageScrollY")).toBe(true);
     expect(violations.some((violation) => violation.metric === "transcriptLines")).toBe(true);
+  });
+
+  it("asks for fewer transcript lines at a stacked width", () => {
+    const stacked = report({
+      viewports: {
+        "1024x700": { pageScrollX: 0, pageScrollY: 0, transcriptLines: 3 },
+        "768x1024": { pageScrollX: 0, pageScrollY: 0, transcriptLines: 1 },
+        "360x740": { pageScrollX: 0, pageScrollY: 0, transcriptLines: 1 },
+      },
+    });
+
+    expect(checkBudgets(stacked, { ...budgets, minTranscriptLinesNarrow: 1 })).toEqual([]);
+    const strict = checkBudgets(stacked, budgets).map((violation) => violation.step);
+    expect(strict).toEqual(["768x1024", "360x740"]);
+  });
+
+  it("still fails a narrow viewport that shows no transcript", () => {
+    const none = report({
+      viewports: { "360x740": { pageScrollX: 0, pageScrollY: 0, transcriptLines: 0 } },
+    });
+
+    const violations = checkBudgets(none, { ...budgets, minTranscriptLinesNarrow: 1 });
+    expect(violations.map((violation) => violation.limit)).toEqual([1]);
   });
 });

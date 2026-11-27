@@ -4,5 +4,6 @@
   "maxTabStopsInTranscript": 1,
   "maxPageScroll": 0,
   "minTranscriptLines": 3,
-  "maxLiveRegions": 1
+  "maxLiveRegions": 1,
+  "minTranscriptLinesNarrow": 1
 }

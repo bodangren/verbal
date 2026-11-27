@@ -72,15 +72,24 @@ execFileSync(
   "ffmpeg",
   [
     "-y",
-    "-f", "lavfi",
-    "-i", "testsrc=size=320x180:rate=30",
-    "-f", "lavfi",
-    "-i", "sine=frequency=440",
-    "-t", "2",
-    "-c:v", "libx264",
-    "-preset", "veryfast",
-    "-pix_fmt", "yuv420p",
-    "-c:a", "aac",
+    "-f",
+    "lavfi",
+    "-i",
+    "testsrc=size=320x180:rate=30",
+    "-f",
+    "lavfi",
+    "-i",
+    "sine=frequency=440",
+    "-t",
+    "2",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
     clip,
   ],
   { stdio: "ignore" },
@@ -129,11 +138,12 @@ async function measureMode(page, mode) {
     const transcript = document.querySelector(".transcript");
     const transcriptBox = transcript?.getBoundingClientRect();
     const transcriptRect =
-      transcriptBox === undefined
-        ? null
-        : { top: transcriptBox.top, bottom: transcriptBox.bottom };
+      transcriptBox === undefined ? null : { top: transcriptBox.top, bottom: transcriptBox.bottom };
     const stageBox = document.querySelector(".stage__scroll")?.getBoundingClientRect();
-    const stageRect = stageBox === undefined ? null : { top: stageBox.top, bottom: stageBox.bottom };
+    const stageRect =
+      stageBox === undefined
+        ? null
+        : { top: Math.max(stageBox.top, 0), bottom: Math.min(stageBox.bottom, window.innerHeight) };
     const words = [...document.querySelectorAll(".transcript__word")];
     const wordRects = words.map((word) => {
       const rect = word.getBoundingClientRect();
@@ -170,16 +180,10 @@ async function measureMode(page, mode) {
         return text;
       }
 
-      return (
-        element.getAttribute("title") ??
-        element.getAttribute("placeholder") ??
-        ""
-      ).trim();
+      return (element.getAttribute("title") ?? element.getAttribute("placeholder") ?? "").trim();
     };
 
-    const interactive = [
-      ...document.querySelectorAll("button,input,select,textarea,a[href]"),
-    ];
+    const interactive = [...document.querySelectorAll("button,input,select,textarea,a[href]")];
     const nameless = interactive
       .filter((element) => nameOf(element) === "")
       .map((element) => ({
@@ -189,12 +193,10 @@ async function measureMode(page, mode) {
         id: element.id,
       }));
 
-    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map(
-      (heading) => ({
-        level: Number(heading.tagName.slice(1)),
-        text: (heading.textContent ?? "").trim().slice(0, 40),
-      }),
-    );
+    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((heading) => ({
+      level: Number(heading.tagName.slice(1)),
+      text: (heading.textContent ?? "").trim().slice(0, 40),
+    }));
 
     const disabledPrimary = [...document.querySelectorAll("button:disabled")]
       .map((button) => ({
@@ -229,11 +231,7 @@ async function measureMode(page, mode) {
 
 const browser = await chromium.launch({
   executablePath: CHROME,
-  args: [
-    "--no-sandbox",
-    "--use-fake-ui-for-media-stream",
-    "--use-fake-device-for-media-stream",
-  ],
+  args: ["--no-sandbox", "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const pageErrors = [];
@@ -294,14 +292,8 @@ try {
       await page.waitForTimeout(250);
       const measured = await measureMode(page, mode);
 
-      viewports[key].pageScrollX = Math.max(
-        viewports[key].pageScrollX,
-        measured.pageScrollX,
-      );
-      viewports[key].pageScrollY = Math.max(
-        viewports[key].pageScrollY,
-        measured.pageScrollY,
-      );
+      viewports[key].pageScrollX = Math.max(viewports[key].pageScrollX, measured.pageScrollX);
+      viewports[key].pageScrollY = Math.max(viewports[key].pageScrollY, measured.pageScrollY);
       if (mode === "Edit") {
         viewports[key].transcriptLines = measured.transcriptLines;
       }
@@ -327,6 +319,15 @@ try {
           bottom: rect.bottom,
           innerWidth: window.innerWidth,
           innerHeight: window.innerHeight,
+          bar: [...document.querySelectorAll(".bar > *, .bar__actions > *")].map((el) => {
+            const box = el.getBoundingClientRect();
+            return {
+              cls: String(el.className),
+              left: Math.round(box.left),
+              right: Math.round(box.right),
+              top: Math.round(box.top),
+            };
+          }),
         };
       });
       exportVisibility.push({ viewport: key, box: exportBox });
@@ -429,9 +430,7 @@ try {
     studio.liveRegions = await page.evaluate(
       () => document.querySelectorAll('[aria-live="polite"], [role="status"]').length,
     );
-    studio.prompterHidden = await page
-      .getByTestId("prompter-viewport")
-      .getAttribute("aria-hidden");
+    studio.prompterHidden = await page.getByTestId("prompter-viewport").getAttribute("aria-hidden");
 
     if (studio.box.width < 1400 || studio.box.height < 800) {
       studioFailures.push(
@@ -451,9 +450,7 @@ try {
     await studioDialog.getByRole("button", { name: "Close", exact: true }).click();
     await studioDialog.waitFor({ state: "detached" });
   } catch (error) {
-    studioFailures.push(
-      `studio: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    studioFailures.push(`studio: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   const headingViolations = [];
@@ -467,9 +464,7 @@ try {
     let previous = 0;
     for (const heading of modeHeadings) {
       if (previous !== 0 && heading.level > previous + 1) {
-        headingViolations.push(
-          `${mode}: h${previous} to h${heading.level} (${heading.text})`,
-        );
+        headingViolations.push(`${mode}: h${previous} to h${heading.level} (${heading.text})`);
       }
       previous = heading.level;
     }
@@ -512,10 +507,7 @@ try {
     pageErrors,
   };
 
-  const cssSource = await readFile(
-    path.join("apps", "web", "styles", "globals.css"),
-    "utf8",
-  );
+  const cssSource = await readFile(path.join("apps", "web", "styles", "globals.css"), "utf8");
   const token = (name) =>
     new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`).exec(cssSource)?.[1] ?? "";
   const contrastPairs = [
@@ -527,9 +519,7 @@ try {
   ];
   report.contrast = contrastPairs.map(([name, foreground, background]) => {
     const ratio =
-      foreground !== "" && background !== ""
-        ? contrastRatio(foreground, background)
-        : 0;
+      foreground !== "" && background !== "" ? contrastRatio(foreground, background) : 0;
     return {
       name,
       foreground,
@@ -542,24 +532,18 @@ try {
   const reportPath = path.join("tools", "e2e", "ux-report.json");
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
-  const budgets = JSON.parse(
-    await readFile(path.join("tools", "e2e", "ux-budgets.json"), "utf8"),
-  );
+  const budgets = JSON.parse(await readFile(path.join("tools", "e2e", "ux-budgets.json"), "utf8"));
   const failures = [
     ...checkBudgets(report, budgets).map((violation) => violation.message),
     ...report.accessibleNames.nameless.map(
       (item) => `${item.mode}: ${item.tag} "${item.text}" has no accessible name`,
     ),
-    ...focusFailures.map(
-      (item) => `${item.tag} "${item.text}" has no visible focus outline`,
-    ),
+    ...focusFailures.map((item) => `${item.tag} "${item.text}" has no visible focus outline`),
     ...report.headings.violations,
     ...report.disabledPrimary.map(
       (item) => `${item.mode}: disabled "${item.text}" still has an indigo background`,
     ),
-    ...exportVisibility
-      .filter((item) => item.failure !== undefined)
-      .map((item) => item.failure),
+    ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
@@ -589,7 +573,7 @@ try {
   }
   console.log(`report: ${reportPath}`);
 } catch (error) {
-  console.error(error instanceof Error ? error.stack ?? error.message : error);
+  console.error(error instanceof Error ? (error.stack ?? error.message) : error);
   if (serverLog.length > 0) {
     console.error("--- server log ---");
     console.error(serverLog.join(""));

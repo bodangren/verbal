@@ -414,10 +414,16 @@ code {
   overflow-wrap: anywhere;
   padding: 2px 4px;
   text-align: left;
+  display: inline-block;
 }
 
-.transcript__word:hover:enabled {
+.transcript__word:hover {
   background: var(--surface-elevated);
+}
+
+.transcript__word[data-caret="true"] {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
 }
 
 .transcript__word[data-active="true"] {
@@ -426,6 +432,7 @@ code {
 }
 
 .transcript__word[data-selected="true"] {
+  background: color-mix(in srgb, var(--selection) 24%, transparent);
   border-color: var(--primary);
 }
 
@@ -1905,7 +1912,7 @@ h2 {
 
 @media (max-height: 800px) {
   .stage__scroll--edit .playback__video {
-    max-height: 30vh;
+    max-height: 18vh;
   }
 }
 
@@ -2435,9 +2442,17 @@ h2 {
     width: auto;
   }
 
+  /* The stage takes its natural height and the workspace scrolls, so the
+     transcript is never squeezed to nothing between the strip and the inspector. */
   .stage {
+    flex: 0 0 auto;
     min-width: 0;
     width: 100%;
+  }
+
+  .stage__scroll,
+  .stage__scroll--edit {
+    overflow: visible;
   }
 
   .inspector {
@@ -2446,5 +2461,39 @@ h2 {
     min-width: 0;
     overflow-y: visible;
     width: auto;
+  }
+}
+
+/* Phone width: the bar becomes three rows so the mode tabs never push it wider
+   than the screen. Logo and actions share the first row. */
+@media (max-width: 600px) {
+  .bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .bar__brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .bar__actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    min-width: 0;
+  }
+
+  .bar__document {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+  }
+
+  .bar > .segmented {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
+    max-width: 100%;
   }
 }
