@@ -10,6 +10,9 @@ import {
 /** A stored asset id is the SHA-256 hex digest of the asset bytes. */
 const ASSET_ID_PATTERN = /^[0-9a-f]{64}$/;
 
+/** Scene ids with this prefix belong to the export. A document cannot use them. */
+export const RESERVED_SCENE_ID_PREFIX = "__";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -27,6 +30,12 @@ function parseScene(value: unknown, seenIds: Set<string>): Scene {
   }
 
   const id = nonEmptyString(value.id, "scene id");
+  if (id.startsWith(RESERVED_SCENE_ID_PREFIX)) {
+    throw new StoryboardError(
+      "invalid-document",
+      `scene ${id}: ids that start with "${RESERVED_SCENE_ID_PREFIX}" are reserved`,
+    );
+  }
   if (seenIds.has(id)) {
     throw new StoryboardError("invalid-document", `duplicate scene id: ${id}`);
   }

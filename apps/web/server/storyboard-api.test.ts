@@ -768,18 +768,127 @@ describe("storyboard export API", () => {
       expect(run).not.toHaveBeenCalled();
     });
 
-    it("exports a storyboard of every supported kind", async () => {
-      const { response, create } = await exportOf({
-        schemaVersion: 1,
-        scenes: [
-          scene("talk", "talk"),
-          scene("title", "slide", { template: "title", props: { title: "Hello" } }),
-          scene("hero", "generated-image", { assetId: ASSET_ID }),
-        ],
+    it("rejects a reserved scene id before a job starts", async () => {
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: {
+          schemaVersion: 1,
+          scenes: [scene("__talk-piece-1", "talk")],
+        },
+      });
+      const create = vi.spyOn(registry, "create");
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toContain("__talk-piece-1");
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("exports a storyboard of every supported kind to a finished file", async () => {
+      const VIDEO_ID = "c".repeat(64);
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: {
+          schemaVersion: 1,
+          scenes: [
+            scene("talk", "talk"),
+            scene("title", "slide", { template: "title", props: { title: "Hello" } }),
+            scene("hero", "generated-image", { assetId: ASSET_ID }),
+            scene("clip", "generated-video", { assetId: VIDEO_ID }),
+          ],
+        },
       });
 
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
       expect(response.status).toBe(202);
-      expect(create).toHaveBeenCalledTimes(1);
+      const jobId = (response.body as { id: string }).id;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const status = registry.get(jobId)?.status;
+        if (status === "done" || status === "failed") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      expect(registry.get(jobId)).toMatchObject({ status: "done" });
+      const calls = run.mock.calls as unknown as [string, string[]][];
+      expect(calls.some(([, args]) => args.includes("-ss"))).toBe(true);
+      expect(calls.some(([, args]) => args.some((arg) => arg.endsWith(ASSET_ID)))).toBe(true);
+      expect(calls.some(([, args]) => args.some((arg) => arg.endsWith(VIDEO_ID)))).toBe(true);
+
+      const list = [...fs.files].find(([file]) => file.endsWith("/concat.txt"))?.[1] ?? "";
+      expect(list.match(/step-\d{3}\.mp4/g)).toEqual([
+        "step-000.mp4",
+        "step-001.mp4",
+        "step-002.mp4",
+        "step-003.mp4",
+        "step-004.mp4",
+        "step-005.mp4",
+      ]);
+    });
+
+    it("keeps a document scene id equal to an old derived talk piece id apart", async () => {
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: {
+          schemaVersion: 1,
+          scenes: [
+            {
+              id: "talk",
+              anchor: { startWordId: "w0", endWordId: "w2" },
+              visual: "talk",
+              layer: "full-frame",
+            },
+            scene("talk#2", "generated-image", { assetId: ASSET_ID }),
+          ],
+        },
+      });
+      await saveTranscript(
+        fs,
+        projectPaths(root).transcript,
+        removeRange(
+          createTranscript([
+            { text: "one", start: 0, end: 1 },
+            { text: "two", start: 1, end: 2 },
+            { text: "three", start: 2, end: 3 },
+          ]),
+          1,
+          1,
+        ),
+      );
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
+      expect(response.status).toBe(202);
+      const jobId = (response.body as { id: string }).id;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const status = registry.get(jobId)?.status;
+        if (status === "done" || status === "failed") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      expect(registry.get(jobId)).toMatchObject({ status: "done" });
+      const calls = run.mock.calls as unknown as [string, string[]][];
+      const secondPiece = calls.find(
+        ([, args]) =>
+          args.includes("-ss") &&
+          args[args.indexOf("-ss") + 1] === "2.050" &&
+          !args.some((arg) => arg.includes("/assets/generated/")),
+      );
+      expect(secondPiece).toBeDefined();
     });
   });
 

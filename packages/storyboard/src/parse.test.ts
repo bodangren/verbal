@@ -50,6 +50,12 @@ describe("parseStoryboard", () => {
     expect(() => parseStoryboard(raw)).toThrow(/duplicate/i);
   });
 
+  it("rejects a scene id in the reserved internal prefix", () => {
+    const raw = JSON.stringify(documentOf([scene({ id: "__talk-piece-1" })]));
+
+    expect(() => parseStoryboard(raw)).toThrow(/__talk-piece-1/);
+  });
+
   it("rejects an unknown visual kind", () => {
     const raw = JSON.stringify(documentOf([scene({ visual: "hologram" as never })]));
 

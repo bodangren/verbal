@@ -17,6 +17,7 @@ import {
   type TranscriptDocument,
 } from "@verbal/core";
 import {
+  RESERVED_SCENE_ID_PREFIX,
   STORYBOARD_SCHEMA_VERSION,
   StoryboardError,
   anchorIndexFromTranscript,
@@ -340,6 +341,7 @@ export async function startStoryboardExport(
 
     const scenes = new Map<string, StepScene>();
     const resolved: { sceneId: string; startSeconds: number; endSeconds: number }[] = [];
+    let talkPieces = 0;
 
     for (const scene of storyboard.scenes) {
       // A talk scene is the source video itself: cut the anchored range and
@@ -351,8 +353,10 @@ export async function startStoryboardExport(
           endWordId: scene.anchor.endWordId,
         });
 
-        items.forEach((item, index) => {
-          const sceneId = items.length === 1 ? scene.id : `${scene.id}#${index + 1}`;
+        items.forEach((item) => {
+          talkPieces += 1;
+          const sceneId =
+            items.length === 1 ? scene.id : `${RESERVED_SCENE_ID_PREFIX}talk-piece-${talkPieces}`;
           if (item.kind === "silence") {
             scenes.set(sceneId, { silence: true });
             resolved.push({
