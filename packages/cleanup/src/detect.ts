@@ -34,9 +34,9 @@ type Candidate = {
   cover: VisualCover;
 };
 
-/** Lowercase, letters only, so "Um," and "umm" match the same entry. */
+/** Lowercase and keep letters, marks and digits, so Thai words stay distinct. */
 function normalise(text: string): string {
-  return text.toLowerCase().replace(/[^a-z]/g, "");
+  return text.toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, "");
 }
 
 /**
@@ -68,6 +68,8 @@ export function detectProposals(
     return word !== undefined && !word.removed && !claimed.has(index);
   };
 
+  const hasNorm = (index: number): boolean => (words[index]?.norm ?? "") !== "";
+
   // Fillers: one proposal per word, so each stays its own decision.
   words.forEach((word, index) => {
     if (!isAvailable(index) || !fillers.has(word.norm)) {
@@ -88,7 +90,7 @@ export function detectProposals(
   // Stutters: a run of the same word repeated; the repeats are the cut.
   let index = 0;
   while (index < words.length) {
-    if (!isAvailable(index)) {
+    if (!isAvailable(index) || !hasNorm(index)) {
       index += 1;
       continue;
     }
@@ -126,7 +128,10 @@ export function detectProposals(
       isAvailable(index + 1) &&
       isAvailable(index + 2) &&
       isAvailable(index + 3) &&
-      words[index]?.norm !== "" &&
+      hasNorm(index) &&
+      hasNorm(index + 1) &&
+      hasNorm(index + 2) &&
+      hasNorm(index + 3) &&
       words[index]?.norm === words[index + 2]?.norm &&
       words[index + 1]?.norm === words[index + 3]?.norm
     ) {

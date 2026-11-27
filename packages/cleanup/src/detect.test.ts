@@ -128,4 +128,41 @@ describe("detectProposals", () => {
     expect(proposals).toHaveLength(1);
     expect(proposals[0]?.fromIndex).toBe(1);
   });
+
+  it("finds no stutter in five different Thai words", () => {
+    const transcript = transcriptOf([
+      "สวัสดี",
+      "ขอบคุณ",
+      "ภาษา",
+      "หนังสือ",
+      "อ่าน",
+    ]);
+
+    expect(detectProposals(transcript)).toEqual([]);
+  });
+
+  it("finds one stutter when a Thai word repeats", () => {
+    const transcript = transcriptOf(["สวัสดี", "สวัสดี", "ครับ"]);
+
+    const proposals = detectProposals(transcript);
+
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]).toMatchObject({
+      category: "stutter",
+      fromIndex: 1,
+      toIndex: 1,
+    });
+  });
+
+  it("never matches punctuation-only tokens against each other", () => {
+    const transcript = transcriptOf(["...", "!!!"]);
+
+    expect(detectProposals(transcript)).toEqual([]);
+  });
+
+  it("still matches Um, and umm as fillers", () => {
+    const transcript = transcriptOf(["Um,", "yes", "umm"]);
+
+    expect(detectProposals(transcript).map((proposal) => proposal.fromIndex)).toEqual([0, 2]);
+  });
 });
