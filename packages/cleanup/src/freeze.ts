@@ -25,6 +25,8 @@ export type FrozenMaster = {
   masterDurationSeconds: number;
   /** Identifies the exact cut; a storyboard anchored to a different one must re-anchor. */
   fingerprint: string;
+  /** True when the timeline has no silence and no reorder, so the legacy fingerprint can match. */
+  legacyEligible: boolean;
 };
 
 const FINGERPRINT_VERSION = 2;
@@ -37,6 +39,18 @@ function round(value: number): number {
 
 function isVideo(item: TimelineItem): item is TimelineVideo {
   return item.kind === "video";
+}
+
+/** True when a word now starts earlier than the word before it. */
+function isReordered(words: readonly TranscriptWord[]): boolean {
+  let previousStart = Number.NEGATIVE_INFINITY;
+  for (const word of words) {
+    if (word.start < previousStart) {
+      return true;
+    }
+    previousStart = word.start;
+  }
+  return false;
 }
 
 /** The kept source ranges, in output order. */
@@ -185,6 +199,9 @@ export function freezeMaster(input: FreezeMasterInput): FrozenMaster {
 
   const anchorWords = mapTimelineAnchors(input.transcript.words, removed, items);
 
+  const legacyEligible =
+    !items.some((item) => item.kind === "silence") && !isReordered(input.transcript.words);
+
   const fingerprint = createHash("sha256")
     .update(canonicalJson({ v: FINGERPRINT_VERSION, removedWordIds, items }))
     .digest("hex");
@@ -195,6 +212,7 @@ export function freezeMaster(input: FreezeMasterInput): FrozenMaster {
     anchorWords,
     masterDurationSeconds,
     fingerprint,
+    legacyEligible,
   };
 }
 
@@ -211,5 +229,11 @@ export function legacyFingerprint(frozen: FrozenMaster): string {
 
 /** True when a storyboard was anchored to a different cut than the one frozen now. */
 export function requiresReanchor(frozen: FrozenMaster, fingerprint: string): boolean {
-  return fingerprint !== frozen.fingerprint && fingerprint !== legacyFingerprint(frozen);
+  if (fingerprint === frozen.fingerprint) {
+    return false;
+  }
+  if (frozen.legacyEligible && fingerprint === legacyFingerprint(frozen)) {
+    return false;
+  }
+  return true;
 }

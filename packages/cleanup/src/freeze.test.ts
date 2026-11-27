@@ -311,4 +311,32 @@ describe("requiresReanchor", () => {
     expect(requiresReanchor(plain, reordered.fingerprint)).toBe(true);
     expect(requiresReanchor(plain, legacyFingerprint(reordered))).toBe(true);
   });
+
+  it("rejects a matching legacy fingerprint once silence is inserted", () => {
+    const spoken = createTranscript([
+      { text: "one", start: 0, end: 1 },
+      { text: "two", start: 1, end: 2 },
+    ]);
+    const input = { accepted: [], sourceDurationSeconds: 2, handleSeconds: 0 };
+    const plain = freezeMaster({ transcript: spoken, ...input });
+    const silenced = freezeMaster({
+      transcript: insertSilence(spoken, "w1", 1),
+      ...input,
+    });
+
+    expect(plain.masterDurationSeconds).toBe(2);
+    expect(silenced.masterDurationSeconds).toBe(3);
+    expect(legacyFingerprint(silenced)).toBe(legacyFingerprint(plain));
+    expect(requiresReanchor(silenced, legacyFingerprint(plain))).toBe(true);
+  });
+
+  it("rejects a matching legacy fingerprint for a reordered timeline", () => {
+    const input = { accepted: [proposal()], sourceDurationSeconds: 3, handleSeconds: 0 };
+    const reordered = freezeMaster({
+      transcript: moveRange(transcript, 0, 0, 2),
+      ...input,
+    });
+
+    expect(requiresReanchor(reordered, legacyFingerprint(reordered))).toBe(true);
+  });
 });
