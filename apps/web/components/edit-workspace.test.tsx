@@ -203,7 +203,7 @@ describe("useToolbarHeightVariable", () => {
     } as unknown as typeof ResizeObserver;
 
     const root = document.documentElement;
-    const { unmount } = renderHook(() => useToolbarHeightVariable(true));
+    const { unmount } = renderHook(() => useToolbarHeightVariable(true, true));
     expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("208px");
 
     height = 240;
@@ -218,8 +218,37 @@ describe("useToolbarHeightVariable", () => {
     toolbar.remove();
   });
 
+  it("sets the height when the toolbar mounts after the first effect run", () => {
+    const saved = globalThis.ResizeObserver;
+    const disconnect = vi.fn();
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect;
+    } as unknown as typeof ResizeObserver;
+
+    const root = document.documentElement;
+    const { rerender } = renderHook(
+      ({ hasTranscript }) => useToolbarHeightVariable(true, hasTranscript),
+      { initialProps: { hasTranscript: false } },
+    );
+    expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("");
+
+    // The footer toolbar mounts later, once the transcript appears.
+    const toolbar = document.createElement("div");
+    toolbar.className = "toolbar--footer";
+    Object.defineProperty(toolbar, "offsetHeight", { get: () => 150 });
+    document.body.append(toolbar);
+
+    rerender({ hasTranscript: true });
+    expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("158px");
+
+    globalThis.ResizeObserver = saved;
+    toolbar.remove();
+  });
+
   it("does nothing while the workspace is inactive", () => {
-    renderHook(() => useToolbarHeightVariable(false));
+    renderHook(() => useToolbarHeightVariable(false, true));
     expect(document.documentElement.style.getPropertyValue("--edit-toolbar-height")).toBe("");
   });
 });

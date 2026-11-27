@@ -319,6 +319,56 @@ try {
     .first()
     .waitFor();
 
+  // The first Edit view after the transcript lands must show words. At 360 px
+  // and at the 200 percent zoom stand-in (720x450 CSS pixels) at least two
+  // transcript lines sit fully above the sticky footer and below the stage top.
+  const firstEditView = [];
+  for (const [width, height] of [
+    [360, 740],
+    [720, 450],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(250);
+    await page.evaluate(() => {
+      for (const element of document.querySelectorAll(
+        ".workspace, .stage__scroll, .stage__scroll--edit",
+      )) {
+        element.scrollTop = 0;
+      }
+      window.scrollTo(0, 0);
+    });
+    const key = `${width}x${height}`;
+    const seen = await page.evaluate(() => {
+      const footer = document.querySelector(".toolbar--footer");
+      const stage = document.querySelector(".stage__scroll");
+      if (footer === null || stage === null) {
+        return null;
+      }
+      const footerTop = footer.getBoundingClientRect().top;
+      const stageTop = Math.max(stage.getBoundingClientRect().top, 0);
+      const tops = new Set();
+      for (const word of document.querySelectorAll(".transcript__word")) {
+        const rect = word.getBoundingClientRect();
+        if (rect.top >= stageTop && rect.bottom <= footerTop) {
+          tops.add(Math.round(rect.top));
+        }
+      }
+      return {
+        lines: tops.size,
+        footerTop: Math.round(footerTop),
+        stageTop: Math.round(stageTop),
+      };
+    });
+    firstEditView.push({ viewport: key, box: seen });
+    if (seen === null) {
+      firstEditView[firstEditView.length - 1].failure = `${key}: no footer toolbar or stage`;
+    } else if (seen.lines < 2) {
+      firstEditView[firstEditView.length - 1].failure =
+        `${key}: ${seen.lines} transcript lines above the footer (needs 2)`;
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   const viewports = {};
   const nameless = [];
   const headings = [];
@@ -959,6 +1009,7 @@ try {
     exportVisibility,
     narrowLayout,
     editToolbar,
+    firstEditView,
     footerButtons,
     freshBrowser,
     narrowShell,
@@ -1013,6 +1064,7 @@ try {
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowLayout.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...editToolbar.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...firstEditView.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...footerButtonFailures,
     ...freshBrowser.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowShell.filter((item) => item.failure !== undefined).map((item) => item.failure),

@@ -109,9 +109,9 @@ export type EditWorkspaceProps = {
  * so the scroller's bottom scroll padding always clears it, whatever the row
  * count at the current width. It sets a CSS variable, not React state.
  */
-export function useToolbarHeightVariable(active: boolean): void {
+export function useToolbarHeightVariable(active: boolean, hasTranscript: boolean): void {
   useEffect(() => {
-    if (!active || typeof ResizeObserver === "undefined") {
+    if (!active || !hasTranscript || typeof ResizeObserver === "undefined") {
       return;
     }
     const toolbar = document.querySelector<HTMLElement>(".toolbar--footer");
@@ -129,7 +129,7 @@ export function useToolbarHeightVariable(active: boolean): void {
       observer.disconnect();
       root.style.removeProperty("--edit-toolbar-height");
     };
-  }, [active]);
+  }, [active, hasTranscript]);
 }
 
 export function EditWorkspace({
@@ -169,7 +169,7 @@ export function EditWorkspace({
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const transcriptCardRef = useRef<HTMLDivElement | null>(null);
-  useToolbarHeightVariable(active);
+  useToolbarHeightVariable(active, transcript !== null);
   const focusTokenRef = useRef(0);
   const [focusRequest, setFocusRequest] = useState<{ index: number; token: number } | undefined>(
     undefined,
