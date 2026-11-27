@@ -14,6 +14,7 @@ import {
   saveTranscript,
 } from "@verbal/core";
 import type { SlideManifest, SlideRenderer } from "@verbal/compose";
+import type { MediaInfo } from "@verbal/media";
 import { createStoryboardApi, startStoryboardExport } from "./storyboard-api";
 import { createFakeFileSystem } from "./test-support";
 
@@ -935,6 +936,83 @@ describe("storyboard export API", () => {
       expect(registry.get(jobId)?.status).toBe("failed");
       expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
       expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
+    });
+  });
+
+  describe("speaker audio", () => {
+    const VIDEO_ONLY: MediaInfo = {
+      durationSeconds: 4,
+      formatName: "mov",
+      sizeBytes: 1,
+      streams: [{ index: 0, kind: "video", codec: "h264", width: 320, height: 180 }],
+    };
+    const WITH_AUDIO: MediaInfo = {
+      ...VIDEO_ONLY,
+      streams: [
+        ...VIDEO_ONLY.streams,
+        { index: 1, kind: "audio", codec: "aac", channels: 2, sampleRate: 48000 },
+      ],
+    };
+
+    async function exportWith(probe: (file: string) => Promise<MediaInfo>) {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seed(fs, root);
+      const project = await openProject(fs, root);
+      await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+      const run = vi.fn(async () => undefined);
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, probe, realpath: identity },
+        {
+          root,
+          outputPath: "/out/final.mp4",
+          brand: BRAND,
+          geometry: { fps: 10, width: 320, height: 180 },
+        },
+      );
+      const jobId = (response.body as { id: string }).id;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const current = registry.get(jobId)?.status;
+        if (current === "done" || current === "failed") {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      const filters = run.mock.calls
+        .map((call) => (call as unknown as [string, string[]])[1])
+        .filter((args) => args.includes("-filter_complex") && args.includes("/projects/demo/assets/take.mp4"))
+        .map((args) => args[args.indexOf("-filter_complex") + 1] ?? "");
+      return { status: registry.get(jobId)?.status, filters };
+    }
+
+    it("mixes the speaker audio when the probed source has an audio stream", async () => {
+      const { status, filters } = await exportWith(async () => WITH_AUDIO);
+
+      expect(status).toBe("done");
+      expect(filters.some((filter) => filter.includes("[1:a]"))).toBe(true);
+    });
+
+    it("feeds silence when the probed source has no audio stream", async () => {
+      const { status, filters } = await exportWith(async () => VIDEO_ONLY);
+
+      expect(status).toBe("done");
+      expect(filters.length).toBeGreaterThan(0);
+      expect(filters.some((filter) => filter.includes("[1:a]"))).toBe(false);
+      expect(filters.some((filter) => filter.includes("anullsrc"))).toBe(true);
+    });
+
+    it("assumes audio when the probe fails", async () => {
+      const { status, filters } = await exportWith(async () => {
+        throw new Error("ffprobe failed");
+      });
+
+      expect(status).toBe("done");
+      expect(filters.some((filter) => filter.includes("[1:a]"))).toBe(true);
     });
   });
 });

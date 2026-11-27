@@ -45,7 +45,14 @@ import {
   type SlideRenderer,
   type StepScene,
 } from "@verbal/compose";
-import { ExportError, resolvePreset, withPresetExtension } from "@verbal/media";
+import {
+  ExportError,
+  probeMedia,
+  resolvePreset,
+  runCommand,
+  withPresetExtension,
+  type MediaInfo,
+} from "@verbal/media";
 import { failure, messageOf } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
 import {
@@ -201,7 +208,21 @@ export type StartStoryboardExportDeps = {
   removeDirectory?: (directory: string) => Promise<void>;
   /** Resolves asset and music files to their real paths. Defaults to `fs.realpath`. */
   realpath?: RealpathFn;
+  /** Reads a source's streams. Defaults to ffprobe. */
+  probe?: (file: string) => Promise<MediaInfo>;
 };
+
+/** Reports whether a source has an audio stream. A failed probe counts as audio. */
+async function sourceHasAudio(
+  probe: (file: string) => Promise<MediaInfo>,
+  file: string,
+): Promise<boolean> {
+  try {
+    return (await probe(file)).streams.some((stream) => stream.kind === "audio");
+  } catch {
+    return true;
+  }
+}
 
 /** Scene kinds the export renders. Add a kind here only after its export branch exists. */
 export const EXPORTABLE_VISUAL_KINDS: readonly VisualKind[] = [
@@ -404,6 +425,8 @@ export async function startStoryboardExport(
     }
 
     const cache = createFileSlideCache(deps.fs, path.join(root, "cache", "slides"));
+    const probe = deps.probe ?? ((file: string) => probeMedia(runCommand, file));
+    const hasAudio = await sourceHasAudio(probe, mediaPath);
 
     const job = await deps.registry.create("export");
     const workDirectory = path.join(root, "cache", "assembly", job.id);
@@ -417,7 +440,7 @@ export async function startStoryboardExport(
       run: deps.run,
       workDirectory,
       geometry,
-      speaker: { input: mediaPath },
+      speaker: { input: mediaPath, hasAudio },
       audio: audioFromBrand(audioBrand),
       scenes,
       codecs: preset.codecs,

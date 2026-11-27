@@ -29,7 +29,7 @@ export type RenderStepDeps = {
   run: (file: string, args: readonly string[]) => Promise<unknown>;
   workDirectory: string;
   geometry: PreviewGeometry;
-  speaker: { input: string };
+  speaker: { input: string; hasAudio?: boolean };
   audio: CompositeAudio;
   scenes: ReadonlyMap<string, StepScene>;
   /** Layout for storyboard scenes; brand steps are always full-frame. */
@@ -80,9 +80,15 @@ function slideFor(
 }
 
 /** Seeks the speaker to the scene start; brand steps need no seek. */
-function speakerFor(step: AssemblyStep, input: string): { input: string; seekSeconds?: number } {
+function speakerFor(
+  step: AssemblyStep,
+  speaker: { input: string; hasAudio?: boolean },
+): { input: string; seekSeconds?: number; hasAudio: boolean } {
   const start = step.kind === "scene" ? (step.startSeconds ?? 0) : 0;
-  return start > 0 ? { input, seekSeconds: start } : { input };
+  const hasAudio = speaker.hasAudio !== false;
+  return start > 0
+    ? { input: speaker.input, seekSeconds: start, hasAudio }
+    : { input: speaker.input, hasAudio };
 }
 
 /**
@@ -166,7 +172,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           scene.assetKind === "video"
             ? { input: scene.assetPath }
             : { input: scene.assetPath, loop: true },
-        speaker: speakerFor(step, deps.speaker.input),
+        speaker: speakerFor(step, deps.speaker),
         key: {},
         audio: deps.audio,
         ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),
@@ -210,7 +216,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
         input: path.join(outcome.directory, outcome.manifest.pattern),
         frameRate: outcome.manifest.fps,
       },
-      speaker: speakerFor(step, deps.speaker.input),
+      speaker: speakerFor(step, deps.speaker),
       key: {},
       audio: deps.audio,
       ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),

@@ -39,6 +39,11 @@ function argsOf(run: ReturnType<typeof vi.fn>): string[] {
   return (run.mock.calls[0]?.[1] as string[] | undefined) ?? [];
 }
 
+function filterOf(run: ReturnType<typeof vi.fn>): string {
+  const args = argsOf(run);
+  return args[args.indexOf("-filter_complex") + 1] ?? "";
+}
+
 describe("createStepRenderer", () => {
   it("renders a brand step as a full-frame title", async () => {
     const { deps, renderer, run } = makeDeps();
@@ -194,6 +199,27 @@ describe("createStepRenderer", () => {
     expect(seek).toBeGreaterThanOrEqual(0);
     expect(args[seek + 1]).toBe("30.000");
     expect(speakerIndex).toBeGreaterThan(seek);
+  });
+
+  it("mixes the speaker audio when the speaker has an audio stream", async () => {
+    const { deps, run } = makeDeps({ speaker: { input: "/media/speaker.mp4", hasAudio: true } });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 30 }, 0);
+
+    expect(filterOf(run)).toContain("[1:a]");
+  });
+
+  it("feeds silence instead of speaker audio when the speaker has no audio stream", async () => {
+    const { deps, run } = makeDeps({ speaker: { input: "/media/speaker.mp4", hasAudio: false } });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "s1", durationSeconds: 2, startSeconds: 30 }, 0);
+
+    const args = argsOf(run);
+    expect(filterOf(run)).not.toContain("[1:a]");
+    expect(filterOf(run)).toContain("anullsrc");
+    expect(args[args.indexOf("-ss") + 1]).toBe("30.000");
   });
 
   it("opens the speaker without a seek when the step has no start", async () => {
