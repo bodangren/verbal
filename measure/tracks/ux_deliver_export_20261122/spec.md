@@ -78,14 +78,14 @@ and the target screen `target-deliver.jpg`.
 
 ## Dependencies
 
-- `job_lifecycle_20261122`. Cancel must stop the real FFmpeg and renderer work, and progress must arrive by job events.
+- `job_integrity_20261127`. Cancel must stop the real FFmpeg and renderer work, and progress must arrive by job events.
   A Cancel button that does not stop work would mislead the user (F06, F10).
-- `save_export_integrity_20261122`. The Replace confirm needs isolated job output and no overwrite of inputs (F05).
+- `export_safety_20261127`. The Replace confirm needs isolated job output and no overwrite of inputs (F05).
 - `ux_shell_flow_20261122` for the top bar Export entry and the pane alert.
 
 ## Risks
 
-- Thumbnails add a new media endpoint. It must use the path adapter from `local_safety_20261122`.
+- Thumbnails add a new media endpoint. It must use the path adapter from `export_safety_20261127`.
 - A strip of many scenes needs horizontal scroll. Keep it keyboard-reachable.
 - The player slot stays empty until `deliver_preview_20261122` lands. Show a clear placeholder, not a fake preview.
 

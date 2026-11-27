@@ -99,7 +99,8 @@ Rule: each change fixes a failure seen in a real run. No change is made only to 
 - [x] Low items fixed: progress label switches to "Transcribing audio…" at 5%; Deliver restores the fast preview when a project opens (and drops the previous project's plan); the title-cards checkbox has its own `field--check` style. 731c14b
       Gate: `npm run check` 901 tests, `npm run e2e` PASS, UX gate unchanged (2 transcript tab-stop failures, owned by `ux_transcript_document_20261122`).
       Not checked by eye: the checkbox alignment (CSS only; no automated check).
-- [x] Open, limit: `small` garbles Thai. A larger model is a download and a speed cost; Daniel decides.
+- [x] Open, limit: `small` garbles Thai. A larger model is a download and a speed cost; Daniel decides. a64b8e3
+      Resolved by Typhoon ASR (track `typhoon_integration_20261125`): CER 13.25 % vs 23.59 % for whisper small, 15x faster. Not re-run on the dogfood media.
       Evaluated 2026-11-25: Typhoon ASR Realtime 114M is much better and 15× faster than whisper small (CER 13.3 % vs 23.6 % on FLEURS Thai). Wiring it in is a separate decision; see `thai_stt_20261125/findings.md`.
 - [x] T4: Reorder and inserted silence reach the Deliver export (same wrong-file class as deletions). 7f770d7
       Also fixed in review: natural pauses between words are kept (equivalence tests against `computeTalkRanges`).

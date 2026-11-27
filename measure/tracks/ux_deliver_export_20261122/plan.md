@@ -5,7 +5,7 @@
 **Focus:** A visible storyboard and an export panel with honest states.
 
 **Check command:** `npm run check`, `npm run e2e`, and `node tools/e2e/ux-gates.mjs`.
-**Dependencies:** `job_lifecycle_20261122`, `save_export_integrity_20261122`, `ux_shell_flow_20261122`.
+**Dependencies:** `job_integrity_20261127`, `export_safety_20261127`, `ux_shell_flow_20261122`.
 
 ---
 
@@ -56,7 +56,7 @@
 
 ### Green
 
-- [ ] Build the export panel on the job events from `job_lifecycle_20261122`.
+- [ ] Build the export panel on the job events from `job_integrity_20261127`.
       Files: `apps/web/components/ExportPanel.tsx` (new), `apps/web/pages/index.tsx`.
 - [ ] Add the folder picker mode for the output file.
       File: `apps/web/components/MediaPicker.tsx`.

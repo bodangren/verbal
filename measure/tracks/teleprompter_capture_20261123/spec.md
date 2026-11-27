@@ -144,11 +144,11 @@ re-recording one flubbed line. See `apps/web/server/capture-api.ts`,
 ## Dependencies
 
 - `ux_shell_flow_20261122` for the Ingest stage and the pane alert. Complete.
-- `local_safety_20261122` for upload and loopback validation. Implement equivalent validation
+- `export_safety_20261127` for upload and loopback validation. Implement equivalent validation
   in this track if the safety track has not landed.
-- `edit_timeline_integrity_20261122` for cut fidelity. Coordinate the EDL with the compiled
+- `export_fidelity_20261127` for cut fidelity. Coordinate the EDL with the compiled
   timeline.
-- `job_lifecycle_20261122` for cancellation and events. The existing registry suffices for v1.
+- `job_integrity_20261127` for cancellation and events. The existing registry suffices for v1.
 - `packages/ai` for ASR and LLM.
 
 ## Risks

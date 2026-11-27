@@ -46,27 +46,34 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete — Phases 1–5. Ingest keeps a persistent Script card; Open Studio is a full-screen overlay with camera, prompter, Record/Stop, devices, and takes. Takes normalize to MP4, are worded and aligned, and review with statuses, source times, overrides, Reread, LLM Suggest Edits (provider/cost preview), and Build/Render Cut. The Studio shows inline errors; the gate checks the 1440x900 overlay (zero scroll, one live region, aria-hidden prompter); the e2e records a take with the fake camera. The two Transcript tab-stop budgets remain with Transcript as a Document.*
   *Link: [./tracks/teleprompter_capture_20261123](./tracks/teleprompter_capture_20261123/)*
 
-### Block 2 — Security and integrity (secondary)
+### Block 2 — Backend review 2026-11-27 (Daniel: implement now)
 
-- [ ] **Track: Local Safety Boundaries** [created: 2026-11-22]
-  *Focus: Enforce local HTTP access, validate paths and filtergraphs, and isolate renderer credentials.*
-  *Status: Not started. Priority 1 from the repository review; no dependency.*
-  *Link: [./tracks/local_safety_20261122](./tracks/local_safety_20261122/)*
+> The Astra backend review ([review-backend-2026-11-27.md](./review-backend-2026-11-27.md)) found 1 Blocker, 10 High and 7 Medium issues. The five tracks below fix them. They also roll up the four older security and integrity tracks, which are archived under `superseded_backend_review_20261127_*`.
 
-- [ ] **Track: Edit Timeline Integrity** [created: 2026-11-22]
-  *Focus: Preserve deletion, reorder, silence, scene offsets, and stream compatibility in playback and export.*
-  *Status: Not started. Priority 2; depends on Local Safety Boundaries.*
-  *Link: [./tracks/edit_timeline_integrity_20261122](./tracks/edit_timeline_integrity_20261122/)*
+- [~] **Track: Export Safety** [created: 2026-11-27]
+  *Focus: Never delete the source video, isolate concurrent exports, contain storyboard paths, bound upload size; rolls up Local Safety Boundaries and the export half of Save and Export Integrity.*
+  *Status: In progress. Findings B01, H05, H06, M03; rolled-up loopback contract, schemas, filtergraph escaper, provenance.*
+  *Link: [./tracks/export_safety_20261127](./tracks/export_safety_20261127/)*
 
-- [ ] **Track: Save and Export Integrity** [created: 2026-11-22]
-  *Focus: Acknowledge exact saved revisions, isolate export jobs, protect output files, and reuse verified segments.*
-  *Status: Not started. Priority 3; depends on Local Safety Boundaries and Edit Timeline Integrity.*
-  *Link: [./tracks/save_export_integrity_20261122](./tracks/save_export_integrity_20261122/)*
+- [~] **Track: Export Fidelity** [created: 2026-11-27]
+  *Focus: Make every export path play what the Edit view shows: reorder, silence, slide offsets, overlaps, audio-only; rolls up Edit Timeline Integrity and measured export reuse.*
+  *Status: Not started. Findings H01, H03, M01, M02, H10; depends on Export Safety for the shared export route.*
+  *Link: [./tracks/export_fidelity_20261127](./tracks/export_fidelity_20261127/)*
 
-- [ ] **Track: Job Lifecycle and Events** [created: 2026-11-22]
-  *Focus: Stop real work on cancellation, serialize durable state, and replace page polling with job events.*
-  *Status: Not started. Priority 4; depends on Local Safety Boundaries and Save and Export Integrity.*
-  *Link: [./tracks/job_lifecycle_20261122](./tracks/job_lifecycle_20261122/)*
+- [~] **Track: Job Integrity** [created: 2026-11-27]
+  *Focus: Cancellation stops real work, saved job state never goes backwards, a new media file invalidates the old transcript; rolls up Job Lifecycle and Events and the save coordinator.*
+  *Status: Not started. Findings H04, H09, M04; rolled-up save coordinator, slow work in jobs, SSE events.*
+  *Link: [./tracks/job_integrity_20261127](./tracks/job_integrity_20261127/)*
+
+- [~] **Track: ASR Hardening** [created: 2026-11-27]
+  *Focus: Thai-safe cleanup, correct language choice, private scratch files, resumable model download, audio-only cloud upload.*
+  *Status: Not started. Findings H02, M06, M05, M07, H08; no dependency.*
+  *Link: [./tracks/asr_hardening_20261127](./tracks/asr_hardening_20261127/)*
+
+- [ ] **Track: Typhoon Windowed Inference** [created: 2026-11-27]
+  *Focus: Stop Typhoon from blocking the API process and holding a whole hour of features in memory.*
+  *Status: Not started. Finding H07; depends on ASR Hardening.*
+  *Link: [./tracks/typhoon_windowed_20261127](./tracks/typhoon_windowed_20261127/)*
 
 - [ ] **Track: Deliver Preview and Scene Controls** [created: 2026-11-22]
   *Focus: Play a composed preview, edit existing scene fields, and reuse versioned animation frames safely.*
@@ -97,7 +104,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Documentation assignment complete. The review records 19 findings and six pending improvement tracks. Both application checks and the offline walkthrough pass. Existing formatting fails in 98 files; one dependency advisory affects four moderate packages. PM owns the independent plan check, merge, and push.*
   *Link: [./tracks/review_planning_20261122](./tracks/review_planning_20261122/)*
 
-- [~] **Track: Dogfood: How-To Videos** [created: 2026-11-21]
+- [x] **Track: Dogfood: How-To Videos** [created: 2026-11-21] [completed: 2026-11-27]
   *Focus: Use Verbal to produce its own how-to videos, and fix the UX friction that a real run exposes.*
   *Status: In progress — `tools/dogfood` records and captions real sessions; five how-tos are cut (17s tour, 10s import, 9s Deliver, 13s VP9 Export, 43s fast Export). Fixed a 500 on silent media, replaced the typed media path with a picker, made Deliver build its first storyboard from the transcript, made it exportable (talk ranges, 48 kHz, silent brand bookends), and wired the preset into the codecs and container. The WebM/VP9 export is verified at 36.0s, 48 kHz, VP9/Opus. Export paths are prefilled from the project and preset, and the job reports per-step progress. Transcription is scripted on this machine (no ASR key or whisper binary). See `findings.md`.*
   *Link: [./tracks/dogfood_howto_20261121](./tracks/dogfood_howto_20261121/)*
@@ -107,7 +114,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete. The page is a 52px top bar plus browser/stage/inspector; the browser is the only way in (home default, last folder remembered, project rows with word/media/age summaries, create-in-the-browsed-folder); Ingest/Edit/Deliver each own their panes. Deleted `ProjectPicker`, `GET /api/projects/list` and their tests. Zero page scroll at 1440x900 and 1280x800. `npm run check` green (626 tests) and `npm run e2e` PASS with the walkthrough rewritten onto the browser. Supersedes the remaining phases of Application Shell and Workflow.*
   *Link: [./tracks/ui_rebuild_20261121](./tracks/ui_rebuild_20261121/)*
 
-- [~] **Track: Application Shell and Workflow** [created: 2026-11-21]
+- [ ] **Track: Application Shell and Workflow** [created: 2026-11-21]
   *Focus: Replace the scrolling panel stack with a viewport-locked three-pane shell and Ingest/Edit/Deliver modes.*
   *Status: In progress — Phases 1-4 done: viewport-locked three-pane shell with Ingest/Edit/Deliver modes (measured no page scroll at 1440x900), status bar, and a walkthrough that drives modes; `npm run check` green (621 tests), `npm run e2e` PASS. Phase 5 (dogfooding a video through Verbal itself) remains.*
   *Link: [./tracks/app_shell_20261121](./tracks/app_shell_20261121/)*
@@ -192,7 +199,7 @@ This file tracks all major tracks for Verbal. Each track has its own detailed pl
   *Status: Complete. All nine phases implemented; `npm run check` green with 175 tests, including a real FFmpeg export round trip and an end-to-end import → transcript → delete → export test. The Go implementation has been removed and its tracks archived.*
   *Link: [./tracks/rewrite_ts_vinext_20261120](./tracks/rewrite_ts_vinext_20261120/)*
 
-- [~] **Track: Storyboard Compositor** [created: 2026-11-20]
+- [ ] **Track: Storyboard Compositor** [created: 2026-11-20]
   *Focus: Green-screen capture, reviewed cleanup, storyboard IR, Remotion motion slides, composited preview, chat-driven patch feedback, brand-kit export. Asset ladder: motion slides → generated images → generated video.*
   *Status: All planned phases complete (0–11), plus a browser walkthrough (9d). `npm run check` green with 418 tests; `npm run e2e` drives the real page in Chromium and passes. Both asset stages and export verified live. Unverified: capture on hardware and real paid provider calls. Generated assets are never pruned (tech-debt).*
   *Link: [./tracks/storyboard_compositor_20261120](./tracks/storyboard_compositor_20261120/)*

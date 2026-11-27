@@ -30,7 +30,7 @@ and the target screen `target-edit.jpg`.
 - With a selection, the card shows start and end in `hh:mm:ss.cc` mono, the duration, and the word count.
 - With only a caret, it shows the caret word and its time.
 - With no transcript, the card is hidden.
-- Times are source times until `edit_timeline_integrity_20261122` gives edited times. The label says "Source time".
+- Times are source times until `export_fidelity_20261127` gives edited times. The label says "Source time".
 
 ### FR2: Edit summary
 

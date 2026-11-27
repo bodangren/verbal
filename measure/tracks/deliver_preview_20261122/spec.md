@@ -76,9 +76,9 @@ See [F13 and the slide portion of F15](../../review-2026-11-22.md).
 
 ## Dependencies
 
-- `edit_timeline_integrity_20261122`.
-- `save_export_integrity_20261122`.
-- `job_lifecycle_20261122`.
+- `export_fidelity_20261127`.
+- `export_safety_20261127`.
+- `job_integrity_20261127`.
 
 ## Risks
 

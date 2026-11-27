@@ -97,7 +97,7 @@ and the target screen `target-edit.jpg`.
 - `aria-activedescendant` support varies across screen readers. Test with Orca on GNOME.
 - Drag selection can fight native text selection. Set `user-select: none` on words during a drag only.
 - Restore by Delete is a new rule. The toolbar label changes to Restore to make it clear.
-- Move Earlier and Move Later change only text order until `edit_timeline_integrity_20261122` lands (F02).
+- Move Earlier and Move Later change only text order until `export_fidelity_20261127` lands (F02).
   The toolbar shows them, but the inspector must not claim the media follows until then.
 
 ## Verification

@@ -5,7 +5,7 @@
 **Focus:** Find out whether any locally runnable STT engine transcribes Thai well enough to replace the failing `whisper small` default.
 
 **Check command:** evaluation harness in the session scratch directory; `npm run check` only when wiring a winner into `packages/ai`.
-**Dependencies:** none (evaluation). Integration depends on `local_safety_20261122` only if a new subprocess/engine path is added.
+**Dependencies:** none (evaluation). Integration depends on `export_safety_20261127` only if a new subprocess/engine path is added.
 
 **Origin:** Daniel, 2026-11-25 — "I don't think we will find a decent Thai STT engine but you should try." This authorises model downloads for the experiment. Paid/cloud calls remain out of scope without separate approval.
 

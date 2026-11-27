@@ -21,7 +21,7 @@ and the target screen `target-ingest.jpg`.
 ## Non-Goals
 
 - Drag-and-drop upload of a file from the desktop. A browser drop gives bytes, not a path.
-  An upload endpoint writes files from a browser request, so it waits for `local_safety_20261122`.
+  An upload endpoint writes files from a browser request, so it waits for `export_safety_20261127`.
 - A transcription provider switch in the UI. The environment selects the provider.
 - Capture hardware work. The Record button reuses the existing capture.
 - New `DESIGN.md` tokens.
@@ -99,7 +99,7 @@ and the target screen `target-ingest.jpg`.
 - A persistent browser takes width from the transcript. The collapse rule protects 1024px.
 - An automatic import after a choice can surprise. The picker's choose button says "Import".
 - Autosave before a project switch can race with the save bug in F04.
-  Do not claim the switch is lossless until `save_export_integrity_20261122` lands.
+  Do not claim the switch is lossless until `export_safety_20261127` lands.
 
 ## Verification
 

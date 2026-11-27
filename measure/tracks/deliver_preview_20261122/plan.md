@@ -5,7 +5,7 @@
 **Focus:** Play the composed edit before export and expose existing scene fields.
 
 **Check command:** `npm run check`, `npm run e2e`, and real local preview measurements.
-**Dependencies:** `edit_timeline_integrity_20261122`, `save_export_integrity_20261122`, `job_lifecycle_20261122`.
+**Dependencies:** `export_fidelity_20261127`, `export_safety_20261127`, `job_integrity_20261127`.
 
 ---
 

@@ -1,0 +1,9 @@
+{
+  "id": "asr_hardening_20261127",
+  "title": "ASR Hardening (backend review 2026-11-27)",
+  "status": "planned",
+  "priority": "high",
+  "type": "bug",
+  "created": "2026-11-27",
+  "source": "measure/review-backend-2026-11-27.md"
+}

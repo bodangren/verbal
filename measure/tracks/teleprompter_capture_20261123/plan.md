@@ -5,7 +5,7 @@
 **Focus:** Record a take from the browser stream with a top-center prompter, align each take to the script, and reread only the bungled beats.
 
 **Check command:** `npm run check`, `npm run e2e`, and `node tools/e2e/ux-gates.mjs`.
-**Dependencies:** `ux_shell_flow_20261122` (complete), `local_safety_20261122` (upload validation), `edit_timeline_integrity_20261122` (cut fidelity), `packages/ai`.
+**Dependencies:** `ux_shell_flow_20261122` (complete), `export_safety_20261127` (upload validation), `export_fidelity_20261127` (cut fidelity), `packages/ai`.
 
 ---
 

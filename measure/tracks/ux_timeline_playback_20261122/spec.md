@@ -30,7 +30,7 @@ and the target screen `target-edit.jpg`.
 - The selection draws as an indigo tint with start and end markers.
 - The playhead is a 2px indigo line per `DESIGN.md`.
 - Zoom In, Zoom Out, and Fit buttons change the visible span. The zoom level shows as a percent.
-- Ranges come from the compiled timeline of `edit_timeline_integrity_20261122`. The overlay never computes its own cut list.
+- Ranges come from the compiled timeline of `export_fidelity_20261127`. The overlay never computes its own cut list.
 
 ### FR2: Play the edit
 
@@ -62,7 +62,7 @@ and the target screen `target-edit.jpg`.
 
 ## Dependencies
 
-- `edit_timeline_integrity_20261122`. The overlay and playback need one compiled edited timeline.
+- `export_fidelity_20261127`. The overlay and playback need one compiled edited timeline.
   Without it, the timeline would show cuts that playback and export ignore (F01, F02).
 - `ux_transcript_document_20261122` for the selection model.
 - `ux_edit_inspector_20261122` for the cut count that the overlay must match.
