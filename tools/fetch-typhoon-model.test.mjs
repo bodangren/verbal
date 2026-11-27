@@ -150,4 +150,55 @@ describe("download", () => {
     expect(ranges).toEqual([`bytes=${BODY.length}-`]);
     await expect(readFile(target)).resolves.toEqual(BODY);
   });
+
+  it("does not append a 206 whose Content-Range start differs from the part size", async () => {
+    const ranges = [];
+    const base = await startServer((req, res) => {
+      ranges.push(req.headers.range);
+      if (req.headers.range !== undefined) {
+        res.writeHead(206, {
+          "content-type": "application/octet-stream",
+          "content-range": `bytes 0-${SPLIT - 1}/${BODY.length}`,
+          "content-length": SPLIT,
+        });
+        res.end(BODY.subarray(0, SPLIT));
+        return;
+      }
+      res.writeHead(200, { "content-length": BODY.length });
+      res.end(BODY);
+    });
+
+    const spec = fileSpec();
+    const target = path.join(dir, spec.local);
+    await writeFile(`${target}.part`, BODY.subarray(0, SPLIT));
+
+    await download(spec, target, base, { inactivityMs: 2000 });
+
+    expect(ranges).toEqual([`bytes=${SPLIT}-`, undefined]);
+    await expect(readFile(target)).resolves.toEqual(BODY);
+    await expect(stat(`${target}.part`)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("fails clearly when Content-Range mismatches twice", async () => {
+    let requests = 0;
+    const base = await startServer((_req, res) => {
+      requests += 1;
+      const start = requests === 1 ? 0 : 100;
+      res.writeHead(206, {
+        "content-type": "application/octet-stream",
+        "content-range": `bytes ${start}-${start + SPLIT - 1}/${BODY.length}`,
+        "content-length": SPLIT,
+      });
+      res.end(BODY.subarray(0, SPLIT));
+    });
+
+    const spec = fileSpec();
+    const target = path.join(dir, spec.local);
+    await writeFile(`${target}.part`, BODY.subarray(0, SPLIT));
+
+    await expect(download(spec, target, base, { inactivityMs: 2000 })).rejects.toThrow(
+      /Content-Range/i,
+    );
+    await expect(stat(target)).rejects.toMatchObject({ code: "ENOENT" });
+  });
 });

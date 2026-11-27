@@ -167,6 +167,33 @@ export async function download(file, target, base, options = {}) {
       }
     }
 
+    let rangeMismatches = 0;
+    while (response.status === 206) {
+      const header = response.headers.get("content-range")?.trim() ?? "";
+      const match = /^bytes\s+(\d+)-(\d+)\/(\d+)$/.exec(header);
+      const start = match === null ? Number.NaN : Number(match[1]);
+      if (Number.isFinite(start) && start === partSize) {
+        break;
+      }
+      rangeMismatches += 1;
+      if (rangeMismatches > 1) {
+        const found = match?.[1] ?? "missing";
+        throw new Error(
+          `${file.local}: the mirror sent Content-Range start ${found} twice, expected ${partSize}. ${mirrorHint}`,
+        );
+      }
+      await response.body?.cancel().catch(() => {});
+      await rm(part, { force: true });
+      resume = false;
+      partSize = 0;
+      arm();
+      try {
+        response = await fetch(url, { redirect: "follow", signal: controller.signal });
+      } catch (error) {
+        throw unreachable(error);
+      }
+    }
+
     if (!response.ok || response.body === null) {
       throw new Error(`${url} answered ${response.status}. ${mirrorHint}`);
     }
