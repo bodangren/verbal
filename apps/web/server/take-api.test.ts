@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -72,7 +72,7 @@ describe("take api", () => {
       root,
       takeId: "take-1",
       durationSeconds: 12,
-      data: Buffer.from("recorded bytes"),
+      dataBase64: Buffer.from("recorded bytes").toString("base64"),
     });
 
     expect(response.status).toBe(202);
@@ -101,17 +101,80 @@ describe("take api", () => {
     const { api, root } = await setup();
 
     expect(
-      (await api.upload({ root, takeId: "bad/id", durationSeconds: 1, data: Buffer.from("x") }))
-        .status,
+      (await api.upload({ root, takeId: "bad/id", durationSeconds: 1, dataBase64: "eA==" })).status,
     ).toBe(400);
     expect(
-      (await api.upload({ root, takeId: "take-2", durationSeconds: 1, data: Buffer.alloc(0) }))
-        .status,
+      (await api.upload({ root, takeId: "take-2", durationSeconds: 1, dataBase64: "" })).status,
     ).toBe(400);
     expect(
-      (await api.upload({ root, takeId: "take-3", durationSeconds: 0, data: Buffer.from("x") }))
-        .status,
+      (await api.upload({ root, takeId: "take-3", durationSeconds: 0, dataBase64: "eA==" })).status,
     ).toBe(400);
+  });
+
+  it("answers 413 for an upload above the byte limit without writing it", async () => {
+    const registry = {
+      create: async () => {
+        throw new Error("no job expected");
+      },
+    } as unknown as JobRegistry;
+    const { root } = await setup();
+    const api = createTakeApi({
+      registry,
+      maxUploadBytes: 16,
+      runNormalize: async () => undefined,
+    });
+
+    const response = await api.upload({
+      root,
+      takeId: "take-big",
+      durationSeconds: 1,
+      dataBase64: "A".repeat(64),
+    });
+
+    expect(response.status).toBe(413);
+    await expect(readFile(uploadedTakePath(root, "take-big"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  it("writes the decoded recording to a temporary file before the rename", async () => {
+    const registry = {
+      create: async (kind: JobKind): Promise<JobRecord> => ({
+        id: "job-2",
+        kind,
+        status: "queued",
+        createdAt: "2026-11-23T10:00:00.000Z",
+        updatedAt: "2026-11-23T10:00:00.000Z",
+        progress: 0,
+        message: null,
+        result: null,
+        error: null,
+      }),
+    } as unknown as JobRegistry;
+    const { root } = await setup();
+    const bytes = Buffer.alloc(5 * 1024 * 1024 + 7, 0x5a);
+    let seen: Buffer | undefined;
+    const api = createTakeApi({
+      registry,
+      runNormalize: async (input) => {
+        seen = await readFile(input.inputPath);
+      },
+    });
+
+    const response = await api.upload({
+      root,
+      takeId: "take-stream",
+      durationSeconds: 3,
+      dataBase64: bytes.toString("base64"),
+    });
+
+    expect(response.status).toBe(202);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(seen?.equals(bytes)).toBe(true);
+    const leftovers = (await readdir(path.dirname(uploadedTakePath(root, "take-stream")))).filter(
+      (name) => name.endsWith(".part"),
+    );
+    expect(leftovers).toEqual([]);
   });
 
   it("normalizes only short slugs", () => {

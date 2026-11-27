@@ -2,10 +2,10 @@ import { promises as nodeFs } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { failure } from "../../server/api-errors";
 import { spawnCapture } from "../../server/capture-spawn";
-import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
+import { methodNotAllowed, PayloadTooLargeError, readJsonBody, sendJson } from "../../server/http";
 import { runNormalizeJob } from "../../server/normalize-job";
 import { getJobRegistry } from "../../server/registry";
-import { createTakeApi } from "../../server/take-api";
+import { createTakeApi, MAX_UPLOAD_BODY_BYTES } from "../../server/take-api";
 import { asRecord } from "../../server/validation";
 
 export default async function handler(
@@ -38,7 +38,7 @@ export default async function handler(
     if (method === "POST") {
       // vinext parses JSON bodies safely; a binary body arrives as a string and
       // corrupts the WebM. Base64 keeps the bytes intact.
-      const body = asRecord(await readJsonBody(request));
+      const body = asRecord(await readJsonBody(request, MAX_UPLOAD_BODY_BYTES));
       const dataBase64 = body.dataBase64;
       if (typeof dataBase64 !== "string") {
         sendJson(response, { status: 400, body: { error: "dataBase64 is required" } });
@@ -51,7 +51,7 @@ export default async function handler(
           root: body.root,
           takeId: body.takeId,
           durationSeconds: body.durationSeconds,
-          data: Buffer.from(dataBase64, "base64"),
+          dataBase64,
         }),
       );
       return;
@@ -59,6 +59,11 @@ export default async function handler(
 
     methodNotAllowed(response, "GET, POST");
   } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      response.setHeader("Connection", "close");
+      sendJson(response, { status: 413, body: { error: error.message } });
+      return;
+    }
     sendJson(response, failure(error));
   }
 }

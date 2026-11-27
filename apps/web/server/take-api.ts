@@ -1,5 +1,8 @@
-import { promises as nodeFs } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { createWriteStream, promises as nodeFs } from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import {
   nodeFileSystem,
   openProject,
@@ -9,6 +12,7 @@ import {
   type JobRegistry,
 } from "@verbal/core";
 import { failure } from "./api-errors";
+import { PayloadTooLargeError } from "./http";
 import type { ApiResponse } from "./jobs-api";
 import type { NormalizeJobInput } from "./normalize-job";
 import { addTake, readTakes, TAKES_DIR } from "./take-store";
@@ -16,7 +20,37 @@ import { asRecord, requireAbsolutePath } from "./validation";
 
 /** A 30-minute 1080p WebM is well under this; it is a guard, not a target. */
 export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024;
+/** Base64 grows a body by 4/3. The extra 64 KiB covers the JSON envelope. */
+export const MAX_UPLOAD_BODY_BYTES = Math.ceil(MAX_UPLOAD_BYTES / 3) * 4 + 64 * 1024;
+const BASE64_CHUNK_CHARS = 4 * 1024 * 1024;
 const TAKE_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+/** Counts the decoded bytes from the text length alone. Nothing is decoded. */
+export function decodedBase64Bytes(encoded: string): number {
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  return Math.floor((encoded.length * 3) / 4) - padding;
+}
+
+function* decodeBase64Chunks(encoded: string): Generator<Buffer> {
+  for (let start = 0; start < encoded.length; start += BASE64_CHUNK_CHARS) {
+    yield Buffer.from(encoded.slice(start, start + BASE64_CHUNK_CHARS), "base64");
+  }
+}
+
+/** Writes the decoded bytes to a private temporary file, then moves it into place. */
+async function writeRecording(encoded: string, target: string): Promise<void> {
+  const tempPath = `${target}.${randomUUID()}.part`;
+  try {
+    await pipeline(
+      Readable.from(decodeBase64Chunks(encoded)),
+      createWriteStream(tempPath, { mode: 0o600 }),
+    );
+    await nodeFs.rename(tempPath, target);
+  } catch (error) {
+    await nodeFs.unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
+}
 
 export function normalizeTakeId(value: unknown): string {
   if (typeof value !== "string" || !TAKE_ID.test(value)) {
@@ -38,6 +72,7 @@ export type TakeApiDeps = {
   runNormalize: (input: NormalizeJobInput) => Promise<void>;
   fs?: FileSystem;
   now?: () => Date;
+  maxUploadBytes?: number;
 };
 
 /**
@@ -50,6 +85,7 @@ export type TakeApiDeps = {
 export function createTakeApi(overrides: TakeApiDeps) {
   const fs = overrides.fs ?? nodeFileSystem;
   const now = overrides.now ?? (() => new Date());
+  const maxUploadBytes = overrides.maxUploadBytes ?? MAX_UPLOAD_BYTES;
 
   return {
     async list(input: unknown): Promise<ApiResponse> {
@@ -66,7 +102,7 @@ export function createTakeApi(overrides: TakeApiDeps) {
       root: unknown;
       takeId: unknown;
       durationSeconds: unknown;
-      data: Buffer;
+      dataBase64: string;
     }): Promise<ApiResponse> {
       try {
         const root = requireAbsolutePath(input.root, "root");
@@ -81,21 +117,19 @@ export function createTakeApi(overrides: TakeApiDeps) {
         ) {
           throw new ProjectError("invalid-document", "duration must be between 0 and 3600");
         }
-        if (input.data.length === 0) {
-          throw new ProjectError("invalid-document", "recording is empty");
+        const decodedBytes = decodedBase64Bytes(input.dataBase64);
+        if (decodedBytes > maxUploadBytes) {
+          throw new PayloadTooLargeError(maxUploadBytes);
         }
-        if (input.data.length > MAX_UPLOAD_BYTES) {
-          throw new ProjectError(
-            "invalid-document",
-            `upload exceeds ${MAX_UPLOAD_BYTES} bytes`,
-          );
+        if (decodedBytes <= 0) {
+          throw new ProjectError("invalid-document", "recording is empty");
         }
 
         const project = await openProject(fs, root);
         await nodeFs.mkdir(path.join(root, TAKES_DIR), { recursive: true });
 
         const uploadPath = uploadedTakePath(root, takeId);
-        await nodeFs.writeFile(uploadPath, input.data);
+        await writeRecording(input.dataBase64, uploadPath);
 
         const outputPath = normalizedTakePath(root, takeId);
         const fileName = `${takeId}.mp4`;
@@ -126,6 +160,9 @@ export function createTakeApi(overrides: TakeApiDeps) {
 
         return { status: 202, body: job };
       } catch (error) {
+        if (error instanceof PayloadTooLargeError) {
+          return { status: 413, body: { error: error.message } };
+        }
         return failure(error);
       }
     },
