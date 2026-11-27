@@ -260,4 +260,36 @@ describe("resolveAsr", () => {
 
     expect(resolved).toEqual({ mode: "none", missing: "both" });
   });
+
+  it("carries the requested language on an explicit cloud resolution", () => {
+    const resolved = resolveAsr(
+      input({
+        env: { VERBAL_ASR: "cloud", VERBAL_ASR_LANGUAGE: "en", OPENAI_API_KEY: "key" },
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "cloud", language: "en" });
+  });
+
+  it("carries the lower-cased language on a cloud fallback", () => {
+    const resolved = resolveAsr(
+      input({
+        env: { VERBAL_ASR_LANGUAGE: "EN", OPENAI_API_KEY: "key" },
+        exists: () => false,
+        list: () => [],
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "cloud", language: "en" });
+  });
+
+  it("carries no language on a cloud resolution when the language is auto", () => {
+    const resolved = resolveAsr(
+      input({
+        env: { VERBAL_ASR: "cloud", VERBAL_ASR_LANGUAGE: "auto", OPENAI_API_KEY: "key" },
+      }),
+    );
+
+    expect(resolved).toEqual({ mode: "cloud" });
+  });
 });

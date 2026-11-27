@@ -156,6 +156,21 @@ describe("createTranscribeService provider selection", () => {
     });
   });
 
+  it("passes the requested language to the cloud provider", async () => {
+    const createProvider = vi.fn(() => stubProvider);
+    const service = createTranscribeService({
+      fs: projectFs(),
+      apiKey: () => "key",
+      baseUrl: () => undefined,
+      resolveAsr: () => ({ mode: "cloud", language: "en" }),
+      createProvider,
+      stat: fakeStat,
+    });
+
+    await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
+    expect(createProvider).toHaveBeenCalledWith({ apiKey: "key", language: "en" });
+  });
+
   it("names the data directory when no speech engine is set up", async () => {
     const service = createTranscribeService({
       fs: projectFs(),

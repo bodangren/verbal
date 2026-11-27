@@ -100,7 +100,11 @@ export type TranscribeServiceDeps = {
   registry: () => Promise<JobRegistry>;
   apiKey: () => string;
   baseUrl: () => string | undefined;
-  createProvider: (config: { apiKey: string; baseUrl?: string }) => TranscriptionProvider;
+  createProvider: (config: {
+    apiKey: string;
+    baseUrl?: string;
+    language?: string;
+  }) => TranscriptionProvider;
   resolveAsr: () => AsrResolution;
   dataDir: () => string;
   createLocalProvider: (config: {
@@ -166,7 +170,11 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       throw new AiError("not-configured", "OPENAI_API_KEY is not set");
     }
     const baseUrl = deps.baseUrl();
-    return deps.createProvider({ apiKey, ...(baseUrl === undefined ? {} : { baseUrl }) });
+    return deps.createProvider({
+      apiKey,
+      ...(baseUrl === undefined ? {} : { baseUrl }),
+      ...(resolved.language === undefined ? {} : { language: resolved.language }),
+    });
   }
 
   /**

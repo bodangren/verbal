@@ -1,7 +1,7 @@
 import path from "node:path";
 
 export type AsrResolution =
-  | { mode: "cloud" }
+  | { mode: "cloud"; language?: string }
   | { mode: "none"; missing: "binary" | "model" | "both" }
   | {
       mode: "local";
@@ -83,13 +83,23 @@ function missingOf(binary: string | undefined, model: string | undefined) {
 export function resolveAsr(input: AsrResolveInput): AsrResolution {
   const { dataDir, env, exists, list, onPath } = input;
 
+  const requestedLanguage = set(env.VERBAL_ASR_LANGUAGE);
+  const normalizedLanguage = requestedLanguage?.toLowerCase();
+  const cloudLanguage =
+    normalizedLanguage === undefined || normalizedLanguage === "auto"
+      ? undefined
+      : normalizedLanguage;
+  const cloud = (): AsrResolution => ({
+    mode: "cloud",
+    ...(cloudLanguage === undefined ? {} : { language: cloudLanguage }),
+  });
+
   if (set(env.VERBAL_ASR) === "cloud") {
-    return { mode: "cloud" };
+    return cloud();
   }
 
   const explicitLocal = set(env.VERBAL_ASR) === "local";
   const models = path.join(dataDir, "models");
-  const requestedLanguage = set(env.VERBAL_ASR_LANGUAGE);
   const language = requestedLanguage ?? "auto";
   const typhoonAllowed =
     requestedLanguage === undefined || requestedLanguage.toLowerCase() === "th";
@@ -137,7 +147,7 @@ export function resolveAsr(input: AsrResolveInput): AsrResolution {
   }
 
   if (!explicitLocal && set(env.OPENAI_API_KEY) !== undefined) {
-    return { mode: "cloud" };
+    return cloud();
   }
 
   return { mode: "none", missing: missingOf(binary, modelPath) };
