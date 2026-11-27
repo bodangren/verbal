@@ -231,6 +231,94 @@ describe("buildTimeline", () => {
     }
   });
 
+  it("keeps overlapping words valid after a removal and a silence", () => {
+    const base = createTranscript([
+      { text: "a", start: 0, end: 1 },
+      { text: "b", start: 0.8, end: 2 },
+    ]);
+
+    const edits = [
+      // Remove b, silence after a.
+      insertSilence(removeRange(base, 1, 1), "w0", 1.5),
+      // Remove a, silence after b.
+      insertSilence(removeRange(base, 0, 0), "w1", 1.5),
+      // The same overlap after b moves ahead of a: the Deliver talk path.
+      insertSilence(removeRange(moveRange(base, 1, 1, 0), 0, 0), "w0", 1.5),
+    ];
+
+    for (const transcript of edits) {
+      for (const input of [{ transcript }, { transcript, durationSeconds: 3 }]) {
+        const items = buildTimeline(input);
+        for (const item of items) {
+          if (item.kind === "video") {
+            expect(item.endSeconds).toBeGreaterThan(item.startSeconds + 0.001);
+          } else {
+            expect(item.durationSeconds).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+  });
+
+  it("emits only valid intervals over 300 random edited transcripts", () => {
+    let seed = 20261128;
+    const random = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 2 ** 32;
+    };
+
+    const assertValid = (items: ReturnType<typeof buildTimeline>) => {
+      for (const item of items) {
+        if (item.kind === "video") {
+          expect(item.endSeconds).toBeGreaterThan(item.startSeconds + 0.001);
+        } else {
+          expect(item.durationSeconds).toBeGreaterThan(0);
+        }
+      }
+    };
+
+    for (let run = 0; run < 300; run += 1) {
+      const count = 1 + Math.floor(random() * 12);
+      const spoken: { text: string; start: number; end: number }[] = [];
+      let cursor = random() * 0.5;
+      for (let index = 0; index < count; index += 1) {
+        const overlap = random() < 0.4 ? random() * 0.5 : 0;
+        const start = Math.max(0, cursor - overlap);
+        const end = start + 0.1 + random() * 0.9;
+        spoken.push({ text: `w${index}`, start, end });
+        cursor = Math.max(cursor, end);
+      }
+
+      let transcript: TranscriptDocument = createTranscript(spoken);
+      const operations = Math.floor(random() * 6);
+      for (let op = 0; op < operations; op += 1) {
+        const kind = Math.floor(random() * 3);
+        if (kind === 0) {
+          const index = Math.floor(random() * transcript.words.length);
+          transcript = removeRange(transcript, index, index);
+        } else if (kind === 1) {
+          const from = Math.floor(random() * transcript.words.length);
+          transcript = moveRange(
+            transcript,
+            from,
+            from,
+            Math.floor(random() * transcript.words.length),
+          );
+        } else {
+          const word = transcript.words[Math.floor(random() * transcript.words.length)];
+          if (word !== undefined) {
+            transcript = insertSilence(transcript, word.id, 0.1 + random() * 1.5);
+          }
+        }
+      }
+
+      const durationSeconds = Math.max(0.5, cursor + random() * 3 + 0.5);
+
+      assertValid(buildTimeline({ transcript }));
+      assertValid(buildTimeline({ transcript, durationSeconds }));
+    }
+  });
+
   it("matches buildCutList over generated deletion-only transcripts", () => {
     let seed = 123456789;
     const random = () => {

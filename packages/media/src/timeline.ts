@@ -27,6 +27,9 @@ export type BuildTimelineInput = {
 const EPSILON = 1e-6;
 const PRECISION = 1_000_000;
 
+/** Video ranges shorter than this are unusable and dropped. */
+const MIN_VIDEO_SECONDS = 0.001;
+
 function round(value: number): number {
   return Math.round(value * PRECISION) / PRECISION;
 }
@@ -188,5 +191,14 @@ export function buildTimeline(input: BuildTimelineInput): TimelineItem[] {
     }
   }
 
-  return items;
+  // A collapse can still survive the loop: a removed word truncates its
+  // neighbour to zero, or a kept word lies inside a removed handle. Drop any
+  // item that is empty, reversed or shorter than the minimum before it joins
+  // the timeline. Adjacent items that touch are not merged here, so a silence
+  // or a reorder boundary stays put.
+  return items.filter((item) =>
+    item.kind === "video"
+      ? item.endSeconds > item.startSeconds + MIN_VIDEO_SECONDS
+      : item.durationSeconds > 0,
+  );
 }
