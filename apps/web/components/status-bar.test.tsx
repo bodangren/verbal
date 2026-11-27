@@ -64,6 +64,31 @@ describe("StatusBar", () => {
     expect(status.textContent).toBe("Export failed. Try again.");
   });
 
+  it("hides the live copy when the summary already shows the same text", () => {
+    setup({
+      jobText: "Export failed. Try again.",
+      message: "Export failed. Try again.",
+      error: null,
+    });
+
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("Export failed. Try again.");
+    expect(status.classList.contains("sr-only")).toBe(true);
+    expect(screen.getByText("Export failed. Try again.", { selector: ".statusbar__item" })).toBeTruthy();
+  });
+
+  it("hides the live copy when the error detail popover shows the message", () => {
+    setup();
+
+    expect(screen.getByRole("status").classList.contains("sr-only")).toBe(true);
+  });
+
+  it("keeps a plain live message visible when nothing else shows it", () => {
+    setup({ jobText: "Ready", message: "Preview ready", error: null });
+
+    expect(screen.getByRole("status").classList.contains("sr-only")).toBe(false);
+  });
+
   it("opens the error detail upward as a popover above the bar", () => {
     setup();
 

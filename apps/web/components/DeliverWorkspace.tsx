@@ -106,6 +106,7 @@ export function DeliverWorkspace({
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoSeconds, setVideoSeconds] = useState(4);
   const [videoCost, setVideoCost] = useState<number | null>(null);
+  const [requestError, setRequestError] = useState<ErrorCopy | null>(null);
   const brandTitleProjectRef = useRef<string | null>(null);
   const outputPathRootRef = useRef<string | null>(null);
 
@@ -280,6 +281,7 @@ export function DeliverWorkspace({
 
   function exportStoryboard() {
     return guard(async () => {
+      setRequestError(null);
       const record = await exportStoryboardApi({
         root,
         outputPath,
@@ -293,13 +295,18 @@ export function DeliverWorkspace({
           loudnessLufs: brand.loudness,
         },
         geometry: GEOMETRY,
+      }).catch((cause: unknown) => {
+        setRequestError(errorCopyFor(cause));
+        return null;
       });
+      if (record === null) {
+        return;
+      }
       setJob(record);
       const finished = await pollJob(record.id);
       const result = finished.result as { outputPath?: string } | null;
       if (result?.outputPath !== undefined) {
         setOutputPath(result.outputPath);
-        setMessage(`Exported to ${result.outputPath}`);
       }
     });
   }
@@ -675,6 +682,7 @@ export function DeliverWorkspace({
                   : null
             }
             job={exportJob}
+            requestError={requestError}
             onExport={exportStoryboard}
             running={exportRunning}
             progressPercent={exportJob === null ? 0 : Math.round(exportJob.progress * 100)}

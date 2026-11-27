@@ -64,11 +64,13 @@ function job(overrides: Record<string, unknown> = {}) {
 
 describe("Export flow names and busy state", () => {
   let current: Record<string, unknown>;
+  let exportReply: Response | null;
 
   beforeEach(() => {
     cleanup();
     window.localStorage.clear();
     current = job();
+    exportReply = null;
 
     vi.stubGlobal(
       "fetch",
@@ -106,7 +108,7 @@ describe("Export flow names and busy state", () => {
           return reply(transcript());
         }
         if (url.startsWith("/api/storyboard/export")) {
-          return reply(job({ status: "queued", progress: 0, message: null }));
+          return exportReply ?? reply(job({ status: "queued", progress: 0, message: null }));
         }
         if (url.startsWith("/api/storyboard/preview")) {
           return reply(preview());
@@ -246,6 +248,46 @@ describe("Export flow names and busy state", () => {
     const panel = document.getElementById("export-panel") as HTMLElement;
     expect(within(panel).getByText(/\/projects\/demo\/exports\/Demo\.mp4/)).toBeTruthy();
     expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("shows a failed export request in the Export panel, not on the stage", async () => {
+    await openExport();
+    exportReply = reply({ error: "Export could not start" }, 500);
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+
+    const panel = document.getElementById("export-panel") as HTMLElement;
+    await waitFor(() => expect(within(panel).getByRole("alert")).toBeTruthy());
+    const alert = within(panel).getByRole("alert");
+    expect(alert.textContent).toContain("Something went wrong");
+    expect(alert.textContent).toContain("Export could not start");
+    expect(document.querySelector(".stage .pane-alert")).toBeNull();
+  });
+
+  it("announces one export with one done message and no Exported to text", async () => {
+    await openExport();
+    const status = screen.getByRole("status");
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(status.textContent ?? ""));
+    observer.observe(status, { childList: true, characterData: true, subtree: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Exporting…" })).toBeTruthy());
+    current = job({
+      status: "done",
+      progress: 1,
+      message: null,
+      result: { outputPath: "/projects/demo/exports/Demo.mp4" },
+    });
+    await waitFor(
+      () => expect(status.textContent).toBe("Export finished: /projects/demo/exports/Demo.mp4"),
+      { timeout: 3000 },
+    );
+    observer.disconnect();
+
+    expect(seen.filter((text) => text.includes("Exported to"))).toEqual([]);
+    expect([...new Set(seen.filter((text) => text.includes("Export finished")))]).toEqual([
+      "Export finished: /projects/demo/exports/Demo.mp4",
+    ]);
   });
 
   it("sends the failure text to the one status region", async () => {

@@ -7,6 +7,8 @@ export type ExportControlsProps = {
   disabled: boolean;
   reason?: string | null;
   job: JobRecord | null;
+  /** A failed export request, shown in the same slot as a failed job. */
+  requestError?: { message: string; detail?: string } | null;
   onExport: () => void;
   running?: boolean;
   progressPercent?: number;
@@ -22,6 +24,7 @@ export function ExportControls({
   disabled,
   reason = null,
   job,
+  requestError = null,
   onExport,
   running = false,
   progressPercent,
@@ -36,7 +39,8 @@ export function ExportControls({
   const outputPath = job !== null && done ? jobOutputPath(job) : null;
   const fileName =
     outputPath === null ? null : (outputPath.split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? null);
-  const failure = failed && job !== null ? errorCopyFor(job.error) : null;
+  const failure =
+    requestError ?? (failed && job !== null ? errorCopyFor(job.error) : null);
   const announced = useRef<string | null>(null);
 
   useEffect(() => {

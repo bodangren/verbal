@@ -7,12 +7,20 @@ export type StatusBarProps = {
 
 /** Status line for the job, media, and the latest message. */
 export function StatusBar({ jobText, mediaLabel, message, error }: StatusBarProps) {
+  const liveText = error?.message ?? message ?? "";
+  // The summary already shows the same words, so the live copy stays for
+  // assistive technology only.
+  const shownElsewhere =
+    liveText !== "" && (jobText === liveText || (error !== null && Boolean(error.detail)));
+
   return (
     <footer className="statusbar">
       <span className="statusbar__item">{jobText}</span>
       <span className="statusbar__item">{mediaLabel}</span>
       <span
-        className={`statusbar__message${error !== null ? " is-error" : ""}`}
+        className={`statusbar__message${error !== null ? " is-error" : ""}${
+          shownElsewhere ? " sr-only" : ""
+        }`}
         role="status"
         aria-live="polite"
       >

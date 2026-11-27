@@ -98,6 +98,7 @@ export function TopBar({
         <button
           type="button"
           className="button button--primary bar__export"
+          aria-label="Open Export"
           onClick={onExport}
         >
           Export

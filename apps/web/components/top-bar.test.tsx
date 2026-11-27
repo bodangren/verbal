@@ -14,7 +14,7 @@ function modeTab(name: string) {
 
 function barExport() {
   const actions = screen.getByRole("banner").querySelector<HTMLElement>(".bar__actions");
-  return within(actions as HTMLElement).getByRole("button", { name: "Export" });
+  return within(actions as HTMLElement).getByRole("button", { name: "Open Export" });
 }
 
 function setup(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
@@ -33,6 +33,14 @@ function setup(overrides: Partial<Parameters<typeof TopBar>[0]> = {}) {
 }
 
 describe("TopBar", () => {
+  it("names the bar button Open Export and keeps the mode tab named Export", () => {
+    setup();
+
+    expect(barExport().textContent).toBe("Export");
+    expect(modeTab("Export")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Export" })).toHaveLength(1);
+  });
+
   it("shows the project, save state and Export", () => {
     setup();
 
