@@ -62,6 +62,7 @@ body {
 .app {
   display: grid;
   grid-template-rows: 44px minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr);
   height: 100dvh;
   max-width: none;
   overflow: hidden;
@@ -798,6 +799,7 @@ h2 {
 .bar__document-name {
   font-size: 13px;
   font-weight: 600;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1550,6 +1552,7 @@ h2 {
   display: flex;
   font-size: 11px;
   gap: var(--space-4);
+  min-width: 0;
   overflow: visible;
   padding: 0 var(--space-4);
   position: relative;
@@ -1558,14 +1561,20 @@ h2 {
 
 .statusbar__item {
   color: var(--text-tertiary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusbar__message {
   color: var(--text-tertiary);
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusbar__message.is-error {
@@ -2310,6 +2319,7 @@ dialog.dialog::backdrop {
   .sidebar {
     border-bottom: 1px solid var(--border);
     border-right: 0;
+    flex: 0 0 auto;
     min-width: 0;
     width: auto;
   }
@@ -2317,6 +2327,12 @@ dialog.dialog::backdrop {
   .sidebar:has(.browser--collapsed) {
     min-width: 0;
     width: auto;
+  }
+
+  /* With no project open the browser stays expanded: it keeps its content
+     height with room for at least the list, which scrolls in place. */
+  .sidebar:not(:has(.browser--collapsed)) {
+    min-height: 120px;
   }
 
   /* The collapsed rail becomes a horizontal strip: the open project stays

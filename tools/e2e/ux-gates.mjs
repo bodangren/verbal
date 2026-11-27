@@ -252,6 +252,52 @@ try {
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
   await page.locator(".browser").waitFor({ timeout: 20000 });
 
+  // Fresh visit: no project is open, so the browser stays expanded. At
+  // narrow widths the sidebar must still list projects and every row must
+  // be clickable by its centre point.
+  const freshBrowser = [];
+  await page
+    .locator(".sidebar .browser__empty, .sidebar .entry__main")
+    .first()
+    .waitFor({ timeout: 20000 });
+  for (const [width, height] of [
+    [360, 740],
+    [768, 1024],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(250);
+    const key = `${width}x${height}`;
+    const seen = await page.evaluate(() => {
+      const sidebar = document.querySelector(".sidebar");
+      const target =
+        document.querySelector(".sidebar .entry__main") ??
+        document.querySelector(".sidebar .browser__empty");
+      if (sidebar === null || target === null) {
+        return null;
+      }
+      const sideBox = sidebar.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      return {
+        height: Math.round(sideBox.height),
+        hit: hit !== null && (hit === target || target.contains(hit)),
+      };
+    });
+    freshBrowser.push({ viewport: key, box: seen });
+    if (seen === null) {
+      freshBrowser[freshBrowser.length - 1].failure =
+        `${key}: no project row or empty state in the sidebar`;
+    } else if (seen.height < 120 || !seen.hit) {
+      freshBrowser[freshBrowser.length - 1].failure =
+        `${key}: sidebar is ${seen.height} px high` +
+        (seen.hit ? "" : " and the row centre is not hit by the row");
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   // The core journey, measured from the home screen to an editable transcript.
   // Enter submits the create form, so only revealing it is a click.
   await click(page.getByRole("button", { name: "+ New Project Here", exact: true }));
@@ -283,6 +329,7 @@ try {
   const exportVisibility = [];
   const narrowLayout = [];
   const editToolbar = [];
+  const narrowShell = [];
 
   for (const [width, height] of VIEWPORTS) {
     await page.setViewportSize({ width, height });
@@ -538,6 +585,101 @@ try {
     }
   }
 
+  // Narrow shell with a project open: the collapsed Projects strip stays
+  // clickable, a long status line never widens the page, and a long
+  // project name keeps Export on screen. Class selectors keep this
+  // independent of button labels other workers may rename.
+  for (const [width, height] of [
+    [768, 1024],
+    [360, 740],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await modeButton(page, "Ingest").click();
+    await page.waitForTimeout(250);
+    const key = `${width}x${height}`;
+    const collapse = page.locator(".sidebar .browser__collapse");
+    if ((await collapse.count()) > 0) {
+      await click(collapse);
+      await page.waitForTimeout(250);
+    }
+    const strip = await page.evaluate(() => {
+      const button = document.querySelector(".browser__strip-button");
+      if (button === null || button.getClientRects().length === 0) {
+        return null;
+      }
+      const rect = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
+      return { hit: hit !== null && (hit === button || button.contains(hit)) };
+    });
+    narrowShell.push({ viewport: key, check: "projects strip", box: strip });
+    if (strip === null) {
+      narrowShell[narrowShell.length - 1].failure = `${key}: no clickable Projects strip`;
+    } else if (!strip.hit) {
+      narrowShell[narrowShell.length - 1].failure = `${key}: the Projects strip centre is covered`;
+    }
+
+    const longName = await page.evaluate(() => {
+      const name = document.querySelector(".bar__document-name");
+      if (name === null) {
+        return null;
+      }
+      name.textContent = "Project ".repeat(8).slice(0, 60);
+      const button = document.querySelector(".bar__export");
+      if (button === null) {
+        return null;
+      }
+      const rect = button.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        innerWidth: window.innerWidth,
+      };
+    });
+    narrowShell.push({ viewport: key, check: "long project name", box: longName });
+    if (longName === null) {
+      narrowShell[narrowShell.length - 1].failure = `${key}: no top-bar name or Export button`;
+    } else if (longName.left < 0 || longName.right > longName.innerWidth) {
+      narrowShell[narrowShell.length - 1].failure =
+        `${key}: Export ends at ${longName.right} px on a ${longName.innerWidth} px screen`;
+    }
+
+    const longStatus = await page.evaluate(() => {
+      const message = document.querySelector(".statusbar__message");
+      if (message === null) {
+        return null;
+      }
+      message.textContent =
+        "Exported to /home/somebody/Videos/Projects/Quarterly Update - final cut for the board meeting.mp4";
+      const button = document.querySelector(".bar__export");
+      if (button === null) {
+        return null;
+      }
+      const rect = button.getBoundingClientRect();
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+      };
+    });
+    narrowShell.push({ viewport: key, check: "long status message", box: longStatus });
+    if (longStatus === null) {
+      narrowShell[narrowShell.length - 1].failure =
+        `${key}: no status message or Export button`;
+    } else if (
+      longStatus.scrollWidth > longStatus.innerWidth ||
+      longStatus.left < 0 ||
+      longStatus.right > longStatus.innerWidth
+    ) {
+      narrowShell[narrowShell.length - 1].failure =
+        `${key}: page is ${longStatus.scrollWidth} px wide, ` +
+        `Export ends at ${longStatus.right} px`;
+    }
+  }
+
   await page.setViewportSize({ width: 1440, height: 900 });
   await modeButton(page, "Edit").click();
   await page.waitForTimeout(300);
@@ -744,6 +886,8 @@ try {
     exportVisibility,
     narrowLayout,
     editToolbar,
+    freshBrowser,
+    narrowShell,
     pageErrors,
   };
 
@@ -795,6 +939,8 @@ try {
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowLayout.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...editToolbar.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...freshBrowser.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...narrowShell.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...report.contrast
       .filter((pair) => !pair.pass)
       .map((pair) => `contrast: ${pair.name} is ${pair.ratio}:1 (needs 4.5)`),
