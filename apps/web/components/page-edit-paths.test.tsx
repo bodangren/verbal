@@ -152,6 +152,54 @@ describe("Home edit paths", () => {
     fireEvent.click(word(to), { shiftKey: true });
   }
 
+  function selectedWordIds(): string[] {
+    return wordButtons()
+      .filter((option) => option.getAttribute("aria-selected") === "true")
+      .map((option) => option.dataset.wordId ?? "");
+  }
+
+  async function selectFromHome() {
+    await openEdit();
+    const listbox = screen.getByRole("listbox", { name: "Transcript" });
+    listbox.focus();
+    fireEvent.keyDown(listbox, { key: "Home" });
+    for (let step = 0; step < 5; step += 1) {
+      fireEvent.keyDown(listbox, { key: "ArrowRight", shiftKey: true });
+    }
+    return listbox;
+  }
+
+  it("keeps a keyboard range across five Shift+ArrowRight presses", async () => {
+    await selectFromHome();
+
+    expect(selectedWordIds()).toEqual(["w0", "w1", "w2", "w3", "w4", "w5"]);
+    expect(screen.getByRole("button", { name: "Delete" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("shrinks a keyboard range with four Shift+ArrowLeft presses", async () => {
+    const listbox = await selectFromHome();
+    for (let step = 0; step < 4; step += 1) {
+      fireEvent.keyDown(listbox, { key: "ArrowLeft", shiftKey: true });
+    }
+
+    expect(selectedWordIds()).toEqual(["w0", "w1"]);
+  });
+
+  it("deletes a keyboard-built range and restores it with Ctrl+Z", async () => {
+    const listbox = await selectFromHome();
+    fireEvent.keyDown(listbox, { key: "Delete" });
+
+    for (const id of ["w0", "w1", "w2", "w3", "w4", "w5"]) {
+      expect(isRemoved(id)).toBe(true);
+    }
+    expect(screen.getByRole("status").textContent).toContain("Removed 6 words");
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    for (const id of ["w0", "w1", "w2", "w3", "w4", "w5"]) {
+      expect(isRemoved(id)).toBe(false);
+    }
+  });
+
   it("deletes a selected range and restores it with Ctrl+Z", async () => {
     await openEdit();
     selectRange("w1", "w2");
