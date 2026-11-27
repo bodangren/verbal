@@ -172,6 +172,87 @@ describe("parseProbeOutput", () => {
     });
   });
 
+  const sarCases: Array<[string | undefined, number]> = [
+    ["2:1", 2],
+    ["1:1", 1],
+    ["0:1", 1],
+    ["N/A", 1],
+    [undefined, 1],
+  ];
+
+  it.each(sarCases)("parses sample aspect ratio %s as %s", (sampleAspectRatio, expected) => {
+    const stream: Record<string, unknown> = {
+      index: 0,
+      codec_name: "h264",
+      codec_type: "video",
+      width: 160,
+      height: 120,
+      r_frame_rate: "25/1",
+    };
+    if (sampleAspectRatio !== undefined) {
+      stream.sample_aspect_ratio = sampleAspectRatio;
+    }
+    const info = parseProbeOutput(JSON.stringify({ streams: [stream], format: {} }));
+
+    expect(info.streams[0]?.sampleAspectRatio).toBe(expected);
+  });
+
+  it("reports the square-pixel display size for a 2:1 source", () => {
+    const info = parseProbeOutput(
+      JSON.stringify({
+        streams: [
+          {
+            index: 0,
+            codec_name: "h264",
+            codec_type: "video",
+            width: 160,
+            height: 120,
+            r_frame_rate: "25/1",
+            sample_aspect_ratio: "2:1",
+          },
+        ],
+        format: {},
+      }),
+    );
+
+    expect(info.streams[0]).toMatchObject({
+      width: 160,
+      height: 120,
+      sampleAspectRatio: 2,
+      displayWidth: 320,
+      displayHeight: 120,
+    });
+  });
+
+  it("reports the square-pixel display size swapped for a 2:1 rotated source", () => {
+    const info = parseProbeOutput(
+      JSON.stringify({
+        streams: [
+          {
+            index: 0,
+            codec_name: "h264",
+            codec_type: "video",
+            width: 160,
+            height: 120,
+            r_frame_rate: "25/1",
+            sample_aspect_ratio: "2:1",
+            side_data_list: [{ side_data_type: "Display Matrix", rotation: -90 }],
+          },
+        ],
+        format: {},
+      }),
+    );
+
+    expect(info.streams[0]).toMatchObject({
+      width: 160,
+      height: 120,
+      sampleAspectRatio: 2,
+      rotation: -90,
+      displayWidth: 120,
+      displayHeight: 320,
+    });
+  });
+
   it("reports a missing duration as null", () => {
     const info = parseProbeOutput(JSON.stringify({ streams: [], format: { format_name: "image2" } }));
 

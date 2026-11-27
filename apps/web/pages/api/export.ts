@@ -48,7 +48,11 @@ export default async function handler(
     try {
       await resolveExportDestination(mediaPath, outputPath, realpath);
     } catch (error) {
-      if (error instanceof Error && error.message === "outputPath must not be the source video") {
+      if (
+        error instanceof Error &&
+        (error.message === "outputPath must not be the source video" ||
+          error.message.startsWith("cannot check the export destination"))
+      ) {
         sendJson(response, { status: 400, body: { error: error.message } });
         return;
       }

@@ -209,4 +209,101 @@ describe.skipIf(!ffmpegAvailable)("export integration", () => {
     expect(Math.abs(Number(video?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
     expect(Math.abs(Number(audio?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
   }, 60_000);
+
+  it("exports a rotated non-square-pixel source at its square-pixel display size", async () => {
+    const plain = path.join(directory, "sar-source.mp4");
+    const rotated = path.join(directory, "sar-rotated.mp4");
+    const rotatedOut = path.join(directory, "sar-out.mp4");
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=size=160x120:rate=25:duration=2",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:duration=2",
+      "-vf",
+      "setsar=2",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      plain,
+    ]);
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-display_rotation",
+      "90",
+      "-i",
+      plain,
+      "-map",
+      "0",
+      "-c",
+      "copy",
+      rotated,
+    ]);
+
+    const sourceInfo = await probeMedia(runCommand, rotated);
+    const sourceVideo = sourceInfo.streams.find((stream) => stream.kind === "video");
+
+    expect(sourceVideo?.width).toBe(160);
+    expect(sourceVideo?.height).toBe(120);
+    expect(sourceVideo?.sampleAspectRatio).toBe(2);
+    expect(sourceVideo?.rotation).toBe(90);
+    expect(sourceVideo?.displayWidth).toBe(120);
+    expect(sourceVideo?.displayHeight).toBe(320);
+
+    const geometry = {
+      width: sourceVideo?.displayWidth ?? 0,
+      height: sourceVideo?.displayHeight ?? 0,
+      fps: sourceVideo?.frameRate ?? 25,
+    };
+
+    await runExport({
+      inputPath: rotated,
+      outputPath: rotatedOut,
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 2 },
+        { kind: "silence", durationSeconds: 1 },
+      ],
+      hasAudio: true,
+      video: geometry,
+    });
+
+    const { stdout } = await runCommand("ffprobe", [
+      "-v",
+      "error",
+      "-print_format",
+      "json",
+      "-show_entries",
+      "stream=codec_type,width,height,sample_aspect_ratio,duration",
+      rotatedOut,
+    ]);
+    const streams = (JSON.parse(stdout).streams ?? []) as Array<{
+      codec_type: string;
+      width?: number;
+      height?: number;
+      sample_aspect_ratio?: string;
+      duration?: string;
+    }>;
+    const video = streams.find((stream) => stream.codec_type === "video");
+    const audio = streams.find((stream) => stream.codec_type === "audio");
+
+    expect(video).toBeDefined();
+    expect(audio).toBeDefined();
+    expect(video?.sample_aspect_ratio).toBe("1:1");
+
+    const expectedRatio =
+      (sourceVideo?.displayWidth ?? 0) / (sourceVideo?.displayHeight ?? 1);
+    const actualRatio = (video?.width ?? 0) / (video?.height ?? 1);
+    expect(Math.abs(actualRatio - expectedRatio)).toBeLessThan(expectedRatio * 0.01);
+    expect(Math.abs(Number(video?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
+    expect(Math.abs(Number(audio?.duration ?? -1) - 3.0)).toBeLessThan(0.1);
+  }, 60_000);
 });

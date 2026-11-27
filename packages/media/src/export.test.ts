@@ -182,6 +182,48 @@ describe("buildExportArgs", () => {
     expect(filter).toContain("fps=25.000000");
     expect(filter).toContain("color=c=black:s=120x160:r=25.000000");
   });
+
+  it("keeps the argv byte-identical for a plain square-pixel source", () => {
+    const args = buildExportArgs({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 1 },
+        { kind: "silence", durationSeconds: 1 },
+        { kind: "video", startSeconds: 1, endSeconds: 2 },
+      ],
+      hasAudio: true,
+      video: { width: 1920, height: 1080, fps: 30 },
+    });
+
+    expect(args).toMatchInlineSnapshot(`
+      [
+        "-y",
+        "-i",
+        "/media/in.mp4",
+        "-filter_complex",
+        "[0:v]trim=start=0.000000:end=1.000000,setpts=PTS-STARTPTS,scale=1920:1080,setsar=1,fps=30.000000[v0];[0:a]atrim=start=0.000000:end=1.000000,asetpts=PTS-STARTPTS[a0];color=c=black:s=1920x1080:r=30.000000:d=1.000000,setpts=PTS-STARTPTS,setsar=1[v1];anullsrc=r=48000:cl=stereo:d=1.000000[a1];[0:v]trim=start=1.000000:end=2.000000,setpts=PTS-STARTPTS,scale=1920:1080,setsar=1,fps=30.000000[v2];[0:a]atrim=start=1.000000:end=2.000000,asetpts=PTS-STARTPTS[a2];[v0][a0][v1][a1][v2][a2]concat=n=3:v=1:a=1[vout][aout]",
+        "-map",
+        "[vout]",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "libx264",
+        "-crf",
+        "20",
+        "-preset",
+        "veryfast",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-progress",
+        "pipe:1",
+        "-nostats",
+        "/media/out.mp4",
+      ]
+    `);
+  });
 });
 
 describe("createProgressParser", () => {

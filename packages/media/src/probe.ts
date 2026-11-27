@@ -8,7 +8,9 @@ export type MediaStream = {
   codec: string | null;
   width?: number;
   height?: number;
-  /** Size after the stream rotation is applied; equals width/height when none. */
+  /** Sample aspect ratio (pixel width / pixel height); 1 for square pixels. */
+  sampleAspectRatio?: number;
+  /** Square-pixel display size after the rotation is applied. */
   displayWidth?: number;
   displayHeight?: number;
   frameRate?: number;
@@ -117,6 +119,50 @@ function swapsDimensions(rotation: number): boolean {
   return normalised === 90 || normalised === 270;
 }
 
+/** Parses an ffprobe ratio string such as `2:1`; returns null for `0:1` or `N/A`. */
+function parseAspectRatio(value: unknown): number | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed.toUpperCase() === "N/A") {
+    return null;
+  }
+  const [numerator, denominator] = trimmed.split(":");
+  if (numerator === undefined) {
+    return null;
+  }
+  const n = Number(numerator);
+  const d = denominator === undefined ? 1 : Number(denominator);
+  if (!Number.isFinite(n) || !Number.isFinite(d) || n <= 0 || d <= 0) {
+    return null;
+  }
+  return n / d;
+}
+
+/** Rounds to the nearest even integer; libx264 needs an even frame size. */
+function toEven(value: number): number {
+  const rounded = Math.round(value);
+  return rounded % 2 === 0 ? rounded : rounded + 1;
+}
+
+/** Reads the sample aspect ratio, falling back to the display aspect ratio. */
+function resolveSampleAspectRatio(
+  stream: Record<string, unknown>,
+  width: number,
+  height: number,
+): number {
+  const direct = parseAspectRatio(stream.sample_aspect_ratio);
+  if (direct !== null) {
+    return direct;
+  }
+  const display = parseAspectRatio(stream.display_aspect_ratio);
+  if (display !== null && width > 0) {
+    return (display * height) / width;
+  }
+  return 1;
+}
+
 function parseStream(value: unknown): MediaStream {
   if (!isRecord(value)) {
     throw new ProbeError("ffprobe stream entry is not an object");
@@ -144,11 +190,13 @@ function parseStream(value: unknown): MediaStream {
       stream.rotation = rotation;
     }
     if (stream.width !== undefined && stream.height !== undefined) {
+      stream.sampleAspectRatio = resolveSampleAspectRatio(value, stream.width, stream.height);
+      const squareWidth = toEven(Math.round(stream.width * stream.sampleAspectRatio));
       if (rotation !== null && swapsDimensions(rotation)) {
         stream.displayWidth = stream.height;
-        stream.displayHeight = stream.width;
+        stream.displayHeight = squareWidth;
       } else {
-        stream.displayWidth = stream.width;
+        stream.displayWidth = squareWidth;
         stream.displayHeight = stream.height;
       }
     }

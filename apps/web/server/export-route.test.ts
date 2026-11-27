@@ -27,7 +27,20 @@ vi.mock("@verbal/media", async (importOriginal) => {
       destination: string,
       realpath: (path: string) => Promise<string>,
     ) => {
-      const [left, right] = await Promise.all([realpath(source), realpath(destination)]);
+      let left: string;
+      let right: string;
+      try {
+        [left, right] = await Promise.all([realpath(source), realpath(destination)]);
+      } catch (error) {
+        const code =
+          typeof error === "object" && error !== null && "code" in error
+            ? (error as { code?: unknown }).code
+            : undefined;
+        if (code !== "ENOENT") {
+          throw new Error(`cannot check the export destination: ${String(code ?? "unknown")}`);
+        }
+        throw error;
+      }
       if (left.toLowerCase() === right.toLowerCase()) {
         throw new Error("outputPath must not be the source video");
       }
@@ -64,7 +77,10 @@ vi.mock("./export-job", () => ({
   ),
 }));
 vi.mock("./api-errors", () => ({
-  failure: (error: Error) => ({ status: 400, body: { error: error.message } }),
+  failure: (error: Error) => ({
+    status: error.message.startsWith("cannot check the export destination") ? 502 : 400,
+    body: { error: error.message },
+  }),
 }));
 
 import handler from "../pages/api/export";
@@ -117,6 +133,21 @@ describe("POST /api/export destination safety", () => {
     await handler(request({ projectRoot: "/project", outputPath: "/alias.mp4" }), res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ error: "outputPath must not be the source video" });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("answers 400 when the export destination cannot be checked", async () => {
+    realpath.mockImplementation(async (path: string) => {
+      if (path === "/cannot-check.mp4") {
+        throw Object.assign(new Error("permission denied"), { code: "EACCES" });
+      }
+      return path;
+    });
+    probeMedia.mockResolvedValue({ durationSeconds: 1, streams: [] });
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/cannot-check.mp4" }), res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ error: "cannot check the export destination: EACCES" });
     expect(create).not.toHaveBeenCalled();
   });
 });
