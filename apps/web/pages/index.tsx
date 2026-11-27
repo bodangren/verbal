@@ -1745,6 +1745,12 @@ export default function Home() {
                 }
               }}
               onRecord={openStudio}
+              hasEdits={
+                transcript !== null &&
+                (transcript.removedWordIds.length > 0 ||
+                  (transcript.silences?.length ?? 0) > 0 ||
+                  editing.canUndo)
+              }
               onTranscribe={() => void transcribeMedia()}
               onRetry={() => void transcribeMedia()}
               onTranscribeSeveral={() => {

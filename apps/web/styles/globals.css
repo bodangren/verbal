@@ -2078,6 +2078,20 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.confirm {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--error-border);
+  border-radius: var(--rounded-md);
+  color: var(--text-primary);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+}
+
+.confirm p {
+  margin: 0 0 var(--space-3);
+}
+
 /* Studio: script editor and the top-center prompter. */
 .studio {
   display: flex;

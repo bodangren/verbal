@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** The media row's transcription state. */
 export type MediaState =
@@ -18,6 +18,8 @@ export type IngestStageProps = {
   cloud: boolean;
   /** Next step when no speech engine is set up. */
   hint?: string;
+  /** True when the current transcript has edits that transcription would replace. */
+  hasEdits?: boolean;
   onImport: () => void;
   onRecord: () => void;
   onTranscribe: () => void;
@@ -56,6 +58,7 @@ export function IngestStage({
   provider,
   cloud,
   hint,
+  hasEdits = false,
   onImport,
   onRecord,
   onTranscribe,
@@ -65,6 +68,31 @@ export function IngestStage({
 }: IngestStageProps) {
   const canTranscribe =
     mediaName !== null && state.kind !== "transcribing" && state.kind !== "none";
+  const [confirming, setConfirming] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (confirming) cancelRef.current?.focus();
+  }, [confirming]);
+
+  function requestTranscribe() {
+    if (hasEdits) {
+      setConfirming(true);
+      return;
+    }
+    onTranscribe();
+  }
+
+  function cancelConfirm() {
+    setConfirming(false);
+    triggerRef.current?.focus();
+  }
+
+  function confirmTranscribe() {
+    setConfirming(false);
+    onTranscribe();
+  }
 
   return (
     <div className="stage__scroll">
@@ -138,9 +166,10 @@ export function IngestStage({
             )}
             {state.kind === "transcribed" && (
               <button
+                ref={triggerRef}
                 type="button"
                 className="button button--ghost"
-                onClick={onTranscribe}
+                onClick={requestTranscribe}
                 disabled={!canTranscribe}
               >
                 Transcribe Again
@@ -158,6 +187,38 @@ export function IngestStage({
             )}
           </li>
         </ul>
+        {confirming && state.kind === "transcribed" && (
+          <div
+            className="confirm"
+            role="group"
+            aria-label="Confirm transcribing again"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancelConfirm();
+              }
+            }}
+          >
+            <p>Transcribing again replaces your edits to this transcript.</p>
+            <div className="toolbar">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={confirmTranscribe}
+              >
+                Replace Transcript
+              </button>
+              <button
+                ref={cancelRef}
+                type="button"
+                className="button button--ghost"
+                onClick={cancelConfirm}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="toolbar">

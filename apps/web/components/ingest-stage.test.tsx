@@ -100,4 +100,62 @@ describe("IngestStage", () => {
 
     expect(props.onTranscribeSeveral).toHaveBeenCalledTimes(1);
   });
+
+  it("opens a confirm on the first Transcribe Again click when the transcript has edits", () => {
+    const props = setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(props.onTranscribe).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Confirm transcribing again" })).toBeTruthy();
+    expect(
+      screen.getByText("Transcribing again replaces your edits to this transcript."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Replace Transcript" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+  });
+
+  it("replaces the transcript on confirmation", () => {
+    const props = setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace Transcript" }));
+
+    expect(props.onTranscribe).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("group", { name: "Confirm transcribing again" })).toBeNull();
+  });
+
+  it("leaves the transcript alone on Cancel", () => {
+    const props = setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(props.onTranscribe).not.toHaveBeenCalled();
+    expect(screen.queryByRole("group", { name: "Confirm transcribing again" })).toBeNull();
+  });
+
+  it("moves focus to Cancel and returns it on Escape", () => {
+    const props = setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
+    const trigger = screen.getByRole("button", { name: "Transcribe Again" }) as HTMLButtonElement;
+
+    fireEvent.click(trigger);
+    const cancel = screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
+    expect(document.activeElement).toBe(cancel);
+
+    fireEvent.keyDown(cancel, { key: "Escape" });
+
+    expect(props.onTranscribe).not.toHaveBeenCalled();
+    expect(screen.queryByRole("group", { name: "Confirm transcribing again" })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("transcribes at once when the transcript has no edits", () => {
+    const props = setup({ state: { kind: "transcribed", words: 81 } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(props.onTranscribe).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("group", { name: "Confirm transcribing again" })).toBeNull();
+  });
 });
