@@ -339,13 +339,13 @@ async function main() {
   console.log("record: scrubbed");
 
   mark("word", "Click a word to jump to it");
-  await page.getByRole("region", { name: "Transcript editor" }).getByRole("button", { name: "transcript" }).click();
+  await page.getByRole("region", { name: "Transcript editor" }).getByRole("option", { name: "transcript" }).click();
   await page.waitForTimeout(1100);
   console.log("record: word seek");
 
   mark("edit", "Delete a filler; the cut follows the text");
   const editor = page.getByRole("region", { name: "Transcript editor" });
-  await editor.getByRole("button", { name: "um", exact: true }).click();
+  await editor.getByRole("option", { name: "um", exact: true }).click();
   await editor.getByRole("button", { name: "Delete", exact: true }).click();
   await page.waitForTimeout(1200);
   await editor.getByRole("button", { name: "Undo", exact: true }).click();

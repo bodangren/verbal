@@ -261,7 +261,7 @@ try {
       { timeout: 5000 },
     );
   await editorPanel.waitFor();
-  await editorPanel.getByRole("button", { name: "hello" }).waitFor();
+  await editorPanel.getByRole("option", { name: "hello" }).waitFor();
   console.log("transcript: rendered");
 
   // Search: find a word, see it highlighted, and step to the match.
@@ -269,14 +269,14 @@ try {
   await search.fill("world");
   await editorPanel.getByText("1 of 1").waitFor();
   assert(
-    (await editorPanel.getByRole("button", { name: "world" }).getAttribute("data-match")) ===
+    (await editorPanel.getByRole("option", { name: "world" }).getAttribute("data-match")) ===
       "true",
     "a search match should be marked in the editor",
   );
   await editorPanel.getByRole("button", { name: "Next match" }).click();
   assert(
     (await editorPanel
-      .getByRole("button", { name: "world" })
+      .getByRole("option", { name: "world" })
       .getAttribute("data-selected")) === "true",
     "stepping to a match should select it",
   );
@@ -287,7 +287,7 @@ try {
   const editorSegments = page.locator('[aria-label="Transcript"] .transcript__segment');
   const segmentsBefore = await editorSegments.count();
   // "world" is mid-segment; splitting at a segment head is a no-op by design.
-  await editorPanel.getByRole("button", { name: "world" }).click();
+  await editorPanel.getByRole("option", { name: "world" }).click();
 
   await editorPanel.getByRole("button", { name: "Split" }).click();
   await page.waitForFunction(
@@ -312,7 +312,7 @@ try {
 
   // Reorder: move a word earlier, check the order, then undo it.
   const words = () => editorPanel.locator(".transcript__word").allTextContents();
-  await editorPanel.getByRole("button", { name: "world" }).click();
+  await editorPanel.getByRole("option", { name: "world" }).click();
   await editorPanel.getByRole("button", { name: "Move Back" }).click();
   await page.waitForFunction(
     () =>
@@ -360,7 +360,7 @@ try {
     console.log("playback: the active word follows playback");
 
     // One transcript: clicking a word in the editor is what seeks the player.
-    await editorPanel.getByRole("button", { name: "world", exact: true }).click();
+    await editorPanel.getByRole("option", { name: "world", exact: true }).click();
     const seeked = await video.evaluate((media) => media.currentTime);
     assert(seeked >= 0.6 && seeked <= 1.5, `clicking a word should seek to ~0.9s, got ${seeked}s`);
     await playback.getByRole("button", { name: "Pause", exact: true }).click();
@@ -405,7 +405,7 @@ try {
   await cleanup.getByRole("button", { name: "Remove Accepted" }).click();
   await page.getByText(/Removed 1 cleanup proposal/).waitFor();
   assert(
-    await editorPanel.getByRole("button", { name: "um" }).isDisabled(),
+    await editorPanel.getByRole("option", { name: "um" }).isDisabled(),
     "the accepted filler should be removed from the document",
   );
 
@@ -422,31 +422,31 @@ try {
   const transcriptRegion = page.getByRole("region", { name: "Transcript editor", exact: true });
   const dirtyStatus = page.locator(".bar__save");
 
-  await editorPanel.getByRole("button", { name: "hello" }).click();
-  await editorPanel.getByRole("button", { name: "world" }).click({ modifiers: ["Shift"] });
+  await editorPanel.getByRole("option", { name: "hello" }).click();
+  await editorPanel.getByRole("option", { name: "world" }).click({ modifiers: ["Shift"] });
   assert(
     (await editorPanel
-      .getByRole("button", { name: "world" })
+      .getByRole("option", { name: "world" })
       .getAttribute("data-selected")) === "true",
     "shift-click should mark the range as selected",
   );
 
   await transcriptRegion.press("Delete");
   assert(
-    await editorPanel.getByRole("button", { name: "world" }).isDisabled(),
+    await editorPanel.getByRole("option", { name: "world" }).isDisabled(),
     "the deleted word should stay in the document, disabled",
   );
   console.log("transcript: deleted the selection with the keyboard");
 
   await editorPanel.getByRole("button", { name: "Undo" }).click();
   assert(
-    !(await editorPanel.getByRole("button", { name: "world" }).isDisabled()),
+    !(await editorPanel.getByRole("option", { name: "world" }).isDisabled()),
     "undo should restore the deleted word",
   );
 
   await editorPanel.getByRole("button", { name: "Redo" }).click();
   assert(
-    await editorPanel.getByRole("button", { name: "world" }).isDisabled(),
+    await editorPanel.getByRole("option", { name: "world" }).isDisabled(),
     "redo should re-apply the deletion",
   );
   // Autosave may already be in flight (or settled) by the time we read the
@@ -497,12 +497,12 @@ try {
   await page.getByRole("region", { name: "Transcript editor" }).waitFor();
   assert(
     (await editorPanel
-      .getByRole("button", { name: "world" })
+      .getByRole("option", { name: "world" })
       .getAttribute("data-removed")) === "true",
     "the removal should survive a reload",
   );
   assert(
-    (await editorPanel.getByRole("button", { name: "um" }).getAttribute("data-removed")) ===
+    (await editorPanel.getByRole("option", { name: "um" }).getAttribute("data-removed")) ===
       "true",
     "the accepted filler should stay removed after a reload",
   );
@@ -588,7 +588,7 @@ try {
       name: "Transcript editor",
       exact: true,
     });
-    await transcribedWords.getByRole("button", { name: "hello" }).waitFor();
+    await transcribedWords.getByRole("option", { name: "hello" }).waitFor();
     assert(asrCalls >= 1, "the fake ASR server should have been called");
 
     // The fake transcript contains a filler, so cleanup offers to remove it.
@@ -709,7 +709,7 @@ try {
     );
     await page
       .getByRole("region", { name: "Transcript editor" })
-      .getByRole("button", { name: "hello" })
+      .getByRole("option", { name: "hello" })
       .waitFor();
     console.log("errors: transcribed in place from the Edit empty state");
   }
