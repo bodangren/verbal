@@ -1,43 +1,22 @@
 import type { TranscriptDocument } from "@verbal/core";
-import { buildCutList, DEFAULT_HANDLE_SECONDS } from "@verbal/media";
+import {
+  buildCutList,
+  buildTimeline,
+  type TimelineItem,
+} from "@verbal/media";
 import { StoryboardError } from "@verbal/storyboard";
 
 /** Kept fragments shorter than this are dropped from the result. */
 const MIN_TALK_SECONDS = 0.05;
 
-const EPSILON = 1e-6;
-const PRECISION = 1_000_000;
-
-function round(value: number): number {
-  return Math.round(value * PRECISION) / PRECISION;
-}
-
 /** An item of a talk scene's export timeline, in transcript order. */
-export type TalkItem =
-  | { kind: "video"; startSeconds: number; endSeconds: number }
-  | { kind: "silence"; durationSeconds: number };
+export type TalkItem = TimelineItem;
 
 export type TalkItemsInput = {
   transcript: TranscriptDocument;
   startWordId: string;
   endWordId: string;
 };
-
-/** True when a word other than the two neighbours lies wholly inside a gap. */
-function hasWordInside(
-  gapStart: number,
-  gapEnd: number,
-  words: TranscriptDocument["words"],
-  excluded: ReadonlySet<string>,
-): boolean {
-  return words.some(
-    (word) =>
-      !excluded.has(word.id) &&
-      word.start >= gapStart - EPSILON &&
-      word.end <= gapEnd + EPSILON &&
-      word.end > word.start,
-  );
-}
 
 /**
  * Builds the export timeline of one talk scene.
@@ -59,78 +38,9 @@ export function computeTalkItems(input: TalkItemsInput): TalkItem[] {
     throw new StoryboardError("invalid-anchor", `reversed anchor: ${anchors}`);
   }
 
-  const removed = new Set(input.transcript.removedWordIds);
-  const silences = new Map(
-    (input.transcript.silences ?? []).map((entry) => [entry.afterWordId, entry.seconds]),
-  );
-  const items: TalkItem[] = [];
-  let current: { start: number; end: number } | undefined;
-  let afterRemoval = 0;
-  let removalStart = Number.POSITIVE_INFINITY;
-  let previousKeptWord: TranscriptDocument["words"][number] | undefined;
-
-  const flush = () => {
-    if (current !== undefined) {
-      items.push({
-        kind: "video",
-        startSeconds: round(current.start),
-        endSeconds: round(current.end),
-      });
-      current = undefined;
-    }
-  };
-
-  for (const word of words.slice(from, to + 1)) {
-    if (removed.has(word.id)) {
-      if (current !== undefined && word.start >= current.start - EPSILON) {
-        removalStart = Math.min(
-          removalStart,
-          Math.max(current.start, word.start - DEFAULT_HANDLE_SECONDS),
-        );
-        current.end = Math.max(current.start, removalStart);
-      }
-      afterRemoval = Math.max(afterRemoval, word.end + DEFAULT_HANDLE_SECONDS);
-    } else {
-      const start =
-        afterRemoval > 0 && (current === undefined || afterRemoval >= current.end - EPSILON)
-          ? afterRemoval
-          : word.start;
-      afterRemoval = 0;
-      removalStart = Number.POSITIVE_INFINITY;
-
-      if (current === undefined) {
-        current = { start, end: word.end };
-      } else {
-        const excluded = new Set(
-          [previousKeptWord?.id, word.id].filter((id): id is string => id !== undefined),
-        );
-        const reordered =
-          previousKeptWord !== undefined &&
-          (start < previousKeptWord.start - EPSILON ||
-            (Math.abs(start - previousKeptWord.start) <= EPSILON &&
-              word.end < previousKeptWord.end - EPSILON));
-        const overlaps = start < current.end - EPSILON;
-        const split =
-          (overlaps && reordered) || hasWordInside(current.end, start, words, excluded);
-        if (split) {
-          flush();
-          current = { start, end: word.end };
-        } else {
-          current.end = Math.max(current.end, word.end);
-        }
-      }
-      previousKeptWord = word;
-    }
-
-    const seconds = silences.get(word.id);
-    if (seconds !== undefined) {
-      flush();
-      items.push({ kind: "silence", durationSeconds: round(seconds) });
-    }
-  }
-
-  flush();
-  return items;
+  return buildTimeline({
+    transcript: { ...input.transcript, words: words.slice(from, to + 1) },
+  });
 }
 
 export type TalkRange = {

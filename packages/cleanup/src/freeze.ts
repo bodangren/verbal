@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { TranscriptDocument, TranscriptWord } from "@verbal/core";
-import { buildCutList, type CutList, type CutRange } from "@verbal/media";
+import { buildCutList, buildTimeline, type CutList, type CutRange } from "@verbal/media";
 import { canonicalJson } from "@verbal/storyboard/hash";
 import type { CleanupProposal } from "./types";
 
@@ -92,16 +92,25 @@ export function freezeMaster(input: FreezeMasterInput): FrozenMaster {
     .filter((word) => removed.has(word.id))
     .map((word) => word.id);
 
+  const handleSeconds = input.handleSeconds ?? 0;
+  const transcript = { ...input.transcript, removedWordIds };
+
   const cutList = buildCutList({
-    transcript: { ...input.transcript, removedWordIds },
+    transcript,
     durationSeconds: input.sourceDurationSeconds,
-    handleSeconds: input.handleSeconds ?? 0,
+    handleSeconds,
+  });
+
+  const items = buildTimeline({
+    transcript,
+    handleSeconds,
+    durationSeconds: input.sourceDurationSeconds,
   });
 
   const anchorWords = mapAnchors(input.transcript.words, removed, cutList.kept);
 
   const fingerprint = createHash("sha256")
-    .update(canonicalJson({ removedWordIds, kept: cutList.kept }))
+    .update(canonicalJson({ removedWordIds, items }))
     .digest("hex");
 
   return {

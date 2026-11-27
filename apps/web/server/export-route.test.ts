@@ -1,42 +1,66 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EventEmitter } from "node:events";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { createTranscript, insertSilence, moveRange, serializeTranscript } from "@verbal/core";
 
-const { runExport, create, probeMedia, realpath } = vi.hoisted(() => ({
+const { runExport, create, probeMedia, realpath, readFile } = vi.hoisted(() => ({
   runExport: vi.fn(),
   create: vi.fn(),
   probeMedia: vi.fn(),
   realpath: vi.fn(async (path: string) => path),
+  readFile: vi.fn(async () => Buffer.from("{}")),
 }));
 
-vi.mock("@verbal/media", () => ({
-  buildCutList: () => ({ kept: [{ start: 0, end: 1 }] }),
-  probeMedia,
-  runCommand: vi.fn(),
-  resolveExportDestination: async (source: string, destination: string, realpath: (path: string) => Promise<string>) => {
-    const [left, right] = await Promise.all([realpath(source), realpath(destination)]);
-    if (left.toLowerCase() === right.toLowerCase()) throw new Error("outputPath must not be the source video");
-  },
-  runExport,
-}));
+vi.mock("@verbal/media", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@verbal/media")>();
+  return {
+    ...actual,
+    probeMedia,
+    runCommand: vi.fn(),
+    resolveExportDestination: async (
+      source: string,
+      destination: string,
+      realpath: (path: string) => Promise<string>,
+    ) => {
+      const [left, right] = await Promise.all([realpath(source), realpath(destination)]);
+      if (left.toLowerCase() === right.toLowerCase()) {
+        throw new Error("outputPath must not be the source video");
+      }
+    },
+    runExport,
+  };
+});
 vi.mock("@verbal/media/presets", () => ({
   resolvePreset: () => ({ id: "default", codecs: {} }),
   withPresetExtension: (path: string) => path,
 }));
-vi.mock("@verbal/core", () => ({
-  nodeFileSystem: {
-    readFile: vi.fn(async () => Buffer.from("{}")),
-    realpath,
-  },
-  openProject: async () => ({ media: { externalPath: "/source.mp4" } }),
-  parseTranscript: () => ({}),
-  projectPaths: () => ({ transcript: "/transcript.json" }),
-  resolveInsideProject: (_root: string, path: string) => path,
-}));
+vi.mock("@verbal/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@verbal/core")>();
+  return {
+    ...actual,
+    nodeFileSystem: {
+      readFile,
+      realpath,
+    },
+    openProject: async () => ({ media: { externalPath: "/source.mp4" } }),
+    projectPaths: () => ({ transcript: "/transcript.json" }),
+    resolveInsideProject: (_root: string, path: string) => path,
+  };
+});
 vi.mock("node:fs/promises", () => ({ realpath }));
 vi.mock("./registry", () => ({ getJobRegistry: async () => ({ create }) }));
-vi.mock("./export-job", () => ({ runExportJob: vi.fn() }));
-vi.mock("./api-errors", () => ({ failure: (error: Error) => ({ status: 400, body: { error: error.message } }) }));
+vi.mock("./export-job", () => ({
+  runExportJob: vi.fn(
+    (
+      _registry: unknown,
+      _jobId: string,
+      work: (report: () => void, signal: AbortSignal) => Promise<unknown>,
+    ) => work(() => undefined, new AbortController().signal),
+  ),
+}));
+vi.mock("./api-errors", () => ({
+  failure: (error: Error) => ({ status: 400, body: { error: error.message } }),
+}));
 
 import handler from "../pages/api/export";
 
@@ -89,5 +113,102 @@ describe("POST /api/export destination safety", () => {
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ error: "outputPath must not be the source video" });
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/export timeline", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("passes a reordered transcript's pieces in the new order to the runner", async () => {
+    const transcript = moveRange(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+        { text: "three", start: 2, end: 3 },
+      ]),
+      1,
+      1,
+      2,
+    );
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+    probeMedia.mockResolvedValue({
+      durationSeconds: 3,
+      streams: [
+        { kind: "video", width: 1920, height: 1080, frameRate: 30 },
+        { kind: "audio" },
+      ],
+    });
+    create.mockResolvedValue({ id: "job-1" });
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(202);
+    expect(runExport).toHaveBeenCalledTimes(1);
+    const input = runExport.mock.calls[0]?.[0] as { items: unknown[] };
+    expect(input.items).toEqual([
+      { kind: "video", startSeconds: 0, endSeconds: 1 },
+      { kind: "video", startSeconds: 2, endSeconds: 3 },
+      { kind: "video", startSeconds: 1, endSeconds: 2 },
+    ]);
+  });
+
+  it("passes an inserted silence to the runner", async () => {
+    const transcript = insertSilence(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 1, end: 2 },
+      ]),
+      "w0",
+      1.5,
+    );
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+    probeMedia.mockResolvedValue({
+      durationSeconds: 2,
+      streams: [
+        { kind: "video", width: 1280, height: 720, frameRate: 25 },
+        { kind: "audio" },
+      ],
+    });
+    create.mockResolvedValue({ id: "job-2" });
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(202);
+    expect(runExport).toHaveBeenCalledTimes(1);
+    const input = runExport.mock.calls[0]?.[0] as {
+      items: unknown[];
+      video: { width: number; height: number; fps: number };
+    };
+    expect(input.items).toEqual([
+      { kind: "video", startSeconds: 0, endSeconds: 1 },
+      { kind: "silence", durationSeconds: 1.5 },
+      { kind: "video", startSeconds: 1, endSeconds: 2 },
+    ]);
+    expect(input.video).toEqual({ width: 1280, height: 720, fps: 25 });
+  });
+
+  it("extends an unedited transcript to the probed media duration", async () => {
+    const transcript = createTranscript([
+      { text: "start", start: 2, end: 30 },
+      { text: "end", start: 31, end: 58 },
+    ]);
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+    probeMedia.mockResolvedValue({
+      durationSeconds: 60,
+      streams: [
+        { kind: "video", width: 1920, height: 1080, frameRate: 30 },
+        { kind: "audio" },
+      ],
+    });
+    create.mockResolvedValue({ id: "job-3" });
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(202);
+    const input = runExport.mock.calls[0]?.[0] as { items: unknown[] };
+    expect(input.items).toEqual([{ kind: "video", startSeconds: 0, endSeconds: 60 }]);
   });
 });

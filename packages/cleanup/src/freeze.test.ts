@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTranscript, insertSilence, removeWord } from "@verbal/core";
+import { createTranscript, insertSilence, moveRange, removeWord } from "@verbal/core";
 import { freezeMaster, requiresReanchor } from "./freeze";
 import type { CleanupProposal } from "./types";
 
@@ -40,7 +40,7 @@ describe("freezeMaster", () => {
     ]);
   });
 
-  it("gives an inserted silence no cut of its own", () => {
+  it("keeps inserted silence out of the cut list and anchors but not the fingerprint", () => {
     const input = {
       accepted: [proposal()],
       sourceDurationSeconds: 3,
@@ -54,7 +54,22 @@ describe("freezeMaster", () => {
 
     expect(withSilence.cutList).toEqual(plain.cutList);
     expect(withSilence.anchorWords).toEqual(plain.anchorWords);
-    expect(withSilence.fingerprint).toBe(plain.fingerprint);
+    expect(withSilence.fingerprint).not.toBe(plain.fingerprint);
+  });
+
+  it("changes its fingerprint when only the order changes", () => {
+    const input = {
+      accepted: [],
+      sourceDurationSeconds: 3,
+      handleSeconds: 0,
+    };
+    const plain = freezeMaster({ transcript, ...input });
+    const reordered = freezeMaster({
+      transcript: moveRange(transcript, 1, 1, 2),
+      ...input,
+    });
+
+    expect(reordered.fingerprint).not.toBe(plain.fingerprint);
   });
 
   it("counts a word that is both saved and accepted once", () => {

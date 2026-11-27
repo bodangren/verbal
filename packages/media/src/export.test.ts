@@ -89,6 +89,57 @@ describe("buildExportArgs", () => {
     expect(args).toContain("mpeg4");
     expect(args).toContain("-q:v");
   });
+
+  it("renders an inserted silence as black video and silent audio", () => {
+    const args = buildExportArgs({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 1 },
+        { kind: "silence", durationSeconds: 1.5 },
+        { kind: "video", startSeconds: 1, endSeconds: 2 },
+      ],
+      hasAudio: true,
+      video: { width: 1920, height: 1080, fps: 30 },
+    });
+
+    const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+
+    expect(filter).toContain("color=c=black:s=1920x1080:r=30.000000:d=1.500000");
+    expect(filter).toContain("anullsrc=r=48000:cl=stereo:d=1.500000");
+    expect(filter).toContain("concat=n=3:v=1:a=1[vout][aout]");
+  });
+
+  it("rejects a silence item without source video geometry", () => {
+    expect(() =>
+      buildExportArgs({
+        inputPath: "/media/in.mp4",
+        outputPath: "/media/out.mp4",
+        items: [
+          { kind: "video", startSeconds: 0, endSeconds: 1 },
+          { kind: "silence", durationSeconds: 1 },
+        ],
+        hasAudio: true,
+      }),
+    ).toThrow(ExportError);
+  });
+
+  it("builds argv from video-only items without video geometry", () => {
+    const args = buildExportArgs({
+      inputPath: "/media/in.mp4",
+      outputPath: "/media/out.mp4",
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 0.4 },
+        { kind: "video", startSeconds: 0.95, endSeconds: 3 },
+      ],
+      hasAudio: true,
+    });
+
+    const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+
+    expect(filter).toContain("[0:v]trim=start=0.000000:end=0.400000");
+    expect(filter).toContain("concat=n=2:v=1:a=1[vout][aout]");
+  });
 });
 
 describe("createProgressParser", () => {

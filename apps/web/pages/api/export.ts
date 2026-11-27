@@ -1,13 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { realpath } from "node:fs/promises";
 import {
+  mediaRevisionMismatch,
   nodeFileSystem,
   openProject,
   parseTranscript,
   projectPaths,
   resolveInsideProject,
 } from "@verbal/core";
-import { buildCutList, probeMedia, resolveExportDestination, runCommand, runExport } from "@verbal/media";
+import { buildTimeline, probeMedia, resolveExportDestination, runCommand, runExport } from "@verbal/media";
 import { resolvePreset, withPresetExtension } from "@verbal/media/presets";
 import { failure } from "../../server/api-errors";
 import { runExportJob } from "../../server/export-job";
@@ -57,12 +58,27 @@ export default async function handler(
     const transcript = parseTranscript(
       await nodeFileSystem.readFile(projectPaths(projectRoot).transcript),
     );
+    if (mediaRevisionMismatch(project.media?.mediaRevision, transcript.mediaRevision)) {
+      sendJson(response, {
+        status: 409,
+        body: { error: "The transcript belongs to different media. Transcribe again." },
+      });
+      return;
+    }
     const info = await probeMedia(runCommand, mediaPath);
-    const cutList = buildCutList({
-      transcript,
-      durationSeconds: info.durationSeconds ?? 0,
-    });
+    const items = buildTimeline({ transcript, durationSeconds: info.durationSeconds ?? 0 });
     const hasAudio = info.streams.some((stream) => stream.kind === "audio");
+    const videoStream = info.streams.find((stream) => stream.kind === "video");
+    const video =
+      videoStream?.width !== undefined &&
+      videoStream.height !== undefined &&
+      videoStream.frameRate !== undefined
+        ? {
+            width: videoStream.width,
+            height: videoStream.height,
+            fps: videoStream.frameRate,
+          }
+        : undefined;
 
     const registry = await getJobRegistry();
     const job = await registry.create("export");
@@ -72,9 +88,10 @@ export default async function handler(
         inputPath: mediaPath,
         outputPath,
         jobId: job.id,
-        kept: cutList.kept,
+        items,
         hasAudio,
         codecs: preset.codecs,
+        video,
         signal,
         onProgress: (event) => {
           report(event.percent);

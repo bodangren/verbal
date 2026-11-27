@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { promises as nodeFs } from "node:fs";
 import { dirname, basename, extname, resolve } from "node:path";
 import type { CutRange } from "./cutlist";
+import type { TimelineItem } from "./timeline";
 
 export type ExportErrorCode =
   | "empty-cut-list"
@@ -35,12 +36,23 @@ export const DEFAULT_EXPORT_CODECS: ExportCodecOptions = {
   audioArgs: ["-b:a", "192k"],
 };
 
+export type ExportVideoGeometry = {
+  width: number;
+  height: number;
+  fps: number;
+};
+
 export type BuildExportArgsInput = {
   inputPath: string;
   outputPath: string;
-  kept: readonly CutRange[];
+  /** Legacy: kept source-video ranges, in order. */
+  kept?: readonly CutRange[];
+  /** Ordered source pieces and inserted silences. */
+  items?: readonly TimelineItem[];
   hasAudio: boolean;
   codecs?: Partial<ExportCodecOptions>;
+  /** Source video size and rate; needed to size black silence segments. */
+  video?: ExportVideoGeometry;
 };
 
 /** Fixed-precision seconds; avoids locale and exponent formatting in filtergraphs. */
@@ -48,21 +60,66 @@ function seconds(value: number): string {
   return value.toFixed(6);
 }
 
+/** Normalises the legacy `kept` field and the new `items` field into one list. */
+function resolveItems(input: BuildExportArgsInput): TimelineItem[] {
+  if (input.items !== undefined) {
+    return [...input.items];
+  }
+  if (input.kept !== undefined) {
+    return input.kept.map((range) => ({
+      kind: "video",
+      startSeconds: range.start,
+      endSeconds: range.end,
+    }));
+  }
+  return [];
+}
+
 /**
  * Builds the ffmpeg argv for a cut-list export.
  *
- * Each kept range is trimmed and time-shifted to zero, then the pieces are
- * concatenated in one filter graph. This always re-encodes: it is exact, and
- * stream-copy can only cut on keyframes.
+ * Each source piece is trimmed and time-shifted to zero, and an inserted
+ * silence is rendered as black video plus silent audio from lavfi sources.
+ * The pieces are then concatenated in one filter graph. This always
+ * re-encodes: it is exact, and stream-copy can only cut on keyframes.
  */
 export function buildExportArgs(input: BuildExportArgsInput): string[] {
-  if (input.kept.length === 0) {
+  const items = resolveItems(input);
+
+  if (items.length === 0) {
     throw new ExportError("empty-cut-list", "cannot export an empty cut list");
   }
 
-  for (const range of input.kept) {
-    if (!Number.isFinite(range.start) || !Number.isFinite(range.end) || range.end <= range.start) {
-      throw new ExportError("invalid-option", "every kept range must be finite and non-empty");
+  for (const item of items) {
+    if (item.kind === "video") {
+      if (
+        !Number.isFinite(item.startSeconds) ||
+        !Number.isFinite(item.endSeconds) ||
+        item.endSeconds <= item.startSeconds
+      ) {
+        throw new ExportError("invalid-option", "every video range must be finite and non-empty");
+      }
+    } else if (!Number.isFinite(item.durationSeconds) || item.durationSeconds <= 0) {
+      throw new ExportError("invalid-option", "every silence must have a positive duration");
+    }
+  }
+
+  const hasSilence = items.some((item) => item.kind === "silence");
+  const geometry = input.video;
+  if (hasSilence) {
+    if (
+      geometry === undefined ||
+      !Number.isFinite(geometry.width) ||
+      geometry.width < 2 ||
+      !Number.isFinite(geometry.height) ||
+      geometry.height < 2 ||
+      !Number.isFinite(geometry.fps) ||
+      geometry.fps <= 0
+    ) {
+      throw new ExportError(
+        "invalid-option",
+        "silence needs the source video size and rate",
+      );
     }
   }
 
@@ -71,23 +128,37 @@ export function buildExportArgs(input: BuildExportArgsInput): string[] {
   const filters: string[] = [];
   const labels: string[] = [];
 
-  input.kept.forEach((range, index) => {
-    filters.push(
-      `[0:v]trim=start=${seconds(range.start)}:end=${seconds(range.end)},setpts=PTS-STARTPTS[v${index}]`,
-    );
-
-    if (input.hasAudio) {
+  items.forEach((item, index) => {
+    if (item.kind === "video") {
       filters.push(
-        `[0:a]atrim=start=${seconds(range.start)}:end=${seconds(range.end)},asetpts=PTS-STARTPTS[a${index}]`,
+        `[0:v]trim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},setpts=PTS-STARTPTS[v${index}]`,
       );
-      labels.push(`[v${index}][a${index}]`);
+
+      if (input.hasAudio) {
+        filters.push(
+          `[0:a]atrim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},asetpts=PTS-STARTPTS[a${index}]`,
+        );
+        labels.push(`[v${index}][a${index}]`);
+      } else {
+        labels.push(`[v${index}]`);
+      }
     } else {
-      labels.push(`[v${index}]`);
+      const size = geometry as ExportVideoGeometry;
+      filters.push(
+        `color=c=black:s=${size.width}x${size.height}:r=${seconds(size.fps)}:d=${seconds(item.durationSeconds)},setpts=PTS-STARTPTS[v${index}]`,
+      );
+
+      if (input.hasAudio) {
+        filters.push(`anullsrc=r=48000:cl=stereo:d=${seconds(item.durationSeconds)}[a${index}]`);
+        labels.push(`[v${index}][a${index}]`);
+      } else {
+        labels.push(`[v${index}]`);
+      }
     }
   });
 
   const audioCount = input.hasAudio ? 1 : 0;
-  const concat = `${labels.join("")}concat=n=${input.kept.length}:v=1:a=${audioCount}[vout]`;
+  const concat = `${labels.join("")}concat=n=${items.length}:v=1:a=${audioCount}[vout]`;
   filters.push(input.hasAudio ? `${concat}[aout]` : concat);
 
   const args = [
@@ -281,8 +352,9 @@ export async function runExport(input: RunExportInput): Promise<void> {
   const stem = extension === "" ? input.outputPath : input.outputPath.slice(0, -extension.length);
   const partialPath = `${stem}.${input.jobId ?? randomUUID()}.partial${extension}`;
   const args = buildExportArgs({ ...input, outputPath: partialPath });
-  const expectedSeconds = input.kept.reduce(
-    (total, range) => total + (range.end - range.start),
+  const expectedSeconds = resolveItems(input).reduce(
+    (total, item) =>
+      total + (item.kind === "video" ? item.endSeconds - item.startSeconds : item.durationSeconds),
     0,
   );
 
