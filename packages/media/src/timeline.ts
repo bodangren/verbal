@@ -1,5 +1,5 @@
 import type { TranscriptDocument, TranscriptWord } from "@verbal/core";
-import { DEFAULT_HANDLE_SECONDS } from "./cutlist";
+import { buildCutList, DEFAULT_HANDLE_SECONDS } from "./cutlist";
 
 /** A kept source-video range, in source seconds. */
 export type TimelineVideo = {
@@ -69,6 +69,29 @@ function isReordered(words: readonly TranscriptWord[]): boolean {
 export function buildTimeline(input: BuildTimelineInput): TimelineItem[] {
   const handleSeconds = input.handleSeconds ?? DEFAULT_HANDLE_SECONDS;
   const words = input.transcript.words;
+  const durationSeconds = input.durationSeconds;
+  const hasSilences = (input.transcript.silences ?? []).length > 0;
+
+  const durationGiven =
+    durationSeconds !== undefined &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds > 0;
+
+  // With no reorder and no inserted silence the timeline is a plain cut: keep
+  // every source second outside a removed word plus its handle, matching the
+  // deletion-only planner exactly (head, tail, gaps and the empty transcript).
+  if (durationGiven && !hasSilences && !isReordered(words)) {
+    return buildCutList({
+      transcript: input.transcript,
+      durationSeconds,
+      handleSeconds,
+    }).kept.map((range) => ({
+      kind: "video",
+      startSeconds: range.start,
+      endSeconds: range.end,
+    }));
+  }
+
   const removed = new Set(input.transcript.removedWordIds);
   const silences = new Map(
     (input.transcript.silences ?? []).map((entry) => [entry.afterWordId, entry.seconds]),
@@ -141,7 +164,6 @@ export function buildTimeline(input: BuildTimelineInput): TimelineItem[] {
 
   flush();
 
-  const durationSeconds = input.durationSeconds;
   const extendEdges =
     durationSeconds !== undefined &&
     Number.isFinite(durationSeconds) &&
