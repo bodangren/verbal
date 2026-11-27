@@ -652,6 +652,56 @@ describe("storyboard export API", () => {
     expect(usedAsset).toBe(true);
   });
 
+  describe("scene kind support", () => {
+    const scene = (id: string, visual: string, extra: Record<string, unknown> = {}) => ({
+      id,
+      anchor: { startWordId: "w0", endWordId: "w1" },
+      visual,
+      layer: "full-frame",
+      ...extra,
+    });
+
+    async function exportOf(storyboard: unknown) {
+      const { fs, root, registry, renderer, run } = await setup({ media: true, storyboard });
+      const create = vi.spyOn(registry, "create");
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+      return { response, create, run };
+    }
+
+    it.each([
+      ["a static scene", scene("still", "static", { assetId: ASSET_ID })],
+      ["a slide with only an asset", scene("still", "slide", { assetId: ASSET_ID })],
+      ["a generated image with no asset", scene("still", "generated-image")],
+    ])("rejects %s with its id before a job starts", async (_label, unsupported) => {
+      const { response, create, run } = await exportOf({
+        schemaVersion: 1,
+        scenes: [scene("talk", "talk"), unsupported],
+      });
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toContain("scene still");
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("exports a storyboard of every supported kind", async () => {
+      const { response, create } = await exportOf({
+        schemaVersion: 1,
+        scenes: [
+          scene("talk", "talk"),
+          scene("title", "slide", { template: "title", props: { title: "Hello" } }),
+          scene("hero", "generated-image", { assetId: ASSET_ID }),
+        ],
+      });
+
+      expect(response.status).toBe(202);
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("generated asset and music containment", () => {
     const GENERATED_STORYBOARD = (assetId: string) => ({
       schemaVersion: 1,

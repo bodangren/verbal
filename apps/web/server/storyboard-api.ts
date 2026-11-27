@@ -17,12 +17,15 @@ import {
 } from "@verbal/core";
 import {
   STORYBOARD_SCHEMA_VERSION,
+  StoryboardError,
   anchorIndexFromTranscript,
   parseStoryboard,
   resolveScene,
   serializeStoryboard,
   validateStoryboard,
+  type Scene,
   type StoryboardDocument,
+  type VisualKind,
 } from "@verbal/storyboard";
 import {
   assembleStoryboard,
@@ -200,11 +203,49 @@ export type StartStoryboardExportDeps = {
   realpath?: RealpathFn;
 };
 
+/** Scene kinds the export renders. Add a kind here only after its export branch exists. */
+export const EXPORTABLE_VISUAL_KINDS: readonly VisualKind[] = [
+  "talk",
+  "slide",
+  "generated-image",
+  "generated-video",
+];
+
+/**
+ * Throws when the export cannot render a scene.
+ *
+ * A slide renders from its template. A generated scene renders from its asset.
+ */
+export function assertExportable(scene: Scene): void {
+  if (!EXPORTABLE_VISUAL_KINDS.includes(scene.visual)) {
+    throw new StoryboardError(
+      "invalid-document",
+      `scene ${scene.id}: ${scene.visual} scenes cannot be exported`,
+    );
+  }
+  if (scene.visual === "slide" && scene.template === undefined) {
+    throw new StoryboardError(
+      "invalid-document",
+      `scene ${scene.id}: a slide needs a template to be exported`,
+    );
+  }
+  if (
+    (scene.visual === "generated-image" || scene.visual === "generated-video") &&
+    scene.assetId === undefined
+  ) {
+    throw new StoryboardError(
+      "invalid-document",
+      `scene ${scene.id}: ${scene.visual} needs an assetId to be exported`,
+    );
+  }
+}
+
 /**
  * Starts a storyboard export as a job.
  *
- * Slides, generated assets, and talk ranges are rendered; a storyboard with
- * none of those is rejected rather than producing an empty video.
+ * Slides, generated assets, and talk ranges are rendered. A storyboard with
+ * an unsupported scene is rejected before the job starts, and so is one with
+ * no renderable scenes.
  */
 export async function startStoryboardExport(
   deps: StartStoryboardExportDeps,
@@ -244,6 +285,9 @@ export async function startStoryboardExport(
 
     const transcript = await readTranscriptDocument(deps.fs, root);
     const storyboard = await readStoryboard(deps.fs, root);
+    for (const scene of storyboard.scenes) {
+      assertExportable(scene);
+    }
     const anchors = anchorIndexFromTranscript(transcript);
     const audioBrand =
       brand.music === undefined
