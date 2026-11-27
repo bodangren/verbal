@@ -12,6 +12,8 @@ import {
 } from "./typhoon";
 import type { RunWindow } from "./typhoon-worker";
 
+const TMPDIR = process.env.TMPDIR ?? os.tmpdir();
+
 function wavBytes(samples: readonly number[], options: { sampleRate?: number; channels?: number } = {}): Uint8Array {
   const channels = options.channels ?? 1;
   const sampleRate = options.sampleRate ?? 16000;
@@ -43,6 +45,39 @@ function wavBytes(samples: readonly number[], options: { sampleRate?: number; ch
   });
 
   return bytes;
+}
+
+async function writeSilentWav(filePath: string, seconds: number): Promise<void> {
+  const sampleRate = 16000;
+  const dataSize = seconds * sampleRate * 2;
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0, "latin1");
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write("WAVE", 8, "latin1");
+  header.write("fmt ", 12, "latin1");
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36, "latin1");
+  header.writeUInt32LE(dataSize, 40);
+
+  const handle = await fs.open(filePath, "w");
+  try {
+    await handle.write(header, 0, 44, 0);
+    const zero = Buffer.alloc(1 << 20);
+    let written = 0;
+    while (written < dataSize) {
+      const chunk = Math.min(zero.length, dataSize - written);
+      await handle.write(zero, 0, chunk, 44 + written);
+      written += chunk;
+    }
+  } finally {
+    await handle.close();
+  }
 }
 
 const MODEL_DIR = path.join(path.sep, "models", "typhoon");
@@ -513,4 +548,138 @@ describe("createTyphoonProvider window worker seam", () => {
     });
     expect(terminateFail).toHaveBeenCalled();
   });
+});
+
+describe("createTyphoonProvider streams the WAV", () => {
+  const MEDIA = path.join(path.sep, "media", "take.mp4");
+
+  it("reads each window as a bounded range and never the whole signal", async () => {
+    const sampleRate = 16000;
+    const windowSeconds = 0.3;
+    const overlapSeconds = 0.1;
+    const totalSamples = sampleRate * 2;
+    const requested: Array<{ start: number; end: number }> = [];
+    const closed = vi.fn(async () => {});
+
+    const openWav = vi.fn(async () => ({
+      totalSamples,
+      async read(startSample: number, endSample: number) {
+        requested.push({ start: startSample, end: endSample });
+        return new Float32Array(endSample - startSample);
+      },
+      close: closed,
+    }));
+
+    const engine = {
+      transcribe: vi.fn(async () => ({
+        text: "w",
+        language: "th",
+        words: [{ text: "w", start: 0, end: 0.1 }],
+      })),
+    };
+
+    const provider = createTyphoonProvider(
+      config({
+        openWav,
+        engineFor: () => engine,
+        run: async () => ({ stdout: "", stderr: "" }),
+        windowSeconds,
+        overlapSeconds,
+      }),
+    );
+
+    const result = await provider.transcribe({ filePath: MEDIA });
+
+    const windowSamples = Math.round(windowSeconds * sampleRate);
+    expect(requested.length).toBeGreaterThan(1);
+    const maxBytes = Math.max(...requested.map((range) => range.end - range.start)) * 2;
+    expect(maxBytes).toBeLessThanOrEqual(windowSamples * 2);
+    for (const range of requested) {
+      expect(range.end - range.start).toBeGreaterThan(0);
+      expect(range.end - range.start).toBeLessThan(totalSamples);
+    }
+    expect(closed).toHaveBeenCalled();
+    expect(result.words.length).toBeGreaterThan(0);
+  });
+
+  it("rejects a WAV with the wrong sample rate or channels from disk", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-wavheader-"));
+    try {
+      const badRate = path.join(dir, "rate.wav");
+      const badChannels = path.join(dir, "channels.wav");
+      await fs.writeFile(badRate, wavBytes([0], { sampleRate: 44100 }));
+      await fs.writeFile(badChannels, wavBytes([0], { channels: 0 }));
+
+      const rateProvider = createTyphoonProvider(
+        config({ wavPathFor: () => badRate, run: async () => ({ stdout: "", stderr: "" }) }),
+      );
+      await expect(rateProvider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
+        code: "request-failed",
+        message: expect.stringContaining("16000"),
+      });
+
+      const channelsProvider = createTyphoonProvider(
+        config({ wavPathFor: () => badChannels, run: async () => ({ stdout: "", stderr: "" }) }),
+      );
+      await expect(channelsProvider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
+        code: "request-failed",
+        message: expect.stringContaining("16-bit PCM"),
+      });
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("createTyphoonProvider streaming memory", () => {
+  const MEDIA = path.join(path.sep, "media", "take.mp4");
+
+  it(
+    "keeps peak RSS growth under 150 MB for a 30 minute WAV",
+    { timeout: 180_000 },
+    async () => {
+      const dir = await fs.mkdtemp(path.join(TMPDIR, "verbal-rss-"));
+      const wavPath = path.join(dir, "thirty-min.wav");
+      try {
+        await writeSilentWav(wavPath, 30 * 60);
+
+        const engine = {
+          transcribe: vi.fn(async () => ({ text: "", language: "th", words: [] })),
+        };
+        const provider = createTyphoonProvider(
+          config({
+            wavPathFor: () => wavPath,
+            run: async () => ({ stdout: "", stderr: "" }),
+            engineFor: () => engine,
+          }),
+        );
+
+        const before = process.memoryUsage().rss;
+        let peak = before;
+        const timer = setInterval(() => {
+          peak = Math.max(peak, process.memoryUsage().rss);
+        }, 25);
+
+        let caught: unknown;
+        try {
+          await provider.transcribe({ filePath: MEDIA });
+        } catch (error) {
+          caught = error;
+        } finally {
+          clearInterval(timer);
+        }
+
+        const growth = peak - before;
+        console.log(
+          `measured peak RSS growth for 30 min streaming: ${growth} bytes (${(growth / (1024 * 1024)).toFixed(1)} MB)`,
+        );
+
+        expect(caught).toMatchObject({ code: "invalid-response" });
+        expect(engine.transcribe.mock.calls.length).toBeGreaterThan(30);
+        expect(growth).toBeLessThan(150 * 1024 * 1024);
+      } finally {
+        await fs.rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
 });

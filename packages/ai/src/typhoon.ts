@@ -47,8 +47,37 @@ export function hasTyphoonModel(
   );
 }
 
-/** Reads 16-bit PCM WAV bytes as mono float samples in [-1, 1). */
-export function decodeWavPcm16(bytes: Uint8Array): Float32Array {
+/** Fields a WAV header carries, used to validate and to locate the PCM. */
+export type WavHeader = {
+  dataStart: number;
+  dataSize: number;
+  channels: number;
+  sampleRate: number;
+  bitsPerSample: number;
+};
+
+function validatedHeader(
+  audioFormat: number | undefined,
+  bitsPerSample: number | undefined,
+  channels: number | undefined,
+  sampleRate: number | undefined,
+  dataStart: number,
+  dataSize: number,
+): WavHeader {
+  if (audioFormat !== 1 || bitsPerSample !== 16 || channels === undefined || channels < 1) {
+    throw new Error("the extracted audio is not 16-bit PCM");
+  }
+  if (sampleRate !== 16000) {
+    throw new Error(`the extracted audio is ${sampleRate ?? "unknown"} Hz, expected 16000`);
+  }
+  if (dataStart === -1) {
+    throw new Error("the extracted audio has no data chunk");
+  }
+  return { dataStart, dataSize, channels, sampleRate, bitsPerSample };
+}
+
+/** Parses a WAV header and validates it for the Typhoon pipeline. */
+export function parseWavHeader(bytes: Uint8Array): WavHeader {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const ascii = (offset: number, length: number): string =>
     String.fromCharCode(...bytes.subarray(offset, offset + length));
@@ -84,27 +113,144 @@ export function decodeWavPcm16(bytes: Uint8Array): Float32Array {
     offset = start + size + (size % 2);
   }
 
-  if (audioFormat !== 1 || bitsPerSample !== 16 || channels === undefined || channels < 1) {
-    throw new Error("the extracted audio is not 16-bit PCM");
-  }
-  if (sampleRate !== 16000) {
-    throw new Error(`the extracted audio is ${sampleRate ?? "unknown"} Hz, expected 16000`);
-  }
-  if (dataStart === -1) {
-    throw new Error("the extracted audio has no data chunk");
-  }
+  return validatedHeader(audioFormat, bitsPerSample, channels, sampleRate, dataStart, dataSize);
+}
 
-  const frames = Math.floor(dataSize / (2 * channels));
+/** Decodes 16-bit PCM bytes into mono float samples in [-1, 1). */
+function decodePcm16(bytes: Uint8Array, channels: number): Float32Array {
+  const frames = Math.floor(bytes.length / (2 * channels));
   const samples = new Float32Array(frames);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   for (let frame = 0; frame < frames; frame += 1) {
     let sum = 0;
     for (let channel = 0; channel < channels; channel += 1) {
-      sum += view.getInt16(dataStart + (frame * channels + channel) * 2, true);
+      sum += view.getInt16((frame * channels + channel) * 2, true);
     }
     samples[frame] = sum / channels / 32768;
   }
-
   return samples;
+}
+
+/** Reads a whole 16-bit PCM WAV as mono float samples in [-1, 1). */
+export function decodeWavPcm16(bytes: Uint8Array): Float32Array {
+  const header = parseWavHeader(bytes);
+  return decodePcm16(
+    bytes.subarray(header.dataStart, header.dataStart + header.dataSize),
+    header.channels,
+  );
+}
+
+/** A streaming reader over a WAV's PCM samples, one window at a time. */
+export type WavReader = {
+  /** Sample count of the whole signal, from the header's data size. */
+  totalSamples: number;
+  /** Reads the samples in [startSample, endSample) as mono floats. */
+  read(startSample: number, endSample: number): Promise<Float32Array>;
+  close(): Promise<void>;
+};
+
+/** Test seam: opens a streaming reader; the default reads from disk by offset. */
+export type OpenWav = (filePath: string) => Promise<WavReader>;
+
+type FileHandle = Awaited<ReturnType<typeof nodeFs.open>>;
+
+async function readAtFully(
+  handle: FileHandle,
+  buffer: Buffer,
+  position: number,
+): Promise<number> {
+  let total = 0;
+  while (total < buffer.length) {
+    const { bytesRead } = await handle.read(buffer, total, buffer.length - total, position + total);
+    if (bytesRead === 0) {
+      break;
+    }
+    total += bytesRead;
+  }
+  return total;
+}
+
+async function readWavFileHeader(handle: FileHandle): Promise<WavHeader> {
+  const prefix = Buffer.allocUnsafe(12);
+  const prefixLength = await readAtFully(handle, prefix, 0);
+  if (
+    prefixLength < 12 ||
+    prefix.toString("latin1", 0, 4) !== "RIFF" ||
+    prefix.toString("latin1", 8, 12) !== "WAVE"
+  ) {
+    throw new Error("the extracted audio is not a RIFF/WAVE file");
+  }
+
+  let offset = 12;
+  let audioFormat: number | undefined;
+  let channels: number | undefined;
+  let sampleRate: number | undefined;
+  let bitsPerSample: number | undefined;
+  let dataStart = -1;
+  let dataSize = 0;
+  const chunkHeader = Buffer.allocUnsafe(8);
+
+  for (;;) {
+    const headerLength = await readAtFully(handle, chunkHeader, offset);
+    if (headerLength < 8) {
+      break;
+    }
+    const id = chunkHeader.toString("latin1", 0, 4);
+    const size = chunkHeader.readUInt32LE(4);
+    const start = offset + 8;
+
+    if (id === "fmt ") {
+      const fmt = Buffer.allocUnsafe(16);
+      const fmtLength = await readAtFully(handle, fmt, start);
+      if (fmtLength >= 16) {
+        audioFormat = fmt.readUInt16LE(0);
+        channels = fmt.readUInt16LE(2);
+        sampleRate = fmt.readUInt32LE(4);
+        bitsPerSample = fmt.readUInt16LE(14);
+      }
+    } else if (id === "data") {
+      dataStart = start;
+      dataSize = size;
+      break;
+    }
+
+    offset = start + size + (size % 2);
+  }
+
+  return validatedHeader(audioFormat, bitsPerSample, channels, sampleRate, dataStart, dataSize);
+}
+
+/** Opens a WAV on disk and reads one window's PCM at a time by offset. */
+async function openWavFile(filePath: string): Promise<WavReader> {
+  const handle = await nodeFs.open(filePath, "r");
+  try {
+    const header = await readWavFileHeader(handle);
+    const channels = header.channels;
+    const dataStart = header.dataStart;
+    const totalSamples = Math.floor(header.dataSize / (channels * 2));
+
+    return {
+      totalSamples,
+      async read(startSample, endSample) {
+        const frameCount = endSample - startSample;
+        const byteLength = frameCount * channels * 2;
+        const buffer = Buffer.allocUnsafe(byteLength);
+        const readLength = await readAtFully(
+          handle,
+          buffer,
+          dataStart + startSample * channels * 2,
+        );
+        const pcm = readLength === byteLength ? buffer : buffer.subarray(0, readLength);
+        return decodePcm16(pcm, channels);
+      },
+      async close() {
+        await handle.close();
+      },
+    };
+  } catch (error) {
+    await handle.close().catch(() => {});
+    throw error;
+  }
 }
 
 /** One engine (and its ONNX sessions) per model pair, reused across jobs. */
@@ -122,6 +268,8 @@ export type LocalTyphoonConfig = {
   exists?: (filePath: string) => boolean;
   readText?: (filePath: string) => Promise<string>;
   readWav?: (filePath: string) => Promise<Float32Array>;
+  /** Test seam: opens a streaming reader; the default reads from disk by offset. */
+  openWav?: OpenWav;
   removeFile?: (filePath: string) => Promise<void>;
   /** Builds the WAV path from the media path and the private scratch directory. */
   wavPathFor?: (filePath: string, scratchDir: string) => string;
@@ -232,9 +380,21 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
   const exists = config.exists ?? ((filePath: string) => existsSync(filePath));
   const readText =
     config.readText ?? ((filePath: string) => nodeFs.readFile(filePath, "utf8"));
-  const readWav =
-    config.readWav ??
-    (async (filePath: string) => decodeWavPcm16(await nodeFs.readFile(filePath)));
+  const injectedReadWav = config.readWav;
+  const openWav: OpenWav =
+    config.openWav ??
+    (injectedReadWav !== undefined
+      ? async (filePath: string): Promise<WavReader> => {
+          const samples = await injectedReadWav(filePath);
+          return {
+            totalSamples: samples.length,
+            async read(startSample, endSample) {
+              return samples.slice(startSample, endSample);
+            },
+            async close() {},
+          };
+        }
+      : openWavFile);
   const removeFile =
     config.removeFile ?? ((filePath: string) => nodeFs.rm(filePath, { force: true }));
   const wavPathFor =
@@ -308,73 +468,77 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
 
         report(0.05, true);
 
-        let audio: Float32Array;
+        let reader: WavReader;
         try {
-          audio = await readWav(wavPath);
+          reader = await openWav(wavPath);
         } catch (error) {
           throw new AiError("request-failed", `the extracted audio could not be read: ${messageOf(error)}`);
         }
 
-        const windows = planWindows(audio.length, SAMPLE_RATE, {
-          windowSeconds: config.windowSeconds,
-          overlapSeconds: config.overlapSeconds,
-        });
-
-        // One worker for the whole call: the ONNX sessions load once and stay
-        // warm. Feature extraction and decode run off the main thread, so the
-        // API and Cancel keep answering. A test seam runs in-process instead.
-        const windowWorker: WindowWorker =
-          config.runWindow !== undefined
-            ? config.runWindow(config.modelDir)
-            : config.engineFor !== undefined
-              ? createInProcessWindowWorker(engineFor(config, files, vocab))
-              : createWindowWorker(config.modelDir);
-
-        // Transcribe one bounded window at a time. Each call resets the RNNT
-        // decoder state, so a word at a seam may lose a little context. The
-        // overlap lets the merge keep the better half of each seam.
-        const windowWords: SpokenWord[][] = [];
         try {
-          for (let i = 0; i < windows.length; i += 1) {
-            if (cancelled()) {
+          const windows = planWindows(reader.totalSamples, SAMPLE_RATE, {
+            windowSeconds: config.windowSeconds,
+            overlapSeconds: config.overlapSeconds,
+          });
+
+          // One worker for the whole call: the ONNX sessions load once and stay
+          // warm. Feature extraction and decode run off the main thread, so the
+          // API and Cancel keep answering. A test seam runs in-process instead.
+          const windowWorker: WindowWorker =
+            config.runWindow !== undefined
+              ? config.runWindow(config.modelDir)
+              : config.engineFor !== undefined
+                ? createInProcessWindowWorker(engineFor(config, files, vocab))
+                : createWindowWorker(config.modelDir);
+
+          // Transcribe one bounded window at a time. The reader fetches only
+          // that window's PCM, so memory stays bounded by the window, not the
+          // media. Each call resets the RNNT decoder state.
+          const windowWords: SpokenWord[][] = [];
+          try {
+            for (let i = 0; i < windows.length; i += 1) {
+              if (cancelled()) {
+                throw new AiError("request-failed", "transcription cancelled");
+              }
+              const window = windows[i]!;
+              const slice = await reader.read(window.startSample, window.endSample);
+              const words = await abortable(
+                windowWorker.run(
+                  slice,
+                  i,
+                  (fraction) => report(0.05 + ((i + fraction) / windows.length) * 0.9),
+                ),
+                options?.signal,
+                () => void windowWorker.terminate(),
+                new AiError("request-failed", "transcription cancelled"),
+              );
+              windowWords.push(words);
+            }
+          } catch (error) {
+            if (cancelled() || messageOf(error) === "transcription cancelled") {
               throw new AiError("request-failed", "transcription cancelled");
             }
-            const window = windows[i]!;
-            const slice = audio.slice(window.startSample, window.endSample);
-            const words = await abortable(
-              windowWorker.run(
-                slice,
-                i,
-                (fraction) => report(0.05 + ((i + fraction) / windows.length) * 0.9),
-              ),
-              options?.signal,
-              () => void windowWorker.terminate(),
-              new AiError("request-failed", "transcription cancelled"),
-            );
-            windowWords.push(words);
+            throw new AiError("request-failed", messageOf(error));
+          } finally {
+            await windowWorker.terminate();
           }
-        } catch (error) {
-          if (cancelled() || messageOf(error) === "transcription cancelled") {
-            throw new AiError("request-failed", "transcription cancelled");
+
+          const words = mergeWindowResults(windows, windowWords);
+          if (words.length === 0) {
+            throw new AiError("invalid-response", "the Typhoon model returned no words");
           }
-          throw new AiError("request-failed", messageOf(error));
+
+          const result: TranscriptionResult = {
+            text: words.map((word) => word.text).join(" "),
+            language: "th",
+            words,
+          };
+
+          report(1);
+          return result;
         } finally {
-          await windowWorker.terminate();
+          await reader.close().catch(() => {});
         }
-
-        const words = mergeWindowResults(windows, windowWords);
-        if (words.length === 0) {
-          throw new AiError("invalid-response", "the Typhoon model returned no words");
-        }
-
-        const result: TranscriptionResult = {
-          text: words.map((word) => word.text).join(" "),
-          language: "th",
-          words,
-        };
-
-        report(1);
-        return result;
       } finally {
         await removeFile(wavPath).catch(() => {});
         await nodeFs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
