@@ -50,6 +50,36 @@ const stubProvider: TranscriptionProvider = {
 };
 
 describe("createTranscribeService provider selection", () => {
+  it("passes cancellation to the provider and does not save a late transcript", async () => {
+    const fs = projectFs();
+    const controller = new AbortController();
+    let release!: () => void;
+    let observedSignal: AbortSignal | undefined;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const provider: TranscriptionProvider = {
+      id: "blocked",
+      async transcribe(_request, options) {
+        observedSignal = options?.signal;
+        await blocked;
+        return { text: "late", language: "en", words: [{ text: "late", start: 0, end: 1 }] };
+      },
+    };
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => provider,
+    });
+    const running = service.transcribeNow(ROOT, controller.signal);
+    await vi.waitFor(() => expect(observedSignal).toBeDefined());
+    controller.abort();
+    release();
+
+    await expect(running).rejects.toThrow(/cancel/i);
+    expect(observedSignal?.aborted).toBe(true);
+    expect(fs.files.has(path.join(ROOT, "transcript.json"))).toBe(false);
+  });
+
   it("uses the local resolver without an API key", async () => {
     const createLocalProvider = vi.fn(() => stubProvider);
     const createProvider = vi.fn(() => stubProvider);

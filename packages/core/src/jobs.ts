@@ -116,6 +116,7 @@ export type JobListener = (jobs: readonly JobRecord[]) => void;
  */
 export class JobRegistry {
   private jobs: JobRecord[] = [];
+  private readonly controllers = new Map<string, AbortController>();
   private readonly listeners = new Set<JobListener>();
   private saveChain: Promise<void> = Promise.resolve();
 
@@ -140,6 +141,10 @@ export class JobRegistry {
     return this.jobs.find((job) => job.id === id);
   }
 
+  signalOf(id: string): AbortSignal | undefined {
+    return this.controllers.get(id)?.signal;
+  }
+
   subscribe(listener: JobListener): () => void {
     this.listeners.add(listener);
     return () => {
@@ -161,6 +166,7 @@ export class JobRegistry {
       error: null,
     };
 
+    this.controllers.set(job.id, new AbortController());
     this.jobs = [...this.jobs, job];
     await this.persist();
     return job;
@@ -187,15 +193,29 @@ export class JobRegistry {
   }
 
   async complete(id: string, result: unknown = null): Promise<JobRecord> {
-    return this.transition(id, "done", { progress: 1, result, error: null });
+    try {
+      return await this.transition(id, "done", { progress: 1, result, error: null });
+    } finally {
+      if (this.get(id)?.status === "done") this.controllers.delete(id);
+    }
   }
 
   async fail(id: string, error: string): Promise<JobRecord> {
-    return this.transition(id, "failed", { error });
+    try {
+      return await this.transition(id, "failed", { error });
+    } finally {
+      if (this.get(id)?.status === "failed") this.controllers.delete(id);
+    }
   }
 
   async cancel(id: string): Promise<JobRecord> {
-    return this.transition(id, "cancelled");
+    this.require(id);
+    this.controllers.get(id)?.abort();
+    try {
+      return await this.transition(id, "cancelled");
+    } finally {
+      if (this.get(id)?.status === "cancelled") this.controllers.delete(id);
+    }
   }
 
   private require(id: string): JobRecord {

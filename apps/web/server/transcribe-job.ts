@@ -26,17 +26,22 @@ export type TranscriptionJobInput = {
  */
 export async function runTranscriptionJob(input: TranscriptionJobInput): Promise<void> {
   const { registry, jobId } = input;
+  const signal = registry.signalOf(jobId);
 
   try {
+    if (signal === undefined) throw new Error(`job ${jobId} has no abort signal`);
     await registry.start(jobId);
     await registry.progress(jobId, 0, "Extracting audio…");
 
     const result = await input.provider.transcribe(input.request, {
       onProgress: input.onProgress,
+      signal,
     });
     await input.flushProgress?.();
+    if (signal.aborted) return;
 
     await registry.progress(jobId, 1, "saving transcript");
+    if (signal.aborted) return;
     await input.onTranscript(result);
 
     await registry.complete(jobId, { words: result.words.length });

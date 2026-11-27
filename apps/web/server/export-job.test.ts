@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { JobRegistry, createMemoryJobStore } from "@verbal/core";
 import { ExportError } from "@verbal/media";
 import { runExportJob } from "./export-job";
@@ -68,5 +68,25 @@ describe("runExportJob", () => {
     });
 
     expect(sawSignal).toBe(true);
+  });
+
+  it("passes the registry signal and does not complete after cancellation", async () => {
+    const { registry, job } = await makeRegistry();
+    let workSignal: AbortSignal | undefined;
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const running = runExportJob(registry, job.id, async (_report, signal) => {
+      workSignal = signal;
+      await blocked;
+      return { outputPath: "/published.mp4" };
+    });
+
+    await vi.waitFor(() => expect(workSignal).toBeDefined());
+    await registry.cancel(job.id);
+    release();
+    await running;
+
+    expect(workSignal?.aborted).toBe(true);
+    expect(registry.get(job.id)?.status).toBe("cancelled");
   });
 });

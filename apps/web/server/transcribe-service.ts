@@ -177,7 +177,8 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       return providerFor();
     },
 
-    async transcribeNow(root: string): Promise<number> {
+    async transcribeNow(root: string, signal?: AbortSignal): Promise<number> {
+      if (signal?.aborted) throw new Error("transcription cancelled");
       const provider = providerFor();
 
       const mediaPath = await this.mediaPathFor(root);
@@ -185,8 +186,12 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
         throw new ProjectError("invalid-document", "project has no media");
       }
 
-      const result = await provider.transcribe({ filePath: mediaPath });
+      const result = await provider.transcribe(
+        { filePath: mediaPath },
+        signal === undefined ? undefined : { signal },
+      );
 
+      if (signal?.aborted) throw new Error("transcription cancelled");
       await saveTranscript(
         deps.fs,
         projectPaths(root).transcript,
@@ -206,6 +211,8 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
 
       const registry = await deps.registry();
       const job = await registry.create("transcribe");
+      const signal = registry.signalOf(job.id);
+      if (signal === undefined) throw new Error(`job ${job.id} has no abort signal`);
       let lastPercent = -1;
       let pending = Promise.resolve();
 

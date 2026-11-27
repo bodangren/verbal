@@ -148,6 +148,33 @@ describe("JobRegistry", () => {
     expect((await registry.cancel(running.id)).status).toBe("cancelled");
   });
 
+  it("aborts the signal owned by a cancelled job", async () => {
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const job = await registry.create("export");
+    const signal = registry.signalOf(job.id);
+
+    await registry.cancel(job.id);
+
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("removes terminal job controllers after cancellation", async () => {
+    const registry = await JobRegistry.open(createMemoryJobStore(), now);
+    const cancelled = await registry.create("export");
+    const completed = await registry.create("export");
+    const failed = await registry.create("export");
+    await registry.start(completed.id);
+    await registry.start(failed.id);
+
+    await registry.cancel(cancelled.id);
+    await registry.complete(completed.id);
+    await registry.fail(failed.id, "failed");
+
+    expect(registry.signalOf(cancelled.id)).toBeUndefined();
+    expect(registry.signalOf(completed.id)).toBeUndefined();
+    expect(registry.signalOf(failed.id)).toBeUndefined();
+  });
+
   it("rejects an illegal transition", async () => {
     const registry = await JobRegistry.open(createMemoryJobStore(), now);
     const job = await registry.create("export");

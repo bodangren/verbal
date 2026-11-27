@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { nodeFileSystem, planBatch, projectPaths, type BatchProject } from "@verbal/core";
 import { failure } from "../../../server/api-errors";
+import { createBatchProgressWriter } from "../../../server/batch-progress";
 import { runBatch } from "../../../server/batch-runner";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../../server/http";
 import { getJobRegistry } from "../../../server/registry";
@@ -52,27 +53,31 @@ export default async function handler(
 
     const registry = await getJobRegistry();
     const job = await registry.create("transcribe");
+    const signal = registry.signalOf(job.id);
 
     // The caller gets the plan immediately; per-item outcomes arrive as the job's
     // result, so a long batch needs no open request.
     void (async () => {
       try {
         await registry.start(job.id);
+        if (signal === undefined) throw new Error(`job ${job.id} has no abort signal`);
+        const progress = createBatchProgressWriter(registry, job.id, signal);
 
         const { outcomes } = await runBatch({
           plan,
-          transcribe: (root) => service.transcribeNow(root).then(() => undefined),
-          report: (outcome, done, total) => {
-            void registry.progress(
-              job.id,
-              total === 0 ? 1 : done / total,
-              `${outcome.root}: ${outcome.status}`,
-            );
+          transcribe: async (root) => {
+            if (signal.aborted) throw new Error("transcription cancelled");
+            await service.transcribeNow(root, signal);
+            if (signal.aborted) throw new Error("transcription cancelled");
           },
+          report: progress.report,
         });
 
+        await progress.flush();
+        if (signal.aborted) return;
         await registry.complete(job.id, { outcomes });
       } catch (error) {
+        if (signal?.aborted) return;
         const message = error instanceof Error ? error.message : String(error);
         await registry.fail(job.id, message).catch(() => undefined);
       }

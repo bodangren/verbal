@@ -15,7 +15,10 @@ export async function runExportJob(
   jobId: string,
   work: (report: JobReport, signal: AbortSignal) => Promise<unknown>,
 ): Promise<void> {
-  const controller = new AbortController();
+  const signal = registry.signalOf(jobId);
+  if (signal === undefined) {
+    throw new Error(`job ${jobId} has no abort signal`);
+  }
   let pending: Promise<unknown> = Promise.resolve();
 
   const report: JobReport = (fraction, message) => {
@@ -26,8 +29,9 @@ export async function runExportJob(
 
   try {
     await registry.start(jobId);
-    const result = await work(report, controller.signal);
+    const result = await work(report, signal);
     await pending;
+    if (signal.aborted) return;
     await registry.complete(jobId, result ?? null);
   } catch (error) {
     await pending;

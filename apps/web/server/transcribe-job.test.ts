@@ -116,4 +116,33 @@ describe("runTranscriptionJob", () => {
 
     expect(onTranscript).not.toHaveBeenCalled();
   });
+
+  it("does not save a transcript after cancellation", async () => {
+    const { registry, job } = await makeRegistry();
+    let release!: () => void;
+    let signal: AbortSignal | undefined;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const onTranscript = vi.fn(async () => undefined);
+    const running = runTranscriptionJob({
+      registry, jobId: job.id,
+      provider: {
+        id: "blocked",
+        async transcribe(_request, options) {
+          signal = options?.signal;
+          await blocked;
+          return { text: "late", language: "en", words: [] };
+        },
+      },
+      request: { filePath: "/media/a.mp4" },
+      onTranscript,
+    });
+
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    await registry.cancel(job.id);
+    release();
+    await running;
+
+    expect(signal?.aborted).toBe(true);
+    expect(onTranscript).not.toHaveBeenCalled();
+  });
 });
