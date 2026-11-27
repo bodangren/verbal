@@ -9,8 +9,17 @@ export const EXTRACT_EXTENSION = "mp3";
 /** The largest audio file sent in one upload; larger audio is split. */
 export const DEFAULT_MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
 
+/** How many times a chunk may be re-split before the upload fails. */
+export const MAX_SPLIT_ROUNDS = 3;
+
 export type ExtractRunOptions = {
   signal?: AbortSignal;
+};
+
+/** One time slice of an extracted audio track. */
+export type ChunkSegment = {
+  startSeconds: number;
+  durationSeconds: number;
 };
 
 /** ffmpeg argv that extracts mono 16 kHz MP3 audio from any media file. */
@@ -64,6 +73,19 @@ export function buildChunkArgs(
   ];
 }
 
+/** ffprobe argv that prints the format duration as a bare number. */
+export function buildProbeArgs(file: string): string[] {
+  return [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "default=nw=1:nk=1",
+    file,
+  ];
+}
+
 /** Runs an ffmpeg extraction and maps failures to AiError codes. */
 export async function runExtract(
   run: LocalRunner,
@@ -83,24 +105,58 @@ export async function runExtract(
   }
 }
 
+/** Measures the extracted audio duration in seconds with ffprobe. */
+export async function probeDurationSeconds(
+  run: LocalRunner,
+  file: string,
+  options?: ExtractRunOptions,
+): Promise<number> {
+  let stdout: string;
+  try {
+    const result = await run("ffprobe", buildProbeArgs(file), { signal: options?.signal });
+    stdout = result.stdout;
+  } catch (error) {
+    if (isMissingBinary(error)) {
+      throw new AiError("not-configured", "the ffprobe binary is not available");
+    }
+    if (options?.signal?.aborted === true) {
+      throw new AiError("request-failed", "transcription cancelled");
+    }
+    throw new AiError("request-failed", messageOf(error));
+  }
+
+  const seconds = Number.parseFloat(stdout.trim());
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new AiError("request-failed", "ffprobe returned no audio duration");
+  }
+  return seconds;
+}
+
 /** Seconds per chunk, sized so each re-encoded chunk stays under the limit. */
 export function chunkLengthSeconds(maxUploadBytes: number, bitrateKbps: number): number {
   const bytesPerSecond = (bitrateKbps * 1000) / 8;
   return Math.max(1, Math.floor((maxUploadBytes / bytesPerSecond) * 0.9));
 }
 
-/** Start offset in seconds for each chunk of an extracted file. */
-export function chunkStartsSeconds(
-  totalBytes: number,
+/** Time slices of an audio track, planned from its real duration. */
+export function planChunks(
+  totalSeconds: number,
   maxUploadBytes: number,
   bitrateKbps: number,
-): number[] {
-  if (totalBytes <= maxUploadBytes) {
-    return [0];
+): ChunkSegment[] {
+  if (!(totalSeconds > 0)) {
+    return [{ startSeconds: 0, durationSeconds: 1 }];
   }
   const length = chunkLengthSeconds(maxUploadBytes, bitrateKbps);
-  const bytesPerSecond = (bitrateKbps * 1000) / 8;
-  const totalSeconds = totalBytes / bytesPerSecond;
-  const count = Math.max(1, Math.ceil(totalSeconds / length));
-  return Array.from({ length: count }, (_, index) => index * length);
+  if (totalSeconds <= length) {
+    return [{ startSeconds: 0, durationSeconds: totalSeconds }];
+  }
+  const count = Math.ceil(totalSeconds / length);
+  return Array.from({ length: count }, (_, index) => {
+    const startSeconds = index * length;
+    return {
+      startSeconds,
+      durationSeconds: Math.min(length, totalSeconds - startSeconds),
+    };
+  });
 }

@@ -18,6 +18,21 @@ function word(text: string, start: number, end: number) {
   return { word: text, start, end };
 }
 
+function makeRunner(opts?: {
+  durationSeconds?: string;
+  onFfmpeg?: (args: readonly string[]) => void;
+}) {
+  return vi.fn(async (binary: string, args: readonly string[]) => {
+    if (binary === "ffprobe") {
+      return { stdout: opts?.durationSeconds ?? "1.0", stderr: "" };
+    }
+    if (binary === "ffmpeg") {
+      opts?.onFfmpeg?.(args);
+    }
+    return { stdout: "", stderr: "" };
+  });
+}
+
 function scratchDirFrom(run: ReturnType<typeof vi.fn>): string {
   const args = run.mock.calls[0]?.[1] as string[] | undefined;
   return path.dirname(String(args?.at(-1)));
@@ -30,7 +45,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
       readPaths.push(filePath);
       return new Uint8Array([9, 9, 9]);
     });
-    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const run = makeRunner();
     const stat = vi.fn(async () => ({ size: 100 }));
     const calls: { url: string; init?: RequestInit }[] = [];
     const fetch: FetchLike = async (url, init) => {
@@ -64,14 +79,14 @@ describe("createWhisperProvider uploads extracted audio", () => {
 
   it("splits audio over the limit and offsets the second chunk's words", async () => {
     const seeks: number[] = [];
-    const run = vi.fn(async (binary: string, args: readonly string[]) => {
-      if (binary === "ffmpeg") {
+    const run = makeRunner({
+      durationSeconds: "2.0",
+      onFfmpeg: (args) => {
         const ssIndex = args.indexOf("-ss");
         if (ssIndex !== -1) {
           seeks.push(Number(args[ssIndex + 1]));
         }
-      }
-      return { stdout: "", stderr: "" };
+      },
     });
 
     const payloads = [
@@ -90,7 +105,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
       fetch,
       readFile: async () => new Uint8Array([1]),
       run,
-      stat: async () => ({ size: 8000 }),
+      stat: async () => ({ size: 100 }),
       maxUploadBytes: 4000,
     });
 
@@ -114,7 +129,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
       readPaths.push(filePath);
       return new Uint8Array([1]);
     });
-    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const run = makeRunner();
     const stat = vi.fn(async () => ({ size: 100 }));
     const fetch: FetchLike = async () =>
       jsonResponse({ text: "", words: [] });
@@ -135,7 +150,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
   });
 
   it("removes the private scratch directory after success", async () => {
-    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const run = makeRunner();
     const provider = createWhisperProvider({
       apiKey: "k",
       fetch: async () => jsonResponse({ text: "", words: [] }),
@@ -152,7 +167,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
   });
 
   it("removes the private scratch directory after a failure", async () => {
-    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const run = makeRunner();
     const provider = createWhisperProvider({
       apiKey: "bad",
       fetch: async () => jsonResponse({ error: "nope" }, 401),
@@ -173,7 +188,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
 
   it("honours the abort signal between chunks", async () => {
     const controller = new AbortController();
-    const run = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const run = makeRunner({ durationSeconds: "2.0" });
     let calls = 0;
     const fetch: FetchLike = async () => {
       calls += 1;
@@ -186,7 +201,7 @@ describe("createWhisperProvider uploads extracted audio", () => {
       fetch,
       readFile: async () => new Uint8Array([1]),
       run,
-      stat: async () => ({ size: 8000 }),
+      stat: async () => ({ size: 100 }),
       maxUploadBytes: 4000,
     });
 
@@ -217,12 +232,182 @@ describe("createWhisperProvider uploads extracted audio", () => {
       apiKey: "k",
       fetch: async () => jsonResponse({ text: "hello" }),
       readFile: async () => new Uint8Array([1]),
-      run: async () => ({ stdout: "", stderr: "" }),
+      run: makeRunner(),
       stat: async () => ({ size: 100 }),
     });
 
     await expect(provider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
       code: "invalid-response",
     });
+  });
+
+  it("plans chunk boundaries from the probed duration, not the file size", async () => {
+    const seeks: number[] = [];
+    const run = makeRunner({
+      durationSeconds: "100.0",
+      onFfmpeg: (args) => {
+        const ssIndex = args.indexOf("-ss");
+        if (ssIndex !== -1) {
+          seeks.push(Number(args[ssIndex + 1]));
+        }
+      },
+    });
+
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fetch: async () => jsonResponse({ text: "", words: [] }),
+      readFile: async () => new Uint8Array([1]),
+      run,
+      stat: async () => ({ size: 100 }),
+      maxUploadBytes: 40000,
+    });
+
+    await provider.transcribe({ filePath: path.join(path.sep, "media", "long.mp4") });
+
+    expect(seeks).toHaveLength(12);
+    expect(seeks[0]).toBe(0);
+    expect(seeks[1]).toBe(9);
+    expect(seeks[seeks.length - 1]).toBe(99);
+  });
+
+  it("splits a chunk again when its stat is above the limit", async () => {
+    const stat = vi.fn(async (filePath: string) => {
+      if (filePath.endsWith("chunk-0.mp3")) {
+        return { size: 5000 };
+      }
+      return { size: 100 };
+    });
+    const run = makeRunner({ durationSeconds: "2.0" });
+    let uploads = 0;
+    const fetch: FetchLike = async () => {
+      uploads += 1;
+      return jsonResponse({ text: "", words: [] });
+    };
+
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fetch,
+      readFile: async () => new Uint8Array([1]),
+      run,
+      stat,
+      maxUploadBytes: 4000,
+    });
+
+    await provider.transcribe({ filePath: path.join(path.sep, "media", "long.mp4") });
+
+    expect(uploads).toBe(3);
+  });
+
+  it("keeps the extracted audio and chunks in separate directories", async () => {
+    const outputs: string[] = [];
+    const run = makeRunner({
+      durationSeconds: "2.0",
+      onFfmpeg: (args) => {
+        outputs.push(String(args[args.length - 1]));
+      },
+    });
+
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fetch: async () => jsonResponse({ text: "", words: [] }),
+      readFile: async () => new Uint8Array([1]),
+      run,
+      stat: async () => ({ size: 100 }),
+      maxUploadBytes: 4000,
+    });
+
+    await provider.transcribe({ filePath: path.join(path.sep, "media", "chunk-0.mp4") });
+
+    const audioOutput = outputs[0]!;
+    const chunkOutputs = outputs.slice(1);
+    expect(path.basename(audioOutput)).toBe("chunk-0.mp3");
+    expect(path.basename(path.dirname(audioOutput))).toBe("audio");
+    expect(chunkOutputs.some((p) => path.basename(p) === "chunk-0.mp3")).toBe(true);
+    for (const out of chunkOutputs) {
+      expect(path.basename(path.dirname(out))).toBe("chunks");
+    }
+    expect(new Set(outputs).size).toBe(outputs.length);
+  });
+
+  it("keeps word offsets correct across a re-split", async () => {
+    const stat = vi.fn(async (filePath: string) => {
+      if (filePath.endsWith("chunk-0.mp3")) {
+        return { size: 5000 };
+      }
+      return { size: 100 };
+    });
+    const run = makeRunner({ durationSeconds: "2.0" });
+
+    const payloads = [
+      { text: "a", language: "en", words: [word("a", 0.1, 0.5)] },
+      { text: "b", language: "en", words: [word("b", 0.1, 0.5)] },
+      { text: "c", language: "en", words: [word("c", 0.1, 0.5)] },
+    ];
+    let callIndex = 0;
+    const fetch: FetchLike = async () => {
+      const payload = payloads[callIndex];
+      callIndex += 1;
+      return jsonResponse(payload);
+    };
+
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fetch,
+      readFile: async () => new Uint8Array([1]),
+      run,
+      stat,
+      maxUploadBytes: 4000,
+    });
+
+    const result = await provider.transcribe({
+      filePath: path.join(path.sep, "media", "long.mp4"),
+    });
+
+    expect(result.words).toEqual([
+      { text: "a", start: 0.1, end: 0.5 },
+      { text: "b", start: 0.6, end: 1.0 },
+      { text: "c", start: 1.1, end: 1.5 },
+    ]);
+  });
+});
+
+describe("createWhisperProvider language", () => {
+  it("sends the configured language in the multipart body", async () => {
+    let submitted: FormData | undefined;
+    const fetch: FetchLike = async (_url, init) => {
+      submitted = init?.body as FormData;
+      return jsonResponse({ text: "hello", language: "en", words: [word("hello", 0, 0.4)] });
+    };
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      language: "en",
+      fetch,
+      readFile: async () => new Uint8Array([1]),
+      run: makeRunner(),
+      stat: async () => ({ size: 100 }),
+    });
+
+    await provider.transcribe({ filePath: MEDIA });
+
+    expect(submitted?.get("language")).toBe("en");
+  });
+
+  it("sends no language field when none is configured", async () => {
+    let submitted: FormData | undefined;
+    const fetch: FetchLike = async (_url, init) => {
+      submitted = init?.body as FormData;
+      return jsonResponse({ text: "hello", language: "en", words: [word("hello", 0, 0.4)] });
+    };
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fetch,
+      readFile: async () => new Uint8Array([1]),
+      run: makeRunner(),
+      stat: async () => ({ size: 100 }),
+    });
+
+    await provider.transcribe({ filePath: MEDIA });
+
+    expect(submitted?.get("language")).toBeNull();
   });
 });

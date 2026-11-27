@@ -62,7 +62,7 @@ describe("createWhisperProvider", () => {
       apiKey: "secret",
       fetch: response.fn,
       readFile: async () => new Uint8Array([1, 2, 3]),
-      run: async () => ({ stdout: "", stderr: "" }),
+      run: async () => ({ stdout: "1.0", stderr: "" }),
       stat: async () => ({ size: 100 }),
     });
 
@@ -98,7 +98,7 @@ describe("createWhisperProvider", () => {
       model: "whisper-large",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
-      run: async () => ({ stdout: "", stderr: "" }),
+      run: async () => ({ stdout: "1.0", stderr: "" }),
       stat: async () => ({ size: 100 }),
     });
 
@@ -114,7 +114,7 @@ describe("createWhisperProvider", () => {
       apiKey: "bad",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
-      run: async () => ({ stdout: "", stderr: "" }),
+      run: async () => ({ stdout: "1.0", stderr: "" }),
       stat: async () => ({ size: 100 }),
     });
 
@@ -130,7 +130,7 @@ describe("createWhisperProvider", () => {
       apiKey: "k",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
-      run: async () => ({ stdout: "", stderr: "" }),
+      run: async () => ({ stdout: "1.0", stderr: "" }),
       stat: async () => ({ size: 100 }),
     });
 

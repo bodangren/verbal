@@ -4,11 +4,12 @@ import path from "node:path";
 import {
   buildChunkArgs,
   buildExtractArgs,
-  chunkLengthSeconds,
-  chunkStartsSeconds,
   DEFAULT_MAX_UPLOAD_BYTES,
   EXTRACT_BITRATE_KBPS,
   EXTRACT_EXTENSION,
+  MAX_SPLIT_ROUNDS,
+  planChunks,
+  probeDurationSeconds,
   runExtract,
 } from "./audio-extract";
 import { nodeRun, type LocalRunner } from "./process";
@@ -78,6 +79,8 @@ function parseWord(value: unknown): SpokenWord {
 
 export type WhisperConfig = OpenAiConfig & {
   model?: string;
+  /** ISO language sent with each upload when the request has none. */
+  language?: string;
   /** Injectable ffmpeg runner for audio extraction; defaults to a real spawn. */
   run?: LocalRunner;
   /** Largest audio file sent in one upload; larger audio is split. */
@@ -168,41 +171,100 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
       options?: ProviderOptions,
     ): Promise<TranscriptionResult> {
       const scratchDir = await nodeFs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
+      const audioDir = path.join(scratchDir, "audio");
+      const chunksDir = path.join(scratchDir, "chunks");
+      await nodeFs.mkdir(audioDir);
+      await nodeFs.mkdir(chunksDir);
       const stem = path.parse(request.filePath).name || "audio";
-      const audioPath = path.join(scratchDir, `${stem}.${EXTRACT_EXTENSION}`);
+      const audioPath = path.join(audioDir, `${stem}.${EXTRACT_EXTENSION}`);
+
+      const cancelled = () => {
+        if (options?.signal?.aborted === true) {
+          throw new AiError("request-failed", "transcription cancelled");
+        }
+      };
 
       try {
         await runExtract(run, buildExtractArgs(request.filePath, audioPath), {
           signal: options?.signal,
         });
 
-        const info = await stat(audioPath);
-        const offsets = chunkStartsSeconds(info.size, maxUploadBytes, EXTRACT_BITRATE_KBPS);
-        const length = chunkLengthSeconds(maxUploadBytes, EXTRACT_BITRATE_KBPS);
+        const durationSeconds = await probeDurationSeconds(run, audioPath, {
+          signal: options?.signal,
+        });
+        const segments = planChunks(durationSeconds, maxUploadBytes, EXTRACT_BITRATE_KBPS);
 
         const results: TranscriptionResult[] = [];
-        for (let index = 0; index < offsets.length; index += 1) {
-          if (options?.signal?.aborted === true) {
-            throw new AiError("request-failed", "transcription cancelled");
-          }
 
-          const offset = offsets[index] ?? 0;
-          let uploadPath = audioPath;
-          if (offsets.length > 1) {
-            uploadPath = path.join(scratchDir, `chunk-${index}.${EXTRACT_EXTENSION}`);
-            await runExtract(run, buildChunkArgs(audioPath, uploadPath, offset, length), {
-              signal: options?.signal,
-            });
-          }
-
-          const bytes = await readFile(uploadPath);
+        const uploadChunk = async (startSeconds: number, filePath: string) => {
+          cancelled();
+          const bytes = await readFile(filePath);
           const result = await postAudio(
             bytes,
-            path.basename(uploadPath),
-            request.language,
+            path.basename(filePath),
+            request.language ?? config.language,
             options?.signal,
           );
-          results.push(offsetWords(result, offset));
+          return offsetWords(result, startSeconds);
+        };
+
+        let nextIndex = 0;
+        const cutSegment = async (
+          startSeconds: number,
+          durationSeconds: number,
+          roundsLeft: number,
+        ): Promise<{ startSeconds: number; path: string }[]> => {
+          const index = nextIndex;
+          nextIndex += 1;
+          const chunkPath = path.join(chunksDir, `chunk-${index}.${EXTRACT_EXTENSION}`);
+          await runExtract(
+            run,
+            buildChunkArgs(audioPath, chunkPath, startSeconds, durationSeconds),
+            { signal: options?.signal },
+          );
+          const info = await stat(chunkPath);
+          if (info.size <= maxUploadBytes) {
+            return [{ startSeconds, path: chunkPath }];
+          }
+          if (roundsLeft <= 0) {
+            throw new AiError(
+              "request-failed",
+              "a chunk still exceeds the upload limit after three splits",
+            );
+          }
+          const half = durationSeconds / 2;
+          const left = await cutSegment(startSeconds, half, roundsLeft - 1);
+          const right = await cutSegment(startSeconds + half, half, roundsLeft - 1);
+          return [...left, ...right];
+        };
+
+        if (segments.length === 1) {
+          const segment = segments[0]!;
+          const info = await stat(audioPath);
+          if (info.size <= maxUploadBytes) {
+            results.push(await uploadChunk(segment.startSeconds, audioPath));
+          } else {
+            const cuts = await cutSegment(
+              segment.startSeconds,
+              segment.durationSeconds,
+              MAX_SPLIT_ROUNDS,
+            );
+            for (const cut of cuts) {
+              results.push(await uploadChunk(cut.startSeconds, cut.path));
+            }
+          }
+        } else {
+          for (const segment of segments) {
+            cancelled();
+            const cuts = await cutSegment(
+              segment.startSeconds,
+              segment.durationSeconds,
+              MAX_SPLIT_ROUNDS,
+            );
+            for (const cut of cuts) {
+              results.push(await uploadChunk(cut.startSeconds, cut.path));
+            }
+          }
         }
 
         const words = results.flatMap((result) => result.words);
