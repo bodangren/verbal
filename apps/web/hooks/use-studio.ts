@@ -240,6 +240,10 @@ export function useStudio(deps: StudioDeps): StudioController {
 
   // A project change reloads the take list, as loadProjectFiles did.
   useEffect(() => {
+    // No project is open yet: there is nothing to list, and the API answers 400.
+    if (root === "") {
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {

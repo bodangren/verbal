@@ -97,6 +97,18 @@ describe("useStudio", () => {
     await waitFor(() => expect(result.current.capture.takes).toEqual([takeFixture]));
   });
 
+  it("does not list takes while no project is open", async () => {
+    api.listTakes.mockClear();
+    api.listTakes.mockResolvedValue({ takes: [] });
+
+    renderHook(() => useStudio(makeDeps({ root: "" })));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(api.listTakes).not.toHaveBeenCalled();
+  });
+
   it("falls back to an empty take list when the fetch fails", async () => {
     api.listTakes.mockRejectedValue(new Error("boom"));
 

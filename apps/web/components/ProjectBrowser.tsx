@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import type { FsEntry } from "../server/fs-api";
 
 export type ProjectBrowserProps = {
@@ -18,6 +18,46 @@ export type ProjectBrowserProps = {
 };
 
 const COLLAPSE_KEY = "verbal.browser.collapsed";
+
+const collapseListeners = new Set<() => void>();
+/** Used only when storage is unavailable, so the rail still toggles. */
+let collapsedFallback: boolean | null = null;
+
+function readCollapsed(): boolean {
+  try {
+    const stored = window.localStorage.getItem(COLLAPSE_KEY);
+    if (stored !== null) {
+      return stored === "true";
+    }
+  } catch {
+    // Storage can be unavailable; fall through to the fallback and the viewport rule.
+  }
+  if (collapsedFallback !== null) {
+    return collapsedFallback;
+  }
+  return (
+    typeof window.matchMedia === "function" && window.matchMedia("(max-width: 1100px)").matches
+  );
+}
+
+function subscribeCollapsed(listener: () => void): () => void {
+  collapseListeners.add(listener);
+  return () => {
+    collapseListeners.delete(listener);
+  };
+}
+
+function writeCollapsed(next: boolean): void {
+  try {
+    window.localStorage.setItem(COLLAPSE_KEY, String(next));
+  } catch {
+    // The rail still works without storage; the choice just will not persist.
+    collapsedFallback = next;
+  }
+  for (const listener of [...collapseListeners]) {
+    listener();
+  }
+}
 
 function formatDuration(seconds: number | undefined): string {
   if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) {
@@ -84,43 +124,16 @@ export function ProjectBrowser({
 }: ProjectBrowserProps) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  // The first render stays expanded so it matches the server render.
-  // Storage and the viewport apply in the effect below.
-  const [collapsed, setCollapsed] = useState(false);
+  // The server render is always expanded. The client reads storage and the
+  // viewport through an external store, so hydration matches and no effect
+  // has to set state.
+  const storedCollapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const hasProject = currentRoot !== undefined && currentRoot !== "";
   // The browser stays open while no project is open.
-  const isCollapsed = hasProject && collapsed;
-
-  useEffect(() => {
-    if (!hasProject) {
-      setCollapsed(false);
-      return;
-    }
-    try {
-      const stored = window.localStorage.getItem(COLLAPSE_KEY);
-      if (stored !== null) {
-        setCollapsed(stored === "true");
-        return;
-      }
-    } catch {
-      // Storage can be unavailable; fall through to the viewport rule.
-    }
-    if (
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 1100px)").matches
-    ) {
-      setCollapsed(true);
-    }
-  }, [hasProject]);
+  const isCollapsed = hasProject && storedCollapsed;
 
   function toggleCollapsed() {
-    const next = !collapsed;
-    setCollapsed(next);
-    try {
-      window.localStorage.setItem(COLLAPSE_KEY, String(next));
-    } catch {
-      // The rail still works without storage; the choice just will not persist.
-    }
+    writeCollapsed(!storedCollapsed);
   }
 
   function submit(event: FormEvent) {
@@ -185,18 +198,19 @@ export function ProjectBrowser({
         </p>
       </header>
 
-      <div className="browser__list" role="list" aria-label="Folders and projects" aria-busy={loading}>
+      <div
+        className="browser__list"
+        role="list"
+        aria-label="Folders and projects"
+        aria-busy={loading}
+      >
         {error !== null && (
           <p className="browser__error" role="alert">
             {error}
           </p>
         )}
 
-        {loading && (
-          <p className="browser__hint">
-            Reading folder…
-          </p>
-        )}
+        {loading && <p className="browser__hint">Reading folder…</p>}
 
         {!loading && error === null && entries.length === 0 && (
           <div className="browser__empty">
@@ -205,15 +219,11 @@ export function ProjectBrowser({
           </div>
         )}
 
-        {projects.length > 0 && (
-          <p className="browser__section">Projects</p>
-        )}
+        {projects.length > 0 && <p className="browser__section">Projects</p>}
         {projects.map((entry) => (
           <div
             key={entry.path}
-            className={`entry entry--project${
-              entry.path === currentRoot ? " entry--current" : ""
-            }`}
+            className={`entry entry--project${entry.path === currentRoot ? " entry--current" : ""}`}
             role="listitem"
             aria-current={entry.path === currentRoot ? "true" : undefined}
           >
@@ -248,9 +258,7 @@ export function ProjectBrowser({
           </div>
         ))}
 
-        {folders.length > 0 && (
-          <p className="browser__section">Folders</p>
-        )}
+        {folders.length > 0 && <p className="browser__section">Folders</p>}
         {folders.map((entry) => (
           <div key={entry.path} className="entry" role="listitem">
             <button
@@ -305,7 +313,11 @@ export function ProjectBrowser({
             </button>
           </form>
         ) : (
-          <button type="button" className="button button--ghost browser__new-button" onClick={() => setCreating(true)}>
+          <button
+            type="button"
+            className="button button--ghost browser__new-button"
+            onClick={() => setCreating(true)}
+          >
             + New Project Here
           </button>
         )}
