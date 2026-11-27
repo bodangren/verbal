@@ -43,6 +43,7 @@ import {
   type BrandKit,
   type PreviewGeometry,
   type PreviewTier,
+  type FfmpegRun,
   type SlideRenderer,
   type StepScene,
 } from "@verbal/compose";
@@ -203,7 +204,7 @@ export type StartStoryboardExportDeps = {
   fs: FileSystem;
   registry: JobRegistry;
   renderer: SlideRenderer;
-  run: (file: string, args: readonly string[]) => Promise<unknown>;
+  run: FfmpegRun;
   now: () => Date;
   rendererReady?: () => boolean;
   /** Removes a job's private work directory. Defaults to a recursive remove. */
@@ -445,6 +446,7 @@ export async function startStoryboardExport(
     const hasAudio = await sourceHasAudio(probe, mediaPath);
 
     const job = await deps.registry.create("export");
+    const signal = deps.registry.signalOf(job.id);
     const workDirectory = path.join(root, "cache", "assembly", job.id);
     const removeDirectory =
       deps.removeDirectory ??
@@ -460,6 +462,7 @@ export async function startStoryboardExport(
       audio: audioFromBrand(audioBrand),
       scenes,
       codecs: preset.codecs,
+      signal,
     });
 
     void runStoryboardExport({
@@ -495,7 +498,7 @@ export async function startStoryboardExport(
               report(steps.length / total, "Concatenating segments");
               const listPath = path.join(workDirectory, "concat.txt");
               await writeFileAtomic(deps.fs, listPath, buildConcatListContent(files));
-              await deps.run("ffmpeg", buildConcatArgs(listPath, out));
+              await deps.run("ffmpeg", buildConcatArgs(listPath, out), { signal });
             },
           },
           steps,

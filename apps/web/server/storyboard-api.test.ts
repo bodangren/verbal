@@ -16,7 +16,7 @@ import {
   saveTranscript,
 } from "@verbal/core";
 import type { SlideManifest, SlideRenderer } from "@verbal/compose";
-import type { MediaInfo } from "@verbal/media";
+import { ExportError, type MediaInfo } from "@verbal/media";
 import { createStoryboardApi, startStoryboardExport } from "./storyboard-api";
 import { createFakeFileSystem } from "./test-support";
 
@@ -1018,6 +1018,158 @@ describe("storyboard export API", () => {
       await waitForJob(registry, jobId);
 
       expect(registry.get(jobId)?.status).toBe("failed");
+      expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
+      expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
+    });
+  });
+
+  describe("cancellation reaches every subprocess", () => {
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    async function waitUntil(condition: () => boolean, attempts = 200): Promise<void> {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        if (condition()) {
+          return;
+        }
+        await delay(10);
+      }
+    }
+
+    async function seedExport(fs: ReturnType<typeof createFakeFileSystem>, root: string) {
+      await seed(fs, root);
+      const project = await openProject(fs, root);
+      await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+    }
+
+    function isConcat(args: readonly string[]): boolean {
+      const flag = args.indexOf("-f");
+      return flag !== -1 && args[flag + 1] === "concat";
+    }
+
+    function exportDeps(
+      fs: ReturnType<typeof createFakeFileSystem>,
+      registry: JobRegistry,
+      renderer: SlideRenderer,
+      run: (file: string, args: readonly string[], options?: { signal?: AbortSignal }) => Promise<unknown>,
+    ) {
+      const removeDirectory = vi.fn(async (directory: string) => {
+        fs.directories.delete(directory);
+      });
+      return {
+        deps: { fs, registry, renderer, run, now, rendererReady: () => true, removeDirectory },
+        removeDirectory,
+      };
+    }
+
+    it("kills a hanging concat and publishes nothing on cancel", async () => {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seedExport(fs, root);
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+
+      let concatSawAbort = false;
+      let concatSettled = false;
+      const run = vi.fn(
+        async (_file: string, args: readonly string[], options?: { signal?: AbortSignal }) => {
+          if (!isConcat(args)) {
+            return;
+          }
+          await new Promise<void>((_resolve, reject) => {
+            const signal = options?.signal;
+            const onAbort = () => {
+              concatSawAbort = true;
+              reject(new ExportError("cancelled", "export cancelled"));
+            };
+            if (signal?.aborted === true) {
+              onAbort();
+            } else {
+              signal?.addEventListener("abort", onAbort, { once: true });
+            }
+          }).finally(() => {
+            concatSettled = true;
+          });
+        },
+      );
+
+      const { deps, removeDirectory } = exportDeps(fs, registry, renderer, run);
+      const response = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        geometry: { fps: 10, width: 320, height: 180 },
+      });
+
+      expect(response.status).toBe(202);
+      const jobId = (response.body as { id: string }).id;
+      await waitUntil(() => run.mock.calls.some((call) => isConcat((call as unknown[])[1] as string[])));
+
+      await registry.cancel(jobId);
+      await waitUntil(() => concatSettled);
+      await waitUntil(() => removeDirectory.mock.calls.length > 0);
+
+      expect(concatSawAbort).toBe(true);
+      expect(registry.get(jobId)?.status).toBe("cancelled");
+      expect(fs.files.has("/out/final.mp4")).toBe(false);
+      expect(fs.files.has("/out/final.mp4.provenance.json")).toBe(false);
+      expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
+      expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
+    });
+
+    it("kills a hanging segment render and publishes nothing on cancel", async () => {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seedExport(fs, root);
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+
+      let segmentSawAbort = false;
+      let segmentSettled = false;
+      const run = vi.fn(
+        async (_file: string, args: readonly string[], options?: { signal?: AbortSignal }) => {
+          if (isConcat(args)) {
+            return;
+          }
+          await new Promise<void>((_resolve, reject) => {
+            const signal = options?.signal;
+            const onAbort = () => {
+              segmentSawAbort = true;
+              reject(new ExportError("cancelled", "export cancelled"));
+            };
+            if (signal?.aborted === true) {
+              onAbort();
+            } else {
+              signal?.addEventListener("abort", onAbort, { once: true });
+            }
+          }).finally(() => {
+            segmentSettled = true;
+          });
+        },
+      );
+
+      const { deps, removeDirectory } = exportDeps(fs, registry, renderer, run);
+      const response = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        geometry: { fps: 10, width: 320, height: 180 },
+      });
+
+      expect(response.status).toBe(202);
+      const jobId = (response.body as { id: string }).id;
+      await waitUntil(() =>
+        run.mock.calls.some((call) => !isConcat((call as unknown[])[1] as string[])),
+      );
+
+      await registry.cancel(jobId);
+      await waitUntil(() => segmentSettled);
+      await waitUntil(() => removeDirectory.mock.calls.length > 0);
+
+      expect(segmentSawAbort).toBe(true);
+      expect(registry.get(jobId)?.status).toBe("cancelled");
+      expect(fs.files.has("/out/final.mp4")).toBe(false);
+      expect(fs.files.has("/out/final.mp4.provenance.json")).toBe(false);
       expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
       expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
     });

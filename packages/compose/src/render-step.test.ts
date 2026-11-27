@@ -230,4 +230,34 @@ describe("createStepRenderer", () => {
 
     expect(argsOf(run)).not.toContain("-ss");
   });
+
+  it("passes the abort signal to the slide renderer and the composite run", async () => {
+    const controller = new AbortController();
+    const { deps, renderer, run } = makeDeps({ signal: controller.signal });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "brand", role: "title", durationSeconds: 1, text: "Hello" }, 0);
+
+    expect(renderer.render).toHaveBeenCalledWith(
+      expect.objectContaining({ template: "title" }),
+      expect.objectContaining({ signal: controller.signal }),
+    );
+    expect(run).toHaveBeenCalledWith("ffmpeg", expect.any(Array), { signal: controller.signal });
+  });
+
+  it("passes the abort signal to the video-range run", async () => {
+    const controller = new AbortController();
+    const { deps, renderer, run } = makeDeps({
+      signal: controller.signal,
+      scenes: new Map([
+        ["talk", { videoRange: { input: "/media/take.mp4", startSeconds: 2, durationSeconds: 3 } }],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "talk", durationSeconds: 3 }, 0);
+
+    expect(renderer.render).not.toHaveBeenCalled();
+    expect(run).toHaveBeenCalledWith("ffmpeg", expect.any(Array), { signal: controller.signal });
+  });
 });

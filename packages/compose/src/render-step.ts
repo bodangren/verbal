@@ -22,11 +22,18 @@ export type StepScene = {
   silence?: boolean;
 };
 
+/** Runs one ffmpeg subprocess; the signal aborts the child when cancelled. */
+export type FfmpegRun = (
+  file: string,
+  args: readonly string[],
+  options: { signal?: AbortSignal },
+) => Promise<unknown>;
+
 export type RenderStepDeps = {
   renderer: SlideRenderer;
   cache: SlideCache;
   /** Runs ffmpeg; injected so the adapter stays testable. */
-  run: (file: string, args: readonly string[]) => Promise<unknown>;
+  run: FfmpegRun;
   workDirectory: string;
   geometry: PreviewGeometry;
   speaker: { input: string; hasAudio?: boolean };
@@ -35,6 +42,8 @@ export type RenderStepDeps = {
   /** Layout for storyboard scenes; brand steps are always full-frame. */
   sceneLayout?: "speaker-inset" | "side-by-side" | "full-frame";
   codecs?: CompositeCodecs;
+  /** Cancellation signal threaded into every ffmpeg run and slide render. */
+  signal?: AbortSignal;
 };
 
 export type StepAdapterErrorCode = "missing-scene" | "slide-failed";
@@ -129,6 +138,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           ...(deps.codecs?.videoArgs === undefined ? {} : { videoArgs: deps.codecs.videoArgs }),
           ...(deps.codecs?.audioArgs === undefined ? {} : { audioArgs: deps.codecs.audioArgs }),
         }),
+        { signal: deps.signal },
       );
       return outputPath;
     }
@@ -153,6 +163,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           ...(deps.codecs?.videoArgs === undefined ? {} : { videoArgs: deps.codecs.videoArgs }),
           ...(deps.codecs?.audioArgs === undefined ? {} : { audioArgs: deps.codecs.audioArgs }),
         }),
+        { signal: deps.signal },
       );
       return outputPath;
     }
@@ -178,7 +189,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
         ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),
       };
 
-      await deps.run("ffmpeg", buildCompositeArgs(assetRequest));
+      await deps.run("ffmpeg", buildCompositeArgs(assetRequest), { signal: deps.signal });
       return outputPath;
     }
 
@@ -195,6 +206,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
         width: deps.geometry.width,
         height: deps.geometry.height,
       },
+      { signal: deps.signal },
     );
 
     if (outcome.status !== "rendered") {
@@ -222,7 +234,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
       ...(deps.codecs === undefined ? {} : { codecs: deps.codecs }),
     };
 
-    await deps.run("ffmpeg", buildCompositeArgs(request));
+    await deps.run("ffmpeg", buildCompositeArgs(request), { signal: deps.signal });
 
     return outputPath;
   };

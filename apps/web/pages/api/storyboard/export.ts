@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { nodeFileSystem } from "@verbal/core";
-import { runCommand } from "@verbal/media";
+import { spawnProcess } from "@verbal/media";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../../server/http";
 import { getJobRegistry } from "../../../server/registry";
 import { createStoryboardRenderer } from "../../../server/remotion-renderer";
@@ -20,7 +20,7 @@ export default async function handler(
       fs: nodeFileSystem,
       registry: await getJobRegistry(),
       renderer: createStoryboardRenderer(),
-      run: runCommand,
+      run: spawnProcess,
       now: () => new Date(),
     },
     await readJsonBody(request),
