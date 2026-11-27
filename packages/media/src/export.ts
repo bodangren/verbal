@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { promises as nodeFs } from "node:fs";
+import { dirname, basename, extname, resolve } from "node:path";
 import type { CutRange } from "./cutlist";
 
 export type ExportErrorCode =
@@ -232,11 +234,41 @@ export const spawnProcess: Spawner = (file, args, options) =>
   });
 
 export type RunExportInput = BuildExportArgsInput & {
+  jobId?: string;
   signal?: AbortSignal;
   onProgress?: (progress: ExportProgress) => void;
   spawner?: Spawner;
   unlink?: (path: string) => Promise<void>;
+  rename?: (from: string, to: string) => Promise<void>;
 };
+
+export type Realpath = (path: string) => Promise<string>;
+
+export async function resolveExportDestination(
+  source: string,
+  destination: string,
+  realpath: Realpath = nodeFs.realpath,
+): Promise<string> {
+  const [sourceReal, destinationReal] = await Promise.all([
+    realpath(resolve(source)),
+    realpath(resolve(destination)).catch(() =>
+      realpath(dirname(resolve(destination))).then((parent) =>
+        resolve(parent, basename(destination)),
+      ),
+    ),
+  ]);
+  const sameRealPath = sourceReal === destinationReal;
+  const sameInode = await nodeFs.stat(resolve(source)).then(async (sourceStat) => {
+    const destinationStat = await nodeFs.stat(resolve(destination)).catch(() => undefined);
+    return destinationStat !== undefined &&
+      sourceStat.dev === destinationStat.dev &&
+      sourceStat.ino === destinationStat.ino;
+  });
+  if (sameRealPath || sameInode) {
+    throw new ExportError("invalid-option", "outputPath must not be the source video");
+  }
+  return destination;
+}
 
 /**
  * Runs an export, reporting progress and removing a partial file on failure.
@@ -245,7 +277,10 @@ export type RunExportInput = BuildExportArgsInput & {
  * like a finished one.
  */
 export async function runExport(input: RunExportInput): Promise<void> {
-  const args = buildExportArgs(input);
+  const extension = extname(input.outputPath);
+  const stem = extension === "" ? input.outputPath : input.outputPath.slice(0, -extension.length);
+  const partialPath = `${stem}.${input.jobId ?? randomUUID()}.partial${extension}`;
+  const args = buildExportArgs({ ...input, outputPath: partialPath });
   const expectedSeconds = input.kept.reduce(
     (total, range) => total + (range.end - range.start),
     0,
@@ -254,6 +289,7 @@ export async function runExport(input: RunExportInput): Promise<void> {
   const onProgress = input.onProgress ?? (() => undefined);
   const feed = createProgressParser(expectedSeconds, onProgress);
   const spawner = input.spawner ?? spawnProcess;
+  const rename = input.rename ?? (async (from: string, to: string) => nodeFs.rename(from, to));
   const unlink =
     input.unlink ??
     (async (path: string) => {
@@ -265,8 +301,9 @@ export async function runExport(input: RunExportInput): Promise<void> {
       signal: input.signal,
       onStdout: feed,
     });
+    await rename(partialPath, input.outputPath);
   } catch (error) {
-    await unlink(input.outputPath).catch(() => undefined);
+    await unlink(partialPath).catch(() => undefined);
     throw error;
   }
 }

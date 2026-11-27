@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, writeFile, symlink, link, mkdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildExportArgs,
   createProgressParser,
   ExportError,
   runExport,
+  resolveExportDestination,
   type Spawner,
 } from "./export";
 
@@ -128,6 +132,43 @@ describe("createProgressParser", () => {
 });
 
 describe("runExport", () => {
+  for (const extension of [".mp4", ".webm", ".mkv", ".wav", ".m4a"]) {
+    it(`keeps ${extension} at the end of the partial output path`, async () => {
+      let args: readonly string[] = [];
+      await runExport({
+        inputPath: "/media/in.mp4",
+        outputPath: `/media/out${extension}`,
+        jobId: "job",
+        kept,
+        hasAudio: true,
+        spawner: async (_file, nextArgs) => { args = nextArgs; },
+        rename: async () => undefined,
+        unlink: async () => undefined,
+      });
+      expect(args.at(-1)).toBe(`/media/out.job.partial${extension}`);
+      expect(args).not.toContain("-f");
+    });
+  }
+
+  it("does not overwrite an existing destination when the runner fails", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "export-"));
+    try {
+      const destination = join(directory, "out.mp4");
+      await writeFile(destination, "old");
+      await expect(runExport({
+        inputPath: join(directory, "source.mp4"),
+        outputPath: destination,
+        jobId: "job",
+        kept,
+        hasAudio: true,
+        spawner: async () => { throw new Error("failed"); },
+      })).rejects.toThrow("failed");
+      expect(await (await import("node:fs/promises")).readFile(destination, "utf8")).toBe("old");
+      expect(await (await import("node:fs/promises")).readdir(directory)).toEqual(["out.mp4"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
   it("forwards progress reported by the spawner", async () => {
     const seen: number[] = [];
     const spawner: Spawner = async (_file, _args, options) => {
@@ -140,6 +181,7 @@ describe("runExport", () => {
       kept,
       hasAudio: true,
       spawner,
+      rename: async () => undefined,
       onProgress: (progress) => seen.push(progress.percent),
     });
 
@@ -159,17 +201,19 @@ describe("runExport", () => {
         kept,
         hasAudio: true,
         spawner,
+        jobId: "test-job",
         unlink: async (path) => {
           removed.push(path);
         },
       }),
     ).rejects.toBeInstanceOf(ExportError);
 
-    expect(removed).toEqual(["/media/out.mp4"]);
+    expect(removed).toEqual(["/media/out.test-job.partial.mp4"]);
   });
 
   it("does not remove the output on success", async () => {
     const removed: string[] = [];
+    const renamed: string[][] = [];
     const spawner: Spawner = async () => undefined;
 
     await runExport({
@@ -178,11 +222,44 @@ describe("runExport", () => {
       kept,
       hasAudio: true,
       spawner,
+      jobId: "test-job",
       unlink: async (path) => {
         removed.push(path);
+      },
+      rename: async (from, to) => {
+        renamed.push([from, to]);
       },
     });
 
     expect(removed).toEqual([]);
+    expect(renamed).toEqual([["/media/out.test-job.partial.mp4", "/media/out.mp4"]]);
+  });
+});
+
+describe("resolveExportDestination", () => {
+  it("rejects file symlinks, hardlinks, and symlinked directories but accepts distinct case paths", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "export-path-"));
+    try {
+      const source = join(directory, "Video.mp4");
+      const distinctCase = join(directory, "video.mp4");
+      const fileAlias = join(directory, "file-link.mp4");
+      const hardAlias = join(directory, "hard-link.mp4");
+      const linkedDirectory = join(directory, "linked");
+      await writeFile(source, "source");
+      await writeFile(distinctCase, "other");
+      await symlink(source, fileAlias);
+      await link(source, hardAlias);
+      await mkdir(linkedDirectory);
+      const directoryAlias = join(directory, "directory-link");
+      await symlink(linkedDirectory, directoryAlias);
+      const directorySource = join(linkedDirectory, "source.mp4");
+      await symlink(source, directorySource);
+      await expect(resolveExportDestination(source, fileAlias)).rejects.toThrow("outputPath must not be the source video");
+      await expect(resolveExportDestination(source, hardAlias)).rejects.toThrow("outputPath must not be the source video");
+      await expect(resolveExportDestination(source, join(directoryAlias, "source.mp4"))).rejects.toThrow("outputPath must not be the source video");
+      await expect(resolveExportDestination(source, distinctCase)).resolves.toBe(distinctCase);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

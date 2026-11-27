@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { realpath } from "node:fs/promises";
 import {
   nodeFileSystem,
   openProject,
@@ -6,7 +7,7 @@ import {
   projectPaths,
   resolveInsideProject,
 } from "@verbal/core";
-import { buildCutList, probeMedia, runCommand, runExport } from "@verbal/media";
+import { buildCutList, probeMedia, resolveExportDestination, runCommand, runExport } from "@verbal/media";
 import { resolvePreset, withPresetExtension } from "@verbal/media/presets";
 import { failure } from "../../server/api-errors";
 import { runExportJob } from "../../server/export-job";
@@ -43,6 +44,15 @@ export default async function handler(
       sendJson(response, { status: 400, body: { error: "project has no media" } });
       return;
     }
+    try {
+      await resolveExportDestination(mediaPath, outputPath, realpath);
+    } catch (error) {
+      if (error instanceof Error && error.message === "outputPath must not be the source video") {
+        sendJson(response, { status: 400, body: { error: error.message } });
+        return;
+      }
+      throw error;
+    }
 
     const transcript = parseTranscript(
       await nodeFileSystem.readFile(projectPaths(projectRoot).transcript),
@@ -61,6 +71,7 @@ export default async function handler(
       await runExport({
         inputPath: mediaPath,
         outputPath,
+        jobId: job.id,
         kept: cutList.kept,
         hasAudio,
         codecs: preset.codecs,
