@@ -42,8 +42,15 @@ function readCollapsed(): boolean {
 
 function subscribeCollapsed(listener: () => void): () => void {
   collapseListeners.add(listener);
+  // The default depends on the viewport, so a live resize re-reads it.
+  const query =
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 1100px)")
+      : undefined;
+  query?.addEventListener?.("change", listener);
   return () => {
     collapseListeners.delete(listener);
+    query?.removeEventListener?.("change", listener);
   };
 }
 

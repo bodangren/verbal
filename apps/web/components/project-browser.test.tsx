@@ -114,9 +114,7 @@ describe("ProjectBrowser", () => {
     const { container } = setup({ currentRoot: "" });
 
     expect(container.querySelector(".browser--collapsed")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Collapse Project Browser" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse Project Browser" })).toBeTruthy();
   });
 
   it("hydrates the server markup without a mismatch on narrow screens", async () => {
@@ -137,11 +135,9 @@ describe("ProjectBrowser", () => {
 
     mockMatchMedia(true);
     const seen: string[] = [];
-    const spy = vi
-      .spyOn(console, "error")
-      .mockImplementation((...args: unknown[]) => {
-        seen.push(String(args[0]));
-      });
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      seen.push(String(args[0]));
+    });
     const host = document.createElement("div");
     document.body.appendChild(host);
     host.innerHTML = html;
@@ -150,9 +146,7 @@ describe("ProjectBrowser", () => {
       await act(async () => {
         root = hydrateRoot(host, <ProjectBrowser {...props} />);
       });
-      const hydrationErrors = seen.filter((message) =>
-        /hydrat|did not match|#418/i.test(message),
-      );
+      const hydrationErrors = seen.filter((message) => /hydrat|did not match|#418/i.test(message));
       expect(hydrationErrors).toEqual([]);
       await act(async () => {
         root?.unmount();
@@ -161,5 +155,34 @@ describe("ProjectBrowser", () => {
       spy.mockRestore();
       host.remove();
     }
+  });
+
+  it("collapses when the window narrows without a reload", () => {
+    let listener: (() => void) | undefined;
+    let matches = false;
+    window.matchMedia = ((query: string) => ({
+      get matches() {
+        return matches;
+      },
+      media: query,
+      onchange: null,
+      addEventListener: (_type: string, callback: () => void) => {
+        listener = callback;
+      },
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+
+    const { container } = setup();
+    expect(container.querySelector(".browser--collapsed")).toBeNull();
+
+    matches = true;
+    act(() => {
+      listener?.();
+    });
+
+    expect(container.querySelector(".browser--collapsed")).not.toBeNull();
   });
 });
