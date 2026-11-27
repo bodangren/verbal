@@ -110,13 +110,14 @@ export type JobListener = (jobs: readonly JobRecord[]) => void;
 /**
  * Tracks background jobs and persists every change.
  *
- * On open, any job left `running` by a previous process is marked `failed`:
- * its child process is gone, and silently re-running an export is worse than
- * reporting that it was interrupted.
+ * On open, any job left `running` or `queued` by a previous process is marked
+ * `failed`: its runner is gone, and silently re-running an export is worse than
+ * reporting that the server restarted.
  */
 export class JobRegistry {
   private jobs: JobRecord[] = [];
   private readonly listeners = new Set<JobListener>();
+  private saveChain: Promise<void> = Promise.resolve();
 
   private constructor(
     private readonly store: JobStore,
@@ -250,7 +251,7 @@ export class JobRegistry {
     let changed = false;
 
     this.jobs = this.jobs.map((job) => {
-      if (job.status !== "running") {
+      if (job.status !== "running" && job.status !== "queued") {
         return job;
       }
 
@@ -258,7 +259,7 @@ export class JobRegistry {
       return {
         ...job,
         status: "failed" as const,
-        error: "interrupted by restart",
+        error: "server restarted",
         updatedAt: this.now().toISOString(),
       };
     });
@@ -269,8 +270,11 @@ export class JobRegistry {
   }
 
   private async persist(): Promise<void> {
-    await this.store.save(this.jobs);
     const snapshot = this.list();
+    const save = this.saveChain.then(() => this.store.save(snapshot));
+    this.saveChain = save.catch(() => undefined);
+    await save;
+
     for (const listener of [...this.listeners]) {
       listener(snapshot);
     }
