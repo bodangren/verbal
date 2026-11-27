@@ -1340,6 +1340,16 @@ h2 {
   background: transparent;
 }
 
+.button--danger {
+  background: var(--error-surface);
+  border-color: var(--error-border);
+  color: var(--error);
+}
+
+.button--danger:hover:enabled {
+  border-color: var(--error);
+}
+
 .icon-button {
   align-items: center;
   background: transparent;

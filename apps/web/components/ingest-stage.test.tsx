@@ -115,6 +115,79 @@ describe("IngestStage", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
   });
 
+  it("names the edit counts in the confirm", () => {
+    setup({
+      state: { kind: "transcribed", words: 81 },
+      hasEdits: true,
+      removedWords: 3,
+      silences: 1,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(
+      screen.getByText(
+        "Transcribing again replaces your edits to this transcript: 3 removed words, 1 silence.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("uses singular forms when each count is one", () => {
+    setup({
+      state: { kind: "transcribed", words: 81 },
+      hasEdits: true,
+      removedWords: 1,
+      silences: 1,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(
+      screen.getByText(
+        "Transcribing again replaces your edits to this transcript: 1 removed word, 1 silence.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("omits a part whose count is zero", () => {
+    setup({
+      state: { kind: "transcribed", words: 81 },
+      hasEdits: true,
+      removedWords: 2,
+      silences: 0,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(
+      screen.getByText(
+        "Transcribing again replaces your edits to this transcript: 2 removed words.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("styles Replace Transcript as destructive", () => {
+    setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+    const replace = screen.getByRole("button", { name: "Replace Transcript" });
+
+    expect(replace.className).toContain("button--danger");
+    expect(replace.className).not.toContain("button--primary");
+  });
+
+  it("gives Cancel initial focus when counts trigger the confirm", () => {
+    setup({
+      state: { kind: "transcribed", words: 81 },
+      removedWords: 3,
+      silences: 1,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transcribe Again" }));
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+  });
+
   it("replaces the transcript on confirmation", () => {
     const props = setup({ state: { kind: "transcribed", words: 81 }, hasEdits: true });
 

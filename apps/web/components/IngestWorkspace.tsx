@@ -219,6 +219,8 @@ export function IngestWorkspace({
           }}
           onRecord={onOpenStudio}
           hasEdits={hasEdits}
+          removedWords={transcript?.removedWordIds.length ?? 0}
+          silences={transcript?.silences?.length ?? 0}
           onTranscribe={onTranscribe}
           onRetry={onTranscribe}
           onTranscribeSeveral={onOpenBatch}

@@ -20,6 +20,10 @@ export type IngestStageProps = {
   hint?: string;
   /** True when the current transcript has edits that transcription would replace. */
   hasEdits?: boolean;
+  /** Removed words in the current transcript. */
+  removedWords?: number;
+  /** Inserted silences in the current transcript. */
+  silences?: number;
   onImport: () => void;
   onRecord: () => void;
   onTranscribe: () => void;
@@ -44,6 +48,19 @@ function stateLabel(state: MediaState): string {
   }
 }
 
+/** The confirm sentence, with a count part for each non-zero edit kind. */
+function replacementMessage(removedWords: number, silences: number): string {
+  const sentence = "Transcribing again replaces your edits to this transcript";
+  const parts: string[] = [];
+  if (removedWords > 0) {
+    parts.push(`${removedWords} removed ${removedWords === 1 ? "word" : "words"}`);
+  }
+  if (silences > 0) {
+    parts.push(`${silences} ${silences === 1 ? "silence" : "silences"}`);
+  }
+  return parts.length === 0 ? `${sentence}.` : `${sentence}: ${parts.join(", ")}.`;
+}
+
 /**
  * The Ingest stage: one import card, the media row with its transcription
  * state, and the provider in use.
@@ -59,6 +76,8 @@ export function IngestStage({
   cloud,
   hint,
   hasEdits = false,
+  removedWords = 0,
+  silences = 0,
   onImport,
   onRecord,
   onTranscribe,
@@ -68,6 +87,7 @@ export function IngestStage({
 }: IngestStageProps) {
   const canTranscribe =
     mediaName !== null && state.kind !== "transcribing" && state.kind !== "none";
+  const hasAnyEdits = hasEdits || removedWords > 0 || silences > 0;
   const [confirming, setConfirming] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +97,7 @@ export function IngestStage({
   }, [confirming]);
 
   function requestTranscribe() {
-    if (hasEdits) {
+    if (hasAnyEdits) {
       setConfirming(true);
       return;
     }
@@ -206,11 +226,11 @@ export function IngestStage({
               }
             }}
           >
-            <p>Transcribing again replaces your edits to this transcript.</p>
+            <p>{replacementMessage(removedWords, silences)}</p>
             <div className="toolbar">
               <button
                 type="button"
-                className="button button--primary"
+                className="button button--danger"
                 onClick={confirmTranscribe}
               >
                 Replace Transcript
