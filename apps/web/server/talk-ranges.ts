@@ -67,7 +67,7 @@ export function computeTalkItems(input: TalkItemsInput): TalkItem[] {
   let current: { start: number; end: number } | undefined;
   let afterRemoval = 0;
   let removalStart = Number.POSITIVE_INFINITY;
-  let previousKept: string | undefined;
+  let previousKeptWord: TranscriptDocument["words"][number] | undefined;
 
   const flush = () => {
     if (current !== undefined) {
@@ -101,9 +101,17 @@ export function computeTalkItems(input: TalkItemsInput): TalkItem[] {
       if (current === undefined) {
         current = { start, end: word.end };
       } else {
-        const excluded = new Set([previousKept, word.id].filter((id): id is string => id !== undefined));
+        const excluded = new Set(
+          [previousKeptWord?.id, word.id].filter((id): id is string => id !== undefined),
+        );
+        const reordered =
+          previousKeptWord !== undefined &&
+          (start < previousKeptWord.start - EPSILON ||
+            (Math.abs(start - previousKeptWord.start) <= EPSILON &&
+              word.end < previousKeptWord.end - EPSILON));
+        const overlaps = start < current.end - EPSILON;
         const split =
-          start < current.end - EPSILON || hasWordInside(current.end, start, words, excluded);
+          (overlaps && reordered) || hasWordInside(current.end, start, words, excluded);
         if (split) {
           flush();
           current = { start, end: word.end };
@@ -111,7 +119,7 @@ export function computeTalkItems(input: TalkItemsInput): TalkItem[] {
           current.end = Math.max(current.end, word.end);
         }
       }
-      previousKept = word.id;
+      previousKeptWord = word;
     }
 
     const seconds = silences.get(word.id);

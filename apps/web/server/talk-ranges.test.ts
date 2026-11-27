@@ -131,6 +131,64 @@ describe("computeTalkItems", () => {
       computeTalkItems({ transcript, startWordId: "w1", endWordId: "w2" }),
     ).toEqual([{ kind: "video", startSeconds: 1, endSeconds: 3 }]);
   });
+
+  it("merges overlapping words with no edit between them", () => {
+    const transcript = createTranscript([
+      { text: "one", start: 0, end: 1 },
+      { text: "two", start: 0.8, end: 2 },
+    ]);
+
+    expect(items(transcript, "w1")).toEqual([
+      { kind: "video", startSeconds: 0, endSeconds: 2 },
+    ]);
+  });
+
+  it("merges a short word nested inside a longer word", () => {
+    const transcript = createTranscript([
+      { text: "one", start: 0, end: 2 },
+      { text: "two", start: 1, end: 1.5 },
+    ]);
+
+    expect(items(transcript, "w1")).toEqual([
+      { kind: "video", startSeconds: 0, endSeconds: 2 },
+    ]);
+  });
+
+  it("keeps overlapping words split when a deletion lies between them", () => {
+    const transcript = removeRange(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "cut", start: 1.1, end: 1.2 },
+        { text: "two", start: 0.8, end: 2 },
+      ]),
+      1,
+      1,
+    );
+
+    expect(items(transcript, "w2")).toEqual([
+      { kind: "video", startSeconds: 0, endSeconds: 1.05 },
+      { kind: "video", startSeconds: 1.25, endSeconds: 2 },
+    ]);
+  });
+
+  it("keeps overlapping words split when they are reordered", () => {
+    const transcript = moveRange(
+      createTranscript([
+        { text: "one", start: 0, end: 1 },
+        { text: "two", start: 0.8, end: 2 },
+      ]),
+      1,
+      1,
+      0,
+    );
+
+    expect(
+      computeTalkItems({ transcript, startWordId: "w1", endWordId: "w0" }),
+    ).toEqual([
+      { kind: "video", startSeconds: 0.8, endSeconds: 2 },
+      { kind: "video", startSeconds: 0, endSeconds: 1 },
+    ]);
+  });
 });
 
 describe("removal-only equivalence", () => {
