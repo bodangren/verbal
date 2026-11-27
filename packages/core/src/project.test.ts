@@ -8,6 +8,7 @@ import {
   mediaRevisionMismatch,
   openProject,
   parseProjectDocument,
+  replaceProjectMedia,
   serializeProjectDocument,
   type ProjectErrorCode,
 } from "./project";
@@ -334,5 +335,56 @@ describe("mediaRevisionMismatch", () => {
 
   it("is true when both revisions exist and differ", () => {
     expect(mediaRevisionMismatch("rev-1", "rev-2")).toBe(true);
+  });
+});
+
+describe("replaceProjectMedia", () => {
+  it("sets an asset reference with a fresh revision", async () => {
+    const project = parseProjectDocument(JSON.stringify(validDocument()));
+    const source = {
+      mediaPath: "/projects/p/assets/b.mp4",
+      stat: async () => ({ size: 100, mtimeMs: 2000 }),
+    };
+
+    const updated = await replaceProjectMedia(project, { assetPath: "assets/b.mp4" }, source);
+
+    expect(updated.media).toEqual({
+      assetPath: "assets/b.mp4",
+      mediaRevision: await computeMediaRevision(source),
+    });
+    expect(updated.id).toBe("p-1");
+    expect(updated.name).toBe("Demo");
+  });
+
+  it("sets an external reference with a fresh revision", async () => {
+    const project = parseProjectDocument(JSON.stringify(validDocument()));
+    const source = {
+      mediaPath: "/media/b.mp4",
+      stat: async () => ({ size: 7, mtimeMs: 9 }),
+    };
+
+    const updated = await replaceProjectMedia(project, { externalPath: "/media/b.mp4" }, source);
+
+    expect(updated.media).toEqual({
+      externalPath: "/media/b.mp4",
+      mediaRevision: await computeMediaRevision(source),
+    });
+  });
+
+  it("replaces an existing revision", async () => {
+    const project = parseProjectDocument(
+      JSON.stringify({
+        ...validDocument(),
+        media: { assetPath: "assets/a.mp4", mediaRevision: "rev-old" },
+      }),
+    );
+    const source = {
+      mediaPath: "/projects/p/assets/b.mp4",
+      stat: async () => ({ size: 1, mtimeMs: 1 }),
+    };
+
+    const updated = await replaceProjectMedia(project, { assetPath: "assets/b.mp4" }, source);
+
+    expect(updated.media?.mediaRevision).toBe(await computeMediaRevision(source));
   });
 });

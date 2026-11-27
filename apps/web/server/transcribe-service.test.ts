@@ -75,6 +75,7 @@ describe("createTranscribeService provider selection", () => {
       resolveAsr: () => CLOUD,
       apiKey: () => "key",
       createProvider: () => provider,
+      stat: fakeStat,
     });
     const running = service.transcribeNow(ROOT, controller.signal);
     await vi.waitFor(() => expect(observedSignal).toBeDefined());
@@ -253,6 +254,59 @@ describe("transcription media revisions", () => {
       fs.files.get(path.join(ROOT, "transcript.json")) ?? "{}",
     ) as { mediaRevision?: string };
     expect(stored.mediaRevision).toBe(expected);
+  });
+
+  it("stamps a legacy project first, so a later import drops the result", async () => {
+    const fs = projectFs();
+    let release!: () => void;
+    let entered = false;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const provider: TranscriptionProvider = {
+      id: "blocked",
+      async transcribe() {
+        entered = true;
+        await blocked;
+        return { text: "late", language: "en", words: [{ text: "late", start: 0, end: 1 }] };
+      },
+    };
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => provider,
+      stat: async () => ({ size: 42, mtimeMs: 789 }),
+    });
+
+    const running = service.transcribeNow(ROOT);
+    await vi.waitFor(() => expect(entered).toBe(true));
+
+    // The starting revision is computed and saved before the read.
+    const expectedStart = await computeMediaRevision({
+      mediaPath: "/media/take.mp4",
+      stat: async () => ({ size: 42, mtimeMs: 789 }),
+    });
+    const stamped = JSON.parse(
+      fs.files.get(path.join(ROOT, "project.json")) ?? "{}",
+    ) as { media?: { mediaRevision?: string } };
+    expect(stamped.media?.mediaRevision).toBe(expectedStart);
+
+    // Import media B while the transcription of A runs.
+    fs.files.set(
+      path.join(ROOT, "project.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "p1",
+        name: "Local",
+        createdAt: "2026-11-21T00:00:00.000Z",
+        media: { externalPath: "/media/b.mp4", mediaRevision: "rev-b" },
+      }),
+    );
+    release();
+
+    await expect(running).rejects.toThrow(/stale/i);
+    expect(fs.files.has(path.join(ROOT, "transcript.json"))).toBe(false);
   });
 });
 

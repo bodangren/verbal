@@ -1,7 +1,7 @@
 import {
-  computeMediaRevision,
   nodeFileSystem,
   openProject,
+  replaceProjectMedia,
   saveProject,
   type FileSystem,
   type MediaRevisionStat,
@@ -67,14 +67,15 @@ export function createMediaApi(overrides: Partial<MediaApiDeps> = {}) {
         const result = await deps.importMedia(deps.importFs, { mode, sourcePath, projectRoot });
 
         const mediaPath = result.mode === "copy" ? result.absolutePath : result.externalPath;
-        const mediaRevision = await computeMediaRevision({ mediaPath, stat: deps.stat });
-
-        const media =
+        const newMedia =
           result.mode === "copy"
-            ? { assetPath: result.assetPath, mediaRevision }
-            : { externalPath: result.externalPath, mediaRevision };
+            ? { assetPath: result.assetPath }
+            : { externalPath: result.externalPath };
 
-        const updated = { ...project, media };
+        const updated = await replaceProjectMedia(project, newMedia, {
+          mediaPath,
+          stat: deps.stat,
+        });
         await saveProject(deps.fs, projectRoot, updated);
 
         return { status: 200, body: { project: updated, import: result } };

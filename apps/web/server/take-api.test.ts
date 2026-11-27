@@ -2,6 +2,7 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
+  computeMediaRevision,
   nodeFileSystem,
   openProject,
   saveProject,
@@ -11,7 +12,7 @@ import {
 } from "@verbal/core";
 import { afterEach, describe, expect, it } from "vitest";
 import type { NormalizeJobInput } from "./normalize-job";
-import { createTakeApi, normalizeTakeId, uploadedTakePath } from "./take-api";
+import { createTakeApi, normalizeTakeId, normalizedTakePath, uploadedTakePath } from "./take-api";
 import { readTakes } from "./take-store";
 
 const roots: string[] = [];
@@ -53,6 +54,7 @@ async function setup() {
       normalized.push(input);
       await input.onOutput?.(input.outputPath);
     },
+    stat: async () => ({ size: 123, mtimeMs: 456 }),
   });
 
   return { root, api, normalized };
@@ -89,8 +91,13 @@ describe("take api", () => {
         durationSeconds: 12,
       },
     ]);
+    const expectedRevision = await computeMediaRevision({
+      mediaPath: normalizedTakePath(root, "take-1"),
+      stat: async () => ({ size: 123, mtimeMs: 456 }),
+    });
     expect((await openProject(nodeFileSystem, root)).media).toEqual({
       assetPath: "takes/take-1.mp4",
+      mediaRevision: expectedRevision,
     });
     await expect(readFile(uploadedTakePath(root, "take-1"))).rejects.toMatchObject({
       code: "ENOENT",

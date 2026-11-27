@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
+  mediaRevisionMismatch,
   nodeFileSystem,
+  openProject,
   parseTranscript,
   projectPaths,
   saveTranscript,
@@ -49,14 +51,29 @@ export default async function handler(
       const body = asRecord(await readJsonBody(request));
       const root = requireAbsolutePath(body.root, "root");
       const transcript = validateTranscript(body.document);
+      const project = await openProject(nodeFileSystem, root);
+      const projectRevision = project.media?.mediaRevision;
+
+      if (mediaRevisionMismatch(projectRevision, transcript.mediaRevision)) {
+        sendJson(response, {
+          status: 409,
+          body: { error: "The transcript belongs to different media. Transcribe again." },
+        });
+        return;
+      }
+
+      const stamped =
+        transcript.mediaRevision === undefined && projectRevision !== undefined
+          ? { ...transcript, mediaRevision: projectRevision }
+          : transcript;
 
       await saveTranscript(
         nodeFileSystem,
         projectPaths(root).transcript,
-        transcript,
+        stamped,
       );
 
-      sendJson(response, { status: 200, body: transcript });
+      sendJson(response, { status: 200, body: stamped });
       return;
     }
 

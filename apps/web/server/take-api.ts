@@ -7,9 +7,11 @@ import {
   nodeFileSystem,
   openProject,
   ProjectError,
+  replaceProjectMedia,
   saveProject,
   type FileSystem,
   type JobRegistry,
+  type MediaRevisionStat,
 } from "@verbal/core";
 import { failure } from "./api-errors";
 import { PayloadTooLargeError } from "./http";
@@ -73,6 +75,7 @@ export type TakeApiDeps = {
   fs?: FileSystem;
   now?: () => Date;
   maxUploadBytes?: number;
+  stat?: (path: string) => Promise<MediaRevisionStat>;
 };
 
 /**
@@ -86,6 +89,12 @@ export function createTakeApi(overrides: TakeApiDeps) {
   const fs = overrides.fs ?? nodeFileSystem;
   const now = overrides.now ?? (() => new Date());
   const maxUploadBytes = overrides.maxUploadBytes ?? MAX_UPLOAD_BYTES;
+  const stat =
+    overrides.stat ??
+    (async (mediaPath: string) => {
+      const info = await nodeFs.stat(mediaPath);
+      return { size: info.size, mtimeMs: info.mtimeMs };
+    });
 
   return {
     async list(input: unknown): Promise<ApiResponse> {
@@ -148,10 +157,12 @@ export function createTakeApi(overrides: TakeApiDeps) {
                 createdAt: now().toISOString(),
                 durationSeconds: duration,
               });
-              await saveProject(fs, root, {
-                ...project,
-                media: { assetPath: `takes/${fileName}` },
-              });
+              const updated = await replaceProjectMedia(
+                project,
+                { assetPath: `takes/${fileName}` },
+                { mediaPath: outputPath, stat },
+              );
+              await saveProject(fs, root, updated);
             },
           })
           .finally(() => {

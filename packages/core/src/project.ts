@@ -56,6 +56,25 @@ export function mediaRevisionMismatch(
   );
 }
 
+/** A media reference without its revision; `replaceProjectMedia` adds it. */
+export type NewMediaReference = { assetPath: string } | { externalPath: string };
+
+/**
+ * Returns a project whose media is `newMedia` plus a fresh revision.
+ *
+ * Every path that swaps a project's media must go through here, so a new file
+ * always gets a new revision and an old transcript is detected as stale. The
+ * caller saves the returned document.
+ */
+export async function replaceProjectMedia(
+  project: ProjectDocument,
+  newMedia: NewMediaReference,
+  source: MediaRevisionSource,
+): Promise<ProjectDocument> {
+  const mediaRevision = await computeMediaRevision(source);
+  return { ...project, media: { ...newMedia, mediaRevision } };
+}
+
 export type ProjectDocument = {
   schemaVersion: number;
   id: string;

@@ -1,9 +1,12 @@
 import path from "node:path";
+import { stat as statFile } from "node:fs/promises";
 import {
   openProject,
+  replaceProjectMedia,
   saveProject,
   type FileSystem,
   type JobRegistry,
+  type MediaRevisionStat,
 } from "@verbal/core";
 import type { CaptureRequest } from "@verbal/media";
 import { failure } from "./api-errors";
@@ -15,6 +18,7 @@ export type CaptureApiDeps = {
   registry: JobRegistry;
   now: () => Date;
   runCapture: (jobId: string, request: CaptureRequest) => Promise<void>;
+  stat?: (path: string) => Promise<MediaRevisionStat>;
 };
 
 /** Starts a capture and records the result as the project's media. */
@@ -53,14 +57,23 @@ export async function startCapture(
 
     const job = await deps.registry.create("capture");
 
+    const stat =
+      deps.stat ??
+      (async (mediaPath: string) => {
+        const info = await statFile(mediaPath);
+        return { size: info.size, mtimeMs: info.mtimeMs };
+      });
+
     void (async () => {
       await deps.runCapture(job.id, request);
 
       if (deps.registry.get(job.id)?.status === "done") {
-        await saveProject(deps.fs, root, {
-          ...project,
-          media: { assetPath: `assets/${fileName}` },
-        });
+        const updated = await replaceProjectMedia(
+          project,
+          { assetPath: `assets/${fileName}` },
+          { mediaPath: request.outputPath, stat },
+        );
+        await saveProject(deps.fs, root, updated);
       }
     })().catch(() => undefined);
 

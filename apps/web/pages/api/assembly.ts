@@ -1,7 +1,7 @@
 import { promises as nodeFs } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import { nodeFileSystem, openProject, saveProject } from "@verbal/core";
+import { nodeFileSystem, openProject, replaceProjectMedia, saveProject } from "@verbal/core";
 import { failure } from "../../server/api-errors";
 import { buildTakeEdl, edlDuration } from "../../server/assembly";
 import { runAssemblyJob } from "../../server/assembly-job";
@@ -92,10 +92,18 @@ export default async function handler(
         fps: 30,
         onOutput: async () => {
           const project = await openProject(nodeFileSystem, root);
-          await saveProject(nodeFileSystem, root, {
-            ...project,
-            media: { assetPath: `assets/${fileName}` },
-          });
+          const updated = await replaceProjectMedia(
+            project,
+            { assetPath: `assets/${fileName}` },
+            {
+              mediaPath: outputPath,
+              stat: async (mediaPath) => {
+                const info = await nodeFs.stat(mediaPath);
+                return { size: info.size, mtimeMs: info.mtimeMs };
+              },
+            },
+          );
+          await saveProject(nodeFileSystem, root, updated);
         },
       },
     );

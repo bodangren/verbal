@@ -17,6 +17,7 @@ import {
   openProject,
   projectPaths,
   resolveMediaPath,
+  saveProject,
   saveTranscript,
   type FileSystem,
   type JobRecord,
@@ -178,6 +179,39 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
   }
 
   /**
+   * Resolves the media path and returns the revision the transcription starts
+   * from. A project without a revision is stamped first, so a later import
+   * that writes a new revision is detected as a mismatch.
+   */
+  async function startingRevision(root: string): Promise<{
+    mediaPath: string;
+    startRevision: string;
+  }> {
+    const startProject = await openProject(deps.fs, root);
+    const mediaPath = resolveMediaPath(startProject, root);
+    if (mediaPath === null) {
+      throw new ProjectError("invalid-document", "project has no media");
+    }
+
+    const media = startProject.media;
+    if (media === undefined) {
+      throw new ProjectError("invalid-document", "project has no media");
+    }
+
+    const existing = media.mediaRevision;
+    if (existing !== undefined) {
+      return { mediaPath, startRevision: existing };
+    }
+
+    const startRevision = await computeMediaRevision({ mediaPath, stat: deps.stat });
+    await saveProject(deps.fs, root, {
+      ...startProject,
+      media: { ...media, mediaRevision: startRevision },
+    });
+    return { mediaPath, startRevision };
+  }
+
+  /**
    * Re-reads the project, drops a stale result, and stamps the transcript.
    *
    * The revision is recorded at start and checked again before the save, so a
@@ -185,8 +219,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
    */
   async function saveStampedTranscript(
     root: string,
-    mediaPath: string,
-    startRevision: string | undefined,
+    startRevision: string,
     result: TranscriptionResult,
   ): Promise<number> {
     const currentProject = await openProject(deps.fs, root);
@@ -196,15 +229,10 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       throw new Error("transcription is stale: media changed during transcription");
     }
 
-    const stamp =
-      startRevision ??
-      currentRevision ??
-      (await computeMediaRevision({ mediaPath, stat: deps.stat }));
-
     await saveTranscript(
       deps.fs,
       projectPaths(root).transcript,
-      { ...createTranscript(result.words), mediaRevision: stamp },
+      { ...createTranscript(result.words), mediaRevision: startRevision },
     );
 
     return result.words.length;
@@ -232,12 +260,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       if (signal?.aborted) throw new Error("transcription cancelled");
       const provider = providerFor();
 
-      const startProject = await openProject(deps.fs, root);
-      const mediaPath = resolveMediaPath(startProject, root);
-      if (mediaPath === null) {
-        throw new ProjectError("invalid-document", "project has no media");
-      }
-      const startRevision = startProject.media?.mediaRevision;
+      const { mediaPath, startRevision } = await startingRevision(root);
 
       const result = await provider.transcribe(
         { filePath: mediaPath },
@@ -246,7 +269,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
 
       if (signal?.aborted) throw new Error("transcription cancelled");
 
-      const save = () => saveStampedTranscript(root, mediaPath, startRevision, result);
+      const save = () => saveStampedTranscript(root, startRevision, result);
 
       if (jobId === undefined) {
         return save();
@@ -266,12 +289,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     async start(root: string): Promise<JobRecord> {
       const provider = providerFor();
 
-      const startProject = await openProject(deps.fs, root);
-      const mediaPath = resolveMediaPath(startProject, root);
-      if (mediaPath === null) {
-        throw new ProjectError("invalid-document", "project has no media");
-      }
-      const startRevision = startProject.media?.mediaRevision;
+      const { mediaPath, startRevision } = await startingRevision(root);
 
       const registry = await deps.registry();
       const job = await registry.create("transcribe");
@@ -304,7 +322,7 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
         onProgress,
         flushProgress: () => pending,
         onTranscript: async (result) => {
-          await saveStampedTranscript(root, mediaPath, startRevision, result);
+          await saveStampedTranscript(root, startRevision, result);
         },
       });
 
