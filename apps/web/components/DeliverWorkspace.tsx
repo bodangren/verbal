@@ -282,6 +282,7 @@ export function DeliverWorkspace({
   function exportStoryboard() {
     return guard(async () => {
       setRequestError(null);
+      setMessage(null);
       const record = await exportStoryboardApi({
         root,
         outputPath,
@@ -297,6 +298,7 @@ export function DeliverWorkspace({
         geometry: GEOMETRY,
       }).catch((cause: unknown) => {
         setRequestError(errorCopyFor(cause));
+        setMessage("Export failed");
         return null;
       });
       if (record === null) {

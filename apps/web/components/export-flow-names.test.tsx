@@ -64,7 +64,7 @@ function job(overrides: Record<string, unknown> = {}) {
 
 describe("Export flow names and busy state", () => {
   let current: Record<string, unknown>;
-  let exportReply: Response | null;
+  let exportReply: Response | Promise<Response> | null;
 
   beforeEach(() => {
     cleanup();
@@ -288,6 +288,38 @@ describe("Export flow names and busy state", () => {
     expect([...new Set(seen.filter((text) => text.includes("Export finished")))]).toEqual([
       "Export finished: /projects/demo/exports/Demo.mp4",
     ]);
+  });
+
+  async function finishExport(path = "/projects/demo/exports/Demo.mp4") {
+    await openExport();
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Exporting…" })).toBeTruthy());
+    current = job({ status: "done", progress: 1, message: null, result: { outputPath: path } });
+    await waitFor(
+      () => expect(screen.getByRole("status").textContent).toContain(path),
+      { timeout: 3000 },
+    );
+  }
+
+  it("clears the done text when a later export request fails", async () => {
+    await finishExport();
+    exportReply = reply({ error: "Export could not start" }, 500);
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+
+    const panel = document.getElementById("export-panel") as HTMLElement;
+    await waitFor(() => expect(within(panel).getByRole("alert")).toBeTruthy());
+    expect(screen.getByRole("status").textContent).not.toContain("Export finished");
+    expect(screen.getByRole("status").textContent).toBe("Export failed");
+  });
+
+  it("clears the done text when a new export starts", async () => {
+    await finishExport();
+    exportReply = new Promise<Response>(() => {});
+    fireEvent.click(screen.getByRole("button", { name: "Export Video" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).not.toContain("Export finished"),
+    );
   });
 
   it("sends the failure text to the one status region", async () => {

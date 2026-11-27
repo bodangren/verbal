@@ -133,6 +133,8 @@ NOT used for decorative gradients or backgrounds.
 
 The danger state is the one red exception to the accent rule. It uses `--error-surface` fill, `--error-border` border and `--error` text. Use it only for destructive confirmations.
 
+The filled red `pane-alert` is the second exception to the left-border rule under Semantic colors, and it shows a failed request inside a panel.
+
 **Text hierarchy:**
 - Primary (#F5F5F5): Headings, filenames, important labels
 - Secondary (#A0A0A0): Metadata, timestamps, supporting text
