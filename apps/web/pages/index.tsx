@@ -1937,6 +1937,7 @@ export default function Home() {
                         }
                       }}
                       onSelectionChange={setSelection}
+                      onSelectionClear={() => setSelection(null)}
                       onDeleteSelection={deleteSelection}
                       onRestore={editing.restore}
                     />

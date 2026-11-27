@@ -401,6 +401,8 @@ code {
   gap: var(--space-1);
   margin: 0;
   line-height: 1.9;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2rem;
 }
 
 .transcript__word {

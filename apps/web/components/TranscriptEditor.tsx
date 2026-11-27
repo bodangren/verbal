@@ -1,6 +1,15 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import type { TranscriptDocument, TranscriptWord } from "@verbal/core/browser";
-import { clearSelection, extendSelection, moveCaret, selectAll } from "../lib/caret";
+import { extendSelection, moveCaret, selectAll } from "../lib/caret";
 
 /** An inclusive range of word indices. */
 export type WordSelection = {
@@ -22,39 +31,157 @@ export type TranscriptEditorProps = {
   onWordClick?: (wordId: string, index: number) => void;
   /** Called when a shift-click produces a range. */
   onSelectionChange?: (selection: WordSelection, wordIds: string[]) => void;
+  /** Called when Escape clears the selection. The page clears its own state. */
+  onSelectionClear?: () => void;
   /** Called when Delete or Backspace is pressed on the region with a selection. */
   onDeleteSelection?: () => void;
   onRestore?: (fromIndex: number, toIndex: number) => void;
   caretIndex?: number;
+  /** Test-only: reports a render of the word at `index`. */
+  onWordRender?: (index: number) => void;
 };
 
+const EMPTY_RANGES: readonly WordSelection[] = [];
+
+type SelectionState = { caret: number; anchor: number | null };
+
+type SelectionAction =
+  | { type: "move"; delta: number; count: number }
+  | { type: "extend"; delta: number; count: number }
+  | { type: "selectAll"; count: number }
+  | { type: "clear" }
+  | { type: "click"; index: number; shift: boolean }
+  | { type: "sync" };
+
 /**
- * Renders a transcript as a sequence of word buttons.
- *
- * Words are real buttons so keyboard activation, focus order, and accessible
- * names come from the platform rather than from ARIA patches. Removed words
- * stay in the document (so undo is lossless) and are rendered disabled.
+ * One reducer for the caret and the local selection. `anchor` is null while
+ * the page controls the selection, an index while the user extends a range,
+ * and equal to `caret` after a move or clear (a collapsed, empty selection).
  */
+function selectionReducer(state: SelectionState, action: SelectionAction): SelectionState {
+  switch (action.type) {
+    case "move": {
+      const next = moveCaret(state.caret, action.delta, action.count);
+      return { caret: next.index, anchor: next.index };
+    }
+    case "extend": {
+      const next = extendSelection(state.caret, state.anchor, action.delta, 0, action.count);
+      return { caret: next.index, anchor: next.anchor };
+    }
+    case "selectAll": {
+      const all = selectAll(action.count);
+      return { caret: all.index, anchor: all.selection ? all.selection.toIndex : null };
+    }
+    case "clear":
+      return { caret: state.caret, anchor: state.caret };
+    case "click":
+      if (action.shift) {
+        return { caret: action.index, anchor: state.anchor ?? state.caret };
+      }
+      return { caret: action.index, anchor: null };
+    case "sync":
+      return { caret: state.caret, anchor: null };
+  }
+}
+
+/** The visible selection: a local range, the page range, or nothing. */
+function deriveSelection(
+  state: SelectionState,
+  selectedRange: WordSelection | null,
+): WordSelection | null {
+  if (state.anchor === null) {
+    return selectedRange;
+  }
+  if (state.anchor === state.caret) {
+    return null;
+  }
+  return {
+    fromIndex: Math.min(state.anchor, state.caret),
+    toIndex: Math.max(state.anchor, state.caret),
+  };
+}
+
+type WordProps = {
+  word: TranscriptWord;
+  index: number;
+  removed: boolean;
+  active: boolean;
+  matchSet: ReadonlySet<number>;
+  selected: boolean;
+  caret: boolean;
+  silenceSeconds: number | undefined;
+  onActivate: (index: number, shiftKey: boolean) => void;
+  onWordRender?: (index: number) => void;
+};
+
+const Word = memo(function Word({
+  word,
+  index,
+  removed,
+  active,
+  matchSet,
+  selected,
+  caret,
+  silenceSeconds,
+  onActivate,
+  onWordRender,
+}: WordProps) {
+  onWordRender?.(index);
+  return (
+    <Fragment>
+      <span
+        className="transcript__word"
+        id={`transcript-word-${word.id}`}
+        role="option"
+        aria-selected={selected}
+        aria-disabled={removed || undefined}
+        data-word-id={word.id}
+        data-removed={removed ? "true" : undefined}
+        data-active={active ? "true" : undefined}
+        data-selected={selected ? "true" : undefined}
+        data-caret={caret ? "true" : undefined}
+        data-match={matchSet.has(index) ? "true" : undefined}
+        aria-current={active ? "true" : undefined}
+        onClick={(event) => onActivate(index, event.shiftKey)}
+      >
+        {word.text}
+      </span>
+      {silenceSeconds !== undefined && (
+        <span
+          className="transcript__silence"
+          aria-label={`${silenceSeconds} second${silenceSeconds === 1 ? "" : "s"} of silence`}
+        >
+          {silenceSeconds} s silence
+        </span>
+      )}
+    </Fragment>
+  );
+});
+
 export function TranscriptEditor({
   transcript,
   label = "Transcript",
   activeWordId = null,
   selectedRange = null,
-  matchedRanges = [],
+  matchedRanges = EMPTY_RANGES,
   onWordClick,
   onSelectionChange,
+  onSelectionClear,
   onDeleteSelection,
   onRestore,
   caretIndex,
+  onWordRender,
 }: TranscriptEditorProps) {
-  const [caret, setCaret] = useState({ index: 0, anchor: null as number | null });
-  const [keyboardSelection, setKeyboardSelection] = useState<WordSelection | null>(null);
-  const [selectionOverride, setSelectionOverride] = useState<WordSelection | null | undefined>(
-    undefined,
-  );
-  const effectiveSelection =
-    selectionOverride === null ? null : (keyboardSelection ?? selectedRange);
-  useEffect(() => setKeyboardSelection(null), [selectedRange]);
+  const [state, dispatch] = useReducer(selectionReducer, { caret: 0, anchor: null });
+
+  // When the page changes the controlled range, the local selection yields to it.
+  const [previousRange, setPreviousRange] = useState(selectedRange);
+  if (previousRange !== selectedRange) {
+    setPreviousRange(selectedRange);
+    dispatch({ type: "sync" });
+  }
+
+  const effectiveSelection = deriveSelection(state, selectedRange);
 
   const removed = useMemo(() => new Set(transcript.removedWordIds), [transcript.removedWordIds]);
 
@@ -66,6 +193,16 @@ export function TranscriptEditor({
     return map;
   }, [transcript.silences]);
 
+  const matchSet = useMemo(() => {
+    const set = new Set<number>();
+    for (const range of matchedRanges) {
+      for (let index = range.fromIndex; index <= range.toIndex; index += 1) {
+        set.add(index);
+      }
+    }
+    return set;
+  }, [matchedRanges]);
+
   const { indexById, wordById } = useMemo(() => {
     const indices = new Map<string, number>();
     const words = new Map<string, TranscriptWord>();
@@ -76,7 +213,14 @@ export function TranscriptEditor({
     return { indexById: indices, wordById: words };
   }, [transcript.words]);
 
-  const activeCaret = caretIndex ?? caret.index;
+  const activeCaret = caretIndex ?? state.caret;
+
+  const scrollToWord = (index: number) => {
+    document
+      .getElementById(`transcript-word-${transcript.words[index]?.id}`)
+      ?.scrollIntoView?.({ block: "nearest" });
+  };
+
   const nextKeptWordIndex = (range: WordSelection): number | null => {
     for (let index = range.toIndex + 1; index < transcript.words.length; index += 1) {
       const word = transcript.words[index];
@@ -92,24 +236,30 @@ export function TranscriptEditor({
     }
     return null;
   };
-  const activate = (word: TranscriptWord, index: number, shiftKey: boolean) => {
-    setCaret({ index, anchor: shiftKey ? (caret.anchor ?? caret.index) : index });
-    document.getElementById(`transcript-word-${word.id}`)?.scrollIntoView?.({ block: "nearest" });
-    if (shiftKey && (caret.anchor !== null || caret.index !== null)) {
-      const anchor = caret.anchor ?? caret.index;
-      const fromIndex = Math.min(anchor, index);
-      const toIndex = Math.max(anchor, index);
-      const wordIds = transcript.words.slice(fromIndex, toIndex + 1).map((item) => item.id);
 
-      setSelectionOverride(undefined);
-      onSelectionChange?.({ fromIndex, toIndex }, wordIds);
-      return;
-    }
-
-    setKeyboardSelection(null);
-    setSelectionOverride(undefined);
-    onWordClick?.(word.id, index);
-  };
+  // Stable per-word handler; reads the latest state and props through a ref.
+  const activateRef = useRef<(index: number, shiftKey: boolean) => void>(() => {});
+  useEffect(() => {
+    activateRef.current = (index, shiftKey) => {
+      if (shiftKey) {
+        const anchor = state.anchor ?? state.caret;
+        dispatch({ type: "click", index, shift: true });
+        const fromIndex = Math.min(anchor, index);
+        const toIndex = Math.max(anchor, index);
+        onSelectionChange?.(
+          { fromIndex, toIndex },
+          transcript.words.slice(fromIndex, toIndex + 1).map((word) => word.id),
+        );
+      } else {
+        dispatch({ type: "click", index, shift: false });
+        onWordClick?.(transcript.words[index]?.id ?? "", index);
+      }
+      scrollToWord(index);
+    };
+  });
+  const activate = useCallback((index: number, shiftKey: boolean) => {
+    activateRef.current(index, shiftKey);
+  }, []);
 
   return (
     <section
@@ -124,34 +274,26 @@ export function TranscriptEditor({
           : undefined
       }
       onKeyDown={(event) => {
-        const current = caretIndex ?? caret.index;
         const count = transcript.words.length;
         if (count === 0) return;
-        const wordAt = (index: number) => transcript.words[index];
-        const select = (index: number, shift: boolean) => {
-          const result = shift
-            ? extendSelection(current, caret.anchor, index - current, 0, count)
-            : moveCaret(current, index - current, count);
-          setCaret(result);
+        const current = caretIndex ?? state.caret;
+        const select = (targetIndex: number, shift: boolean) => {
+          const delta = targetIndex - current;
           if (shift) {
-            const anchor = result.anchor ?? current;
-            const range = {
-              fromIndex: Math.min(anchor, result.index),
-              toIndex: Math.max(anchor, result.index),
-            };
-            setKeyboardSelection(range);
-            setSelectionOverride(undefined);
+            const next = extendSelection(current, state.anchor, delta, 0, count);
+            dispatch({ type: "extend", delta, count });
+            const anchor = next.anchor ?? next.index;
+            const fromIndex = Math.min(anchor, next.index);
+            const toIndex = Math.max(anchor, next.index);
             onSelectionChange?.(
-              range,
-              transcript.words.slice(range.fromIndex, range.toIndex + 1).map((word) => word.id),
+              { fromIndex, toIndex },
+              transcript.words.slice(fromIndex, toIndex + 1).map((word) => word.id),
             );
+            scrollToWord(next.index);
           } else {
-            setKeyboardSelection(null);
-            setSelectionOverride(null);
+            dispatch({ type: "move", delta, count });
+            scrollToWord(targetIndex);
           }
-          document
-            .getElementById(`transcript-word-${wordAt(result.index)?.id}`)
-            ?.scrollIntoView?.({ block: "nearest" });
         };
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
@@ -164,24 +306,14 @@ export function TranscriptEditor({
           select(event.key === "Home" ? 0 : count - 1, event.shiftKey);
         } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
           event.preventDefault();
+          dispatch({ type: "selectAll", count });
           const all = selectAll(count);
-          setCaret(all);
-          setKeyboardSelection(all.selection);
-          setSelectionOverride(all.selection);
-          if (all.selection)
-            onSelectionChange?.(
-              all.selection,
-              transcript.words.map((word) => word.id),
-            );
+          if (all.selection) {
+            onSelectionChange?.(all.selection, transcript.words.map((word) => word.id));
+          }
         } else if (event.key === "Escape") {
-          const cleared = clearSelection(current);
-          setCaret(cleared);
-          setKeyboardSelection(null);
-          setSelectionOverride(null);
-          onSelectionChange?.(
-            { fromIndex: current, toIndex: current },
-            [transcript.words[current]?.id].filter(Boolean) as string[],
-          );
+          dispatch({ type: "clear" });
+          onSelectionClear?.();
         } else if (
           (event.key === "Delete" || event.key === "Backspace") &&
           effectiveSelection != null
@@ -190,12 +322,11 @@ export function TranscriptEditor({
           onDeleteSelection?.();
           const nextKept = nextKeptWordIndex(effectiveSelection);
           if (nextKept !== null) {
-            setCaret({ index: nextKept, anchor: null });
+            dispatch({ type: "move", delta: nextKept - current, count });
           }
         } else if (event.key === " " && effectiveSelection != null) {
           event.preventDefault();
-          const range = effectiveSelection;
-          onRestore?.(range.fromIndex, range.toIndex);
+          onRestore?.(effectiveSelection.fromIndex, effectiveSelection.toIndex);
         }
       }}
     >
@@ -210,9 +341,6 @@ export function TranscriptEditor({
             const index = indexById.get(wordId) ?? -1;
             const isRemoved = removed.has(wordId);
             const isActive = wordId === activeWordId;
-            const isMatch = matchedRanges.some(
-              (range) => index >= range.fromIndex && index <= range.toIndex,
-            );
             const isSelected =
               effectiveSelection != null &&
               index >= effectiveSelection.fromIndex &&
@@ -220,35 +348,19 @@ export function TranscriptEditor({
             const silenceSeconds = silencesByWord.get(wordId);
 
             return (
-              <Fragment key={word.id}>
-                <span
-                  className="transcript__word"
-                  id={`transcript-word-${word.id}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={isRemoved || undefined}
-                  data-word-id={word.id}
-                  data-removed={isRemoved ? "true" : undefined}
-                  data-active={isActive ? "true" : undefined}
-                  data-selected={isSelected ? "true" : undefined}
-                  data-caret={index === activeCaret ? "true" : undefined}
-                  data-match={isMatch ? "true" : undefined}
-                  aria-current={isActive ? "true" : undefined}
-                  onClick={(event) => activate(word, index, event.shiftKey)}
-                >
-                  {word.text}
-                </span>
-                {silenceSeconds !== undefined && (
-                  <span
-                    className="transcript__silence"
-                    aria-label={`${silenceSeconds} second${
-                      silenceSeconds === 1 ? "" : "s"
-                    } of silence`}
-                  >
-                    {silenceSeconds} s silence
-                  </span>
-                )}
-              </Fragment>
+              <Word
+                key={word.id}
+                word={word}
+                index={index}
+                removed={isRemoved}
+                active={isActive}
+                matchSet={matchSet}
+                selected={isSelected}
+                caret={index === activeCaret}
+                silenceSeconds={silenceSeconds}
+                onActivate={activate}
+                onWordRender={onWordRender}
+              />
             );
           })}
         </p>
