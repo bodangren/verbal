@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import {
   nodeFileSystem,
@@ -190,6 +191,8 @@ export type StartStoryboardExportDeps = {
   run: (file: string, args: readonly string[]) => Promise<unknown>;
   now: () => Date;
   rendererReady?: () => boolean;
+  /** Removes a job's private work directory. Defaults to a recursive remove. */
+  removeDirectory?: (directory: string) => Promise<void>;
 };
 
 /**
@@ -332,8 +335,12 @@ export async function startStoryboardExport(
     }
 
     const cache = createFileSlideCache(deps.fs, path.join(root, "cache", "slides"));
-    const workDirectory = path.join(root, "cache", "assembly");
-    await deps.fs.mkdir(workDirectory);
+
+    const job = await deps.registry.create("export");
+    const workDirectory = path.join(root, "cache", "assembly", job.id);
+    const removeDirectory =
+      deps.removeDirectory ??
+      ((directory: string) => rm(directory, { recursive: true, force: true }));
 
     const renderStep = createStepRenderer({
       renderer: deps.renderer,
@@ -347,14 +354,13 @@ export async function startStoryboardExport(
       codecs: preset.codecs,
     });
 
-    const job = await deps.registry.create("export");
-
     void runStoryboardExport({
       registry: deps.registry,
       jobId: job.id,
       plan,
       outputPath,
       assemble: async (steps, target, report, signal) => {
+        await deps.fs.mkdir(workDirectory);
         const total = steps.length + 1;
 
         const renderWithProgress: typeof renderStep = async (step, index) => {
@@ -403,6 +409,8 @@ export async function startStoryboardExport(
         await writeFileAtomic(deps.fs, manifestPath, serializeProvenance(manifest));
         return manifestPath;
       },
+    }).finally(async () => {
+      await removeDirectory(workDirectory).catch(() => undefined);
     });
 
     return { status: 202, body: job };

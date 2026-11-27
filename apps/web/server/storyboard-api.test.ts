@@ -1,3 +1,4 @@
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   JobRegistry,
@@ -646,5 +647,158 @@ describe("storyboard export API", () => {
       args.includes("/projects/demo/assets/generated/asset-1"),
     );
     expect(usedAsset).toBe(true);
+  });
+
+  describe("private work directory", () => {
+    const TALK_STORYBOARD = {
+      schemaVersion: 1,
+      scenes: [
+        {
+          id: "talk",
+          anchor: { startWordId: "w0", endWordId: "w1" },
+          visual: "talk",
+          layer: "full-frame",
+        },
+      ],
+    };
+
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    async function waitForJob(registry: JobRegistry, jobId: string) {
+      for (let attempt = 0; attempt < 200; attempt += 1) {
+        const status = registry.get(jobId)?.status;
+        if (status === "done" || status === "failed") {
+          return;
+        }
+        await delay(10);
+      }
+    }
+
+    function delayedRunner(fs: ReturnType<typeof createFakeFileSystem>, failConcat = false) {
+      const concatLists: { dir: string; content: string | undefined }[] = [];
+      const run = vi.fn(async (_file: string, args: readonly string[]) => {
+        if (args[args.indexOf("-f") + 1] !== "concat") {
+          await delay(5);
+          return;
+        }
+        await delay(100);
+        const listPath = args[args.indexOf("-i") + 1] ?? "";
+        concatLists.push({ dir: path.posix.dirname(listPath), content: fs.files.get(listPath) });
+        if (failConcat) {
+          throw new Error("concat failed");
+        }
+      });
+      return { run, concatLists };
+    }
+
+    function exportDeps(
+      fs: ReturnType<typeof createFakeFileSystem>,
+      registry: JobRegistry,
+      renderer: SlideRenderer,
+      run: (file: string, args: readonly string[]) => Promise<unknown>,
+    ) {
+      const removeDirectory = vi.fn(async (directory: string) => {
+        fs.directories.delete(directory);
+      });
+      return {
+        deps: { fs, registry, renderer, run, now, rendererReady: () => true, removeDirectory },
+        removeDirectory,
+      };
+    }
+
+    const GEOMETRY = { fps: 10, width: 320, height: 180 };
+
+    it("gives two overlapping exports of one project separate work directories", async () => {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seed(fs, root);
+      const project = await openProject(fs, root);
+      await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+      const { run, concatLists } = delayedRunner(fs);
+      const { deps } = exportDeps(fs, registry, renderer, run);
+
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+      const first = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/a.mp4",
+        brand: BRAND,
+        geometry: GEOMETRY,
+      });
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(TALK_STORYBOARD));
+      const second = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/b.mp4",
+        brand: BRAND,
+        geometry: GEOMETRY,
+      });
+
+      const firstId = (first.body as { id: string }).id;
+      const secondId = (second.body as { id: string }).id;
+      await waitForJob(registry, firstId);
+      await waitForJob(registry, secondId);
+
+      expect(registry.get(firstId)?.status).toBe("done");
+      expect(registry.get(secondId)?.status).toBe("done");
+      expect(concatLists.map((entry) => entry.dir).sort()).toEqual(
+        [`${root}/cache/assembly/${firstId}`, `${root}/cache/assembly/${secondId}`].sort(),
+      );
+      for (const entry of concatLists) {
+        expect(entry.content).toContain(`${entry.dir}/step-`);
+      }
+    });
+
+    it("removes the work directory after a successful export", async () => {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seed(fs, root);
+      const project = await openProject(fs, root);
+      await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+      const { run } = delayedRunner(fs);
+      const { deps, removeDirectory } = exportDeps(fs, registry, renderer, run);
+
+      const response = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        geometry: GEOMETRY,
+      });
+      const jobId = (response.body as { id: string }).id;
+      await waitForJob(registry, jobId);
+
+      expect(registry.get(jobId)?.status).toBe("done");
+      expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
+      expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
+    });
+
+    it("removes the work directory after a failed export", async () => {
+      const fs = createFakeFileSystem();
+      const root = "/projects/demo";
+      await seed(fs, root);
+      const project = await openProject(fs, root);
+      await saveProject(fs, root, { ...project, media: { assetPath: "assets/take.mp4" } });
+      await fs.writeFileDurable(projectPaths(root).storyboard, JSON.stringify(STORYBOARD));
+      const registry = await JobRegistry.open(createMemoryJobStore(), now);
+      const renderer: SlideRenderer = { render: vi.fn(async () => MANIFEST) };
+      const { run } = delayedRunner(fs, true);
+      const { deps, removeDirectory } = exportDeps(fs, registry, renderer, run);
+
+      const response = await startStoryboardExport(deps, {
+        root,
+        outputPath: "/out/final.mp4",
+        brand: BRAND,
+        geometry: GEOMETRY,
+      });
+      const jobId = (response.body as { id: string }).id;
+      await waitForJob(registry, jobId);
+
+      expect(registry.get(jobId)?.status).toBe("failed");
+      expect(removeDirectory).toHaveBeenCalledWith(`${root}/cache/assembly/${jobId}`);
+      expect(fs.directories.has(`${root}/cache/assembly/${jobId}`)).toBe(false);
+    });
   });
 });
