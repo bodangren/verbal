@@ -146,6 +146,57 @@ describe("createTyphoonProvider", () => {
     expect(removeFile).toHaveBeenCalledWith(path.join(path.sep, "tmp", "take.wav"));
   });
 
+  it("transcribes each window separately and merges words with absolute times", async () => {
+    const sampleRate = 16000;
+    const signal = new Float32Array(sampleRate * 0.4);
+    for (let i = 0; i < signal.length; i += 1) {
+      signal[i] = i / signal.length;
+    }
+    let call = 0;
+    const engine = {
+      transcribe: vi.fn(
+        async (_samples: Float32Array, options?: { onProgress?: (f: number) => void }) => {
+          call += 1;
+          options?.onProgress?.(1);
+          return {
+            text: `w${call}`,
+            language: "th",
+            words: [{ text: `w${call}`, start: 0.1, end: 0.2 }],
+          };
+        },
+      ),
+    };
+    const progress: number[] = [];
+
+    const provider = createTyphoonProvider(
+      config({
+        run: vi.fn(async () => ({ stdout: "", stderr: "" })),
+        readWav: async () => signal,
+        engineFor: () => engine,
+        windowSeconds: 0.3,
+        overlapSeconds: 0.1,
+      }),
+    );
+
+    const result = await provider.transcribe(
+      { filePath: path.join(path.sep, "media", "take.mp4") },
+      { onProgress: (fraction) => progress.push(fraction) },
+    );
+
+    expect(engine.transcribe).toHaveBeenCalledTimes(2);
+    const calls = engine.transcribe.mock.calls as unknown as [Float32Array, unknown][];
+    expect(calls[0]![0].length).toBe(4800);
+    expect(calls[1]![0].length).toBe(3200);
+    expect(calls[1]![0][0]).toBe(signal[3200]);
+
+    expect(result.words).toEqual([
+      { text: "w1", start: 0.1, end: 0.2 },
+      { text: "w2", start: 0.3, end: 0.4 },
+    ]);
+    expect(result.text).toBe("w1 w2");
+    expect(progress).toEqual([0.05, 0.5, 0.95, 1]);
+  });
+
   it("fails as not-configured when the model is missing", async () => {
     const provider = createTyphoonProvider(config({ exists: () => false }));
 

@@ -26,7 +26,7 @@ export type OpenSession = (modelPath: string) => Promise<SessionLike>;
 
 const HIDDEN_DIM = 640;
 const MAX_SYMBOLS_PER_STEP = 10;
-const SAMPLE_RATE = 16000;
+export const SAMPLE_RATE = 16000;
 /** FastConformer subsamples 8x: 160-hop mel frames become 1280-sample frames. */
 export const FRAME_DURATION = 1280 / SAMPLE_RATE;
 
@@ -142,6 +142,9 @@ export async function greedyDecode(
   const blankId = options.vocabSize;
   const channels = encoded.dims[1] ?? 0;
 
+  // The RNNT decoder state starts fresh on every call. The windowed provider
+  // transcribes each window in a separate call, so this reset is the window
+  // boundary by design, not a bug.
   const h = new Float32Array(hidden);
   const c = new Float32Array(hidden);
   let lastToken = blankId;

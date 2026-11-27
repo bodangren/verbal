@@ -2,8 +2,14 @@ import { existsSync, promises as nodeFs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { isMissingBinary, messageOf, nodeRun, type LocalRunner } from "./process";
-import { createTyphoonEngine, type TyphoonEngine } from "./typhoon-engine";
-import { AiError, type TranscriptionProvider, type TranscriptionResult } from "./types";
+import { createTyphoonEngine, SAMPLE_RATE, type TyphoonEngine } from "./typhoon-engine";
+import { mergeWindowResults, planWindows } from "./typhoon-window";
+import {
+  AiError,
+  type SpokenWord,
+  type TranscriptionProvider,
+  type TranscriptionResult,
+} from "./types";
 
 export const TYPHOON_ENCODER_FILE = "encoder.onnx";
 export const TYPHOON_DECODER_FILE = "decoder.onnx";
@@ -115,6 +121,10 @@ export type LocalTyphoonConfig = {
   wavPathFor?: (filePath: string, scratchDir: string) => string;
   /** Test seam: supplies an engine without ONNX Runtime. */
   engineFor?: (files: TyphoonModelFiles, vocab: readonly string[]) => TyphoonEngine;
+  /** Window length in seconds for windowed inference. */
+  windowSeconds?: number;
+  /** Overlap between windows in seconds. */
+  overlapSeconds?: number;
 };
 
 async function readVocab(readText: (path: string) => Promise<string>, filePath: string): Promise<string[]> {
@@ -259,12 +269,29 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
           throw new AiError("request-failed", `the extracted audio could not be read: ${messageOf(error)}`);
         }
 
-        let result: TranscriptionResult;
+        const engine = engineFor(config, files, vocab);
+        const windows = planWindows(audio.length, SAMPLE_RATE, {
+          windowSeconds: config.windowSeconds,
+          overlapSeconds: config.overlapSeconds,
+        });
+
+        // Transcribe one bounded window at a time. Each call resets the RNNT
+        // decoder state, so a word at a seam may lose a little context. The
+        // overlap lets the merge keep the better half of each seam.
+        const windowWords: SpokenWord[][] = [];
         try {
-          result = await engineFor(config, files, vocab).transcribe(audio, {
-            signal: options?.signal,
-            onProgress: (fraction) => report(0.05 + fraction * 0.9),
-          });
+          for (let i = 0; i < windows.length; i += 1) {
+            if (cancelled()) {
+              throw new AiError("request-failed", "transcription cancelled");
+            }
+            const window = windows[i]!;
+            const slice = audio.subarray(window.startSample, window.endSample);
+            const windowResult = await engine.transcribe(slice, {
+              signal: options?.signal,
+              onProgress: (fraction) => report(0.05 + ((i + fraction) / windows.length) * 0.9),
+            });
+            windowWords.push(windowResult.words);
+          }
         } catch (error) {
           if (cancelled() || messageOf(error) === "transcription cancelled") {
             throw new AiError("request-failed", "transcription cancelled");
@@ -272,9 +299,16 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
           throw new AiError("request-failed", messageOf(error));
         }
 
-        if (result.words.length === 0) {
+        const words = mergeWindowResults(windows, windowWords);
+        if (words.length === 0) {
           throw new AiError("invalid-response", "the Typhoon model returned no words");
         }
+
+        const result: TranscriptionResult = {
+          text: words.map((word) => word.text).join(" "),
+          language: "th",
+          words,
+        };
 
         report(1);
         return result;
