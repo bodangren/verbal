@@ -45,6 +45,7 @@ import { ExportControls } from "../components/ExportControls";
 import { clearFinishedJob, jobStatusText } from "../components/job-status";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
+import { StatusBar } from "../components/StatusBar";
 import {
   StudioOverlay,
   type StudioDevice,
@@ -2597,18 +2598,12 @@ export default function Home() {
         />
       )}
 
-      <footer className="statusbar">
-        <span className="statusbar__item">{jobStatusText(job) ?? "Ready"}</span>
-        <span className="statusbar__item">{hasMedia ? "Media loaded" : "No media"}</span>
-        <span
-          className={`statusbar__message${error !== null ? " is-error" : ""}`}
-          role="status"
-          aria-live="polite"
-          title={error?.detail}
-        >
-          {error?.message ?? message ?? ""}
-        </span>
-      </footer>
+      <StatusBar
+        jobText={jobStatusText(job) ?? "Ready"}
+        mediaLabel={hasMedia ? "Media loaded" : "No media"}
+        message={message}
+        error={error}
+      />
     </main>
   );
 }
