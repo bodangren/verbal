@@ -16,6 +16,7 @@ import path from "node:path";
 import { chromium } from "playwright-core";
 import { contrastRatio } from "./contrast.ts";
 import { checkBudgets } from "./ux-budgets.ts";
+import { countVisibleTranscriptLines } from "./transcript-lines.mjs";
 
 const PORT = Number(process.env.UX_PORT ?? 3231);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -121,21 +122,21 @@ function modeButton(page, name) {
 }
 
 async function measureMode(page, mode) {
-  return page.evaluate((currentMode) => {
+  const measured = await page.evaluate((currentMode) => {
     const root = document.documentElement;
-    const stage = document.querySelector(".stage__scroll");
-    const stageRect = stage?.getBoundingClientRect();
+    const transcript = document.querySelector(".transcript");
+    const transcriptBox = transcript?.getBoundingClientRect();
+    const transcriptRect =
+      transcriptBox === undefined
+        ? null
+        : { top: transcriptBox.top, bottom: transcriptBox.bottom };
+    const stageBox = document.querySelector(".stage__scroll")?.getBoundingClientRect();
+    const stageRect = stageBox === undefined ? null : { top: stageBox.top, bottom: stageBox.bottom };
     const words = [...document.querySelectorAll(".transcript__word")];
-    const visibleWords =
-      stageRect === undefined
-        ? []
-        : words.filter((word) => {
-            const rect = word.getBoundingClientRect();
-            return rect.top < stageRect.bottom && rect.bottom > stageRect.top;
-          });
-    const transcriptLines = new Set(
-      visibleWords.map((word) => Math.round(word.getBoundingClientRect().top)),
-    ).size;
+    const wordRects = words.map((word) => {
+      const rect = word.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom };
+    });
 
     const nameOf = (element) => {
       const aria = element.getAttribute("aria-label");
@@ -204,12 +205,24 @@ async function measureMode(page, mode) {
     return {
       pageScrollX: root.scrollWidth - root.clientWidth,
       pageScrollY: root.scrollHeight - root.clientHeight,
-      transcriptLines,
+      wordRects,
+      transcriptRect,
+      stageRect,
       nameless,
       headings,
       disabledPrimary,
     };
   }, mode);
+
+  const transcriptLines =
+    measured.transcriptRect === null
+      ? 0
+      : countVisibleTranscriptLines(
+          measured.wordRects,
+          measured.transcriptRect,
+          measured.stageRect ?? undefined,
+        );
+  return { ...measured, transcriptLines };
 }
 
 const browser = await chromium.launch({

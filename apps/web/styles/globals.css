@@ -1865,7 +1865,7 @@ h2 {
 /* Edit holds the player and timeline still; only the transcript scrolls. */
 .stage__scroll--edit {
   gap: var(--space-3);
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .stage__scroll--edit > .stage__head {
@@ -1896,8 +1896,14 @@ h2 {
 
 .stage__scroll--edit .transcript {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 8rem;
   overflow-y: auto;
+}
+
+@media (max-height: 800px) {
+  .stage__scroll--edit .playback__video {
+    max-height: 30vh;
+  }
 }
 
 .stage__scroll--edit > .card:not(.card--flush) > .card__head,
