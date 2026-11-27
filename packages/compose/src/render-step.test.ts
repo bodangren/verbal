@@ -152,6 +152,46 @@ describe("createStepRenderer", () => {
     expect(args).toContain("/media/take.mp4");
   });
 
+  it("adds silent audio to a talk cut when the speaker has no audio stream", async () => {
+    const { deps, run } = makeDeps({
+      speaker: { input: "/media/take.mp4", hasAudio: false },
+      scenes: new Map([
+        [
+          "talk",
+          {
+            videoRange: { input: "/media/take.mp4", startSeconds: 2, durationSeconds: 3 },
+          },
+        ],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "talk", durationSeconds: 3 }, 0);
+
+    const args = argsOf(run);
+    expect(args).toContain("anullsrc=r=48000:cl=mono");
+    expect(args).toContain("1:a:0");
+  });
+
+  it("keeps the talk cut argv free of silent audio when the speaker has audio", async () => {
+    const { deps, run } = makeDeps({
+      speaker: { input: "/media/take.mp4", hasAudio: true },
+      scenes: new Map([
+        [
+          "talk",
+          {
+            videoRange: { input: "/media/take.mp4", startSeconds: 2, durationSeconds: 3 },
+          },
+        ],
+      ]),
+    });
+    const render = createStepRenderer(deps);
+
+    await render({ kind: "scene", sceneId: "talk", durationSeconds: 3 }, 0);
+
+    expect(argsOf(run)).not.toContain("anullsrc=r=48000:cl=mono");
+  });
+
   it("composites a video asset without looping it", async () => {
     const { deps, renderer, run } = makeDeps({
       scenes: new Map([

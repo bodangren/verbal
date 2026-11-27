@@ -55,6 +55,72 @@ describe("buildVideoRangeArgs", () => {
   });
 });
 
+describe("buildVideoRangeArgs audio", () => {
+  const base = {
+    input: "/media/take.mp4",
+    startSeconds: 0,
+    durationSeconds: 1.5,
+    outputPath: "/out/one.mp4",
+    width: 320,
+    height: 180,
+    fps: 10,
+  };
+
+  it("keeps the existing argv when the source has audio", () => {
+    const expected = [
+      "-y",
+      "-ss",
+      "0.000",
+      "-i",
+      "/media/take.mp4",
+      "-t",
+      "1.500",
+      "-vf",
+      "scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,setsar=1",
+      "-r",
+      "10",
+      "-c:v",
+      "libx264",
+      "-crf",
+      "20",
+      "-preset",
+      "veryfast",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-ar",
+      "48000",
+      "-progress",
+      "pipe:1",
+      "-nostats",
+      "/out/one.mp4",
+    ];
+
+    expect(buildVideoRangeArgs({ ...base, hasAudio: true })).toEqual(expected);
+    expect(buildVideoRangeArgs(base)).toEqual(expected);
+  });
+
+  it("adds a silent stereo input and maps it when the source has no audio", () => {
+    const args = buildVideoRangeArgs({ ...base, hasAudio: false });
+
+    const silentIndex = args.indexOf("anullsrc=r=48000:cl=mono");
+    expect(silentIndex).toBeGreaterThan(args.indexOf("/media/take.mp4"));
+    expect(args[silentIndex - 1]).toBe("-i");
+    expect(args[silentIndex - 2]).toBe("lavfi");
+    expect(args[silentIndex - 3]).toBe("-f");
+    expect(args.indexOf("-t")).toBeGreaterThan(silentIndex);
+    expect(args[args.indexOf("-t") + 1]).toBe("1.500");
+
+    const mapIndex = args.indexOf("1:a:0");
+    expect(args[mapIndex - 1]).toBe("-map");
+    expect(args[args.indexOf("0:v:0") - 1]).toBe("-map");
+    expect(args.at(-1)).toBe("/out/one.mp4");
+  });
+});
+
 describe("buildSilenceArgs", () => {
   it("makes a black frame with silent audio at the export geometry", () => {
     const args = buildSilenceArgs({

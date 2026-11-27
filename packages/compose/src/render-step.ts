@@ -154,6 +154,7 @@ export function createStepRenderer(deps: RenderStepDeps): (step: AssemblyStep, i
           width: deps.geometry.width,
           height: deps.geometry.height,
           fps: deps.geometry.fps,
+          hasAudio: deps.speaker.hasAudio !== false,
           ...(deps.codecs?.videoCodec === undefined
             ? {}
             : { videoCodec: deps.codecs.videoCodec }),

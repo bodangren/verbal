@@ -12,6 +12,8 @@ export type VideoRangeRequest = {
   audioCodec?: string;
   videoArgs?: string[];
   audioArgs?: string[];
+  /** False when the source has no audio stream; the cut then gets silent audio. */
+  hasAudio?: boolean;
 };
 
 export type VideoRangeErrorCode = "invalid-range";
@@ -55,6 +57,7 @@ export function buildVideoRangeArgs(request: VideoRangeRequest): string[] {
   }
 
   const { width: W, height: H } = request;
+  const silentAudio = request.hasAudio === false;
 
   return [
     "-y",
@@ -62,8 +65,10 @@ export function buildVideoRangeArgs(request: VideoRangeRequest): string[] {
     request.startSeconds.toFixed(3),
     "-i",
     request.input,
+    ...(silentAudio ? ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono"] : []),
     "-t",
     request.durationSeconds.toFixed(3),
+    ...(silentAudio ? ["-map", "0:v:0", "-map", "1:a:0"] : []),
     "-vf",
     `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
     "-r",
