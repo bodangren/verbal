@@ -65,4 +65,29 @@ describe("MediaPicker", () => {
 
     expect(screen.getByText("No Media Files Here")).toBeTruthy();
   });
+
+  it("returns focus to the opener on close", () => {
+    const opener = document.createElement("button");
+    opener.textContent = "Open picker";
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(
+      <MediaPicker
+        path="/home/me"
+        parent="/home"
+        entries={entries}
+        onChoose={vi.fn()}
+        onClose={vi.fn()}
+        onHome={vi.fn()}
+        onNavigate={vi.fn()}
+        onUp={vi.fn()}
+      />,
+    );
+    expect(document.activeElement?.textContent).not.toBe("Open picker");
+
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
 });

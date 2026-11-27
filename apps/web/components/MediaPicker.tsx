@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { Dialog } from "./Dialog";
 import type { FsEntry } from "../server/fs-api";
 
 export type MediaPickerProps = {
@@ -34,135 +34,92 @@ export function MediaPicker({
   onNavigate,
   onUp,
 }: MediaPickerProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   const folders = entries.filter((entry) => entry.kind !== "file");
   const files = entries.filter((entry) => entry.kind === "file");
 
   return (
-    <div
-      className="overlay"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+    <Dialog
+      open
+      title="Import Media"
+      onClose={onClose}
+      footer={<span className="muted">Choosing a file imports a copy into the project.</span>}
     >
-      <div
-        ref={dialogRef}
-        className="picker-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Import Media"
-        tabIndex={-1}
-      >
-        <header className="picker-dialog__head">
-          <h2>Import Media</h2>
-          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </header>
-
-        <div className="browser__nav">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Go Up One Folder"
-            title="Up one folder"
-            onClick={onUp}
-            disabled={parent === null}
-          >
-            ↑
-          </button>
-          <button type="button" className="button button--ghost" onClick={onHome}>
-            Home
-          </button>
-        </div>
-
-        <p className="browser__path" title={path}>
-          {path}
-        </p>
-
-        <div className="picker-dialog__list">
-          {error !== null && (
-            <>
-              <p className="browser__error" role="alert">
-                {error}
-              </p>
-              <p className="browser__hint">Use Home or Up to keep browsing.</p>
-            </>
-          )}
-
-          {loading && (
-            <p className="browser__hint">
-              Reading folder…
-            </p>
-          )}
-
-          {!loading && error === null && entries.length === 0 && (
-            <div className="browser__empty">
-              <p>No Media Files Here</p>
-              <p className="browser__hint">Go up, or choose another folder.</p>
-            </div>
-          )}
-
-          {folders.map((entry) => (
-            <div key={entry.path} className="entry">
-              <button
-                type="button"
-                className="entry__main"
-                onClick={() => onNavigate(entry.path)}
-                title={`Enter ${entry.name}`}
-              >
-                <span className="entry__glyph entry__glyph--folder" aria-hidden="true">
-                  ▸
-                </span>
-                <span className="entry__text">
-                  <span className="entry__name">{entry.name}</span>
-                </span>
-              </button>
-            </div>
-          ))}
-
-          {files.length > 0 && <p className="browser__section">Media</p>}
-          {files.map((entry) => (
-            <div key={entry.path} className="entry">
-              <button
-                type="button"
-                className="entry__main"
-                onClick={() => onChoose(entry.path)}
-                title={`Import ${entry.name}`}
-              >
-                <span className="entry__glyph" aria-hidden="true">
-                  ▶
-                </span>
-                <span className="entry__text">
-                  <span className="entry__name">{entry.name}</span>
-                </span>
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <footer className="picker-dialog__foot">
-          <span className="muted">Choosing a file imports a copy into the project.</span>
-        </footer>
+      <div className="browser__nav">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Go Up One Folder"
+          title="Up one folder"
+          onClick={onUp}
+          disabled={parent === null}
+        >
+          ↑
+        </button>
+        <button type="button" className="button button--ghost" onClick={onHome}>
+          Home
+        </button>
       </div>
-    </div>
+
+      <p className="browser__path" title={path}>
+        {path}
+      </p>
+
+      <div>
+        {error !== null && (
+          <>
+            <p className="browser__error" role="alert">
+              {error}
+            </p>
+            <p className="browser__hint">Use Home or Up to keep browsing.</p>
+          </>
+        )}
+
+        {loading && <p className="browser__hint">Reading folder…</p>}
+
+        {!loading && error === null && entries.length === 0 && (
+          <div className="browser__empty">
+            <p>No Media Files Here</p>
+            <p className="browser__hint">Go up, or choose another folder.</p>
+          </div>
+        )}
+
+        {folders.map((entry) => (
+          <div key={entry.path} className="entry">
+            <button
+              type="button"
+              className="entry__main"
+              onClick={() => onNavigate(entry.path)}
+              title={`Enter ${entry.name}`}
+            >
+              <span className="entry__glyph entry__glyph--folder" aria-hidden="true">
+                ▸
+              </span>
+              <span className="entry__text">
+                <span className="entry__name">{entry.name}</span>
+              </span>
+            </button>
+          </div>
+        ))}
+
+        {files.length > 0 && <p className="browser__section">Media</p>}
+        {files.map((entry) => (
+          <div key={entry.path} className="entry">
+            <button
+              type="button"
+              className="entry__main"
+              onClick={() => onChoose(entry.path)}
+              title={`Import ${entry.name}`}
+            >
+              <span className="entry__glyph" aria-hidden="true">
+                ▶
+              </span>
+              <span className="entry__text">
+                <span className="entry__name">{entry.name}</span>
+              </span>
+            </button>
+          </div>
+        ))}
+      </div>
+    </Dialog>
   );
 }

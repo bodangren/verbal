@@ -1812,6 +1812,38 @@ h2 {
   color: var(--error);
 }
 
+.statusbar details {
+  color: var(--error);
+  flex: 0 1 auto;
+  max-width: 40%;
+}
+
+.statusbar details summary {
+  cursor: pointer;
+  outline-offset: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusbar details summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.statusbar__detail {
+  background: var(--error-surface);
+  border: 1px solid var(--error-border);
+  border-radius: var(--rounded-sm);
+  color: var(--text-primary);
+  font-family: var(--mono);
+  margin: var(--space-1) 0 0;
+  max-height: calc(var(--space-6) * 3);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: var(--space-2);
+  white-space: pre-wrap;
+}
+
 /* Primary actions in the inspector read as form submissions. */
 .inspector .button {
   justify-content: center;
@@ -1819,66 +1851,66 @@ h2 {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Media picker                                                            */
+/* Dialog                                                                */
 /* ---------------------------------------------------------------------- */
 
-.overlay {
-  align-items: center;
-  background: rgba(8, 8, 12, 0.72);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  position: fixed;
-  z-index: 50;
-}
-
-.picker-dialog {
+dialog.dialog {
   background: var(--surface-elevated);
   border: 1px solid var(--border);
   border-radius: var(--rounded-lg);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
+  margin: auto;
   max-height: min(80vh, 720px);
   min-height: 360px;
-  outline: none;
+  padding: 0;
   width: min(640px, calc(100vw - 48px));
 }
 
-.picker-dialog__head {
+dialog.dialog::backdrop {
+  background: var(--capture-bg);
+  opacity: 0.72;
+}
+
+.dialog__head {
   align-items: center;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
+  flex: 0 0 auto;
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
 }
 
-.picker-dialog__head h2 {
+.dialog__head h2 {
   font-size: 15px;
   margin: 0;
 }
 
-.picker-dialog > .browser__nav {
-  padding: var(--space-3) var(--space-4) 0;
-}
-
-.picker-dialog > .browser__path {
-  margin: 0 var(--space-4) var(--space-2);
-}
-
-.picker-dialog__list {
+.dialog__body {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
+  max-height: min(60vh, 560px);
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-4);
 }
 
-.picker-dialog__foot {
+.dialog__body > .browser__path {
+  margin: 0 0 var(--space-2);
+}
+
+.dialog__foot {
+  align-items: center;
   border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-3);
+  justify-content: space-between;
   padding: var(--space-2) var(--space-4);
 }
 

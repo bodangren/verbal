@@ -1,3 +1,5 @@
+import { Dialog } from "./Dialog";
+
 export type BatchProject = {
   name: string;
   root: string;
@@ -36,53 +38,12 @@ export function BatchDialog({
   onClose,
 }: BatchDialogProps) {
   return (
-    <div
-      className="overlay"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="picker-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Transcribe Several Projects"
-      >
-        <header className="picker-dialog__head">
-          <h2>Transcribe Several Projects</h2>
-          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </header>
-
-        {projects.length === 0 ? (
-          <div className="browser__empty">
-            <p>No Projects in This Folder</p>
-            <p className="browser__hint">Open a folder with projects and try again.</p>
-          </div>
-        ) : (
-          <fieldset className="batch-list">
-            <legend>Projects</legend>
-            {projects.map((project) => (
-              <label key={project.root} className="batch-row">
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${project.name}`}
-                  checked={selected.includes(project.root)}
-                  onChange={() => onToggle(project.root)}
-                />
-                <span className="batch-row__name">{project.name}</span>
-                <span className="batch-row__path" title={project.root}>
-                  {project.root}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        )}
-
-        <footer className="picker-dialog__foot">
+    <Dialog
+      open
+      title="Transcribe Several Projects"
+      onClose={onClose}
+      footer={
+        <>
           <span className="muted">
             {selected.length} {selected.length === 1 ? "project" : "projects"} selected
           </span>
@@ -94,22 +55,45 @@ export function BatchDialog({
           >
             {running ? "Transcribing…" : "Start Transcribe"}
           </button>
-        </footer>
+        </>
+      }
+    >
+      {projects.length === 0 ? (
+        <div className="browser__empty">
+          <p>No Projects in This Folder</p>
+          <p className="browser__hint">Open a folder with projects and try again.</p>
+        </div>
+      ) : (
+        <fieldset className="batch-list">
+          <legend>Projects</legend>
+          {projects.map((project) => (
+            <label key={project.root} className="batch-row">
+              <input
+                type="checkbox"
+                aria-label={`Select ${project.name}`}
+                checked={selected.includes(project.root)}
+                onChange={() => onToggle(project.root)}
+              />
+              <span className="batch-row__name">{project.name}</span>
+              <span className="batch-row__path" title={project.root}>
+                {project.root}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
-        {outcomes.length > 0 && (
-          <ul className="outcomes" aria-label="Batch outcomes">
-            {outcomes.map((outcome) => (
-              <li key={outcome.root} data-status={outcome.status}>
-                <span>{outcome.root}</span>
-                <span className="muted">{outcome.status}</span>
-                {outcome.detail !== undefined && (
-                  <span className="muted">{outcome.detail}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+      {outcomes.length > 0 && (
+        <ul className="outcomes" aria-label="Batch outcomes">
+          {outcomes.map((outcome) => (
+            <li key={outcome.root} data-status={outcome.status}>
+              <span>{outcome.root}</span>
+              <span className="muted">{outcome.status}</span>
+              {outcome.detail !== undefined && <span className="muted">{outcome.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Dialog>
   );
 }
