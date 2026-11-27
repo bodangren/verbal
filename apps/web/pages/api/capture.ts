@@ -4,7 +4,6 @@ import { nodeFileSystem } from "@verbal/core";
 import { startCapture } from "../../server/capture-api";
 import { runCaptureJob } from "../../server/capture-job";
 import { spawnCapture } from "../../server/capture-spawn";
-import { clearCapture, registerCapture } from "../../server/capture-registry";
 import { methodNotAllowed, readJsonBody, sendJson } from "../../server/http";
 import { getJobRegistry } from "../../server/registry";
 
@@ -24,21 +23,15 @@ export default async function handler(
       fs: nodeFileSystem,
       registry,
       now: () => new Date(),
-      runCapture: async (jobId, captureRequest) => {
-        const controller = registerCapture(jobId);
-        try {
-          await runCaptureJob(
-            {
-              registry,
-              spawn: spawnCapture,
-              unlink: (path) => nodeFs.unlink(path),
-              signal: controller.signal,
-            },
-            { jobId, request: captureRequest },
-          );
-        } finally {
-          clearCapture(jobId);
-        }
+      runCapture: async (_jobId, input) => {
+        await runCaptureJob(
+          {
+            registry,
+            spawn: spawnCapture,
+            unlink: (path) => nodeFs.unlink(path),
+          },
+          input,
+        );
       },
     },
     await readJsonBody(request),

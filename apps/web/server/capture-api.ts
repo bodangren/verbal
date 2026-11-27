@@ -8,8 +8,9 @@ import {
   type JobRegistry,
   type MediaRevisionStat,
 } from "@verbal/core";
+import type { CaptureRequest } from "@verbal/media";
 import { failure } from "./api-errors";
-import type { CaptureJobRequest } from "./capture-job";
+import type { CaptureJobInput } from "./capture-job";
 import type { ApiResponse } from "./jobs-api";
 import { withProjectLock } from "./project-lock";
 import { asRecord, requireAbsolutePath } from "./validation";
@@ -18,7 +19,7 @@ export type CaptureApiDeps = {
   fs: FileSystem;
   registry: JobRegistry;
   now: () => Date;
-  runCapture: (jobId: string, request: CaptureJobRequest) => Promise<void>;
+  runCapture: (jobId: string, input: CaptureJobInput) => Promise<void>;
   stat?: (path: string) => Promise<MediaRevisionStat>;
 };
 
@@ -57,11 +58,18 @@ export async function startCapture(
         return { size: info.size, mtimeMs: info.mtimeMs };
       });
 
-    const request: CaptureJobRequest = {
+    const request: CaptureRequest = {
       outputPath,
       durationSeconds: duration,
       ...(typeof body.videoDevice === "string" ? { videoDevice: body.videoDevice } : {}),
       ...(typeof body.audioDevice === "string" ? { audioDevice: body.audioDevice } : {}),
+    };
+
+    const job = await deps.registry.create("capture");
+
+    const jobInput: CaptureJobInput = {
+      jobId: job.id,
+      request,
       onOutput: async () => {
         await withProjectLock(root, async () => {
           // Re-read inside the lock: the recording ran since the fail-fast read.
@@ -76,9 +84,7 @@ export async function startCapture(
       },
     };
 
-    const job = await deps.registry.create("capture");
-
-    void deps.runCapture(job.id, request).catch((error: unknown) => {
+    void deps.runCapture(job.id, jobInput).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       void deps.registry.fail(job.id, message).catch(() => undefined);
     });
