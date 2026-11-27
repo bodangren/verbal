@@ -611,6 +611,16 @@ function HomePage() {
       <BeforeUnloadGuard dirty={editing.dirty} />
       <main className="app" data-mode={mode}>
         <h1 className="sr-only">{project === null ? "Verbal" : project.name}</h1>
+        <a
+          className="skip-link"
+          href="#project-browser"
+          onClick={(event) => {
+            event.preventDefault();
+            document.getElementById("project-browser")?.focus();
+          }}
+        >
+          Skip to project browser
+        </a>
         <TopBar
           projectName={project?.name ?? null}
           projectRoot={root}
@@ -683,19 +693,6 @@ function HomePage() {
             onTranscribe={() => void transcribeMedia()}
           />
 
-          {/* DOM order is stage, then inspector, then browser: Tab reaches the
-              transcript before the project rows. CSS `order` keeps the browser
-              on the left. */}
-          <a
-            className="skip-link"
-            href="#project-browser"
-            onClick={(event) => {
-              event.preventDefault();
-              document.getElementById("project-browser")?.focus();
-            }}
-          >
-            Skip to project browser
-          </a>
           <aside
             id="project-browser"
             className="sidebar"

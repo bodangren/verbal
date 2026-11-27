@@ -131,15 +131,23 @@ describe("skip link to the project browser", () => {
     expect(document.activeElement).toBe(browser);
   });
 
-  it("comes after the transcript listbox in document tab order", async () => {
+  it("is the first tabbable element in document order", async () => {
     await openEdit();
     const link = screen.getByRole("link", { name: "Skip to project browser" });
+
+    expect(tabbables()[0]).toBe(link);
+  });
+
+  it("reaches the transcript listbox within six tab stops from the Edit button", async () => {
+    await openEdit();
+    const editButton = screen.getByRole("button", { name: "Edit" });
     const listbox = screen.getByRole("listbox", { name: "Transcript" });
     const order = tabbables();
+    const afterEdit = order.slice(order.indexOf(editButton) + 1);
+    const stops = afterEdit.indexOf(listbox) + 1;
 
-    expect(order).toContain(link);
-    expect(order).toContain(listbox);
-    expect(order.indexOf(link)).toBeGreaterThan(order.indexOf(listbox));
+    expect(stops).toBeGreaterThan(0);
+    expect(stops).toBeLessThanOrEqual(6);
   });
 
   it("hides the link off-screen until focus in the stylesheet", () => {

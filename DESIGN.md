@@ -131,10 +131,12 @@ The aesthetic is inspired by professional audio/video editing suites (DaVinci Re
 
 NOT used for decorative gradients or backgrounds.
 
+The danger state is the one red exception to the accent rule. It uses `--error-surface` fill, `--error-border` border and `--error` text. Use it only for destructive confirmations.
+
 **Text hierarchy:**
 - Primary (#F5F5F5): Headings, filenames, important labels
 - Secondary (#A0A0A0): Metadata, timestamps, supporting text
-- Tertiary (#707070): Disabled states, placeholder text
+- Tertiary (#909090): Disabled states, placeholder text
 
 **Semantic colors:** Muted surfaces with colored left borders. No filled backgrounds - the dark theme doesn't need color blocks.
 
@@ -181,7 +183,7 @@ Fast and subtle. 100-200ms transitions. No bounces or playful animations. The to
 ## Principles
 
 1. **Dark, not gloomy.** Surfaces have enough contrast to feel crisp, not muddy.
-2. **One accent color.** Everything non-neutral uses indigo. No random colors.
+2. **One accent color.** Everything non-neutral uses indigo. No random colors. The danger button is the one red exception, reserved for destructive confirmations.
 3. **Data is precise.** Timestamps and indices are monospace. This is a tool for exact work.
 4. **Words are prominent.** The transcription view is the core feature - it gets visual prominence.
 5. **No decorative elements.** No gradients on large surfaces, no drop shadows everywhere, no rounded corner excess.
