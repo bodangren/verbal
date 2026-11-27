@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -103,6 +104,34 @@ export type EditWorkspaceProps = {
  * structural edit toolbar, and the cleanup inspector. It owns the selection,
  * search, silence, and player state, which only Edit reads.
  */
+/**
+ * Publishes the sticky footer toolbar's real height as `--edit-toolbar-height`,
+ * so the scroller's bottom scroll padding always clears it, whatever the row
+ * count at the current width. It sets a CSS variable, not React state.
+ */
+export function useToolbarHeightVariable(active: boolean): void {
+  useEffect(() => {
+    if (!active || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const toolbar = document.querySelector<HTMLElement>(".toolbar--footer");
+    if (toolbar === null) {
+      return;
+    }
+    const root = document.documentElement;
+    const apply = () => {
+      root.style.setProperty("--edit-toolbar-height", `${toolbar.offsetHeight + 8}px`);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(toolbar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--edit-toolbar-height");
+    };
+  }, [active]);
+}
+
 export function EditWorkspace({
   active,
   root,
@@ -140,6 +169,7 @@ export function EditWorkspace({
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
   const transcriptCardRef = useRef<HTMLDivElement | null>(null);
+  useToolbarHeightVariable(active);
   const focusTokenRef = useRef(0);
   const [focusRequest, setFocusRequest] = useState<{ index: number; token: number } | undefined>(
     undefined,

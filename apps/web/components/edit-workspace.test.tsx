@@ -3,11 +3,11 @@
 // structural edit toolbar sticks to the bottom of the stage.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Acceptance } from "@verbal/cleanup";
 import type { ProjectDocument } from "@verbal/core/browser";
-import { EditWorkspace } from "./EditWorkspace";
+import { EditWorkspace, useToolbarHeightVariable } from "./EditWorkspace";
 import { JobProvider } from "../hooks/use-job";
 import type { TranscriptDocumentController } from "../hooks/use-transcript-document";
 
@@ -179,5 +179,47 @@ describe("EditWorkspace player collapse persistence", () => {
 
     getItem.mockRestore();
     setItem.mockRestore();
+  });
+});
+
+describe("useToolbarHeightVariable", () => {
+  it("publishes the toolbar's measured height and follows its resizes", () => {
+    const toolbar = document.createElement("div");
+    toolbar.className = "toolbar--footer";
+    let height = 200;
+    Object.defineProperty(toolbar, "offsetHeight", { get: () => height });
+    document.body.append(toolbar);
+
+    let notify: () => void = () => undefined;
+    const disconnect = vi.fn();
+    const saved = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: () => void) {
+        notify = callback;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect;
+    } as unknown as typeof ResizeObserver;
+
+    const root = document.documentElement;
+    const { unmount } = renderHook(() => useToolbarHeightVariable(true));
+    expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("208px");
+
+    height = 240;
+    notify();
+    expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("248px");
+
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+    expect(root.style.getPropertyValue("--edit-toolbar-height")).toBe("");
+
+    globalThis.ResizeObserver = saved;
+    toolbar.remove();
+  });
+
+  it("does nothing while the workspace is inactive", () => {
+    renderHook(() => useToolbarHeightVariable(false));
+    expect(document.documentElement.style.getPropertyValue("--edit-toolbar-height")).toBe("");
   });
 });

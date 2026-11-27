@@ -277,10 +277,7 @@ try {
       }
       const sideBox = sidebar.getBoundingClientRect();
       const box = target.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        box.left + box.width / 2,
-        box.top + box.height / 2,
-      );
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
       return {
         height: Math.round(sideBox.height),
         hit: hit !== null && (hit === target || target.contains(hit)),
@@ -626,19 +623,26 @@ try {
     const key = `${width}x${height}`;
     const collapse = page.locator(".sidebar .browser__collapse");
     if ((await collapse.count()) > 0) {
-      await click(collapse);
+      await collapse.click();
       await page.waitForTimeout(250);
     }
+    // The caret rule leaves the stacked workspace scrolled; the strip is
+    // checked from the top, as a user would after scrolling back up.
+    await page.evaluate(() => {
+      for (const element of document.querySelectorAll(
+        ".workspace, .stage__scroll, .stage__scroll--edit",
+      )) {
+        element.scrollTop = 0;
+      }
+      window.scrollTo(0, 0);
+    });
     const strip = await page.evaluate(() => {
       const button = document.querySelector(".browser__strip-button");
       if (button === null || button.getClientRects().length === 0) {
         return null;
       }
       const rect = button.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        rect.left + rect.width / 2,
-        rect.top + rect.height / 2,
-      );
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
       return { hit: hit !== null && (hit === button || button.contains(hit)) };
     });
     narrowShell.push({ viewport: key, check: "projects strip", box: strip });
@@ -694,8 +698,7 @@ try {
     });
     narrowShell.push({ viewport: key, check: "long status message", box: longStatus });
     if (longStatus === null) {
-      narrowShell[narrowShell.length - 1].failure =
-        `${key}: no status message or Export button`;
+      narrowShell[narrowShell.length - 1].failure = `${key}: no status message or Export button`;
     } else if (
       longStatus.scrollWidth > longStatus.innerWidth ||
       longStatus.left < 0 ||
@@ -714,7 +717,7 @@ try {
   await page.waitForTimeout(300);
   const expandPlayer = page.getByRole("button", { name: "Expand Player" });
   if ((await expandPlayer.count()) > 0) {
-    await click(expandPlayer);
+    await expandPlayer.click();
     await page.waitForTimeout(250);
   }
   const footerButtons = await page.evaluate(() => {
