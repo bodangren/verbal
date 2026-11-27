@@ -3,6 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { isMissingBinary, messageOf, nodeRun, type LocalRunner } from "./process";
 import { createTyphoonEngine, SAMPLE_RATE, type TyphoonEngine } from "./typhoon-engine";
+import {
+  createInProcessWindowWorker,
+  createWindowWorker,
+  type RunWindow,
+  type WindowWorker,
+} from "./typhoon-worker";
 import { mergeWindowResults, planWindows } from "./typhoon-window";
 import {
   AiError,
@@ -121,6 +127,8 @@ export type LocalTyphoonConfig = {
   wavPathFor?: (filePath: string, scratchDir: string) => string;
   /** Test seam: supplies an engine without ONNX Runtime. */
   engineFor?: (files: TyphoonModelFiles, vocab: readonly string[]) => TyphoonEngine;
+  /** Test seam: runs each window; the default spawns a real worker. */
+  runWindow?: RunWindow;
   /** Window length in seconds for windowed inference. */
   windowSeconds?: number;
   /** Overlap between windows in seconds. */
@@ -169,6 +177,44 @@ function engineFor(
     };
   }
   return sharedEngine.engine;
+}
+
+/**
+ * Awaits a promise, but rejects early with `error` when the signal aborts.
+ * `onAbort` runs once at that moment, before the rejection. The losing promise
+ * is still awaited by its handlers, so its rejection is never unhandled.
+ */
+function abortable<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined,
+  onAbort: () => void,
+  error: AiError,
+): Promise<T> {
+  if (signal === undefined) {
+    return promise;
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbortListener = (): void => {
+      signal.removeEventListener("abort", onAbortListener);
+      onAbort();
+      reject(error);
+    };
+    if (signal.aborted) {
+      onAbortListener();
+      return;
+    }
+    signal.addEventListener("abort", onAbortListener, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbortListener);
+        resolve(value);
+      },
+      (cause) => {
+        signal.removeEventListener("abort", onAbortListener);
+        reject(cause);
+      },
+    );
+  });
 }
 
 /**
@@ -269,11 +315,20 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
           throw new AiError("request-failed", `the extracted audio could not be read: ${messageOf(error)}`);
         }
 
-        const engine = engineFor(config, files, vocab);
         const windows = planWindows(audio.length, SAMPLE_RATE, {
           windowSeconds: config.windowSeconds,
           overlapSeconds: config.overlapSeconds,
         });
+
+        // One worker for the whole call: the ONNX sessions load once and stay
+        // warm. Feature extraction and decode run off the main thread, so the
+        // API and Cancel keep answering. A test seam runs in-process instead.
+        const windowWorker: WindowWorker =
+          config.runWindow !== undefined
+            ? config.runWindow(config.modelDir)
+            : config.engineFor !== undefined
+              ? createInProcessWindowWorker(engineFor(config, files, vocab))
+              : createWindowWorker(config.modelDir);
 
         // Transcribe one bounded window at a time. Each call resets the RNNT
         // decoder state, so a word at a seam may lose a little context. The
@@ -285,18 +340,26 @@ export function createTyphoonProvider(config: LocalTyphoonConfig): Transcription
               throw new AiError("request-failed", "transcription cancelled");
             }
             const window = windows[i]!;
-            const slice = audio.subarray(window.startSample, window.endSample);
-            const windowResult = await engine.transcribe(slice, {
-              signal: options?.signal,
-              onProgress: (fraction) => report(0.05 + ((i + fraction) / windows.length) * 0.9),
-            });
-            windowWords.push(windowResult.words);
+            const slice = audio.slice(window.startSample, window.endSample);
+            const words = await abortable(
+              windowWorker.run(
+                slice,
+                i,
+                (fraction) => report(0.05 + ((i + fraction) / windows.length) * 0.9),
+              ),
+              options?.signal,
+              () => void windowWorker.terminate(),
+              new AiError("request-failed", "transcription cancelled"),
+            );
+            windowWords.push(words);
           }
         } catch (error) {
           if (cancelled() || messageOf(error) === "transcription cancelled") {
             throw new AiError("request-failed", "transcription cancelled");
           }
           throw new AiError("request-failed", messageOf(error));
+        } finally {
+          await windowWorker.terminate();
         }
 
         const words = mergeWindowResults(windows, windowWords);

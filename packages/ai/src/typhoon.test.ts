@@ -2,7 +2,7 @@ import { existsSync, promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { AiError } from "./types";
+import { AiError, type SpokenWord } from "./types";
 import {
   createTyphoonProvider,
   decodeWavPcm16,
@@ -10,6 +10,7 @@ import {
   typhoonModelFiles,
   type LocalTyphoonConfig,
 } from "./typhoon";
+import type { RunWindow } from "./typhoon-worker";
 
 function wavBytes(samples: readonly number[], options: { sampleRate?: number; channels?: number } = {}): Uint8Array {
   const channels = options.channels ?? 1;
@@ -391,5 +392,125 @@ describe("Typhoon scratch directory", () => {
       await fs.chmod(sourceDir, 0o755);
       await fs.rm(sourceDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("createTyphoonProvider window worker seam", () => {
+  const MEDIA = path.join(path.sep, "media", "take.mp4");
+
+  function workerConfig(overrides: Partial<LocalTyphoonConfig> = {}): LocalTyphoonConfig {
+    return {
+      modelDir: MODEL_DIR,
+      exists: () => true,
+      readText: async () => JSON.stringify(["<unk>", "สวัสดี"]),
+      wavPathFor: () => path.join(path.sep, "tmp", "take.wav"),
+      run: vi.fn(async () => ({ stdout: "", stderr: "" })),
+      readWav: async () => new Float32Array([0.1, 0.2]),
+      removeFile: vi.fn(async () => undefined),
+      ...overrides,
+    };
+  }
+
+  it("keeps the event loop free while a window runs", async () => {
+    const runWindow: RunWindow = () => ({
+      mode: "worker",
+      run: async (_samples, _index, onProgress) => {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        onProgress(1);
+        return [{ text: "สวัสดี", start: 0, end: 0.1 }];
+      },
+      terminate: async () => {},
+    });
+
+    const provider = createTyphoonProvider(workerConfig({ runWindow }));
+
+    let ticks = 0;
+    const interval = setInterval(() => {
+      ticks += 1;
+    }, 10);
+
+    try {
+      await provider.transcribe({ filePath: MEDIA });
+    } finally {
+      clearInterval(interval);
+    }
+
+    expect(ticks).toBeGreaterThanOrEqual(5);
+  });
+
+  it("terminates the worker and rejects within 1 s on abort", async () => {
+    const run = vi.fn(() => new Promise<SpokenWord[]>(() => {}));
+    const terminate = vi.fn(async () => {});
+    const runWindow: RunWindow = () => ({ mode: "worker", run, terminate });
+
+    const provider = createTyphoonProvider(workerConfig({ runWindow }));
+    const controller = new AbortController();
+    const started = Date.now();
+
+    const job = provider.transcribe({ filePath: MEDIA }, { signal: controller.signal });
+    await vi.waitFor(() => expect(run).toHaveBeenCalled());
+    controller.abort();
+
+    await expect(job).rejects.toMatchObject({
+      code: "request-failed",
+      message: "transcription cancelled",
+    });
+    expect(terminate).toHaveBeenCalled();
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it("reports per-window progress", async () => {
+    const runWindow: RunWindow = () => ({
+      mode: "worker",
+      run: async (_samples, index, onProgress) => {
+        onProgress(0.5);
+        onProgress(1);
+        return [{ text: `w${index}`, start: 0, end: 0.1 }];
+      },
+      terminate: async () => {},
+    });
+
+    const signal = new Float32Array(16000 * 0.4);
+    const provider = createTyphoonProvider(
+      workerConfig({ readWav: async () => signal, runWindow, windowSeconds: 0.3, overlapSeconds: 0.1 }),
+    );
+    const progress: number[] = [];
+
+    await provider.transcribe({ filePath: MEDIA }, { onProgress: (fraction) => progress.push(fraction) });
+
+    expect(progress).toEqual([0.05, 0.275, 0.5, 0.725, 0.95, 1]);
+  });
+
+  it("terminates the worker after success and after failure", async () => {
+    const terminateOk = vi.fn(async () => {});
+    const okProvider = createTyphoonProvider(
+      workerConfig({
+        runWindow: () => ({
+          mode: "worker",
+          run: async () => [{ text: "สวัสดี", start: 0, end: 0.1 }],
+          terminate: terminateOk,
+        }),
+      }),
+    );
+    await okProvider.transcribe({ filePath: MEDIA });
+    expect(terminateOk).toHaveBeenCalled();
+
+    const terminateFail = vi.fn(async () => {});
+    const failProvider = createTyphoonProvider(
+      workerConfig({
+        runWindow: () => ({
+          mode: "worker",
+          run: async () => {
+            throw new Error("worker crashed");
+          },
+          terminate: terminateFail,
+        }),
+      }),
+    );
+    await expect(failProvider.transcribe({ filePath: MEDIA })).rejects.toMatchObject({
+      code: "request-failed",
+      message: "worker crashed",
+    });
+    expect(terminateFail).toHaveBeenCalled();
   });
 });

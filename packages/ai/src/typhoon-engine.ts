@@ -6,7 +6,7 @@
  * injected so unit tests never load the 461 MB model; the real adapter is
  * `openOnnxSession`.
  */
-import { extractFeatures } from "./typhoon-features";
+import { extractFeatures } from "./typhoon-features.ts";
 import type { SpokenWord, TranscriptionResult } from "./types";
 
 export type TensorType = "float32" | "int32" | "int64";
