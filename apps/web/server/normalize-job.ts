@@ -1,5 +1,5 @@
 import type { JobRegistry } from "@verbal/core";
-import { createProgressParser } from "@verbal/media";
+import { createProgressParser, publishAtomically } from "@verbal/media";
 import type { CaptureSpawner } from "./capture-job";
 
 /**
@@ -44,6 +44,7 @@ export type NormalizeJobDeps = {
   registry: JobRegistry;
   spawn: CaptureSpawner;
   unlink: (path: string) => Promise<void>;
+  rename?: (from: string, to: string) => Promise<void>;
 };
 
 export type NormalizeJobInput = {
@@ -58,14 +59,21 @@ export type NormalizeJobInput = {
 /**
  * Normalizes one uploaded take and tracks it as a job.
  *
- * A failed normalize removes the partial MP4; the uploaded source is removed
- * by the caller after the job settles.
+ * FFmpeg writes to a partial sibling of the destination, which is renamed over
+ * it only after FFmpeg succeeds and the job enters its publication boundary. A
+ * failed or cancelled normalize removes only the partial, so an existing take
+ * file stays byte-identical. The uploaded source is removed by the caller
+ * after the job settles.
  */
 export async function runNormalizeJob(
   deps: NormalizeJobDeps,
   input: NormalizeJobInput,
 ): Promise<void> {
-  const controller = new AbortController();
+  const signal = deps.registry.signalOf(input.jobId);
+  if (signal === undefined) {
+    throw new Error(`job ${input.jobId} has no abort signal`);
+  }
+
   let pending: Promise<unknown> = Promise.resolve();
   const feed = createProgressParser(input.durationSeconds, (progress) => {
     pending = pending
@@ -78,16 +86,36 @@ export async function runNormalizeJob(
   try {
     await deps.registry.start(input.jobId);
     await deps.registry.progress(input.jobId, 0.1, "normalizing");
-    await deps.spawn("ffmpeg", buildNormalizeArgs(input.inputPath, input.outputPath), {
-      signal: controller.signal,
-      onStdout: feed,
+
+    await publishAtomically({
+      outputPath: input.outputPath,
+      jobId: input.jobId,
+      write: async (partialPath) => {
+        await deps.spawn("ffmpeg", buildNormalizeArgs(input.inputPath, partialPath), {
+          signal,
+          onStdout: feed,
+        });
+      },
+      rename: deps.rename,
+      unlink: deps.unlink,
+      beforeRename: () => deps.registry.beginPublish(input.jobId),
+      afterRename: async () => {
+        await input.onOutput?.(input.outputPath);
+      },
     });
+
     await pending;
-    await input.onOutput?.(input.outputPath);
+    if (signal.aborted) return;
     await deps.registry.complete(input.jobId, { outputPath: input.outputPath });
   } catch (error) {
-    await deps.unlink(input.outputPath).catch(() => undefined);
+    await pending;
+    if (signal.aborted) {
+      await deps.registry.cancel(input.jobId).catch(() => undefined);
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     await deps.registry.fail(input.jobId, message).catch(() => undefined);
+  } finally {
+    deps.registry.endPublish(input.jobId);
   }
 }
