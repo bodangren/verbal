@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { FsEntry } from "../server/fs-api";
 
 export type ProjectBrowserProps = {
@@ -18,26 +18,6 @@ export type ProjectBrowserProps = {
 };
 
 const COLLAPSE_KEY = "verbal.browser.collapsed";
-
-function initialCollapsed(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  try {
-    const stored = window.localStorage.getItem(COLLAPSE_KEY);
-    if (stored !== null) {
-      return stored === "true";
-    }
-  } catch {
-    // Storage can be unavailable; fall through to the viewport rule.
-  }
-
-  return (
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 1100px)").matches
-  );
-}
 
 function formatDuration(seconds: number | undefined): string {
   if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) {
@@ -104,7 +84,34 @@ export function ProjectBrowser({
 }: ProjectBrowserProps) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  // The first render stays expanded so it matches the server render.
+  // Storage and the viewport apply in the effect below.
+  const [collapsed, setCollapsed] = useState(false);
+  const hasProject = currentRoot !== undefined && currentRoot !== "";
+  // The browser stays open while no project is open.
+  const isCollapsed = hasProject && collapsed;
+
+  useEffect(() => {
+    if (!hasProject) {
+      setCollapsed(false);
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(COLLAPSE_KEY);
+      if (stored !== null) {
+        setCollapsed(stored === "true");
+        return;
+      }
+    } catch {
+      // Storage can be unavailable; fall through to the viewport rule.
+    }
+    if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 1100px)").matches
+    ) {
+      setCollapsed(true);
+    }
+  }, [hasProject]);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -127,7 +134,7 @@ export function ProjectBrowser({
     setCreating(false);
   }
 
-  if (collapsed) {
+  if (isCollapsed) {
     return (
       <div className="browser browser--collapsed">
         <button

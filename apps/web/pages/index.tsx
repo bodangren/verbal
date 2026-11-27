@@ -65,6 +65,7 @@ import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
 import { TopBar, type SaveState, type WorkspaceMode } from "../components/TopBar";
 import { ProjectBrowser } from "../components/ProjectBrowser";
+import { EmptyState } from "../components/EmptyState";
 import type { FsEntry } from "../server/fs-api";
 import { PatchReview } from "../components/PatchReview";
 import { StoryboardPreview } from "../components/StoryboardPreview";
@@ -207,28 +208,6 @@ function readReducedMotion(): boolean {
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
-function EmptyState({
-  title,
-  body,
-  action,
-}: {
-  title: string;
-  body: string;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="empty">
-      <p className="empty__title">{title}</p>
-      <p className="empty__body">{body}</p>
-      {action !== undefined && (
-        <button type="button" className="button button--primary" onClick={action.onClick}>
-          {action.label}
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -1796,6 +1775,10 @@ export default function Home() {
                 <EmptyState
                   title="No Project Open"
                   body="Pick a project in the browser, or create one in the folder you are browsing."
+                  action={{
+                    label: "New Project",
+                    onClick: () => void createProject("Untitled Project"),
+                  }}
                 />
               )}
 
