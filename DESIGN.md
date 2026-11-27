@@ -163,11 +163,11 @@ Fast and subtle. 100-200ms transitions. No bounces or playful animations. The to
 - Hover: slightly elevated background, border lightens
 
 ### Transcription View
-- Monospace word labels in a flowing layout
-- Highlighted word: indigo background (#6366F1), white text, no border
-- Hover: subtle background shift on word labels
-- Selection: indigo tint background, thin indigo border
-- On 2026-11-27 the transcript words use the UI face, Inter, for Thai coverage and legibility.
+- Word labels use the UI face, Inter, for Thai coverage and legibility.
+- Highlighted word: `--primary-focus` fill, `--on-primary` text, no border.
+- Filled controls use `--primary-focus`; hover uses `--primary-hover`.
+- Hover: `--surface-elevated` tint on word labels.
+- Selection: indigo tint from `--primary`, thin `--primary` border.
 
 ### Waveform Display
 - Monospace timestamps (word indices or time)

@@ -686,7 +686,22 @@ function HomePage() {
           {/* DOM order is stage, then inspector, then browser: Tab reaches the
               transcript before the project rows. CSS `order` keeps the browser
               on the left. */}
-          <aside className="sidebar" aria-label="Project browser">
+          <a
+            className="skip-link"
+            href="#project-browser"
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById("project-browser")?.focus();
+            }}
+          >
+            Skip to project browser
+          </a>
+          <aside
+            id="project-browser"
+            className="sidebar"
+            aria-label="Project browser"
+            tabIndex={-1}
+          >
             {paneError?.pane === "browser" && (
               <PaneAlert
                 message={paneError.copy.message}

@@ -941,6 +941,24 @@ h2 {
   width: 300px;
 }
 
+.skip-link {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  left: -9999px;
+  padding: var(--space-2) var(--space-3);
+  position: absolute;
+  z-index: 10;
+}
+
+.skip-link:focus-visible {
+  left: var(--space-3);
+  min-height: 44px;
+  outline: 2px solid var(--focus-ring);
+  top: var(--space-3);
+}
+
 .browser {
   display: flex;
   flex-direction: column;
