@@ -238,9 +238,9 @@ code {
   background: var(--surface-elevated);
 }
 
-.transcript__word[data-caret="true"] {
+.transcript:focus-within .transcript__word[data-caret="true"] {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .transcript__word[data-active="true"] {
@@ -270,6 +270,7 @@ code {
   border-radius: var(--rounded-sm);
   font-size: 11px;
   padding: 2px var(--space-1);
+  align-self: center;
 }
 
 .playback {

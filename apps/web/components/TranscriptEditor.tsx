@@ -43,7 +43,12 @@ export type TranscriptEditorProps = {
 
 const EMPTY_RANGES: readonly WordSelection[] = [];
 
-type SelectionState = { caret: number; anchor: number | null };
+type SelectionState = {
+  caret: number;
+  anchor: number | null;
+  /** The last range reported to the page, so its echo is not treated as external. */
+  lastReported: WordSelection | null;
+};
 
 type SelectionAction =
   | { type: "move"; delta: number; count: number }
@@ -57,30 +62,52 @@ type SelectionAction =
  * One reducer for the caret and the local selection. `anchor` is null while
  * the page controls the selection, an index while the user extends a range,
  * and equal to `caret` after a move or clear (a collapsed, empty selection).
+ * `lastReported` marks the range the editor itself reported, and is cleared by
+ * any action that does not report a selection.
  */
 function selectionReducer(state: SelectionState, action: SelectionAction): SelectionState {
   switch (action.type) {
     case "move": {
       const next = moveCaret(state.caret, action.delta, action.count);
-      return { caret: next.index, anchor: next.index };
+      return { caret: next.index, anchor: next.index, lastReported: null };
     }
     case "extend": {
       const next = extendSelection(state.caret, state.anchor, action.delta, 0, action.count);
-      return { caret: next.index, anchor: next.anchor };
+      const anchor = next.anchor ?? next.index;
+      return {
+        caret: next.index,
+        anchor: next.anchor,
+        lastReported: {
+          fromIndex: Math.min(anchor, next.index),
+          toIndex: Math.max(anchor, next.index),
+        },
+      };
     }
     case "selectAll": {
       const all = selectAll(action.count);
-      return { caret: all.index, anchor: all.selection ? all.selection.toIndex : null };
+      return {
+        caret: all.index,
+        anchor: all.selection ? all.selection.toIndex : null,
+        lastReported: all.selection,
+      };
     }
     case "clear":
-      return { caret: state.caret, anchor: state.caret };
+      return { caret: state.caret, anchor: state.caret, lastReported: null };
     case "click":
       if (action.shift) {
-        return { caret: action.index, anchor: state.anchor ?? state.caret };
+        const anchor = state.anchor ?? state.caret;
+        return {
+          caret: action.index,
+          anchor,
+          lastReported: {
+            fromIndex: Math.min(anchor, action.index),
+            toIndex: Math.max(anchor, action.index),
+          },
+        };
       }
-      return { caret: action.index, anchor: null };
+      return { caret: action.index, anchor: null, lastReported: null };
     case "sync":
-      return { caret: state.caret, anchor: null };
+      return { caret: state.caret, anchor: null, lastReported: null };
   }
 }
 
@@ -172,13 +199,36 @@ export function TranscriptEditor({
   caretIndex,
   onWordRender,
 }: TranscriptEditorProps) {
-  const [state, dispatch] = useReducer(selectionReducer, { caret: 0, anchor: null });
+  const [state, dispatch] = useReducer(selectionReducer, {
+    caret: 0,
+    anchor: null,
+    lastReported: null,
+  });
 
-  // When the page changes the controlled range, the local selection yields to it.
+  const scrollToWord = (index: number) => {
+    document
+      .getElementById(`transcript-word-${transcript.words[index]?.id}`)
+      ?.scrollIntoView?.({ block: "nearest" });
+  };
+
+  // When the page changes the controlled range on its own, yield to it and
+  // scroll the new range into view. An echo of the range the editor just
+  // reported keeps the anchor, so Shift+Arrow keeps extending.
   const [previousRange, setPreviousRange] = useState(selectedRange);
   if (previousRange !== selectedRange) {
     setPreviousRange(selectedRange);
-    dispatch({ type: "sync" });
+    const lastReported = state.lastReported;
+    const sameAsReported =
+      selectedRange !== null &&
+      lastReported !== null &&
+      selectedRange.fromIndex === lastReported.fromIndex &&
+      selectedRange.toIndex === lastReported.toIndex;
+    if (!sameAsReported) {
+      dispatch({ type: "sync" });
+      if (selectedRange !== null) {
+        scrollToWord(selectedRange.fromIndex);
+      }
+    }
   }
 
   const effectiveSelection = deriveSelection(state, selectedRange);
@@ -214,12 +264,6 @@ export function TranscriptEditor({
   }, [transcript.words]);
 
   const activeCaret = caretIndex ?? state.caret;
-
-  const scrollToWord = (index: number) => {
-    document
-      .getElementById(`transcript-word-${transcript.words[index]?.id}`)
-      ?.scrollIntoView?.({ block: "nearest" });
-  };
 
   const nextKeptWordIndex = (range: WordSelection): number | null => {
     for (let index = range.toIndex + 1; index < transcript.words.length; index += 1) {
@@ -292,6 +336,7 @@ export function TranscriptEditor({
             scrollToWord(next.index);
           } else {
             dispatch({ type: "move", delta, count });
+            onSelectionClear?.();
             scrollToWord(targetIndex);
           }
         };
