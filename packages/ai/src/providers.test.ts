@@ -62,6 +62,8 @@ describe("createWhisperProvider", () => {
       apiKey: "secret",
       fetch: response.fn,
       readFile: async () => new Uint8Array([1, 2, 3]),
+      run: async () => ({ stdout: "", stderr: "" }),
+      stat: async () => ({ size: 100 }),
     });
 
     const result = await provider.transcribe({ filePath: "/media/take.mp4" });
@@ -96,6 +98,8 @@ describe("createWhisperProvider", () => {
       model: "whisper-large",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
+      run: async () => ({ stdout: "", stderr: "" }),
+      stat: async () => ({ size: 100 }),
     });
 
     await provider.transcribe({ filePath: "/a.mp4" });
@@ -110,6 +114,8 @@ describe("createWhisperProvider", () => {
       apiKey: "bad",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
+      run: async () => ({ stdout: "", stderr: "" }),
+      stat: async () => ({ size: 100 }),
     });
 
     await expect(provider.transcribe({ filePath: "/a.mp4" })).rejects.toMatchObject({
@@ -124,6 +130,8 @@ describe("createWhisperProvider", () => {
       apiKey: "k",
       fetch: response.fn,
       readFile: async () => new Uint8Array(),
+      run: async () => ({ stdout: "", stderr: "" }),
+      stat: async () => ({ size: 100 }),
     });
 
     await expect(provider.transcribe({ filePath: "/a.mp4" })).rejects.toMatchObject({

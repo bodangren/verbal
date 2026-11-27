@@ -1,5 +1,17 @@
-import path from "node:path";
 import { promises as nodeFs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import {
+  buildChunkArgs,
+  buildExtractArgs,
+  chunkLengthSeconds,
+  chunkStartsSeconds,
+  DEFAULT_MAX_UPLOAD_BYTES,
+  EXTRACT_BITRATE_KBPS,
+  EXTRACT_EXTENSION,
+  runExtract,
+} from "./audio-extract";
+import { nodeRun, type LocalRunner } from "./process";
 import {
   AiError,
   type LlmProvider,
@@ -18,7 +30,7 @@ export type OpenAiConfig = {
   baseUrl?: string;
   /** Injectable for tests. */
   fetch?: FetchLike;
-  /** Injectable for tests; defaults to reading the file from disk. */
+  /** Injectable for tests; reads the extracted audio bytes, never the media. */
   readFile?: (path: string) => Promise<Uint8Array>;
 };
 
@@ -66,21 +78,87 @@ function parseWord(value: unknown): SpokenWord {
 
 export type WhisperConfig = OpenAiConfig & {
   model?: string;
+  /** Injectable ffmpeg runner for audio extraction; defaults to a real spawn. */
+  run?: LocalRunner;
+  /** Largest audio file sent in one upload; larger audio is split. */
+  maxUploadBytes?: number;
+  /** Injectable size lookup for the extracted audio. */
+  stat?: (path: string) => Promise<{ size: number }>;
 };
 
 /**
  * Whisper transcription over the OpenAI-compatible audio endpoint.
  *
  * Uses `fetch` directly — no vendor SDK — so the adapter can point at any
- * compatible server by changing `baseUrl`.
+ * compatible server by changing `baseUrl`. Audio is extracted locally to
+ * compact mono 16 kHz MP3 before upload: video bytes never leave the machine,
+ * and a large file is split into time chunks whose word times are re-based.
  */
 export function createWhisperProvider(config: WhisperConfig): TranscriptionProvider {
   requireApiKey(config.apiKey);
 
   const doFetch = config.fetch ?? fetch;
   const readFile = config.readFile ?? (async (file: string) => nodeFs.readFile(file));
+  const run: LocalRunner = config.run ?? nodeRun;
+  const stat = config.stat ?? ((file: string) => nodeFs.stat(file));
   const baseUrl = resolveBaseUrl(config.baseUrl);
   const model = config.model ?? "whisper-1";
+  const maxUploadBytes = config.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+
+  const postAudio = async (
+    bytes: Uint8Array,
+    filename: string,
+    language: string | undefined,
+    signal: AbortSignal | undefined,
+  ): Promise<TranscriptionResult> => {
+    const form = new FormData();
+    form.append("file", new Blob([bytes as BlobPart]), filename);
+    form.append("model", model);
+    form.append("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "word");
+    if (language !== undefined) {
+      form.append("language", language);
+    }
+
+    const response = await doFetch(`${baseUrl}/audio/transcriptions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.apiKey}` },
+      body: form,
+      ...(signal === undefined ? {} : { signal }),
+    });
+
+    if (!response.ok) {
+      throw new AiError(
+        "request-failed",
+        `transcription failed with HTTP ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: unknown = await response.json();
+
+    if (!isRecord(data) || !Array.isArray(data.words)) {
+      throw new AiError("invalid-response", "transcription response has no words");
+    }
+
+    const words = (data.words as unknown[]).map(parseWord);
+
+    return {
+      text: typeof data.text === "string" ? data.text : "",
+      language: typeof data.language === "string" ? data.language : null,
+      words,
+    };
+  };
+
+  const offsetWords = (result: TranscriptionResult, offset: number): TranscriptionResult => ({
+    text: result.text,
+    language: result.language,
+    words: result.words.map((word) => ({
+      ...word,
+      start: word.start + offset,
+      end: word.end + offset,
+    })),
+  });
 
   return {
     id: "openai-whisper",
@@ -89,45 +167,57 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
       request,
       options?: ProviderOptions,
     ): Promise<TranscriptionResult> {
-      const bytes = await readFile(request.filePath);
+      const scratchDir = await nodeFs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
+      const stem = path.parse(request.filePath).name || "audio";
+      const audioPath = path.join(scratchDir, `${stem}.${EXTRACT_EXTENSION}`);
 
-      const form = new FormData();
-      form.append("file", new Blob([bytes as BlobPart]), path.basename(request.filePath));
-      form.append("model", model);
-      form.append("response_format", "verbose_json");
-      form.append("timestamp_granularities[]", "word");
-      if (request.language !== undefined) {
-        form.append("language", request.language);
+      try {
+        await runExtract(run, buildExtractArgs(request.filePath, audioPath), {
+          signal: options?.signal,
+        });
+
+        const info = await stat(audioPath);
+        const offsets = chunkStartsSeconds(info.size, maxUploadBytes, EXTRACT_BITRATE_KBPS);
+        const length = chunkLengthSeconds(maxUploadBytes, EXTRACT_BITRATE_KBPS);
+
+        const results: TranscriptionResult[] = [];
+        for (let index = 0; index < offsets.length; index += 1) {
+          if (options?.signal?.aborted === true) {
+            throw new AiError("request-failed", "transcription cancelled");
+          }
+
+          const offset = offsets[index] ?? 0;
+          let uploadPath = audioPath;
+          if (offsets.length > 1) {
+            uploadPath = path.join(scratchDir, `chunk-${index}.${EXTRACT_EXTENSION}`);
+            await runExtract(run, buildChunkArgs(audioPath, uploadPath, offset, length), {
+              signal: options?.signal,
+            });
+          }
+
+          const bytes = await readFile(uploadPath);
+          const result = await postAudio(
+            bytes,
+            path.basename(uploadPath),
+            request.language,
+            options?.signal,
+          );
+          results.push(offsetWords(result, offset));
+        }
+
+        const words = results.flatMap((result) => result.words);
+        const text = results.map((result) => result.text).filter(Boolean).join(" ");
+        const language =
+          results.find((result) => result.language !== null)?.language ?? null;
+
+        return {
+          text: text === "" ? words.map((word) => word.text).join(" ") : text,
+          language,
+          words,
+        };
+      } finally {
+        await nodeFs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
       }
-
-      const response = await doFetch(`${baseUrl}/audio/transcriptions`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${config.apiKey}` },
-        body: form,
-        ...(options?.signal === undefined ? {} : { signal: options.signal }),
-      });
-
-      if (!response.ok) {
-        throw new AiError(
-          "request-failed",
-          `transcription failed with HTTP ${response.status}`,
-          response.status,
-        );
-      }
-
-      const data: unknown = await response.json();
-
-      if (!isRecord(data) || !Array.isArray(data.words)) {
-        throw new AiError("invalid-response", "transcription response has no words");
-      }
-
-      const words = (data.words as unknown[]).map(parseWord);
-
-      return {
-        text: typeof data.text === "string" ? data.text : "",
-        language: typeof data.language === "string" ? data.language : null,
-        words,
-      };
     },
   };
 }
