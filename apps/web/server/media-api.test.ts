@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MediaInfo } from "@verbal/media";
+import { computeMediaRevision } from "@verbal/core";
 import { createProjectApi } from "./project-api";
 import { createMediaApi } from "./media-api";
 import { createFakeFileSystem } from "./test-support";
@@ -20,6 +21,7 @@ function makeApi(fs = createFakeFileSystem()) {
       assetPath: "assets/a.mp4",
       absolutePath: "/projects/demo/assets/a.mp4",
     }),
+    stat: async () => ({ size: 100, mtimeMs: 456 }),
   });
 }
 
@@ -60,7 +62,14 @@ describe("media API", () => {
     expect(response.status).toBe(200);
 
     const opened = await projects.open({ root: "/projects/demo" });
-    expect((opened.body as { media?: unknown }).media).toEqual({ assetPath: "assets/a.mp4" });
+    const expectedRevision = await computeMediaRevision({
+      mediaPath: "/projects/demo/assets/a.mp4",
+      stat: async () => ({ size: 100, mtimeMs: 456 }),
+    });
+    expect((opened.body as { media?: unknown }).media).toEqual({
+      assetPath: "assets/a.mp4",
+      mediaRevision: expectedRevision,
+    });
   });
 
   it("returns 404 when the project does not exist", async () => {

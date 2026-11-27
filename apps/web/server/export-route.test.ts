@@ -3,12 +3,17 @@ import { EventEmitter } from "node:events";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createTranscript, insertSilence, moveRange, serializeTranscript } from "@verbal/core";
 
-const { runExport, create, probeMedia, realpath, readFile } = vi.hoisted(() => ({
+const { runExport, create, probeMedia, realpath, readFile, openProject } = vi.hoisted(() => ({
   runExport: vi.fn(),
   create: vi.fn(),
   probeMedia: vi.fn(),
   realpath: vi.fn(async (path: string) => path),
   readFile: vi.fn(async () => Buffer.from("{}")),
+  openProject: vi.fn(
+    async (): Promise<{ media: { externalPath: string; mediaRevision?: string } }> => ({
+      media: { externalPath: "/source.mp4" },
+    }),
+  ),
 }));
 
 vi.mock("@verbal/media", async (importOriginal) => {
@@ -42,7 +47,7 @@ vi.mock("@verbal/core", async (importOriginal) => {
       readFile,
       realpath,
     },
-    openProject: async () => ({ media: { externalPath: "/source.mp4" } }),
+    openProject,
     projectPaths: () => ({ transcript: "/transcript.json" }),
     resolveInsideProject: (_root: string, path: string) => path,
   };
@@ -210,5 +215,43 @@ describe("POST /api/export timeline", () => {
     expect(res.statusCode).toBe(202);
     const input = runExport.mock.calls[0]?.[0] as { items: unknown[] };
     expect(input.items).toEqual([{ kind: "video", startSeconds: 0, endSeconds: 60 }]);
+  });
+});
+
+describe("POST /api/export transcript media revision", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("answers 409 when the transcript belongs to different media", async () => {
+    openProject.mockResolvedValueOnce({
+      media: { externalPath: "/source.mp4", mediaRevision: "rev-media" },
+    });
+    const transcript = { ...createTranscript([{ text: "one", start: 0, end: 1 }]), mediaRevision: "rev-transcript" };
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      error: "The transcript belongs to different media. Transcribe again.",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(probeMedia).not.toHaveBeenCalled();
+  });
+
+  it("exports when the transcript and media revisions match", async () => {
+    openProject.mockResolvedValueOnce({
+      media: { externalPath: "/source.mp4", mediaRevision: "rev-same" },
+    });
+    const transcript = { ...createTranscript([{ text: "one", start: 0, end: 1 }]), mediaRevision: "rev-same" };
+    readFile.mockResolvedValue(Buffer.from(serializeTranscript(transcript)));
+    probeMedia.mockResolvedValue({ durationSeconds: 1, streams: [] });
+    create.mockResolvedValue({ id: "job-1" });
+
+    const res = response();
+    await handler(request({ projectRoot: "/project", outputPath: "/out.mp4" }), res);
+
+    expect(res.statusCode).toBe(202);
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });

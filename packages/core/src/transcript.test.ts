@@ -221,6 +221,31 @@ describe("serialisation", () => {
   });
 });
 
+describe("media revision persistence", () => {
+  it("omits the key when no revision is set", () => {
+    const raw = serializeTranscript(createTranscript(SPOKEN));
+
+    expect(raw).not.toContain("mediaRevision");
+    expect("mediaRevision" in createTranscript(SPOKEN)).toBe(false);
+  });
+
+  it("round-trips a media revision", () => {
+    const transcript = { ...createTranscript(SPOKEN), mediaRevision: "rev-1" };
+    const parsed = parseTranscript(serializeTranscript(transcript));
+
+    expect(parsed.mediaRevision).toBe("rev-1");
+    expect(serializeTranscript(parsed)).toBe(serializeTranscript(transcript));
+  });
+
+  it("rejects a non-string media revision", () => {
+    const raw = serializeTranscript(createTranscript(SPOKEN));
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    value.mediaRevision = 7;
+
+    expect(() => parseTranscript(JSON.stringify(value))).toThrow(TranscriptError);
+  });
+});
+
 describe("silence persistence", () => {
   it("omits the key for new and old transcripts", () => {
     const raw = serializeTranscript(createTranscript(SPOKEN));

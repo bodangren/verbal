@@ -2,7 +2,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { AsrResolution } from "./asr-resolve";
 import type { TranscriptionProvider } from "@verbal/ai";
-import { JobRegistry, createMemoryJobStore } from "@verbal/core";
+import { JobRegistry, computeMediaRevision, createMemoryJobStore, createTranscript, serializeTranscript } from "@verbal/core";
 import {
   createTranscribeService,
   describeTranscriptionProvider,
@@ -27,8 +27,12 @@ const TYPHOON: AsrResolution = {
 const CLOUD: AsrResolution = { mode: "cloud" };
 const NONE: AsrResolution = { mode: "none", missing: "both" };
 
-function projectFs() {
+function projectFs(mediaRevision?: string) {
   const fs = createFakeFileSystem();
+  const media =
+    mediaRevision === undefined
+      ? { externalPath: "/media/take.mp4" }
+      : { externalPath: "/media/take.mp4", mediaRevision };
   fs.files.set(
     path.join(ROOT, "project.json"),
     JSON.stringify({
@@ -36,11 +40,13 @@ function projectFs() {
       id: "p1",
       name: "Local",
       createdAt: "2026-11-21T00:00:00.000Z",
-      media: { externalPath: "/media/take.mp4" },
+      media,
     }),
   );
   return fs;
 }
+
+const fakeStat = async () => ({ size: 123, mtimeMs: 456 });
 
 const stubProvider: TranscriptionProvider = {
   id: "stub",
@@ -90,6 +96,7 @@ describe("createTranscribeService provider selection", () => {
       resolveAsr: () => LOCAL,
       createLocalProvider,
       createProvider,
+      stat: fakeStat,
     });
 
     await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
@@ -111,6 +118,7 @@ describe("createTranscribeService provider selection", () => {
       resolveAsr: () => TYPHOON,
       createTyphoonProvider,
       createLocalProvider,
+      stat: fakeStat,
     });
 
     await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
@@ -138,6 +146,7 @@ describe("createTranscribeService provider selection", () => {
       baseUrl: () => "https://example.test/v1",
       resolveAsr: () => CLOUD,
       createProvider,
+      stat: fakeStat,
     });
 
     await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
@@ -159,6 +168,76 @@ describe("createTranscribeService provider selection", () => {
       code: "not-configured",
       message: `no speech engine is set up: run npm run fetch:typhoon, install whisper-cli and a model in ${DATA}, or set OPENAI_API_KEY`,
     });
+  });
+});
+
+describe("transcription media revisions", () => {
+  it("drops a transcript when the media changed during transcription", async () => {
+    const fs = projectFs("rev-a");
+    const prior = serializeTranscript(createTranscript([{ text: "old", start: 0, end: 1 }]));
+    fs.files.set(path.join(ROOT, "transcript.json"), prior);
+
+    let release!: () => void;
+    let entered = false;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const provider: TranscriptionProvider = {
+      id: "blocked",
+      async transcribe() {
+        entered = true;
+        await blocked;
+        return { text: "late", language: "en", words: [{ text: "late", start: 0, end: 1 }] };
+      },
+    };
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => provider,
+      stat: fakeStat,
+    });
+
+    const running = service.transcribeNow(ROOT);
+    await vi.waitFor(() => expect(entered).toBe(true));
+
+    // Import media B while the transcription of A runs.
+    fs.files.set(
+      path.join(ROOT, "project.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "p1",
+        name: "Local",
+        createdAt: "2026-11-21T00:00:00.000Z",
+        media: { externalPath: "/media/b.mp4", mediaRevision: "rev-b" },
+      }),
+    );
+    release();
+
+    await expect(running).rejects.toThrow(/stale/i);
+    expect(fs.files.get(path.join(ROOT, "transcript.json"))).toBe(prior);
+  });
+
+  it("stamps a revision when transcribing an old project without one", async () => {
+    const fs = projectFs();
+    const service = createTranscribeService({
+      fs,
+      resolveAsr: () => CLOUD,
+      apiKey: () => "key",
+      createProvider: () => stubProvider,
+      stat: async () => ({ size: 42, mtimeMs: 789 }),
+    });
+
+    await expect(service.transcribeNow(ROOT)).resolves.toBe(1);
+
+    const expected = await computeMediaRevision({
+      mediaPath: "/media/take.mp4",
+      stat: async () => ({ size: 42, mtimeMs: 789 }),
+    });
+    const stored = JSON.parse(
+      fs.files.get(path.join(ROOT, "transcript.json")) ?? "{}",
+    ) as { mediaRevision?: string };
+    expect(stored.mediaRevision).toBe(expected);
   });
 });
 

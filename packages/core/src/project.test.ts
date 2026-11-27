@@ -3,7 +3,9 @@ import type { FileSystem } from "./atomic";
 import {
   PROJECT_SCHEMA_VERSION,
   ProjectError,
+  computeMediaRevision,
   createProject,
+  mediaRevisionMismatch,
   openProject,
   parseProjectDocument,
   serializeProjectDocument,
@@ -233,5 +235,104 @@ describe("reference media", () => {
     expect(
       errorCode(() => parseProjectDocument(JSON.stringify({ ...validDocument(), media: {} }))),
     ).toBe("invalid-document");
+  });
+});
+
+describe("media revisions", () => {
+  it("parses and preserves a media revision on a copy", () => {
+    const raw = JSON.stringify({
+      ...validDocument(),
+      media: { assetPath: "assets/take.mp4", mediaRevision: "rev-1" },
+    });
+
+    expect(parseProjectDocument(raw).media).toEqual({
+      assetPath: "assets/take.mp4",
+      mediaRevision: "rev-1",
+    });
+  });
+
+  it("parses and preserves a media revision on a reference", () => {
+    const raw = JSON.stringify({
+      ...validDocument(),
+      media: { externalPath: "/media/take.mp4", mediaRevision: "rev-1" },
+    });
+
+    expect(parseProjectDocument(raw).media).toEqual({
+      externalPath: "/media/take.mp4",
+      mediaRevision: "rev-1",
+    });
+  });
+
+  it("round-trips a revision through serialize and parse", () => {
+    const document = parseProjectDocument(
+      JSON.stringify({
+        ...validDocument(),
+        media: { assetPath: "assets/take.mp4", mediaRevision: "rev-1" },
+      }),
+    );
+
+    expect(parseProjectDocument(serializeProjectDocument(document))).toEqual(document);
+  });
+
+  it("rejects a non-string media revision", () => {
+    expect(
+      errorCode(() =>
+        parseProjectDocument(
+          JSON.stringify({
+            ...validDocument(),
+            media: { assetPath: "assets/take.mp4", mediaRevision: 7 },
+          }),
+        ),
+      ),
+    ).toBe("invalid-document");
+  });
+});
+
+describe("computeMediaRevision", () => {
+  it("hashes path, size and mtime into a short revision", async () => {
+    const revision = await computeMediaRevision({
+      mediaPath: "/media/a.mp4",
+      stat: async () => ({ size: 100, mtimeMs: 2000 }),
+    });
+
+    expect(typeof revision).toBe("string");
+    expect(revision).toHaveLength(16);
+  });
+
+  it("changes when the path changes", async () => {
+    const stat = async () => ({ size: 100, mtimeMs: 2000 });
+    const left = await computeMediaRevision({ mediaPath: "/media/a.mp4", stat });
+    const right = await computeMediaRevision({ mediaPath: "/media/b.mp4", stat });
+
+    expect(left).not.toBe(right);
+  });
+
+  it("changes when size or mtime changes", async () => {
+    const left = await computeMediaRevision({
+      mediaPath: "/media/a.mp4",
+      stat: async () => ({ size: 100, mtimeMs: 2000 }),
+    });
+    const right = await computeMediaRevision({
+      mediaPath: "/media/a.mp4",
+      stat: async () => ({ size: 101, mtimeMs: 2000 }),
+    });
+
+    expect(left).not.toBe(right);
+  });
+});
+
+describe("mediaRevisionMismatch", () => {
+  it("is false when either revision is missing", () => {
+    expect(mediaRevisionMismatch(undefined, "rev-1")).toBe(false);
+    expect(mediaRevisionMismatch("rev-1", undefined)).toBe(false);
+    expect(mediaRevisionMismatch(undefined, undefined)).toBe(false);
+  });
+
+  it("is false when both revisions match", () => {
+    expect(mediaRevisionMismatch("rev-1", "rev-1")).toBe(false);
+  });
+
+  it("is true when both revisions exist and differ", () => {
+    expect(mediaRevisionMismatch("rev-1", "rev-2")).toBe(true);
   });
 });

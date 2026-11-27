@@ -1,8 +1,10 @@
 import {
+  computeMediaRevision,
   nodeFileSystem,
   openProject,
   saveProject,
   type FileSystem,
+  type MediaRevisionStat,
 } from "@verbal/core";
 import {
   importMedia as importMediaIntoProject,
@@ -17,6 +19,7 @@ import {
 import { failure } from "./api-errors";
 import type { ApiResponse } from "./jobs-api";
 import { asRecord, requireAbsolutePath } from "./validation";
+import { stat as statFile } from "node:fs/promises";
 
 export type MediaApiDeps = {
   fs: FileSystem;
@@ -26,6 +29,7 @@ export type MediaApiDeps = {
     fs: ImportFileSystem,
     request: { mode: ImportMode; sourcePath: string; projectRoot: string },
   ) => Promise<ImportResult>;
+  stat: (path: string) => Promise<MediaRevisionStat>;
 };
 
 /** Probing and import endpoints. */
@@ -35,6 +39,10 @@ export function createMediaApi(overrides: Partial<MediaApiDeps> = {}) {
     importFs: nodeImportFileSystem,
     probe: (file) => probeMedia(runCommand, file),
     importMedia: (fs, request) => importMediaIntoProject(fs, request),
+    stat: async (file) => {
+      const info = await statFile(file);
+      return { size: info.size, mtimeMs: info.mtimeMs };
+    },
     ...overrides,
   };
 
@@ -58,10 +66,13 @@ export function createMediaApi(overrides: Partial<MediaApiDeps> = {}) {
         const project = await openProject(deps.fs, projectRoot);
         const result = await deps.importMedia(deps.importFs, { mode, sourcePath, projectRoot });
 
+        const mediaPath = result.mode === "copy" ? result.absolutePath : result.externalPath;
+        const mediaRevision = await computeMediaRevision({ mediaPath, stat: deps.stat });
+
         const media =
           result.mode === "copy"
-            ? { assetPath: result.assetPath }
-            : { externalPath: result.externalPath };
+            ? { assetPath: result.assetPath, mediaRevision }
+            : { externalPath: result.externalPath, mediaRevision };
 
         const updated = { ...project, media };
         await saveProject(deps.fs, projectRoot, updated);

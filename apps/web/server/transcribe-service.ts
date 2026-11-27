@@ -9,6 +9,7 @@ import {
 } from "@verbal/ai";
 import {
   ProjectError,
+  computeMediaRevision,
   createTranscript,
   nodeFileSystem,
   openProject,
@@ -18,10 +19,12 @@ import {
   type FileSystem,
   type JobRecord,
   type JobRegistry,
+  type MediaRevisionStat,
 } from "@verbal/core";
 import { resolveAsr, type AsrResolution } from "./asr-resolve";
 import { getJobRegistry, verbalDataDir } from "./registry";
 import { runTranscriptionJob } from "./transcribe-job";
+import { stat as statFile } from "node:fs/promises";
 
 /** What the UI says about the provider the environment selected. */
 export type TranscriptionProviderInfo = {
@@ -104,6 +107,7 @@ export type TranscribeServiceDeps = {
     language?: string;
   }) => TranscriptionProvider;
   createTyphoonProvider: (config: { modelDir: string }) => TranscriptionProvider;
+  stat: (mediaPath: string) => Promise<MediaRevisionStat>;
 };
 
 /**
@@ -124,6 +128,10 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
     dataDir: () => verbalDataDir(),
     createLocalProvider: (config) => createLocalWhisperProvider(config),
     createTyphoonProvider: (config) => createTyphoonProvider(config),
+    stat: async (mediaPath) => {
+      const info = await statFile(mediaPath);
+      return { size: info.size, mtimeMs: info.mtimeMs };
+    },
     ...overrides,
   };
 
@@ -181,10 +189,12 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       if (signal?.aborted) throw new Error("transcription cancelled");
       const provider = providerFor();
 
-      const mediaPath = await this.mediaPathFor(root);
+      const startProject = await openProject(deps.fs, root);
+      const mediaPath = resolveMediaPath(startProject, root);
       if (mediaPath === null) {
         throw new ProjectError("invalid-document", "project has no media");
       }
+      const startRevision = startProject.media?.mediaRevision;
 
       const result = await provider.transcribe(
         { filePath: mediaPath },
@@ -192,10 +202,27 @@ export function createTranscribeService(overrides: Partial<TranscribeServiceDeps
       );
 
       if (signal?.aborted) throw new Error("transcription cancelled");
+
+      const currentProject = await openProject(deps.fs, root);
+      const currentRevision = currentProject.media?.mediaRevision;
+
+      if (
+        startRevision !== undefined &&
+        currentRevision !== undefined &&
+        startRevision !== currentRevision
+      ) {
+        throw new Error("transcription is stale: media changed during transcription");
+      }
+
+      const stamp =
+        startRevision ??
+        currentRevision ??
+        (await computeMediaRevision({ mediaPath, stat: deps.stat }));
+
       await saveTranscript(
         deps.fs,
         projectPaths(root).transcript,
-        createTranscript(result.words),
+        { ...createTranscript(result.words), mediaRevision: stamp },
       );
 
       return result.words.length;

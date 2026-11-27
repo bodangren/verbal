@@ -32,6 +32,8 @@ export type TranscriptDocument = {
   removedWordIds: string[];
   /** Optional, so transcripts saved before silences existed still parse. */
   silences?: TranscriptSilence[];
+  /** Revision of the media this transcript came from; optional so old transcripts still parse. */
+  mediaRevision?: string;
 };
 
 export type TranscriptErrorCode =
@@ -387,6 +389,7 @@ export function serializeTranscript(transcript: TranscriptDocument): string {
     ...(transcript.silences === undefined || transcript.silences.length === 0
       ? {}
       : { silences: transcript.silences }),
+    ...(transcript.mediaRevision === undefined ? {} : { mediaRevision: transcript.mediaRevision }),
   };
   return `${JSON.stringify(value, null, 2)}\n`;
 }
@@ -444,7 +447,7 @@ export function validateTranscript(value: unknown): TranscriptDocument {
     throw new TranscriptError("invalid-document", "transcript document must be an object");
   }
 
-  const { schemaVersion, words, segments, removedWordIds, silences } = value;
+  const { schemaVersion, words, segments, removedWordIds, silences, mediaRevision } = value;
 
   if (typeof schemaVersion !== "number" || !Number.isInteger(schemaVersion)) {
     throw new TranscriptError("invalid-document", "schemaVersion must be an integer");
@@ -511,6 +514,14 @@ export function validateTranscript(value: unknown): TranscriptDocument {
     }
   }
 
+  let parsedMediaRevision: string | undefined;
+  if (mediaRevision !== undefined && mediaRevision !== null) {
+    if (typeof mediaRevision !== "string" || mediaRevision.trim() === "") {
+      throw new TranscriptError("invalid-document", "mediaRevision must be a non-empty string");
+    }
+    parsedMediaRevision = mediaRevision;
+  }
+
   return {
     schemaVersion,
     words: parsedWords,
@@ -519,6 +530,7 @@ export function validateTranscript(value: unknown): TranscriptDocument {
       .filter((word) => removedSet.has(word.id))
       .map((word) => word.id),
     ...(parsedSilences === undefined ? {} : { silences: parsedSilences }),
+    ...(parsedMediaRevision === undefined ? {} : { mediaRevision: parsedMediaRevision }),
   };
 }
 

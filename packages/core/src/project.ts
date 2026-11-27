@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { writeFileAtomic, type FileSystem } from "./atomic";
 import { ProjectError } from "./errors";
@@ -15,7 +15,46 @@ export type ProjectMedia = {
   assetPath?: string;
   /** Absolute path for an asset referenced in place. */
   externalPath?: string;
+  /** Revision of the media at import time; optional so old projects still open. */
+  mediaRevision?: string;
 };
+
+export type MediaRevisionStat = {
+  size: number;
+  mtimeMs: number;
+};
+
+export type MediaRevisionSource = {
+  /** Absolute path of the media file. */
+  mediaPath: string;
+  /** Reads the media file's size and mtime; injected so tests need no files. */
+  stat: (mediaPath: string) => Promise<MediaRevisionStat> | MediaRevisionStat;
+};
+
+/** A short, stable revision of the media a project references. */
+export async function computeMediaRevision(source: MediaRevisionSource): Promise<string> {
+  const stat = await source.stat(source.mediaPath);
+  return createHash("sha256")
+    .update(source.mediaPath)
+    .update("\u0000")
+    .update(String(stat.size))
+    .update("\u0000")
+    .update(String(stat.mtimeMs))
+    .digest("hex")
+    .slice(0, 16);
+}
+
+/** True when both revisions exist and differ; a missing one is a match. */
+export function mediaRevisionMismatch(
+  mediaRevision: string | undefined,
+  transcriptRevision: string | undefined,
+): boolean {
+  return (
+    mediaRevision !== undefined &&
+    transcriptRevision !== undefined &&
+    mediaRevision !== transcriptRevision
+  );
+}
 
 export type ProjectDocument = {
   schemaVersion: number;
@@ -120,9 +159,13 @@ export function validateProjectDocument(value: unknown): ProjectDocument {
     }
 
     if (hasAsset) {
-      document.media = {
+      const parsed: ProjectMedia = {
         assetPath: assertRelativePath(nonEmptyString(media.assetPath, "media.assetPath")),
       };
+      if (media.mediaRevision !== undefined && media.mediaRevision !== null) {
+        parsed.mediaRevision = nonEmptyString(media.mediaRevision, "media.mediaRevision");
+      }
+      document.media = parsed;
     } else {
       const external = nonEmptyString(media.externalPath, "media.externalPath");
       if (!path.isAbsolute(external) || external.includes("\0")) {
@@ -131,7 +174,11 @@ export function validateProjectDocument(value: unknown): ProjectDocument {
           `external media paths must be absolute: ${external}`,
         );
       }
-      document.media = { externalPath: path.normalize(external) };
+      const parsed: ProjectMedia = { externalPath: path.normalize(external) };
+      if (media.mediaRevision !== undefined && media.mediaRevision !== null) {
+        parsed.mediaRevision = nonEmptyString(media.mediaRevision, "media.mediaRevision");
+      }
+      document.media = parsed;
     }
   }
 
