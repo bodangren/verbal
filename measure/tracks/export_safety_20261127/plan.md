@@ -84,6 +84,23 @@ These phases came from older tracks that overlapped this one. The archived plan 
       Detail: `measure/archive/superseded_backend_review_20261127_save_export_integrity_20261122/plan.md`.
       Scope: Write provenance next to a verified output; the UI asks before it replaces an existing file; operation state is visible. S1 and S3 already cover temporary output, alias rejection and isolated work.
 
+## Phase R2: Acceptance fixes (Sol review, 2026-11-27)
+
+The independent acceptance review rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **S1b** (B01 (Blocker, Sol: verified)): Apply the source-alias check and atomic publication to the storyboard export. fbcdce3
+      Evidence: 523 server, compose and media tests green; the three alias tests returned 202 with the check disabled and 400 with it. Gap: only the project source media is compared; generated assets and brand music are not.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/storyboard-api.ts`, `apps/web/server/storyboard-export.ts`, `packages/compose/src/assemble.ts`, `packages/media/src/export.ts` (shared publication helper), tests.
+      Red: Test: a storyboard export whose `outputPath` is the source, a symlink to it, or a hardlink answers 400 before any job. Test: a failed concatenation leaves an existing destination byte-identical and removes only the partial. Test: success renames a verified partial.
+      Green: Extract ONE publication helper (partial path `<stem>.<job>.partial<ext>`, rename on success, unlink only the partial on failure) used by both export routes; call `resolveExportDestination` in the storyboard route; the final concat step writes the partial.
+- [x] **S2c** (M03 (Sol: verified)): Make the take upload work through the built server above 1 MB and bound its memory. 7384916
+      Evidence: config test green; Red showed `config` undefined. vinext reads `config.api.bodyParser.sizeLimit` (read in its source). Proven on the built server at 229b347: a 3 MiB POST to `/api/takes` reached the handler (404 for a missing project; before the fix vinext refused it with a plain-text 413), and a declared 900 MB body is still refused with 413. The whole body is still held in memory.
+      wave 2. Worker: `claude-agent/haiku`.
+      Files: `apps/web/pages/api/takes.ts`, `apps/web/server/take-api.ts`, `apps/web/server/http.ts`, tests; the built-server check is the orchestrator's.
+      Red: Read how vinext applies a body size limit (the installed parser stops at 1 MB before the handler runs); add the route config that raises it to the take limit, and a test that the config export exists with the limit. Record how to prove it on the built server.
+      Green: Export the route `config` with an explicit `sizeLimit` and keep the 413 mapping.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

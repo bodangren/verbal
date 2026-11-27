@@ -89,6 +89,41 @@ These phases came from older tracks that overlapped this one. The archived plan 
       Detail: `measure/archive/superseded_backend_review_20261127_save_export_integrity_20261122/plan.md`.
       Scope: Pure cache keys (source, edit, template, codec, geometry, audio); fast-path eligibility; verified segment reuse; a repeat export performs zero segment encodes; cold and warm timings recorded.
 
+## Phase R2: Acceptance fixes (Sol review, 2026-11-27)
+
+The independent acceptance review rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **E2b** (H01a (Sol: verified for the empty and overlapping cases)): Restore deletion-only equivalence in the ordered timeline. ab82085
+      Evidence: 179 media, cleanup and route tests green; Red showed 4 failures (empty transcript, removed first word, removed last word, generated oracle). The unedited, no-reorder, no-silence case now delegates to `buildCutList`, so it inherits its 0.02 s sliver drop. Freeze fingerprint stability stays with E2d.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/media/src/timeline.ts`, `packages/media/src/timeline.test.ts`, `packages/media/src/cutlist.ts` (read only).
+      Red: Tests against `buildCutList` as the oracle: an empty transcript with a duration gives the whole file; a removed first word keeps the head; a removed last word keeps the tail; overlapping removals never give a zero-length or reversed range; combined edits (delete plus reorder plus silence) stay valid.
+      Green: Decide the rule once (the old planner keeps every source second that is not inside a removed word plus handle) and implement it; never emit an item with end <= start.
+- [x] **E2c** (H01b (Sol: verified by a real FFmpeg run)): Render inserted silence at the decoded video geometry. 9640343
+      Evidence: 128 media and route tests green. Measured with real ffmpeg: a 160x120 source with a 90 degree display rotation plus 1 s of silence exports to 3.000 s video and 3.000 s audio at 120x160. Not covered by a measured test: non-integer frame rates such as 29.97.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/pages/api/export.ts`, `packages/media/src/export.ts`, `packages/media/src/probe.ts`, tests.
+      Red: Test: a source with a 90 degree display rotation plus an inserted silence exports (measured with ffprobe: video and audio durations match). Test: the silence item uses the display width and height.
+      Green: Take the display geometry from the probe (swap width and height for a 90 or 270 degree rotation) and normalise the sample aspect ratio before concat.
+- [x] **E2d** (H01c (Sol: verified)): Derive the frozen result from the ordered timeline and keep old fingerprints stable. 7439eb5
+      Evidence: 453 cleanup, media and server tests green; Red showed 5 failures (reorder cut list, silence anchors, three legacy fingerprint cases). Fingerprint v2 plus a legacy match for unedited projects. Gap: a project frozen between E2 and E2d stored an unversioned fingerprint and will re-anchor once.
+      wave 3. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/cleanup/src/freeze.ts`, tests.
+      Red: Test: anchors, cut list and master duration come from `buildTimeline`; the fingerprint of an unedited project equals the pre-E2 value (store a fixture hash) or is migrated explicitly.
+      Green: Use one timeline for all four values; version the fingerprint input so old fingerprints are recognised.
+- [x] **E4c** (M02 (Sol: verified)): Give silent talk segments an audio stream. f10dfb5
+      Evidence: 133 compose tests green; a measured cut of a video-only clip probes one video and one audio stream within 0.1 s of 1.5 s. Orchestrator fix: the worker used stereo silence, but the brand and composite silences are mono and the concat copies streams, so the talk silence is mono. A stereo or mono SOURCE with audio still keeps its own layout (E8).
+      wave 2. Worker: `claude-agent/haiku`.
+      Files: `packages/compose/src/render-step.ts`, `packages/compose/src/video-range.ts`, tests.
+      Red: Test: a talk segment cut from a source with no audio contains an `anullsrc` input so it concatenates with slide segments.
+      Green: Pass `hasAudio` into the video-range builder and add the silent input when false.
+- [x] **E5b** (H10 (Sol: verified)): Test the generated-video export and remove scene-id collisions. c73dfff
+      Evidence: 358 server and storyboard tests green; Red showed the old id `talk#2` overwriting a talk piece. Provenance manifests now list `__talk-piece-N`. Document scene ids that start with `__` are rejected.
+      wave 3. Worker: `opencode-go/hy4-flash-free`.
+      Files: `apps/web/server/storyboard-api.test.ts`, `apps/web/server/storyboard-api.ts` (id mapping only).
+      Red: Test: a mixed storyboard with talk, template slide, generated image and generated video completes assembly. Test: a document scene id that equals a derived talk-piece id does not collide.
+      Green: Use internal identifiers that a document id cannot equal (a reserved prefix).
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

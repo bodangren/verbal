@@ -1,6 +1,6 @@
 # Plan: Frontend Export Flow and Dialogs (review 2026-11-27)
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 **Created:** 2026-11-27
 **Focus:** A truthful export panel with progress and a busy state, one name for the flow, accessible dialogs, reachable error detail.
 
@@ -74,6 +74,17 @@ These phases came from older tracks that overlapped this one. The archived plan 
       Wave 6. Worker: `claude-agent/haiku`.
       Detail: `measure/archive/superseded_frontend_review_20261127_ux_deliver_export_20261122/plan.md`.
       Scope: The three expert panels move into a drawer that is closed by default and remembers its state; estimate-before-generate stays.
+
+## Phase R2: Acceptance fixes (Opus review, 2026-11-27)
+
+The independent acceptance review (real browser, 54 screenshots) rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **X34b** (H5, M1, M2, M3, L9 (Opus: verified)): Make export and error results readable and keep the output path. da8cfb5
+      Evidence: 277 component, lib and hook tests green; Red showed 11 failures (path missing, no visible percent, Preview label, no in-panel failure, double announce). The popover and the 360 px result are not yet checked in a browser.
+      wave 1. Worker: `opencode-go/muse-spark-1.3-contributor`.
+      Files: `apps/web/components/DeliverWorkspace.tsx`, `apps/web/components/ExportControls.tsx`, `apps/web/components/job-status.ts`, `apps/web/components/StatusBar.tsx`, their tests, `apps/web/styles/globals.css` (export panel and status bar blocks only).
+      Red: Tests: the export result text keeps the output path (`Exported to <path>`) in the panel and the status region (the generic `Export finished` does not replace it); the busy panel shows `Exporting · N%` as visible text beside a full-width progress bar; Preview keeps its idle label and is only disabled; a failed export shows its message and detail INSIDE the Export panel next to the button; the status bar error detail opens upward as a popover that is not clipped (height not limited by the 30 px row); `Export started` is announced once per job.
+      Green: Fold the path into `jobResultText`; announce per job id once; render the failure in the panel; position the disclosure with `bottom: 100%`.
 
 ## Phase 3: Verify
 

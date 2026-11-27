@@ -1,6 +1,6 @@
 # Plan: Frontend Transcript as a Document (review 2026-11-27)
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 **Created:** 2026-11-27
 **Focus:** One tab stop with a caret, restore of removed words, honest feedback after each edit, safe re-transcription, a fast word list.
 
@@ -44,7 +44,7 @@ Each task is one worker: Red test, Green fix, orchestrator review, orchestrator 
       Green: Implement the caret model as pure functions. Render words as `role=option` spans in one `role=listbox`. Wire keys. Replace the gate's word-element count with a tab-order walk and a focus test on the container.
       Check: `npx vitest run apps/web/components/transcript-editor.test.tsx apps/web/lib/caret.test.ts`; UX gate (orchestrator)
 - [x] **T3** (F06 FR2): Make the mode control one tab stop and put the stage first in the DOM. cd7fcea
-      Evidence: UX gate in a clean worktree: tab stops before the transcript 14 to 6, inside the transcript 1, all five viewports clean. The first worker pass (luna, twice) failed; the orchestrator finished it and fixed a `order` mistake that would have moved the browser to the right. Decision: the gate budget is 6 stops before the transcript (was 2), as this track's spec set it. Ordered CSS keeps the desktop layout; the DOM order is stage, browser, inspector, which a screen reader reads in that order.
+      Evidence: UX gate in a clean worktree: tab stops before the transcript 14 to 6, inside the transcript 1, all five viewports clean. The first worker pass (luna, twice) failed; the orchestrator finished it and fixed a `order` mistake that would have moved the browser to the right. Decision: the gate budget is 6 stops before the transcript (was 2), as this track's spec set it. Ordered CSS keeps the desktop layout; the DOM order is stage, inspector, browser, which a screen reader reads in that order.
       Wave 2. Worker: `opencode-go/hy4-flash-free`.
       Files: `apps/web/components/TopBar.tsx` (or the component that renders `.segmented`), its test, `apps/web/styles/globals.css` (`order` rules only). Depends on L3 and L4 for the shared CSS file; run after them.
       Red: Test: `.segmented` has one `tabIndex=0` item; ArrowLeft/Right move focus and selection; Home/End jump. Gate: at most 6 stops before the transcript.
@@ -91,6 +91,35 @@ These phases came from older tracks that overlapped this one. The archived plan 
       Wave 5. Worker: `deepseek/deepseek-v4-pro`.
       Detail: `measure/archive/superseded_frontend_review_20261127_ux_transcript_document_20261122/plan.md`.
       Scope: Floating toolbar with names and shortcut titles; remove the footer edit row and the Save button; paragraph times; follow-scroll with pause and reduced motion; Edit re-captured at three viewports. `content-visibility` and the 5,000-word benchmark are covered by T7.
+
+## Phase R2: Acceptance fixes (Opus review, 2026-11-27)
+
+The independent acceptance review (real browser, 54 screenshots) rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **T2b** (B1 Blocker, H1, M4, L1, L4 (Opus: verified in a real browser)): Make keyboard range selection work in the real app and fix the editor's follow-up defects. c2d812a
+      Evidence: 277 tests green; Red showed `['five','six']` for six expected words with a parent that echoes the range. The caret outline and chip are CSS-source assertions; Opus must re-check them in a browser.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/components/TranscriptEditor.tsx`, `apps/web/components/transcript-editor.test.tsx`, `apps/web/components/transcript-feedback.test.tsx`, `apps/web/styles/globals.css` (word and caret block only).
+      Red: Tests with a CONTROLLED parent that stores `onSelectionChange` and passes it back as `selectedRange` (the page does this): Home then five Shift+ArrowRight selects six words; four Shift+ArrowLeft selects five; then Delete or Space acts on that range. A selection set by the parent (search) scrolls the match into view (`scrollIntoView` spy on the match word). A plain ArrowRight after a click clears the page selection through `onSelectionClear`. The caret outline shows only while the listbox has focus.
+      Green: Do not reset the anchor when the new `selectedRange` equals the last range the editor reported (compare and skip `sync`). Scroll to `selectedRange.fromIndex` when the controlled range changes. Call `onSelectionClear` on a plain caret move. Style the caret under `:focus-within` only. Centre the silence chip on the word line.
+- [x] **T5c** (H4, L2, L3 (Opus: verified)): Keep focus and announce results after a toolbar edit. e4348df
+      Evidence: 262 component, lib and hook tests green; Red showed focus off the listbox and no Restore or match message. Gap: the caret does not land on the next kept word after a toolbar Delete (task T5d).
+      wave 1. Worker: `claude-agent/haiku`.
+      Files: `apps/web/components/EditWorkspace.tsx`, `apps/web/components/transcript-feedback.test.tsx`, `apps/web/components/transcript-restore.test.tsx`.
+      Red: Tests: after the toolbar Delete or Restore, focus is on the transcript listbox with the caret on the next kept word (not `<body>`); Restore says `Restored N words` in the status region; the search counter sits in a polite live region and announces `Match 2 of 5`.
+      Green: Focus the listbox in the Delete and Restore handlers (after the state update, with a ref or `queueMicrotask`); add the Restore message; wrap the counter in `role=status`.
+- [x] **T5d** (H4 follow-up from T5c): Move the caret to the next kept word after a toolbar Delete. a234e3a
+      Evidence: 283 tests green; Red showed the caret staying on the removed word after Delete and on the wrong word after Restore. Debt: `scrollIntoView` runs in the render body (same pattern as T2b); a strict-mode double render calls it twice, which is harmless.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/components/TranscriptEditor.tsx`, `apps/web/components/EditWorkspace.tsx`, tests. Starts after T2b (same editor file).
+      Red: after the toolbar Delete the listbox `aria-activedescendant` is the next kept word; after Restore it is the first restored word.
+      Green: add a `focusRequest?: { index: number; token: number }` prop that dispatches a caret move when the token changes (no state-setting effect: derive it in the reducer on a changed token).
+- [x] **T6b** (L5 (Opus: verified)): Name the loss in the Transcribe Again confirm and style the action as destructive. 0e5161d
+      Evidence: 308 component, lib, hook and tools tests green; Red showed no counts and the primary fill. `button--danger` is new; no browser check yet.
+      wave 2. Worker: `opencode-go/hy4-flash-free`.
+      Files: `apps/web/components/IngestStage.tsx`, `apps/web/components/ingest-stage.test.tsx`, `apps/web/components/IngestWorkspace.tsx`, `apps/web/styles/globals.css` (the `.confirm` block only).
+      Red: Test: the confirm text names the counts (`N removed words, M silences`); Replace Transcript uses the destructive style.
+      Green: Pass the counts as props with defaults; use the existing destructive button class.
 
 ## Phase 3: Verify
 

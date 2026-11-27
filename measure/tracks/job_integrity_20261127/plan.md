@@ -72,6 +72,29 @@ These phases came from older tracks that overlapped this one. The archived plan 
       Detail: `measure/archive/superseded_backend_review_20261127_job_lifecycle_20261122/plan.md`.
       Scope: Event payload schema; SSE backed by registry subscriptions with disconnect cleanup; one reusable client subscription; remove `pollJob`; browser test for cancel and reconnect with no restarted work.
 
+## Phase R2: Acceptance fixes (Sol review, 2026-11-27)
+
+The independent acceptance review rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **J2b** (H04a (Sol: verified)): Pass the cancellation signal into storyboard rendering and every media subprocess. bd1d28e
+      Evidence: 534 server, compose and media tests green; Red showed the signal never reaching the concat or a segment step. The production route moved from `runCommand` to `spawnProcess`; the e2e walkthrough does not run a real storyboard export, so that path is covered by unit tests only.
+      wave 1. Worker: `openai/gpt-6-luna`.
+      Files: `apps/web/server/storyboard-api.ts`, `packages/compose/src/render-step.ts`, `packages/compose/src/assemble.ts`, tests.
+      Red: Test: aborting during concatenation kills the FFmpeg child (fake runner sees `signal.aborted`), publishes no final file and no provenance.
+      Green: Thread the registry signal through the render steps and the concat runner; await child exit before cleanup.
+- [x] **J2c** (H04b (Sol: verified)): Define one publication boundary so cancel and publish cannot both win. bb5557e
+      Evidence: 604 core, media and server tests green; 10 Red failures. Gaps: the two batch-path tests were added after the fix; a storyboard job whose provenance write fails after the rename ends `failed` with a published file.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/media/src/export.ts`, `apps/web/server/export-job.ts`, `apps/web/server/transcribe-service.ts`, `packages/core/src/jobs.ts`, tests.
+      Red: Test: a cancel that arrives after the rename begins is rejected (the job ends `done`), and a cancel that wins prevents the rename and the transcript save. No job reports `cancelled` with a published output.
+      Green: Add a `beginPublish(id)` on the registry that returns false when the job is cancelled and locks cancel out afterwards; call it immediately before each publication.
+- [x] **J3c** (H09a+H09b (Sol: verified)): Close the remaining revision gaps. ee24a63
+      Evidence: 490 core and server tests green; 9 Red failures. A PUT to a project with no `project.json` now answers 404 instead of saving.
+      wave 3. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/server/transcribe-service.ts`, `apps/web/server/take-api.ts`, `apps/web/server/capture-api.ts`, `apps/web/pages/api/assembly.ts`, `apps/web/pages/api/transcript.ts`, `packages/core/src/project.ts`, tests.
+      Red: Test: a transcription that starts on a project without a revision gets the starting revision computed first, and a later import drops its result. Test: take, capture and assembly media replacement write a new revision. Test: a transcript PUT with a stale revision is rejected.
+      Green: One shared `replaceProjectMedia` and one revision comparison used by every path; stamp missing revisions once.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

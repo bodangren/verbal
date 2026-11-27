@@ -42,6 +42,23 @@ Each task is one worker: Red test, Green fix, orchestrator review, orchestrator 
       Green: Spawn the worker with `new Worker(new URL(...))`, pass the model path and window plan, stream progress through `postMessage`.
       Check: `npx vitest run packages/ai`; real-model smoke only if the model exists, through the heavy lock
 
+## Phase R2: Acceptance fixes (Sol review, 2026-11-27)
+
+The independent acceptance review rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **T1b** (H07a (Sol: verified)): Read PCM from disk one window at a time. 4f9a9ac
+      Evidence: 140 `packages/ai` tests green; Red showed the provider ignoring the window reader. A measured 30 minute silent WAV grew the process by 116 to 124 MB (limit in the test 150 MB; spec ceiling 600 MB), which is per-window decode churn, not retained audio. The whole-file `readWav` seam stays for older tests.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/typhoon.ts`, `packages/ai/src/typhoon-window.ts`, tests.
+      Red: Test: the provider never allocates a Float32Array for the whole file (spy on the reader: each read is at most one window); peak RSS for a 30 minute synthetic WAV stays under 600 MB (measured through the heavy lock; record it).
+      Green: Stream the WAV: read the header, then read each window's samples by offset.
+- [x] **T1c** (H07b (Sol: verified)): Match words across the overlap and stop planning at the signal end. e56504f
+      Evidence: 147 `packages/ai` tests green; Red showed a duplicate, a lost word and 181 words for 180. Real model (Thai sample three times, 5 s windows, 1 s overlap): 48 words merged, 48 in one window, same sequence. Limit: word jitter over 0.3 s can still duplicate one word.
+      wave 2. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/typhoon-window.ts`, tests.
+      Red: Test: a word recognised in both windows with different times (within 0.3 s) is kept once; no window is planned when the previous one already reaches the end. Test with a 90 second synthetic seam.
+      Green: Align the two word sequences across the overlap by text and nearest time; drop the duplicate.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.

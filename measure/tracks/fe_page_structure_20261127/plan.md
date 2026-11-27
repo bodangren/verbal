@@ -1,6 +1,6 @@
 # Plan: Frontend Page Structure (review 2026-11-27)
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 **Created:** 2026-11-27
 **Focus:** Split the 2,576-line page into workspaces and hooks, cut the state held in Home, and test each interactive path.
 
@@ -57,6 +57,17 @@ Each task is one worker: Red test, Green fix, orchestrator review, orchestrator 
       Red: Lint or a test that the render handler calls `setRendering(false)` once per exit path.
       Green: Fold the duplicates into one `finally`.
       Check: `npx vitest run apps/web`
+
+## Phase R2: Acceptance fixes (Opus review, 2026-11-27)
+
+The independent acceptance review (real browser, 54 screenshots) rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **P1b** (B1 test gap (Opus: verified)): Pin multi-step keyboard selection in the page-level tests. 9ed8af1
+      Evidence: 8 page tests green; with the T2b fix reverted the three new tests failed (`['w4','w5']` for six words).
+      wave 2. Worker: `opencode-go/hy4-flash-free`.
+      Files: `apps/web/components/page-edit-paths.test.tsx`.
+      Red: Add a page-level test: Home then five Shift+ArrowRight selects six words, with the real page state (not a stub parent).
+      Green: Test only; it fails on the current code and passes after T2b.
 
 ## Phase 2: Verify
 

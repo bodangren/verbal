@@ -1,6 +1,6 @@
 # Plan: Frontend Layout and Responsiveness (review 2026-11-27)
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS
 **Created:** 2026-11-27
 **Focus:** Give the transcript room, stack the shell on narrow screens, fix first run and the hydration error, raise contrast and target size.
 
@@ -64,6 +64,29 @@ Each task is one worker: Red test, Green fix, orchestrator review, orchestrator 
       Red: Script test (`tools/e2e/css-unused.test.mjs`, new): every class in `globals.css` appears in `apps/web/**/*.tsx` or an allow-list; each `var(--x)` has a definition. Run it first to list the 29 dead classes and 3 undefined properties.
       Green: Delete the dead rules, merge the duplicate `:focus-visible`, define `--pending`, `--font-mono`, `--border-strong`, reset `h3` margins inside `.card`, give `button:disabled.primary` a distinct neutral fill.
       Check: `npx vitest run tools/e2e/css-unused.test.mjs`; UX gate (orchestrator)
+
+## Phase R2: Acceptance fixes (Opus review, 2026-11-27)
+
+The independent acceptance review (real browser, 54 screenshots) rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **L3b** (H2, H3, M6, L8 (Opus: verified)): Fix the narrow layout the gate cannot see. af6a665
+      Evidence: 303 component, lib and tools tests green; the new gate rules at 360 px have not run in a browser on this commit yet. The browser gate runs at the next checkpoint.
+      wave 2. Worker: `opencode-go/muse-spark-1.3-contributor`.
+      Files: `apps/web/styles/globals.css` (sidebar, card head, media row blocks), `apps/web/components/ProjectBrowser.tsx`, `apps/web/components/IngestInspector.tsx`/`IngestStage.tsx` (markup only if needed), `apps/web/components/EmptyState.tsx`, tests, `tools/e2e/ux-gates.mjs` (add rules).
+      Red: Gate rules at 360x740: the project browser has a visible toggle or strip (height at least 32 px) when a project is open; the search counter and both match buttons lie inside the viewport; the media file name shows at least 12 characters. Component test: the empty state shows New Project before the disabled cards.
+      Green: Show a Projects strip button at 900 px or less; let `.card__head` wrap; stack the media row; move New Project above the disabled cards.
+- [x] **L6b** (M5 (Opus: verified)): Keep the edit toolbar reachable. 229b347
+      Evidence: 316 component, lib, hook and tools tests green; the collapse tests failed when the default was forced to false. The sticky toolbar and the gate rule are verified by the next gate run.
+      wave 3. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `apps/web/styles/globals.css`, `apps/web/components/EditWorkspace.tsx`, `apps/web/components/PlaybackScreen.tsx`, tests.
+      Red: Gate rule: at 1024x700 and 360x740 the Delete, Restore and Undo buttons are inside the viewport without scrolling the stage. Test: the player collapses by default under a short or narrow viewport (the F01 recommendation) and the toggle still works.
+      Green: Make the edit toolbar sticky at the bottom of the stage; default `playerCollapsed` from `matchMedia('(max-height: 800px), (max-width: 900px)')` read through an external store (no state-setting effect).
+- [x] **L7b** (M7, L6, L7 (Opus: verified)): Correct the records and the focus-order note. 6e82d49
+      Evidence: 296 component, lib and hook tests green; Red showed no link and no CSS rule. The T3 note now says stage, inspector, browser. Check in a browser: the focus-visible look and the six-stop budget.
+      wave 3. Worker: `opencode-go/hy4-flash-free`.
+      Files: `DESIGN.md`, `apps/web/components/TopBar.tsx` or the page shell (skip link), `measure/tracks/fe_*/plan.md` status lines, `fe_transcript_20261127/plan.md` T3 note, tests.
+      Red: Test: a `Skip to project browser` link exists, is the first focusable element after the top bar actions, and moves focus to the browser. DESIGN.md has one transcript font rule and one accent value.
+      Green: Add the skip link; fix the contradiction in DESIGN.md lines 166 to 170; set the four plan statuses; correct the DOM order in the T3 note (stage, inspector, browser).
 
 ## Phase 2: Verify
 

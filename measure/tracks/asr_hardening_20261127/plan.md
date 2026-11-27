@@ -63,6 +63,29 @@ Each task is one worker: Red test, Green fix, orchestrator review, orchestrator 
       Green: Reuse the ffmpeg WAV/opus extraction seam. Cut chunks with `-ss`/`-t`. Add offsets when merging.
       Check: `npx vitest run packages/ai`
 
+## Phase R2: Acceptance fixes (Sol review, 2026-11-27)
+
+The independent acceptance review rejected or conditionally accepted this track. Each task below reopens a finding it verified. Same worker rules as Phase 1.
+
+- [x] **A5b** (H08 (Sol: verified gap)): Measure chunk duration with ffprobe and enforce the upload limit on each chunk. a0aff44
+      Evidence: 140 `packages/ai` tests green; Red showed 13 failures (duration-based plan, per-chunk stat, separate directories). Gap: the single-segment over-limit re-split branch is not unit-tested.
+      wave 1. Worker: `deepseek/deepseek-v4-pro`.
+      Files: `packages/ai/src/audio-extract.ts`, `packages/ai/src/openai.ts`, tests.
+      Red: Test: chunk boundaries use the probed duration; a chunk above the limit is split again; the extracted audio path and chunk paths cannot collide for a media file named `chunk-0.mp4`.
+      Green: Probe the audio, plan chunks from the duration, stat every chunk, use separate subdirectories.
+- [x] **A2b** (M06 (Sol: verified)): Send the requested language to the cloud engine. 5250483
+      Evidence: 60 tests green; Red showed cloud resolutions with no language and no `language=en` in the multipart body. Gap: a cloud provider built outside `transcribe-service` does not read the environment.
+      wave 1. Worker: `opencode-go/hy4-flash-free`.
+      Files: `apps/web/server/asr-resolve.ts`, `apps/web/server/transcribe-service.ts`, tests.
+      Red: Test: with `VERBAL_ASR_LANGUAGE=en` and the cloud engine (explicit or fallback) the request carries `language=en`.
+      Green: Carry the language on the resolved engine and into the request.
+- [x] **A4b** (M07 (Sol: verified)): Check Content-Range before appending resumed bytes. 4d51f41
+      Evidence: 7 download tests green; Red showed wrong bytes appended. The check compares the start only; a wrong end or total is caught by the SHA-256 check.
+      wave 1. Worker: `claude-agent/haiku`.
+      Files: `tools/fetch-typhoon-model.mjs`, `tools/fetch-typhoon-model.test.mjs`.
+      Red: Test: a 206 whose Content-Range start differs from the `.part` size is not appended; the download restarts from zero.
+      Green: Parse Content-Range and compare its start with the part size.
+
 ## Phase 3: Verify
 
 - [ ] Orchestrator reviews every diff and sends weak work back.
