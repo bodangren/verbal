@@ -8,6 +8,10 @@ import { getJobRegistry } from "../../server/registry";
 import { createTakeApi, MAX_UPLOAD_BODY_BYTES } from "../../server/take-api";
 import { asRecord } from "../../server/validation";
 
+export const config = {
+  api: { bodyParser: { sizeLimit: MAX_UPLOAD_BODY_BYTES } },
+};
+
 export default async function handler(
   request: IncomingMessage,
   response: ServerResponse,
