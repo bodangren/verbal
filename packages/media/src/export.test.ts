@@ -380,4 +380,71 @@ describe("resolveExportDestination", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("rejects when the destination realpath fails with an unexpected error", async () => {
+    const realpath = async (value: string) => {
+      if (value.endsWith("/out.mp4")) {
+        throw Object.assign(new Error("permission denied"), { code: "EACCES" });
+      }
+      return value;
+    };
+
+    await expect(
+      resolveExportDestination("/media/in.mp4", "/media/out.mp4", realpath),
+    ).rejects.toThrow("cannot check the export destination: EACCES");
+  });
+
+  it("resolves a not-yet-created destination whose parent exists", async () => {
+    const realpath = async (value: string) => {
+      if (value === "/media/out.mp4") {
+        throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+      }
+      return value;
+    };
+
+    await expect(
+      resolveExportDestination("/media/in.mp4", "/media/out.mp4", realpath),
+    ).resolves.toBe("/media/out.mp4");
+  });
+
+  it("walks up to the nearest existing ancestor for a missing parent", async () => {
+    const realpath = async (value: string) => {
+      if (value === "/media" || value === "/media/in.mp4") {
+        return value;
+      }
+      throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+    };
+
+    await expect(
+      resolveExportDestination("/media/in.mp4", "/media/new/final.mp4", realpath),
+    ).resolves.toBe("/media/new/final.mp4");
+  });
+
+  it("rejects when the nearest existing ancestor resolves to the source", async () => {
+    const realpath = async (value: string) => {
+      if (value === "/media/in.mp4") {
+        return "/media/in.mp4";
+      }
+      if (value === "/alias") {
+        return "/media";
+      }
+      throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+    };
+
+    await expect(
+      resolveExportDestination("/media/in.mp4", "/alias/in.mp4", realpath),
+    ).rejects.toThrow("outputPath must not be the source video");
+  });
+
+  it("rejects when the dev+ino stat fails with an unexpected error", async () => {
+    const stat = async () => {
+      throw Object.assign(new Error("permission denied"), { code: "EACCES" });
+    };
+
+    await expect(
+      resolveExportDestination("/media/in.mp4", "/media/out.mp4", async (value) => value, {
+        stat,
+      }),
+    ).rejects.toThrow("cannot check the export destination: EACCES");
+  });
 });

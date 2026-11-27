@@ -1360,6 +1360,84 @@ describe("storyboard export API", () => {
       expect(filters.some((filter) => filter.includes("[1:a]"))).toBe(true);
     });
   });
+
+  describe("destination alias safety", () => {
+    it("rejects a destination equal to the take file before creating a job", async () => {
+      const { fs, root, registry, renderer, run } = await setup({ media: true });
+      const create = vi.spyOn(registry, "create");
+      const takePath = "/projects/demo/assets/take.mp4";
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: identity },
+        { root, outputPath: takePath, brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be the source video",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("rejects a destination that resolves to a generated asset before creating a job", async () => {
+      const { fs, root, registry, renderer, run } = await setup({
+        media: true,
+        storyboard: {
+          schemaVersion: 1,
+          scenes: [
+            {
+              id: "hero",
+              anchor: { startWordId: "w0", endWordId: "w1" },
+              visual: "generated-image",
+              layer: "full-frame",
+              assetId: ASSET_ID,
+            },
+          ],
+        },
+      });
+      const create = vi.spyOn(registry, "create");
+      const assetPath = `/projects/demo/assets/generated/${ASSET_ID}`;
+      const aliasAsset = async (value: string) =>
+        value === "/out/final.mp4" ? assetPath : value;
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: aliasAsset },
+        { root, outputPath: "/out/final.mp4", brand: BRAND },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be an input file of this storyboard",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("rejects a destination that resolves to the brand music before creating a job", async () => {
+      const { fs, root, registry, renderer, run } = await setup({ media: true });
+      const create = vi.spyOn(registry, "create");
+      const musicPath = "/projects/demo/assets/music.mp3";
+      const aliasMusic = async (value: string) =>
+        value === "/out/final.mp4" ? musicPath : value;
+
+      const response = await startStoryboardExport(
+        { fs, registry, renderer, run, now, rendererReady: () => true, realpath: aliasMusic },
+        {
+          root,
+          outputPath: "/out/final.mp4",
+          brand: { ...BRAND, music: { assetPath: "assets/music.mp3", volume: 0.25 } },
+        },
+      );
+
+      expect(response.status).toBe(400);
+      expect((response.body as { error: string }).error).toBe(
+        "outputPath must not be an input file of this storyboard",
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe("storyboard export atomic publication", () => {

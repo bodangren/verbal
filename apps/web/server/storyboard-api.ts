@@ -266,6 +266,29 @@ export function assertExportable(scene: Scene): void {
 }
 
 /**
+ * Checks that the export destination does not alias an input file.
+ *
+ * Returns undefined when the destination is safe, or a 400 response otherwise.
+ * An unexpected filesystem error fails closed with a clear message.
+ */
+async function checkDestination(
+  inputPath: string,
+  outputPath: string,
+  realpath: RealpathFn | undefined,
+  aliasMessage?: string,
+): Promise<ApiResponse | undefined> {
+  try {
+    await resolveExportDestination(inputPath, outputPath, realpath, { aliasMessage });
+    return undefined;
+  } catch (error) {
+    if (error instanceof ExportError) {
+      return { status: 400, body: { error: error.message } };
+    }
+    return failure(error);
+  }
+}
+
+/**
  * Starts a storyboard export as a job.
  *
  * Slides, generated assets, and talk ranges are rendered. A storyboard with
@@ -307,13 +330,9 @@ export async function startStoryboardExport(
     if (mediaPath === undefined) {
       return { status: 400, body: { error: "project has no media" } };
     }
-    try {
-      await resolveExportDestination(mediaPath, outputPath, deps.realpath);
-    } catch (error) {
-      if (error instanceof Error && error.message === "outputPath must not be the source video") {
-        return { status: 400, body: { error: error.message } };
-      }
-      return failure(error);
+    const sourceConflict = await checkDestination(mediaPath, outputPath, deps.realpath);
+    if (sourceConflict !== undefined) {
+      return sourceConflict;
     }
 
     const transcript = await readTranscriptDocument(deps.fs, root);
@@ -328,6 +347,7 @@ export async function startStoryboardExport(
       assertExportable(scene);
     }
     const anchors = anchorIndexFromTranscript(transcript);
+    const otherInputs: string[] = [];
     const audioBrand =
       brand.music === undefined
         ? brand
@@ -338,6 +358,9 @@ export async function startStoryboardExport(
               assetPath: await resolveContainedFile(root, brand.music.assetPath, deps.realpath),
             },
           };
+    if (audioBrand.music !== undefined) {
+      otherInputs.push(audioBrand.music.assetPath);
+    }
 
     const scenes = new Map<string, StepScene>();
     const resolved: { sceneId: string; startSeconds: number; endSeconds: number }[] = [];
@@ -407,6 +430,7 @@ export async function startStoryboardExport(
           assetPath,
           assetKind: scene.visual === "generated-video" ? "video" : "image",
         });
+        otherInputs.push(assetPath);
         resolved.push({
           sceneId: scene.id,
           startSeconds: times.startSeconds,
@@ -417,6 +441,18 @@ export async function startStoryboardExport(
 
     if (resolved.length === 0) {
       return { status: 400, body: { error: "storyboard has no renderable scenes" } };
+    }
+
+    for (const inputPath of otherInputs) {
+      const conflict = await checkDestination(
+        inputPath,
+        outputPath,
+        deps.realpath,
+        "outputPath must not be an input file of this storyboard",
+      );
+      if (conflict !== undefined) {
+        return conflict;
+      }
     }
 
     const plan = planAssembly({

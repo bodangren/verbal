@@ -367,33 +367,110 @@ export type RunExportInput = BuildExportArgsInput & {
 
 export type Realpath = (path: string) => Promise<string>;
 
+export type Stat = (path: string) => Promise<{ dev: number; ino: number }>;
+
+export type ResolveExportDestinationOptions = {
+  /** Error message when the destination aliases the source. */
+  aliasMessage?: string;
+  /** Stats a path for the dev+ino alias check. Defaults to `nodeFs.stat`. */
+  stat?: Stat;
+};
+
+function errorCodeOf(error: unknown): string | undefined {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    return typeof code === "string" ? code : undefined;
+  }
+  return undefined;
+}
+
+function isNotFound(error: unknown): boolean {
+  return errorCodeOf(error) === "ENOENT";
+}
+
+function cannotCheck(code: string | undefined): ExportError {
+  return new ExportError(
+    "invalid-option",
+    `cannot check the export destination: ${code ?? "unknown"}`,
+  );
+}
+
+/**
+ * Resolves the destination to its real location.
+ *
+ * A destination that does not exist yet has no realpath, so the check walks up
+ * to the nearest existing ancestor, resolves that, and re-appends the rest.
+ * Only an ENOENT allows the fallback; any other filesystem error fails closed.
+ */
+async function resolveDestinationRealPath(
+  destination: string,
+  realpath: Realpath,
+): Promise<string> {
+  let candidate = resolve(destination);
+  const missing: string[] = [];
+  for (;;) {
+    try {
+      const resolved = await realpath(candidate);
+      return missing.length === 0
+        ? resolved
+        : resolve(resolved, ...missing.slice().reverse());
+    } catch (error) {
+      if (!isNotFound(error)) {
+        throw cannotCheck(errorCodeOf(error));
+      }
+      const parent = dirname(candidate);
+      if (parent === candidate) {
+        throw cannotCheck("ENOENT");
+      }
+      missing.push(basename(candidate));
+      candidate = parent;
+    }
+  }
+}
+
 export async function resolveExportDestination(
   source: string,
   destination: string,
   realpath: Realpath = nodeFs.realpath,
+  options: ResolveExportDestinationOptions = {},
 ): Promise<string> {
-  const [sourceReal, destinationReal] = await Promise.all([
-    realpath(resolve(source)).catch(() => resolve(source)),
-    realpath(resolve(destination)).catch(() =>
-      realpath(dirname(resolve(destination)))
-        .catch(() => dirname(resolve(destination)))
-        .then((parent) => resolve(parent, basename(destination))),
-    ),
-  ]);
+  const aliasMessage = options.aliasMessage ?? "outputPath must not be the source video";
+  const stat = options.stat ?? ((path: string) => nodeFs.stat(path));
+
+  const sourceReal = await realpath(resolve(source)).catch((error) => {
+    if (isNotFound(error)) {
+      return resolve(source);
+    }
+    throw cannotCheck(errorCodeOf(error));
+  });
+
+  const destinationReal = await resolveDestinationRealPath(destination, realpath);
+
   const sameRealPath = sourceReal === destinationReal;
-  const sameInode = await nodeFs
-    .stat(resolve(source))
-    .then(async (sourceStat) => {
-      const destinationStat = await nodeFs.stat(resolve(destination)).catch(() => undefined);
-      return (
-        destinationStat !== undefined &&
-        sourceStat.dev === destinationStat.dev &&
-        sourceStat.ino === destinationStat.ino
-      );
-    })
-    .catch(() => false);
+
+  const sourceStat = await stat(resolve(source)).catch((error) => {
+    if (isNotFound(error)) {
+      return undefined;
+    }
+    throw cannotCheck(errorCodeOf(error));
+  });
+
+  let sameInode = false;
+  if (sourceStat !== undefined) {
+    const destinationStat = await stat(resolve(destination)).catch((error) => {
+      if (isNotFound(error)) {
+        return undefined;
+      }
+      throw cannotCheck(errorCodeOf(error));
+    });
+    sameInode =
+      destinationStat !== undefined &&
+      sourceStat.dev === destinationStat.dev &&
+      sourceStat.ino === destinationStat.ino;
+  }
+
   if (sameRealPath || sameInode) {
-    throw new ExportError("invalid-option", "outputPath must not be the source video");
+    throw new ExportError("invalid-option", aliasMessage);
   }
   return destination;
 }
