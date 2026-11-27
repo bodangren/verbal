@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTranscript, removeRange } from "@verbal/core";
 import { buildCutList } from "./cutlist";
 import { runExport } from "./export";
+import { resolvePreset } from "./presets";
 import { probeMedia } from "./probe";
 import { runCommand } from "./exec";
 
@@ -88,5 +89,36 @@ describe.skipIf(!ffmpegAvailable)("export integration", () => {
     expect(info.streams.some((stream) => stream.kind === "video")).toBe(true);
     expect(info.streams.some((stream) => stream.kind === "audio")).toBe(true);
     expect(progress.at(-1)).toBe(1);
+  }, 60_000);
+
+  it("exports an audio-only preset as one audio stream with no video stream", async () => {
+    const tone = path.join(directory, "tone.wav");
+    const podcast = path.join(directory, "podcast.m4a");
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:duration=4",
+      tone,
+    ]);
+
+    await runExport({
+      inputPath: tone,
+      outputPath: podcast,
+      items: [
+        { kind: "video", startSeconds: 0, endSeconds: 1 },
+        { kind: "video", startSeconds: 2, endSeconds: 3 },
+      ],
+      hasAudio: true,
+      codecs: resolvePreset("podcast-audio").codecs,
+    });
+
+    const info = await probeMedia(runCommand, podcast);
+
+    expect(info.streams).toHaveLength(1);
+    expect(info.streams[0]?.kind).toBe("audio");
+    expect(info.streams.some((stream) => stream.kind === "video")).toBe(false);
   }, 60_000);
 });

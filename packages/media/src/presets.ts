@@ -52,7 +52,6 @@ const PODCAST: ExportPreset = {
   label: "Podcast (audio)",
   extension: "m4a",
   codecs: {
-    videoCodec: "libx264",
     audioCodec: "aac",
     audioArgs: ["-b:a", "128k"],
   },

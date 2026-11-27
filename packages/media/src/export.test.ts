@@ -35,7 +35,7 @@ describe("buildExportArgs", () => {
     expect(args.at(-1)).toBe("/media/out.mp4");
   });
 
-  it("omits the audio chain when the source has no audio", () => {
+  it("adds a silent audio input when the source has no audio and the recipe needs audio", () => {
     const args = buildExportArgs({
       inputPath: "/media/in.mp4",
       outputPath: "/media/out.mp4",
@@ -44,10 +44,15 @@ describe("buildExportArgs", () => {
     });
 
     const filter = args[args.indexOf("-filter_complex") + 1] ?? "";
+    const silentIndex = args.findIndex((argument) => argument.startsWith("anullsrc"));
 
-    expect(filter).toContain("concat=n=2:v=1:a=0[vout]");
-    expect(filter).not.toContain("atrim");
-    expect(args).not.toContain("[aout]");
+    expect(silentIndex).toBeGreaterThan(args.indexOf("/media/in.mp4"));
+    expect(silentIndex).toBeLessThan(args.indexOf("-filter_complex"));
+    expect(args[silentIndex - 2]).toBe("lavfi");
+    expect(filter).toContain("[1:a]atrim=start=0.000000:end=");
+    expect(filter).toContain("concat=n=2:v=1:a=1[vout][aout]");
+    expect(args).toContain("[aout]");
+    expect(args).toContain("-c:a");
   });
 
   it("keeps a hostile path as one argv entry and out of the filtergraph", () => {

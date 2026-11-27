@@ -9,6 +9,8 @@ export type CompositeSource = {
   loop?: boolean;
   /** Seconds to seek the input before reading it; omitted means no seek. */
   seekSeconds?: number;
+  /** False when the input file has no audio stream. Only speaker audio is read. */
+  hasAudio?: boolean;
 };
 
 export type CompositeKey = {
@@ -115,6 +117,8 @@ function validate(request: CompositeRequest): void {
  * Inputs are ordered slide (0), speaker (1), music (2). Paths appear only in
  * argv; the filtergraph carries timestamps, labels, and numbers. A speaker
  * seek lands before its `-i`, so composites play the anchored source time.
+ * A speaker without an audio stream gets synthesized silence, so the audio
+ * map never reads a missing stream.
  */
 export function buildCompositeArgs(request: CompositeRequest): string[] {
   validate(request);
@@ -165,14 +169,22 @@ export function buildCompositeArgs(request: CompositeRequest): string[] {
 
   const loudness = request.audio.loudnessLufs ?? -16;
   const loudnorm = `loudnorm=I=${loudness}:TP=-1.5:LRA=11`;
+  const speakerHasAudio = request.speaker.hasAudio !== false;
 
   if (request.mute === true) {
     filters.push("anullsrc=r=48000:cl=mono[aout]");
   } else if (request.audio.musicInput === undefined) {
-    filters.push(`[1:a]${loudnorm}[aout]`);
+    filters.push(speakerHasAudio ? `[1:a]${loudnorm}[aout]` : "anullsrc=r=48000:cl=mono[aout]");
   } else {
     const volume = request.audio.musicVolume ?? 0.25;
-    filters.push(`[1:a]asplit=2[voice][sidechain]`);
+
+    if (speakerHasAudio) {
+      filters.push(`[1:a]asplit=2[voice][sidechain]`);
+    } else {
+      filters.push("anullsrc=r=48000:cl=mono[silent]");
+      filters.push(`[silent]asplit=2[voice][sidechain]`);
+    }
+
     filters.push(`[2:a]volume=${volume}[bgm]`);
     filters.push(
       `[bgm][sidechain]sidechaincompress=threshold=0.05:ratio=8:attack=5:release=250[ducked]`,

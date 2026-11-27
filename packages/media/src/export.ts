@@ -23,13 +23,15 @@ export class ExportError extends Error {
 }
 
 export type ExportCodecOptions = {
-  videoCodec: string;
-  audioCodec: string;
+  /** Absent means the output carries no video stream. */
+  videoCodec?: string;
+  /** Absent means the output carries no audio stream. */
+  audioCodec?: string;
   videoArgs?: string[];
   audioArgs?: string[];
 };
 
-export const DEFAULT_EXPORT_CODECS: ExportCodecOptions = {
+export const DEFAULT_EXPORT_CODECS: Required<ExportCodecOptions> = {
   videoCodec: "libx264",
   audioCodec: "aac",
   videoArgs: ["-crf", "20", "-preset", "veryfast"],
@@ -82,6 +84,10 @@ function resolveItems(input: BuildExportArgsInput): TimelineItem[] {
  * silence is rendered as black video plus silent audio from lavfi sources.
  * The pieces are then concatenated in one filter graph. This always
  * re-encodes: it is exact, and stream-copy can only cut on keyframes.
+ *
+ * The stream map follows the preset and the probed streams. A preset without
+ * a video codec builds an audio graph and no video stream. A recipe that
+ * needs audio but reads no audio stream gets a silent lavfi input.
  */
 export function buildExportArgs(input: BuildExportArgsInput): string[] {
   const items = resolveItems(input);
@@ -104,9 +110,21 @@ export function buildExportArgs(input: BuildExportArgsInput): string[] {
     }
   }
 
+  const requested = input.codecs;
+  const codecs: ExportCodecOptions = { ...DEFAULT_EXPORT_CODECS, ...requested };
+  const wantsVideo = requested === undefined || requested.videoCodec !== undefined;
+  const wantsAudio = codecs.audioCodec !== undefined;
+
+  if (!wantsVideo && !wantsAudio) {
+    throw new ExportError(
+      "invalid-option",
+      "the export needs a video codec or an audio codec",
+    );
+  }
+
   const hasSilence = items.some((item) => item.kind === "silence");
   const geometry = input.video;
-  if (hasSilence) {
+  if (hasSilence && wantsVideo) {
     if (
       geometry === undefined ||
       !Number.isFinite(geometry.width) ||
@@ -123,65 +141,87 @@ export function buildExportArgs(input: BuildExportArgsInput): string[] {
     }
   }
 
-  const codecs: ExportCodecOptions = { ...DEFAULT_EXPORT_CODECS, ...input.codecs };
-
   const filters: string[] = [];
   const labels: string[] = [];
 
   items.forEach((item, index) => {
-    if (item.kind === "video") {
-      filters.push(
-        `[0:v]trim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},setpts=PTS-STARTPTS[v${index}]`,
-      );
-
-      if (input.hasAudio) {
+    if (wantsVideo) {
+      if (item.kind === "video") {
         filters.push(
-          `[0:a]atrim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},asetpts=PTS-STARTPTS[a${index}]`,
+          `[0:v]trim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},setpts=PTS-STARTPTS[v${index}]`,
         );
-        labels.push(`[v${index}][a${index}]`);
       } else {
-        labels.push(`[v${index}]`);
+        const size = geometry as ExportVideoGeometry;
+        filters.push(
+          `color=c=black:s=${size.width}x${size.height}:r=${seconds(size.fps)}:d=${seconds(item.durationSeconds)},setpts=PTS-STARTPTS[v${index}]`,
+        );
       }
-    } else {
-      const size = geometry as ExportVideoGeometry;
-      filters.push(
-        `color=c=black:s=${size.width}x${size.height}:r=${seconds(size.fps)}:d=${seconds(item.durationSeconds)},setpts=PTS-STARTPTS[v${index}]`,
-      );
+    }
 
-      if (input.hasAudio) {
-        filters.push(`anullsrc=r=48000:cl=stereo:d=${seconds(item.durationSeconds)}[a${index}]`);
-        labels.push(`[v${index}][a${index}]`);
+    if (wantsAudio) {
+      if (item.kind === "video") {
+        if (input.hasAudio) {
+          filters.push(
+            `[0:a]atrim=start=${seconds(item.startSeconds)}:end=${seconds(item.endSeconds)},asetpts=PTS-STARTPTS[a${index}]`,
+          );
+        } else {
+          filters.push(
+            `[1:a]atrim=start=0.000000:end=${seconds(item.endSeconds - item.startSeconds)},asetpts=PTS-STARTPTS[a${index}]`,
+          );
+        }
       } else {
-        labels.push(`[v${index}]`);
+        filters.push(`anullsrc=r=48000:cl=stereo:d=${seconds(item.durationSeconds)}[a${index}]`);
       }
+    }
+
+    if (wantsVideo && wantsAudio) {
+      labels.push(`[v${index}][a${index}]`);
+    } else if (wantsVideo) {
+      labels.push(`[v${index}]`);
+    } else {
+      labels.push(`[a${index}]`);
     }
   });
 
-  const audioCount = input.hasAudio ? 1 : 0;
-  const concat = `${labels.join("")}concat=n=${items.length}:v=1:a=${audioCount}[vout]`;
-  filters.push(input.hasAudio ? `${concat}[aout]` : concat);
+  const videoCount = wantsVideo ? 1 : 0;
+  const audioCount = wantsAudio ? 1 : 0;
+  const outputs = wantsVideo && wantsAudio ? "[vout][aout]" : wantsVideo ? "[vout]" : "[aout]";
+  filters.push(
+    `${labels.join("")}concat=n=${items.length}:v=${videoCount}:a=${audioCount}${outputs}`,
+  );
 
-  const args = [
-    "-y",
-    "-i",
-    input.inputPath,
-    "-filter_complex",
-    filters.join(";"),
-    "-map",
-    "[vout]",
-  ];
+  const args = ["-y", "-i", input.inputPath];
 
-  if (input.hasAudio) {
+  const needsSilentInput =
+    wantsAudio && !input.hasAudio && items.some((item) => item.kind === "video");
+  if (needsSilentInput) {
+    const totalSeconds = items.reduce(
+      (total, item) =>
+        total +
+        (item.kind === "video" ? item.endSeconds - item.startSeconds : item.durationSeconds),
+      0,
+    );
+    args.push("-f", "lavfi", "-i", `anullsrc=r=48000:cl=stereo:d=${seconds(totalSeconds)}`);
+  }
+
+  args.push("-filter_complex", filters.join(";"));
+
+  if (wantsVideo) {
+    args.push("-map", "[vout]");
+  }
+  if (wantsAudio) {
     args.push("-map", "[aout]");
   }
 
-  args.push("-c:v", codecs.videoCodec);
-  if (codecs.videoArgs !== undefined) {
-    args.push(...codecs.videoArgs);
+  if (wantsVideo) {
+    args.push("-c:v", codecs.videoCodec ?? DEFAULT_EXPORT_CODECS.videoCodec);
+    if (codecs.videoArgs !== undefined) {
+      args.push(...codecs.videoArgs);
+    }
   }
 
-  if (input.hasAudio) {
-    args.push("-c:a", codecs.audioCodec);
+  if (wantsAudio) {
+    args.push("-c:a", codecs.audioCodec ?? DEFAULT_EXPORT_CODECS.audioCodec);
     if (codecs.audioArgs !== undefined) {
       args.push(...codecs.audioArgs);
     }

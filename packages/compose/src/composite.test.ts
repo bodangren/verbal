@@ -142,4 +142,30 @@ describe("buildCompositeArgs", () => {
       buildCompositeArgs(request({ speaker: { input: "/media/speaker.mp4", seekSeconds: -1 } })),
     ).toThrow(CompositeError);
   });
+
+  it("synthesizes silent program audio when the speaker input has no audio", () => {
+    const args = buildCompositeArgs(
+      request({ speaker: { input: "/media/speaker.mp4", hasAudio: false } }),
+    );
+    const graph = graphOf(args);
+
+    expect(graph).toContain("anullsrc=r=48000:cl=mono");
+    expect(graph).not.toContain("[1:a]");
+    expect(args).toContain("[aout]");
+  });
+
+  it("keeps the music bed when the speaker input has no audio", () => {
+    const args = buildCompositeArgs(
+      request({
+        speaker: { input: "/media/speaker.mp4", hasAudio: false },
+        audio: { musicInput: "/media/music.mp3", musicVolume: 0.25 },
+      }),
+    );
+    const graph = graphOf(args);
+
+    expect(graph).toContain("anullsrc=r=48000:cl=mono");
+    expect(graph).toContain("[2:a]volume=0.25");
+    expect(graph).toContain("sidechaincompress");
+    expect(graph).not.toContain("[1:a]");
+  });
 });
