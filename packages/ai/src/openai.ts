@@ -33,6 +33,15 @@ export type OpenAiConfig = {
   fetch?: FetchLike;
   /** Injectable for tests; reads the extracted audio bytes, never the media. */
   readFile?: (path: string) => Promise<Uint8Array>;
+  /** Injectable for tests; scratch-directory file operations. */
+  fs?: {
+    mkdtemp: (prefix: string) => Promise<string>;
+    mkdir: (directory: string) => Promise<void>;
+    rm: (
+      directory: string,
+      options?: { recursive?: boolean; force?: boolean },
+    ) => Promise<void>;
+  };
 };
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
@@ -102,6 +111,14 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
 
   const doFetch = config.fetch ?? fetch;
   const readFile = config.readFile ?? (async (file: string) => nodeFs.readFile(file));
+  const fs = config.fs ?? {
+    mkdtemp: (prefix: string) => nodeFs.mkdtemp(prefix),
+    mkdir: (directory: string) => nodeFs.mkdir(directory),
+    rm: (
+      directory: string,
+      options?: { recursive?: boolean; force?: boolean },
+    ) => nodeFs.rm(directory, options),
+  };
   const run: LocalRunner = config.run ?? nodeRun;
   const stat = config.stat ?? ((file: string) => nodeFs.stat(file));
   const baseUrl = resolveBaseUrl(config.baseUrl);
@@ -170,11 +187,9 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
       request,
       options?: ProviderOptions,
     ): Promise<TranscriptionResult> {
-      const scratchDir = await nodeFs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
+      const scratchDir = await fs.mkdtemp(path.join(os.tmpdir(), "verbal-asr-"));
       const audioDir = path.join(scratchDir, "audio");
       const chunksDir = path.join(scratchDir, "chunks");
-      await nodeFs.mkdir(audioDir);
-      await nodeFs.mkdir(chunksDir);
       const stem = path.parse(request.filePath).name || "audio";
       const audioPath = path.join(audioDir, `${stem}.${EXTRACT_EXTENSION}`);
 
@@ -185,6 +200,9 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
       };
 
       try {
+        await fs.mkdir(audioDir);
+        await fs.mkdir(chunksDir);
+
         await runExtract(run, buildExtractArgs(request.filePath, audioPath), {
           signal: options?.signal,
         });
@@ -278,7 +296,7 @@ export function createWhisperProvider(config: WhisperConfig): TranscriptionProvi
           words,
         };
       } finally {
-        await nodeFs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
+        await fs.rm(scratchDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   };

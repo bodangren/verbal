@@ -186,6 +186,38 @@ describe("createWhisperProvider uploads extracted audio", () => {
     expect(existsSync(dir)).toBe(false);
   });
 
+  it("removes the scratch directory when creating a subdirectory fails", async () => {
+    const scratchDir = `${path.join(os.tmpdir(), "verbal-asr-")}fails`;
+    const rmCalls: string[] = [];
+    let mkdirCalls = 0;
+    const fs = {
+      mkdtemp: vi.fn(async (prefix: string) => prefix + "fails"),
+      mkdir: vi.fn(async () => {
+        mkdirCalls += 1;
+        if (mkdirCalls === 2) {
+          throw new Error("mkdir failed");
+        }
+      }),
+      rm: vi.fn(async (directory: string) => {
+        rmCalls.push(directory);
+      }),
+    };
+
+    const provider = createWhisperProvider({
+      apiKey: "k",
+      fs,
+      fetch: async () => jsonResponse({ text: "", words: [] }),
+      readFile: async () => new Uint8Array([1]),
+      run: makeRunner(),
+      stat: async () => ({ size: 100 }),
+    });
+
+    await expect(provider.transcribe({ filePath: MEDIA })).rejects.toThrow("mkdir failed");
+
+    expect(mkdirCalls).toBe(2);
+    expect(rmCalls).toEqual([scratchDir]);
+  });
+
   it("honours the abort signal between chunks", async () => {
     const controller = new AbortController();
     const run = makeRunner({ durationSeconds: "2.0" });
