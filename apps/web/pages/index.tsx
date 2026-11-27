@@ -3,26 +3,15 @@ import {
   searchTranscript,
   type JobRecord,
   type ProjectDocument,
-  type TranscriptDocument,
 } from "@verbal/core/browser";
 import {
   applyAcceptedPatches,
   parsePatchResponse,
   parseStoryboard,
   storyboardFromTranscript,
-  type StoryboardDocument,
   type StoryboardPatch,
 } from "@verbal/storyboard";
-import {
-  alignTake,
-  countWords,
-  formatReadTime,
-  readTimeSeconds,
-  splitBeats,
-  type BeatProposal,
-  type BeatStatus,
-  type TakeAlignment,
-} from "@verbal/takes";
+import { countWords, formatReadTime, readTimeSeconds } from "@verbal/takes";
 import type { PreviewPlan, PreviewTier } from "@verbal/compose";
 import type { MediaInfo } from "@verbal/media";
 import {
@@ -46,21 +35,9 @@ import { clearFinishedJob, jobStatusText } from "../components/job-status";
 import { BatchDialog } from "../components/BatchDialog";
 import { PaneAlert } from "../components/PaneAlert";
 import { StatusBar } from "../components/StatusBar";
-import {
-  StudioOverlay,
-  type StudioDevice,
-  type StudioTake,
-} from "../components/StudioOverlay";
-import { CaptureRecorder, type MediaRecorderLike } from "../lib/capture-recorder";
-import type { ReviewProposalView } from "../components/TakeReview";
 import { ScriptEditor } from "../components/ScriptEditor";
-import {
-  advanceWords,
-  clampFontSize,
-  clampWpm,
-  DEFAULT_FONT,
-  DEFAULT_WPM,
-} from "../components/prompter-clock";
+import { StudioHost } from "../components/StudioHost";
+import type { PaneId } from "../hooks/use-studio";
 import { clearSession, loadSession, saveSession } from "../lib/session";
 import { CleanupReview } from "../components/CleanupReview";
 import { PlaybackScreen } from "../components/PlaybackScreen";
@@ -73,30 +50,49 @@ import { StoryboardPreview } from "../components/StoryboardPreview";
 import { TranscriptEditor, type WordSelection } from "../components/TranscriptEditor";
 import { useAutoSave } from "../hooks/use-auto-save";
 import { useTranscriptDocument } from "../hooks/use-transcript-document";
+import {
+  checkPrunableAssets as checkPrunableAssetsApi,
+  createProject as createProjectApi,
+  deletePrunableAssets as deletePrunableAssetsApi,
+  estimateImage as estimateImageApi,
+  estimateVideo as estimateVideoApi,
+  exportStoryboard as exportStoryboardApi,
+  freezeMaster as freezeMasterApi,
+  generateImage as generateImageApi,
+  generateVideo as generateVideoApi,
+  getCleanup,
+  getJob,
+  getProject,
+  getScript,
+  getStoryboard,
+  getSystem,
+  getTranscript,
+  importMedia as importMediaApi,
+  listFolder,
+  previewStoryboard,
+  probeMedia,
+  saveScript,
+  saveStoryboard as saveStoryboardApi,
+  saveTranscript,
+  transcribe,
+  transcribeBatch,
+} from "../lib/api-client";
 
 const GEOMETRY = { fps: 30, width: 1280, height: 720 };
 
 /** Remembers the folder you were browsing, so launch lands on your work. */
 const BROWSER_PATH_KEY = "verbal.browser.path";
 
-/** A sensible export destination inside the project, so a path is never typed. */
-/** FileReader avoids building a huge binary string by hand. */
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      // The MIME type can contain a comma ("codecs=vp9,opus"), so split on the
-      // ;base64, marker rather than the first comma.
-      const marker = ";base64,";
-      const index = result.indexOf(marker);
-      resolve(index === -1 ? "" : result.slice(index + marker.length));
-    };
-    reader.onerror = () => reject(reader.error ?? new Error("could not read the recording"));
-    reader.readAsDataURL(blob);
-  });
+/** Counts Home renders for the render-isolation test; no-op outside tests. */
+let homeRenderCount = 0;
+
+function recordHomeRender(): void {
+  if (process.env.NODE_ENV === "test") {
+    homeRenderCount += 1;
+  }
 }
 
+/** A sensible export destination inside the project, so a path is never typed. */
 function defaultOutputPath(
   projectRoot: string,
   projectName: string,
@@ -149,38 +145,6 @@ function toProbeSummary(info: MediaInfo): ProbeSummary {
   };
 }
 
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  const data: unknown = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const message =
-      typeof data === "object" && data !== null && "error" in data
-        ? String((data as { error: unknown }).error)
-        : `HTTP ${response.status}`;
-    throw new Error(message);
-  }
-
-  return data as T;
-}
-
-function putJson<T>(url: string, body: unknown): Promise<T> {
-  return request<T>(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return request<T>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
 /** The camera capability never changes at runtime, so there is nothing to subscribe to. */
 function subscribeNever(): () => void {
   return () => undefined;
@@ -213,6 +177,8 @@ function readReducedMotion(): boolean {
 }
 
 export default function Home() {
+  recordHomeRender();
+
   const [root, setRoot] = useState("");
   const [project, setProject] = useState<ProjectDocument | null>(null);
   const editing = useTranscriptDocument(null);
@@ -225,12 +191,6 @@ export default function Home() {
   const [batchRunning, setBatchRunning] = useState(false);
   const [script, setScript] = useState("");
   const [scriptSaved, setScriptSaved] = useState("");
-  const [prompterOffset, setPrompterOffset] = useState(0);
-  const [prompterWpm, setPrompterWpm] = useState(DEFAULT_WPM);
-  const [prompterFontSize, setPrompterFontSize] = useState(DEFAULT_FONT);
-  const [prompterMirror, setPrompterMirror] = useState(false);
-  const [prompterPlaying, setPrompterPlaying] = useState(false);
-  const scriptBeats = splitBeats(script);
 
   const [browserPath, setBrowserPath] = useState("");
   const [browserParent, setBrowserParent] = useState<string | null>(null);
@@ -288,43 +248,10 @@ export default function Home() {
   const [job, setJob] = useState<JobRecord | null>(null);
   const [error, setError] = useState<ErrorCopy | null>(null);
   const [paneError, setPaneError] = useState<{
-    pane: "browser" | "ingest" | "edit" | "deliver";
+    pane: PaneId;
     copy: ErrorCopy;
   } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [previewing, setPreviewing] = useState(false);
-  const [takeState, setTakeState] = useState<
-    "idle" | "countdown" | "recording" | "uploading"
-  >("idle");
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [takes, setTakes] = useState<StudioTake[]>([]);
-  const [review, setReview] = useState<{
-    takeId: string;
-    alignment: TakeAlignment;
-  } | null>(null);
-  const [reviewing, setReviewing] = useState(false);
-  const [llmReview, setLlmReview] = useState<{
-    takeId: string;
-    provider: string | null;
-    estimate: { tokens: number; cost: number } | null;
-    proposals: ReviewProposalView[];
-    running: boolean;
-  } | null>(null);
-  const [rereadTarget, setRereadTarget] = useState<string | null>(null);
-  const [cut, setCut] = useState<{
-    ranges: number;
-    durationSeconds: number;
-    building: boolean;
-  } | null>(null);
-  const [rendering, setRendering] = useState(false);
-  const [cameras, setCameras] = useState<StudioDevice[]>([]);
-  const [microphones, setMicrophones] = useState<StudioDevice[]>([]);
-  const [cameraId, setCameraId] = useState<string | null>(null);
-  const [microphoneId, setMicrophoneId] = useState<string | null>(null);
-  const recorderRef = useRef<CaptureRecorder | null>(null);
-  const takeStartRef = useRef<number | null>(null);
-  const takeCancelledRef = useRef(false);
   const [imageSceneId, setImageSceneId] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageCost, setImageCost] = useState<number | null>(null);
@@ -332,8 +259,9 @@ export default function Home() {
   const [videoPrompt, setVideoPrompt] = useState("");
   const [videoSeconds, setVideoSeconds] = useState(4);
   const [videoCost, setVideoCost] = useState<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+
+  /** Reset handle the Studio assigns, so a script change stops the prompter. */
+  const resetPrompterRef = useRef<() => void>(() => {});
 
   // Server snapshot is false, so the first render is hydration-safe.
   const cameraAvailable = useSyncExternalStore(subscribeNever, canUseCamera, () => false);
@@ -345,7 +273,7 @@ export default function Home() {
 
   async function guard(
     run: () => Promise<void>,
-    pane: "browser" | "ingest" | "edit" | "deliver" = mode,
+    pane: PaneId = mode,
   ) {
     setError(null);
     setJob(clearFinishedJob);
@@ -362,20 +290,14 @@ export default function Home() {
   /** Reloads the stored transcript and the proposals that describe it. */
   async function loadTranscriptState(projectRoot: string = root) {
     try {
-      editing.reset(
-        await request<TranscriptDocument>(
-          `/api/transcript?root=${encodeURIComponent(projectRoot)}`,
-        ),
-      );
+      editing.reset(await getTranscript(projectRoot));
     } catch {
       editing.reset(null);
     }
     setSelection(null);
 
     try {
-      const cleanup = await request<{ proposals: CleanupProposal[] }>(
-        `/api/cleanup?root=${encodeURIComponent(projectRoot)}`,
-      );
+      const cleanup = await getCleanup(projectRoot);
       setProposals(cleanup.proposals);
     } catch {
       setProposals([]);
@@ -395,9 +317,7 @@ export default function Home() {
 
     await loadTranscriptState(projectRoot);
 
-    const storyboard = await request<StoryboardDocument>(
-      `/api/storyboard?root=${encodeURIComponent(projectRoot)}`,
-    );
+    const storyboard = await getStoryboard(projectRoot);
     setStoryboardText(JSON.stringify(storyboard, null, 2));
 
     // The plan belongs to one project: drop the last one, then restore this
@@ -408,7 +328,7 @@ export default function Home() {
       try {
         setTier("fast");
         setPlan(
-          await postJson<PreviewPlan>("/api/storyboard/preview", {
+          await previewStoryboard({
             root: projectRoot,
             tier: "fast",
             version: 1,
@@ -421,9 +341,7 @@ export default function Home() {
     }
 
     try {
-      const stored = await request<{ script: string }>(
-        `/api/script?root=${encodeURIComponent(projectRoot)}`,
-      );
+      const stored = await getScript(projectRoot);
       setScript(stored.script);
       setScriptSaved(stored.script);
     } catch {
@@ -431,17 +349,7 @@ export default function Home() {
       setScriptSaved("");
     }
 
-    try {
-      const result = await request<{ takes: StudioTake[] }>(
-        `/api/takes?root=${encodeURIComponent(projectRoot)}`,
-      );
-      setTakes(result.takes);
-    } catch {
-      setTakes([]);
-    }
-    setPrompterOffset(0);
-    setPrompterPlaying(false);
-
+    resetPrompterRef.current();
     void refreshBrowser();
     setMessage(`Opened ${next.name}`);
   }
@@ -449,9 +357,7 @@ export default function Home() {
   /** Opens a project by path, for callers that already know which one. */
   function openProjectAt(target: string) {
     return guard(async () => {
-      const opened = await request<ProjectDocument>(
-        `/api/projects?root=${encodeURIComponent(target)}`,
-      );
+      const opened = await getProject(target);
       setRoot(target);
       await loadProjectFiles(opened, target);
       changeMode(opened.media === undefined ? "ingest" : "edit");
@@ -461,11 +367,7 @@ export default function Home() {
   }
 
   async function fetchBrowserListing(target?: string): Promise<void> {
-    const listing = await request<{
-      path: string;
-      parent: string | null;
-      entries: FsEntry[];
-    }>(`/api/fs/list${target === undefined ? "" : `?path=${encodeURIComponent(target)}`}`);
+    const listing = await listFolder(target);
 
     setBrowserPath(listing.path);
     setBrowserParent(listing.parent);
@@ -524,9 +426,7 @@ export default function Home() {
 
     void (async () => {
       try {
-        const opened = await request<ProjectDocument>(
-          `/api/projects?root=${encodeURIComponent(session.root)}`,
-        );
+        const opened = await getProject(session.root);
         setRoot(session.root);
         await loadProjectFiles(opened, session.root);
         setMode(session.mode);
@@ -581,15 +481,7 @@ export default function Home() {
     setPickerLoading(true);
     setPickerError(null);
     try {
-      const listing = await request<{
-        path: string;
-        parent: string | null;
-        entries: FsEntry[];
-      }>(
-        `/api/fs/list?includeFiles=1${
-          target === undefined ? "" : `&path=${encodeURIComponent(target)}`
-        }`,
-      );
+      const listing = await listFolder(target, { includeFiles: true });
 
       setPickerPath(listing.path);
       setPickerParent(listing.parent);
@@ -607,49 +499,15 @@ export default function Home() {
     void loadPickerFolder(browserPath.trim() === "" ? undefined : browserPath);
   }
 
-  /** Opens the full-screen Studio and starts the camera when one is available. */
-  function stopPreview() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setPreviewing(false);
-  }
-
+  /** Opens the full-screen Studio; the camera start lives in the Studio subtree. */
   function openStudio() {
     setStudioOpen(true);
-    requestAnimationFrame(() => {
-      if (cameraAvailable && !previewing) {
-        void startPreview();
-      } else {
-        void refreshDevices();
-      }
-    });
   }
 
-  function closeStudio() {
-    takeCancelledRef.current = true;
-    if (takeState === "recording") {
-      void stopTake();
-    }
-    setStudioOpen(false);
-    setTakeState("idle");
-    setCountdown(null);
-    setElapsedSeconds(0);
-    setPrompterPlaying(false);
-    setRereadTarget(null);
-    setLlmReview(null);
-    setCut(null);
-    setRendering(false);
-    stopPreview();
-  }
-
-  function changeCamera(id: string) {
-    setCameraId(id === "" ? null : id);
-    stopPreview();
-  }
-
-  function changeMicrophone(id: string) {
-    setMicrophoneId(id === "" ? null : id);
-    stopPreview();
+  /** A script change resets the prompter, exactly as the page did before. */
+  function handleScriptChange(text: string) {
+    setScript(text);
+    resetPrompterRef.current();
   }
 
   function chooseMedia(filePath: string) {
@@ -666,11 +524,7 @@ export default function Home() {
    */
   function importMedia(sourcePath: string) {
     return guard(async () => {
-      const result = await postJson<{ project: ProjectDocument }>("/api/media/import", {
-        projectRoot: root,
-        sourcePath,
-        mode: "copy",
-      });
+      const result = await importMediaApi(root, sourcePath);
       setProject(result.project);
       setTranscribeFailure(null);
       setMessage("Media imported");
@@ -698,7 +552,7 @@ export default function Home() {
       setProbeError(null);
       setProbeLoading(true);
       try {
-        const info = await postJson<MediaInfo>("/api/media/probe", { path: mediaPath });
+        const info = await probeMedia(mediaPath);
         if (!cancelled) {
           setProbe(toProbeSummary(info));
         }
@@ -723,9 +577,7 @@ export default function Home() {
     let cancelled = false;
     void (async () => {
       try {
-        const system = await request<{
-          transcription?: { label: string; cloud: boolean; hint?: string };
-        }>("/api/system");
+        const system = await getSystem();
         if (!cancelled && system.transcription !== undefined) {
           setTranscription(system.transcription);
         }
@@ -748,7 +600,7 @@ export default function Home() {
     const handle = setTimeout(() => {
       void (async () => {
         try {
-          await putJson<{ script: string }>("/api/script", { root, script });
+          await saveScript(root, script);
           setScriptSaved(script);
         } catch (cause) {
           setError(errorCopyFor(cause));
@@ -759,50 +611,6 @@ export default function Home() {
     return () => clearTimeout(handle);
   }, [script, scriptSaved, project, root]);
 
-  // A steady clock advances the prompter. The offset at the start of a run is
-  // captured so a tick never resets the elapsed time.
-  useEffect(() => {
-    if (!prompterPlaying) {
-      return;
-    }
-
-    const start = { words: prompterOffset, at: performance.now() };
-    const handle = setInterval(() => {
-      const elapsed = (performance.now() - start.at) / 1000;
-      setPrompterOffset(advanceWords(start.words, prompterWpm, elapsed));
-    }, 100);
-
-    return () => clearInterval(handle);
-    // The offset at the start of a run is captured in `start`; adding it to the
-    // dependencies would restart the clock on every tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompterPlaying, prompterWpm]);
-
-  // Show elapsed time while a take records, without polling the job.
-  useEffect(() => {
-    if (takeState !== "recording") {
-      return;
-    }
-    const handle = setInterval(() => {
-      if (takeStartRef.current !== null) {
-        setElapsedSeconds((performance.now() - takeStartRef.current) / 1000);
-      }
-    }, 250);
-    return () => clearInterval(handle);
-  }, [takeState]);
-
-  // Leaving Ingest unmounts the camera element; stop the stream so the light
-  // does not stay on behind an invisible preview.
-  useEffect(() => {
-    if (mode !== "ingest") {
-      // Stopping the stream is the external side effect; the preview flag
-      // follows the device, so update it after the render rather than in it.
-      queueMicrotask(stopPreview);
-    }
-    // Only a mode change should stop capture; the stream functions are stable
-    // enough for this purpose and stopping twice is harmless.
-  }, [mode]);
-
   function createProject(projectName: string) {
     return guard(async () => {
       // A project is a folder of its own, created inside the folder being
@@ -810,10 +618,7 @@ export default function Home() {
       const folder = projectName.trim().replace(/[\\/]+/g, "-");
       const createdRoot = `${browserPath.replace(/\/+$/, "")}/${folder}`;
 
-      const created = await postJson<ProjectDocument>("/api/projects", {
-        root: createdRoot,
-        name: projectName.trim(),
-      });
+      const created = await createProjectApi(createdRoot, projectName.trim());
 
       setRoot(createdRoot);
       await loadProjectFiles(created, createdRoot);
@@ -832,7 +637,7 @@ export default function Home() {
       }
 
       const document = storyboardFromTranscript(transcript);
-      const saved = await putJson<StoryboardDocument>("/api/storyboard", { root, document });
+      const saved = await saveStoryboardApi(root, document);
       setStoryboardText(JSON.stringify(saved, null, 2));
       setMessage(
         `Created ${saved.scenes.length} ${
@@ -846,7 +651,7 @@ export default function Home() {
   function saveStoryboard() {
     return guard(async () => {
       const document = parseStoryboard(storyboardText);
-      const saved = await putJson<StoryboardDocument>("/api/storyboard", { root, document });
+      const saved = await saveStoryboardApi(root, document);
       setStoryboardText(JSON.stringify(saved, null, 2));
       setMessage("Storyboard saved");
     });
@@ -863,9 +668,7 @@ export default function Home() {
 
   function checkPrunableAssets() {
     return guard(async () => {
-      const result = await postJson<{ plan: { prune: string[] } }>("/api/storyboard/prune", {
-        root,
-      });
+      const result = await checkPrunableAssetsApi(root);
       setPrunable(result.plan.prune);
       setMessage(
         result.plan.prune.length === 0
@@ -877,10 +680,7 @@ export default function Home() {
 
   function deletePrunableAssets() {
     return guard(async () => {
-      const result = await postJson<{ deleted: string[] }>("/api/storyboard/prune", {
-        root,
-        apply: true,
-      });
+      const result = await deletePrunableAssetsApi(root);
       setPrunable(null);
       setMessage(`Deleted ${result.deleted.length} generated assets`);
     });
@@ -892,7 +692,7 @@ export default function Home() {
     }
 
     return guard(async () => {
-      await putJson<TranscriptDocument>("/api/transcript", { root, document: transcript });
+      await saveTranscript(root, transcript);
       editing.markSaved();
       setMessage("Transcript saved");
       void refreshBrowser();
@@ -935,7 +735,7 @@ export default function Home() {
   function transcribeMedia() {
     return guard(async () => {
       setTranscribeFailure(null);
-      const started = await postJson<JobRecord>("/api/transcribe", { projectRoot: root });
+      const started = await transcribe(root);
       setJob(started);
 
       const finished = await pollJob(started.id);
@@ -1021,10 +821,7 @@ export default function Home() {
 
       setBatchRunning(true);
       try {
-        const started = await postJson<{
-          plan: { items: unknown[] };
-          job: JobRecord;
-        }>("/api/transcribe/batch", { roots });
+        const started = await transcribeBatch(roots);
 
         setJob(started.job);
         setBatchOutcomes([]);
@@ -1065,8 +862,7 @@ export default function Home() {
         .map((word) => word.text)
         .join(" "),
     );
-    setPrompterOffset(0);
-    setPrompterPlaying(false);
+    resetPrompterRef.current();
   }
 
   function toggleBatch(target: string) {
@@ -1124,9 +920,7 @@ export default function Home() {
 
   function freezeMaster() {
     return guard(async () => {
-      const { master } = await postJson<{
-        master: { masterDurationSeconds: number; anchorWords: unknown[]; fingerprint: string };
-      }>("/api/cleanup/freeze", { root });
+      const { master } = await freezeMasterApi(root);
 
       setMessage(
         `Frozen master: ${master.masterDurationSeconds.toFixed(2)}s · ` +
@@ -1175,7 +969,7 @@ export default function Home() {
   function preview(nextTier: PreviewTier) {
     return guard(async () => {
       setTier(nextTier);
-      const next = await postJson<PreviewPlan>("/api/storyboard/preview", {
+      const next = await previewStoryboard({
         root,
         tier: nextTier,
         version: (plan?.version ?? 0) + 1,
@@ -1201,7 +995,7 @@ export default function Home() {
     return guard(async () => {
       const document = parseStoryboard(storyboardText);
       const next = applyAcceptedPatches(document, patches, accepted);
-      const saved = await putJson<StoryboardDocument>("/api/storyboard", { root, document: next });
+      const saved = await saveStoryboardApi(root, next);
       setStoryboardText(JSON.stringify(saved, null, 2));
       setPatches([]);
       setAccepted([]);
@@ -1210,7 +1004,7 @@ export default function Home() {
   }
 
   async function pollJob(id: string): Promise<JobRecord> {
-    let record = await request<JobRecord>(`/api/jobs/${id}`);
+    let record = await getJob(id);
     setJob(record);
 
     for (let attempt = 0; attempt < 600; attempt += 1) {
@@ -1218,356 +1012,11 @@ export default function Home() {
         return record;
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
-      record = await request<JobRecord>(`/api/jobs/${id}`);
+      record = await getJob(id);
       setJob(record);
     }
 
     return record;
-  }
-
-  async function refreshDevices(): Promise<void> {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      setCameras(
-        devices
-          .filter((device) => device.kind === "videoinput")
-          .map((device, index) => ({
-            deviceId: device.deviceId,
-            label: device.label || `Camera ${index + 1}`,
-          })),
-      );
-      setMicrophones(
-        devices
-          .filter((device) => device.kind === "audioinput")
-          .map((device, index) => ({
-            deviceId: device.deviceId,
-            label: device.label || `Microphone ${index + 1}`,
-          })),
-      );
-    } catch {
-      // Labels need permission; the default device still works without them.
-    }
-  }
-
-  async function ensureStream(): Promise<MediaStream> {
-    if (streamRef.current !== null) {
-      return streamRef.current;
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: cameraId === null ? true : { deviceId: { exact: cameraId } },
-      audio: microphoneId === null ? true : { deviceId: { exact: microphoneId } },
-    });
-    streamRef.current = stream;
-
-    if (videoRef.current !== null) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-    }
-    setPreviewing(true);
-    await refreshDevices();
-    return stream;
-  }
-
-  function startPreview() {
-    return guard(async () => {
-      await ensureStream();
-    });
-  }
-
-  function startTake() {
-    return guard(async () => {
-      if (takeState !== "idle") {
-        return;
-      }
-
-      takeCancelledRef.current = false;
-      const stream = await ensureStream();
-      setTakeState("countdown");
-
-      for (let remaining = 3; remaining >= 1; remaining -= 1) {
-        if (takeCancelledRef.current) {
-          setCountdown(null);
-          setTakeState("idle");
-          return;
-        }
-        setCountdown(remaining);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-      setCountdown(null);
-
-      if (takeCancelledRef.current) {
-        setTakeState("idle");
-        return;
-      }
-
-      const recorder = new CaptureRecorder();
-      recorder.start(
-        stream,
-        (mediaStream, mimeType) =>
-          new MediaRecorder(mediaStream, { mimeType }) as unknown as MediaRecorderLike,
-        (mimeType) => MediaRecorder.isTypeSupported(mimeType),
-      );
-      recorderRef.current = recorder;
-      takeStartRef.current = performance.now();
-      setElapsedSeconds(0);
-      setTakeState("recording");
-      setPrompterPlaying(true);
-    });
-  }
-
-  function stopTake() {
-    return guard(async () => {
-      const recorder = recorderRef.current;
-      if (recorder === null) {
-        return;
-      }
-
-      setTakeState("uploading");
-      setPrompterPlaying(false);
-      setCountdown(null);
-
-      const blob = await recorder.stop();
-      recorderRef.current = null;
-      const duration =
-        takeStartRef.current === null
-          ? 0
-          : Math.max(0.1, (performance.now() - takeStartRef.current) / 1000);
-      takeStartRef.current = null;
-      const takeId = `take-${Date.now()}`;
-
-      const dataBase64 = await blobToBase64(blob);
-      const response = await fetch("/api/takes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          root,
-          takeId,
-          durationSeconds: Number(duration.toFixed(3)),
-          dataBase64,
-        }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? `upload ${response.status}`);
-      }
-
-      const job = (await response.json()) as JobRecord;
-      setJob(job);
-      const finished = await pollJob(job.id);
-      if (finished.status !== "done") {
-        throw new Error(finished.error ?? `normalize ${finished.status}`);
-      }
-
-      const saved = await request<{ takes: StudioTake[] }>(
-        `/api/takes?root=${encodeURIComponent(root)}`,
-      );
-      setTakes(saved.takes);
-      setProject(
-        await request<ProjectDocument>(`/api/projects?root=${encodeURIComponent(root)}`),
-      );
-      setMessage("Take saved");
-      setRereadTarget(null);
-      setLlmReview(null);
-      setCut(null);
-    setRendering(false);
-      setRendering(false);
-      setTakeState("idle");
-      setElapsedSeconds(0);
-    });
-  }
-
-  function reviewTake(takeId: string) {
-    return guard(async () => {
-      setReviewing(true);
-      const started = await postJson<JobRecord>("/api/take-transcript", { root, takeId });
-      setJob(started);
-
-      const finished = await pollJob(started.id);
-      if (finished.status !== "done") {
-        throw new Error(finished.error ?? `transcribe ${finished.status}`);
-      }
-
-      const saved = await request<{
-        words: { text: string; start: number; end: number }[];
-      }>(
-        `/api/take-transcript?root=${encodeURIComponent(root)}&takeId=${encodeURIComponent(takeId)}`,
-      );
-      setReview({ takeId, alignment: alignTake(scriptBeats, saved.words) });
-      setLlmReview(null);
-      setRereadTarget(null);
-      setCut(null);
-    setRendering(false);
-      setRendering(false);
-    }).finally(() => setReviewing(false));
-  }
-
-  function rereadBeat(beatId: string) {
-    const beatIndex = scriptBeats.findIndex((beat) => beat.id === beatId);
-    const offset = scriptBeats
-      .slice(0, Math.max(0, beatIndex))
-      .reduce((sum, beat) => sum + beat.wordCount, 0);
-    setPrompterOffset(offset);
-    setPrompterPlaying(true);
-    setRereadTarget(beatId);
-    setMessage(`Reread from ${beatId}`);
-  }
-
-  function overrideReviewStatus(beatId: string, status: BeatStatus) {
-    setReview((current) =>
-      current === null
-        ? current
-        : {
-            ...current,
-            alignment: {
-              beats: current.alignment.beats.map((beat) =>
-                beat.beatId === beatId ? { ...beat, status } : beat,
-              ),
-            },
-          },
-    );
-  }
-
-  function seekReview(seconds: number) {
-    setMessage(`Take at ${seconds.toFixed(1)}s`);
-  }
-
-  function previewEdits(takeId: string) {
-    return guard(async () => {
-      const preview = await request<{
-        provider: string;
-        estimate: { tokens: number; cost: number };
-      }>(
-        `/api/take-review?root=${encodeURIComponent(root)}&takeId=${encodeURIComponent(takeId)}`,
-      );
-      setLlmReview({
-        takeId,
-        provider: preview.provider,
-        estimate: preview.estimate,
-        proposals: [],
-        running: false,
-      });
-    });
-  }
-
-  function runEdits(takeId: string) {
-    return guard(async () => {
-      setLlmReview((current) =>
-        current === null ? current : { ...current, running: true },
-      );
-      const result = await postJson<{
-        provider: string;
-        proposals: BeatProposal[];
-      }>("/api/take-review", { root, takeId, confirm: true });
-      setLlmReview((current) =>
-        current === null
-          ? current
-          : {
-              ...current,
-              running: false,
-              provider: result.provider,
-              proposals: result.proposals.map((proposal) => ({
-                ...proposal,
-                selected: proposal.action !== "keep",
-              })),
-            },
-      );
-    });
-  }
-
-  function toggleProposal(beatId: string) {
-    setLlmReview((current) =>
-      current === null
-        ? current
-        : {
-            ...current,
-            proposals: current.proposals.map((proposal) =>
-              proposal.beatId === beatId
-                ? { ...proposal, selected: !proposal.selected }
-                : proposal,
-            ),
-          },
-    );
-  }
-
-  function applyProposals() {
-    if (llmReview === null) {
-      return;
-    }
-    const actions = new Map(
-      llmReview.proposals
-        .filter((proposal) => proposal.selected)
-        .map((proposal) => [proposal.beatId, proposal.action]),
-    );
-    setReview((current) =>
-      current === null
-        ? current
-        : {
-            ...current,
-            alignment: {
-              beats: current.alignment.beats.map((beat) => {
-                const action = actions.get(beat.beatId);
-                if (action === undefined) {
-                  return beat;
-                }
-                const status: BeatStatus =
-                  action === "cut" ? "skipped" : action === "reread" ? "bungled" : "good";
-                return { ...beat, status };
-              }),
-            },
-          },
-    );
-    setLlmReview(null);
-  }
-
-  function dismissProposals() {
-    setLlmReview(null);
-  }
-
-  function buildCut(takeId: string) {
-    return guard(async () => {
-      setCut({ ranges: 0, durationSeconds: 0, building: true });
-      const result = await postJson<{
-        ranges: { startSeconds: number; endSeconds: number }[];
-        durationSeconds: number;
-      }>("/api/assembly", { root, takeId });
-      setCut({
-        ranges: result.ranges.length,
-        durationSeconds: result.durationSeconds,
-        building: false,
-      });
-      setMessage(
-        `Cut: ${result.ranges.length} ${
-          result.ranges.length === 1 ? "range" : "ranges"
-        } · ${result.durationSeconds.toFixed(1)}s`,
-      );
-    }).finally(() => {
-      setCut((current) =>
-        current === null ? current : { ...current, building: false },
-      );
-    });
-  }
-
-  function renderCut(takeId: string) {
-    return guard(async () => {
-      setRendering(true);
-      const started = await postJson<JobRecord>("/api/assembly", {
-        root,
-        takeId,
-        render: true,
-      });
-      setJob(started);
-      const finished = await pollJob(started.id);
-      if (finished.status !== "done") {
-        throw new Error(finished.error ?? `render ${finished.status}`);
-      }
-      setProject(
-        await request<ProjectDocument>(
-          `/api/projects?root=${encodeURIComponent(root)}`,
-        ),
-      );
-      setMessage("Cut rendered");
-    }).finally(() => setRendering(false));
   }
 
   /** Export is always one click away: open Deliver and focus its panel. */
@@ -1578,7 +1027,7 @@ export default function Home() {
 
   function exportStoryboard() {
     return guard(async () => {
-      const record = await postJson<JobRecord>("/api/storyboard/export", {
+      const record = await exportStoryboardApi({
         root,
         outputPath,
         preset: presetId,
@@ -1604,10 +1053,7 @@ export default function Home() {
 
   function estimateImage() {
     return guard(async () => {
-      const result = await postJson<{ estimate: number; provider: string }>(
-        "/api/storyboard/generate-image",
-        { root, sceneId: imageSceneId, prompt: imagePrompt, dryRun: true },
-      );
+      const result = await estimateImageApi(root, imageSceneId, imagePrompt);
       setImageCost(result.estimate);
       setMessage(`Estimated cost: $${result.estimate.toFixed(2)} (${result.provider})`);
     });
@@ -1615,15 +1061,7 @@ export default function Home() {
 
   function generateImage() {
     return guard(async () => {
-      const result = await postJson<{
-        assetId: string;
-        cost: number;
-        document: StoryboardDocument;
-      }>("/api/storyboard/generate-image", {
-        root,
-        sceneId: imageSceneId,
-        prompt: imagePrompt,
-      });
+      const result = await generateImageApi(root, imageSceneId, imagePrompt);
       setStoryboardText(JSON.stringify(result.document, null, 2));
       setImageCost(result.cost);
       setMessage(
@@ -1634,16 +1072,7 @@ export default function Home() {
 
   function estimateVideo() {
     return guard(async () => {
-      const result = await postJson<{ estimate: number; provider: string }>(
-        "/api/storyboard/generate-video",
-        {
-          root,
-          sceneId: videoSceneId,
-          prompt: videoPrompt,
-          durationSeconds: videoSeconds,
-          dryRun: true,
-        },
-      );
+      const result = await estimateVideoApi(root, videoSceneId, videoPrompt, videoSeconds);
       setVideoCost(result.estimate);
       setMessage(`Estimated clip cost: $${result.estimate.toFixed(2)} (${result.provider})`);
     });
@@ -1651,18 +1080,11 @@ export default function Home() {
 
   function generateVideo() {
     return guard(async () => {
-      const record = await postJson<JobRecord>("/api/storyboard/generate-video", {
-        root,
-        sceneId: videoSceneId,
-        prompt: videoPrompt,
-        durationSeconds: videoSeconds,
-      });
+      const record = await generateVideoApi(root, videoSceneId, videoPrompt, videoSeconds);
       setJob(record);
       await pollJob(record.id);
 
-      const storyboard = await request<StoryboardDocument>(
-        `/api/storyboard?root=${encodeURIComponent(root)}`,
-      );
+      const storyboard = await getStoryboard(root);
       setStoryboardText(JSON.stringify(storyboard, null, 2));
       setMessage("Clip generated");
     });
@@ -1710,18 +1132,6 @@ export default function Home() {
   const batchProjects = browserEntries
     .filter((entry) => entry.isProject)
     .map((entry) => ({ name: entry.summary?.name ?? entry.name, root: entry.path }));
-
-  const dimmedBeatIds =
-    rereadTarget === null
-      ? []
-      : scriptBeats
-          .filter((beat) => beat.id !== rereadTarget)
-          .filter(
-            (beat) =>
-              review?.alignment.beats.find((item) => item.beatId === beat.id)?.status ===
-              "good",
-          )
-          .map((beat) => beat.id);
 
   return (
     <main className="app" data-mode={mode}>
@@ -1788,11 +1198,7 @@ export default function Home() {
                   script={script}
                   words={scriptWords}
                   readTime={formatReadTime(readTimeSeconds(scriptWords))}
-                  onScriptChange={(text) => {
-                    setScript(text);
-                    setPrompterOffset(0);
-                    setPrompterPlaying(false);
-                  }}
+                  onScriptChange={handleScriptChange}
                   onUseTranscript={useTranscriptAsScript}
                   onOpenStudio={openStudio}
                 />
@@ -2460,94 +1866,30 @@ export default function Home() {
         )}
       </div>
 
-      {studioOpen && (
-        <StudioOverlay
-          projectName={project?.name ?? null}
-          script={script}
-          words={scriptWords}
-          readTime={formatReadTime(readTimeSeconds(scriptWords))}
-          offsetWords={prompterOffset}
-          wpm={prompterWpm}
-          fontSize={prompterFontSize}
-          mirror={prompterMirror}
-          playing={prompterPlaying}
-          reducedMotion={reducedMotion}
-          videoRef={videoRef}
-          capture={{
-            state: takeState,
-            countdown,
-            elapsedSeconds,
-            cameraAvailable,
-            previewing,
-            cameras,
-            microphones,
-            cameraId,
-            microphoneId,
-            takes,
-            onStart: () => void startTake(),
-            onStop: () => void stopTake(),
-            onStartPreview: () => void startPreview(),
-            onCameraChange: changeCamera,
-            onMicrophoneChange: changeMicrophone,
-          }}
-          review={review}
-          reviewing={reviewing}
-          reviewLlm={{
-            provider: llmReview?.provider ?? null,
-            estimate: llmReview?.estimate ?? null,
-            proposals: llmReview?.proposals ?? [],
-            running: llmReview?.running ?? false,
-            onPreview: () => {
-              if (review !== null) {
-                void previewEdits(review.takeId);
-              }
-            },
-            onRun: () => {
-              if (review !== null) {
-                void runEdits(review.takeId);
-              }
-            },
-            onToggle: toggleProposal,
-            onApply: applyProposals,
-            onDismiss: dismissProposals,
-          }}
-          dimmedBeatIds={dimmedBeatIds}
-          cut={cut ?? undefined}
-          onBuildCut={() => {
-            if (review !== null) {
-              void buildCut(review.takeId);
-            }
-          }}
-          rendering={rendering}
-          onRenderCut={() => {
-            if (review !== null) {
-              void renderCut(review.takeId);
-            }
-          }}
-          error={paneError?.copy ?? null}
-          onDismissError={() => setPaneError(null)}
-          takeUrl={`/api/media/file?root=${encodeURIComponent(root)}`}
-          onReview={(takeId) => void reviewTake(takeId)}
-          onReread={rereadBeat}
-          onStatusChange={overrideReviewStatus}
-          onSeek={seekReview}
-          onClose={closeStudio}
-          onScriptChange={(text) => {
-            setScript(text);
-            setPrompterOffset(0);
-            setPrompterPlaying(false);
-          }}
-          onUseTranscript={useTranscriptAsScript}
-          onTogglePlay={() => setPrompterPlaying((value) => !value)}
-          onWpmChange={(value) => setPrompterWpm(clampWpm(value))}
-          onFontSizeChange={(value) => setPrompterFontSize(clampFontSize(value))}
-          onToggleMirror={() => setPrompterMirror((value) => !value)}
-          onReset={() => {
-            setPrompterOffset(0);
-            setPrompterPlaying(false);
-          }}
-        />
-      )}
+      <StudioHost
+        deps={{
+          open: studioOpen,
+          root,
+          script,
+          projectName: project?.name ?? null,
+          words: scriptWords,
+          readTime: formatReadTime(readTimeSeconds(scriptWords)),
+          reducedMotion,
+          cameraAvailable,
+          mode,
+          paneError,
+          resetPrompterRef,
+          onClose: () => setStudioOpen(false),
+          onScriptChange: handleScriptChange,
+          onUseTranscript: useTranscriptAsScript,
+          onDismissError: () => setPaneError(null),
+          setMessage,
+          setJob,
+          setProject,
+          pollJob,
+          guard,
+        }}
+      />
 
       {pickerOpen && (
         <MediaPicker
@@ -2589,3 +1931,16 @@ export default function Home() {
     </main>
   );
 }
+
+/** Test-only render counter; undefined outside the test environment. */
+export const __homeRenderCounter =
+  process.env.NODE_ENV === "test"
+    ? {
+        get count(): number {
+          return homeRenderCount;
+        },
+        reset(): void {
+          homeRenderCount = 0;
+        },
+      }
+    : undefined;
