@@ -14,6 +14,27 @@ const WORDS = [
   { word: "today", start: 0.7, end: 1.2 },
 ];
 
+/** A valid mono 16 kHz 16-bit WAV of silence, so ffmpeg can read it. */
+function silentWav(seconds: number): Buffer {
+  const rate = 16000;
+  const samples = Math.round(rate * seconds);
+  const data = Buffer.alloc(samples * 2);
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write("WAVEfmt ", 8);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
 /** A stand-in for the OpenAI audio endpoint: it answers with verbose_json words. */
 function startFakeAsr(): Promise<{ server: Server; baseUrl: string; calls: string[] }> {
   const calls: string[] = [];
@@ -77,7 +98,8 @@ describe("POST /api/transcribe", () => {
 
     root = await mkdtemp(path.join(tmpdir(), "verbal-transcribe-"));
     await mkdir(path.join(root, "assets"), { recursive: true });
-    await writeFile(path.join(root, "assets", "take.webm"), Buffer.from([1, 2, 3, 4]));
+    // The provider extracts audio with ffmpeg, so the media must be real audio.
+    await writeFile(path.join(root, "assets", "take.webm"), silentWav(0.2));
     await writeFile(
       path.join(root, "project.json"),
       JSON.stringify({
