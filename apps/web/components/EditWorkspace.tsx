@@ -66,6 +66,7 @@ export function EditWorkspace({
   const [playerCollapsed, setPlayerCollapsed] = useState(false);
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
+  const transcriptCardRef = useRef<HTMLDivElement | null>(null);
 
   const hasMedia = project?.media !== undefined;
   const liveWords =
@@ -142,6 +143,16 @@ export function EditWorkspace({
     });
   }
 
+  /**
+   * Moves focus to the transcript listbox after the update. A toolbar button
+   * disables itself once its selection is gone, and a disabled button drops focus.
+   */
+  function focusTranscript() {
+    queueMicrotask(() => {
+      transcriptCardRef.current?.querySelector<HTMLElement>('[role="listbox"]')?.focus();
+    });
+  }
+
   function deleteSelection() {
     if (selection === null || transcript === null) {
       return;
@@ -155,6 +166,24 @@ export function EditWorkspace({
     editing.removeRange(selection.fromIndex, selection.toIndex);
     setSelection(null);
     setMessage(`Removed ${removedCount} ${removedCount === 1 ? "word" : "words"}`);
+    focusTranscript();
+  }
+
+  function restoreRange(fromIndex: number, toIndex: number) {
+    if (transcript === null) {
+      return;
+    }
+
+    const removedSet = new Set(transcript.removedWordIds);
+    const restoredCount = transcript.words
+      .slice(fromIndex, toIndex + 1)
+      .filter((word) => removedSet.has(word.id)).length;
+
+    editing.restore(fromIndex, toIndex);
+    focusTranscript();
+    if (restoredCount > 0) {
+      setMessage(`Restored ${restoredCount} ${restoredCount === 1 ? "word" : "words"}`);
+    }
   }
 
   function restoreSelection() {
@@ -162,7 +191,7 @@ export function EditWorkspace({
       return;
     }
 
-    editing.restore(selection.fromIndex, selection.toIndex);
+    restoreRange(selection.fromIndex, selection.toIndex);
   }
 
   function removeAcceptedProposals() {
@@ -196,6 +225,10 @@ export function EditWorkspace({
     });
   }
 
+  function announceMatch(cursor: number, count: number) {
+    setMessage(count === 0 ? "No matches" : `Match ${cursor + 1} of ${count}`);
+  }
+
   function stepMatch(direction: 1 | -1) {
     if (matches.length === 0) {
       return;
@@ -203,6 +236,7 @@ export function EditWorkspace({
 
     const next = (matchCursor + direction + matches.length) % matches.length;
     setMatchCursor(next);
+    announceMatch(next, matches.length);
 
     const match = matches[next];
     if (match !== undefined) {
@@ -283,7 +317,12 @@ export function EditWorkspace({
                   }}
                 />
               ) : (
-                <div className="card" role="region" aria-label="Transcript editor">
+                <div
+                  className="card"
+                  role="region"
+                  aria-label="Transcript editor"
+                  ref={transcriptCardRef}
+                >
                   <div className="card__head">
                     <h3>Transcript</h3>
                     <div className="toolbar">
@@ -304,6 +343,9 @@ export function EditWorkspace({
                                 ? null
                                 : { fromIndex: first.fromIndex, toIndex: first.toIndex },
                             );
+                            if (value.trim() !== "") {
+                              announceMatch(0, nextMatches.length);
+                            }
                           }}
                           onKeyDown={(event) => {
                             if (event.key !== "Enter") {
@@ -363,7 +405,7 @@ export function EditWorkspace({
                     onSelectionChange={setSelection}
                     onSelectionClear={() => setSelection(null)}
                     onDeleteSelection={deleteSelection}
-                    onRestore={editing.restore}
+                    onRestore={restoreRange}
                   />
 
                   <div className="toolbar toolbar--wrap toolbar--footer">
