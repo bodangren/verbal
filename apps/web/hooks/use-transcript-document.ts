@@ -8,6 +8,7 @@ import {
   insertSilence as insertTranscriptSilence,
   moveRange as moveTranscriptRange,
   removeRange as removeTranscriptRange,
+  restoreRange as restoreTranscriptRange,
   splitSegment as splitTranscriptSegment,
   undo as historyUndo,
   type History,
@@ -32,6 +33,8 @@ export type TranscriptDocumentController = {
   removeRange: (fromIndex: number, toIndex: number) => void;
   /** Removes several ranges as one edit, so one undo restores them all. */
   removeRanges: (ranges: readonly IndexRange[]) => void;
+  /** Revives the removed words in an inclusive range. Out-of-range ranges are ignored. */
+  restore: (fromIndex: number, toIndex: number) => void;
   /** Inserts air after a word by shifting every later word. */
   insertSilence: (afterWordId: string, seconds: number) => void;
   /** Starts a new segment at a word. */
@@ -166,6 +169,20 @@ export function useTranscriptDocument(
     });
   }, []);
 
+  const restore = useCallback((fromIndex: number, toIndex: number) => {
+    setState((current) => {
+      const present = current.history.present;
+      if (present === null || !isValidRange(present, fromIndex, toIndex)) {
+        return current;
+      }
+
+      const next = restoreTranscriptRange(present, fromIndex, toIndex);
+      const history = commit(current.history, next);
+
+      return history === current.history ? current : { ...current, history };
+    });
+  }, []);
+
   const undo = useCallback(() => {
     setState((current) => ({ ...current, history: historyUndo(current.history) }));
   }, []);
@@ -190,6 +207,7 @@ export function useTranscriptDocument(
       canRedo: historyCanRedo(state.history),
       removeRange,
       removeRanges,
+      restore,
       insertSilence,
       splitSegment,
       moveRange,
@@ -202,6 +220,7 @@ export function useTranscriptDocument(
       state,
       removeRange,
       removeRanges,
+      restore,
       insertSilence,
       splitSegment,
       moveRange,

@@ -181,6 +181,43 @@ export function removeRange(
 }
 
 /**
+ * Revives an inclusive range of removed words, keeping word ids, order,
+ * timings, segments, and silences.
+ *
+ * The range must start on a word. The end is clamped to the last word, so a
+ * stale selection still restores. Kept words are left alone, and a range with
+ * nothing to revive returns the same document.
+ */
+export function restoreRange(
+  transcript: TranscriptDocument,
+  fromIndex: number,
+  toIndex: number,
+): TranscriptDocument {
+  if (
+    !Number.isInteger(fromIndex) ||
+    !Number.isInteger(toIndex) ||
+    fromIndex < 0 ||
+    toIndex < fromIndex ||
+    fromIndex >= transcript.words.length
+  ) {
+    throw new TranscriptError("out-of-range", `invalid word range ${fromIndex}..${toIndex}`);
+  }
+
+  const to = Math.min(toIndex, transcript.words.length - 1);
+  const removed = new Set(transcript.removedWordIds);
+  let changed = false;
+
+  for (let index = fromIndex; index <= to; index += 1) {
+    const word = transcript.words[index];
+    if (word !== undefined && removed.delete(word.id)) {
+      changed = true;
+    }
+  }
+
+  return changed ? withRemovals(transcript, removed) : transcript;
+}
+
+/**
  * Adds air after a word. Word times never change: they are source seconds.
  *
  * The silence follows its word id through removals and moves. A non-positive

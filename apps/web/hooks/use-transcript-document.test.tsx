@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { createTranscript, type TranscriptDocument } from "@verbal/core/browser";
+import {
+  createTranscript,
+  parseTranscript,
+  removeRange,
+  serializeTranscript,
+  type TranscriptDocument,
+} from "@verbal/core/browser";
 import { useTranscriptDocument } from "./use-transcript-document";
 
 const SPOKEN = [
@@ -69,6 +75,42 @@ describe("useTranscriptDocument", () => {
 
     expect(removedWordIds(result.current.document)).toEqual(["w3"]);
     expect(result.current.canRedo).toBe(false);
+  });
+
+  it("restores a removed range as one undoable edit", () => {
+    const { result } = renderHook(() => useTranscriptDocument(transcript));
+
+    act(() => result.current.removeRange(1, 2));
+    const removed = result.current.document;
+
+    act(() => result.current.restore(1, 2));
+
+    expect(removedWordIds(result.current.document)).toEqual([]);
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.document).toBe(removed);
+
+    act(() => result.current.undo());
+    expect(result.current.document).toBe(transcript);
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("restores words from a saved transcript after reset", () => {
+    const { result } = renderHook(() => useTranscriptDocument(null));
+    const saved = parseTranscript(serializeTranscript(removeRange(transcript, 1, 2)));
+
+    // A reload loads the saved JSON, so the history starts empty.
+    act(() => result.current.reset(saved));
+    expect(result.current.canUndo).toBe(false);
+
+    act(() => result.current.restore(1, 2));
+
+    expect(removedWordIds(result.current.document)).toEqual([]);
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(removedWordIds(result.current.document)).toEqual(["w1", "w2"]);
   });
 
   it("treats re-deleting an already removed range as no change", () => {

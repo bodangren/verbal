@@ -9,6 +9,7 @@ import {
   parseTranscript,
   removeRange,
   removeWord,
+  restoreRange,
   serializeTranscript,
 } from "./transcript";
 
@@ -112,6 +113,73 @@ describe("removeRange", () => {
   it("rejects an out-of-range selection", () => {
     expect(() => removeRange(createTranscript(SPOKEN), 2, 1)).toThrow(TranscriptError);
     expect(() => removeRange(createTranscript(SPOKEN), 0, 4)).toThrow(TranscriptError);
+  });
+});
+
+describe("restoreRange", () => {
+  it("revives the removed words in an inclusive range", () => {
+    const removed = removeRange(createTranscript(SPOKEN), 1, 2);
+
+    const restored = restoreRange(removed, 1, 2);
+
+    expect(restored.removedWordIds).toEqual([]);
+    expect(keptWords(restored).map((word) => word.text)).toEqual([
+      "hello",
+      "world",
+      "again",
+      "now",
+    ]);
+    // The removed input is untouched: edits are immutable.
+    expect(removed.removedWordIds).toEqual(["w1", "w2"]);
+  });
+
+  it("keeps removals outside the range, in word order", () => {
+    const removed = removeRange(createTranscript(SPOKEN), 0, 3);
+
+    const restored = restoreRange(removed, 1, 2);
+
+    expect(restored.removedWordIds).toEqual(["w0", "w3"]);
+    expect(keptWords(restored).map((word) => word.text)).toEqual(["world", "again"]);
+  });
+
+  it("keeps word order, ids, timings, segments and silences", () => {
+    const before = insertSilence(createTranscript(SPOKEN), "w1", 1.5);
+    const removed = removeRange(before, 1, 3);
+
+    const restored = restoreRange(removed, 1, 3);
+
+    expect(restored.words).toEqual(before.words);
+    expect(restored.segments).toEqual(before.segments);
+    expect(restored.silences).toEqual([{ afterWordId: "w1", seconds: 1.5 }]);
+  });
+
+  it("is a no-op on kept words", () => {
+    const removed = removeRange(createTranscript(SPOKEN), 2, 2);
+
+    expect(restoreRange(removed, 0, 1)).toBe(removed);
+  });
+
+  it("is a no-op when nothing is removed", () => {
+    const transcript = createTranscript(SPOKEN);
+
+    expect(restoreRange(transcript, 0, 3)).toBe(transcript);
+  });
+
+  it("clamps the end of the range to the last word", () => {
+    const removed = removeRange(createTranscript(SPOKEN), 2, 3);
+
+    const restored = restoreRange(removed, 2, 99);
+
+    expect(restored.removedWordIds).toEqual([]);
+  });
+
+  it("rejects a range that does not start on a word", () => {
+    const removed = removeRange(createTranscript(SPOKEN), 1, 2);
+
+    expect(() => restoreRange(removed, 4, 4)).toThrow(TranscriptError);
+    expect(() => restoreRange(removed, -1, 1)).toThrow(TranscriptError);
+    expect(() => restoreRange(removed, 2, 1)).toThrow(TranscriptError);
+    expect(() => restoreRange(removed, 0.5, 1)).toThrow(TranscriptError);
   });
 });
 
