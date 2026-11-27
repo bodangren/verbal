@@ -127,20 +127,20 @@ describe("Home edit paths", () => {
     await waitFor(() => expect(wordIds()).toEqual(texts.map((_text, index) => `w${index}`)));
   }
 
-  function wordButtons(): HTMLButtonElement[] {
-    return Array.from(document.querySelectorAll<HTMLButtonElement>("[data-word-id]"));
+  function wordButtons(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>('[role="option"][data-word-id]'));
   }
 
   function wordIds(): string[] {
     return wordButtons().map((button) => button.dataset.wordId ?? "");
   }
 
-  function word(id: string): HTMLButtonElement {
-    const button = wordButtons().find((item) => item.dataset.wordId === id);
-    if (button === undefined) {
+  function word(id: string): HTMLElement {
+    const option = wordButtons().find((item) => item.dataset.wordId === id);
+    if (option === undefined) {
       throw new Error(`missing word ${id}`);
     }
-    return button;
+    return option;
   }
 
   function isRemoved(id: string): boolean {
@@ -158,14 +158,15 @@ describe("Home edit paths", () => {
     expect(word("w1").dataset.selected).toBe("true");
     expect(word("w2").dataset.selected).toBe("true");
 
-    word("w1").focus();
-    fireEvent.keyDown(word("w1"), { key: "Delete" });
+    const listbox = screen.getByRole("listbox", { name: "Transcript" });
+    listbox.focus();
+    fireEvent.keyDown(listbox, { key: "Delete" });
 
     expect(isRemoved("w1")).toBe(true);
     expect(isRemoved("w2")).toBe(true);
     expect(isRemoved("w0")).toBe(false);
     // KNOWN ISSUE F09: focus stays on the removed, disabled word in jsdom.
-    expect(document.activeElement).toBe(word("w1"));
+    expect(document.activeElement).toBe(listbox);
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(isRemoved("w1")).toBe(false);
@@ -253,7 +254,7 @@ describe("Home edit paths", () => {
     expect(isRemoved("w2")).toBe(true);
 
     fireEvent.click(word("w3"));
-    const region = screen.getByRole("region", { name: "Transcript" });
+    const region = screen.getByRole("listbox", { name: "Transcript" });
     region.focus();
     fireEvent.keyDown(region, { key: "Delete" });
     expect(isRemoved("w3")).toBe(true);

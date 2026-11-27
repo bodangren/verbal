@@ -75,13 +75,13 @@ describe("PlaybackScreen", () => {
 
     const video = screen.getByLabelText(/media preview/i);
     expect(video.getAttribute("src")).toBe("/media/take.mp4");
-    expect(screen.getByRole("region", { name: /transcript/i })).toBeTruthy();
+    expect(screen.getByRole("listbox", { name: /transcript/i })).toBeTruthy();
   });
 
   it("seeks to a word's start when it is clicked", () => {
     render(<PlaybackScreen transcript={transcript} mediaUrl="/media/take.mp4" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "again" }));
+    fireEvent.click(screen.getByRole("option", { name: "again" }));
 
     const video = screen.getByLabelText(/media preview/i) as HTMLVideoElement;
     expect(video.currentTime).toBe(1.8);
@@ -115,7 +115,7 @@ describe("PlaybackScreen", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Playback transcript" })).toBeTruthy();
+    expect(screen.getByRole("listbox", { name: "Playback transcript" })).toBeTruthy();
   });
 
   it("plays a take before it has a transcript", () => {
@@ -188,7 +188,9 @@ describe("PlaybackScreen", () => {
   });
 
   it("surfaces a media that will not load instead of failing silently", () => {
-    render(<PlaybackScreen transcript={transcript} mediaUrl="/api/media/file?root=%2Ftmp%2Fgone" />);
+    render(
+      <PlaybackScreen transcript={transcript} mediaUrl="/api/media/file?root=%2Ftmp%2Fgone" />,
+    );
 
     fireEvent.error(screen.getByLabelText(/media preview/i));
 
