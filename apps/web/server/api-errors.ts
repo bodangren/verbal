@@ -1,8 +1,10 @@
 import { AiError } from "@verbal/ai";
+import { BrandError } from "@verbal/compose";
 import { JobError, ProjectError } from "@verbal/core";
 import { CutListError, ExportError, MediaError, ProbeError } from "@verbal/media";
 import { StoryboardError } from "@verbal/storyboard";
 import type { ApiResponse } from "./jobs-api";
+import { PayloadTooLargeError } from "./http";
 
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -35,6 +37,14 @@ export function statusFor(error: unknown): number {
 
   if (error instanceof MediaError || error instanceof ProbeError || error instanceof CutListError) {
     return 400;
+  }
+
+  if (error instanceof BrandError) {
+    return 400;
+  }
+
+  if (error instanceof PayloadTooLargeError) {
+    return 413;
   }
 
   if (error instanceof ExportError) {
