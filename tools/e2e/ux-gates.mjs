@@ -583,6 +583,33 @@ try {
         }
       }
     }
+
+    // After End the caret word must clear the sticky footer at stacked widths.
+    if (key === "360x740" || key === "768x1024") {
+      await modeButton(page, "Edit").click();
+      await page.waitForTimeout(250);
+      await page.locator('[role="listbox"]:has(.transcript__word)').focus();
+      await page.keyboard.press("End");
+      await page.waitForTimeout(200);
+      const caret = await page.evaluate(() => {
+        const word = document.querySelector('.transcript__word[data-caret="true"]');
+        const toolbar = document.querySelector(".toolbar--footer");
+        if (word === null || toolbar === null) {
+          return null;
+        }
+        const w = word.getBoundingClientRect();
+        const t = toolbar.getBoundingClientRect();
+        return { wordBottom: Math.round(w.bottom), toolbarTop: Math.round(t.top) };
+      });
+      editToolbar.push({ viewport: key, check: "caret above toolbar", box: caret });
+      if (caret === null) {
+        editToolbar[editToolbar.length - 1].failure = `${key}: no caret word or footer toolbar`;
+      } else if (caret.wordBottom > caret.toolbarTop + 2) {
+        editToolbar[editToolbar.length - 1].failure =
+          `${key}: the caret word ends at ${caret.wordBottom} px, below the toolbar top ` +
+          `${caret.toolbarTop} px`;
+      }
+    }
   }
 
   // Narrow shell with a project open: the collapsed Projects strip stays
@@ -677,6 +704,49 @@ try {
       narrowShell[narrowShell.length - 1].failure =
         `${key}: page is ${longStatus.scrollWidth} px wide, ` +
         `Export ends at ${longStatus.right} px`;
+    }
+  }
+
+  // With the player expanded the footer buttons share width evenly: a lone
+  // button must not fill the row while other buttons wrap to another row.
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await modeButton(page, "Edit").click();
+  await page.waitForTimeout(300);
+  const expandPlayer = page.getByRole("button", { name: "Expand Player" });
+  if ((await expandPlayer.count()) > 0) {
+    await click(expandPlayer);
+    await page.waitForTimeout(250);
+  }
+  const footerButtons = await page.evaluate(() => {
+    const footer = document.querySelector(".toolbar--footer");
+    if (footer === null) {
+      return null;
+    }
+    const rows = new Map();
+    for (const button of footer.querySelectorAll("button")) {
+      const rect = button.getBoundingClientRect();
+      const row = Math.round(rect.top);
+      const widths = rows.get(row) ?? [];
+      widths.push(Math.round(rect.width));
+      rows.set(row, widths);
+    }
+    return {
+      footerWidth: Math.round(footer.getBoundingClientRect().width),
+      rows: [...rows.entries()].map(([top, widths]) => ({ top, widths })),
+    };
+  });
+  const footerButtonFailures = [];
+  if (footerButtons === null) {
+    footerButtonFailures.push("1440x700: no footer toolbar");
+  } else {
+    const loneWide = footerButtons.rows.filter(
+      (row) => row.widths.length === 1 && row.widths[0] > footerButtons.footerWidth * 0.8,
+    );
+    if (footerButtons.rows.length > 1 && loneWide.length === 1) {
+      footerButtonFailures.push(
+        `1440x700: one footer button fills ${loneWide[0].widths[0]} px of a ` +
+          `${footerButtons.footerWidth} px row while other buttons sit on another row`,
+      );
     }
   }
 
@@ -886,6 +956,7 @@ try {
     exportVisibility,
     narrowLayout,
     editToolbar,
+    footerButtons,
     freshBrowser,
     narrowShell,
     pageErrors,
@@ -939,6 +1010,7 @@ try {
     ...exportVisibility.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowLayout.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...editToolbar.filter((item) => item.failure !== undefined).map((item) => item.failure),
+    ...footerButtonFailures,
     ...freshBrowser.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...narrowShell.filter((item) => item.failure !== undefined).map((item) => item.failure),
     ...report.contrast

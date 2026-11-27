@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Acceptance } from "@verbal/cleanup";
 import type { ProjectDocument } from "@verbal/core/browser";
 import { EditWorkspace } from "./EditWorkspace";
@@ -27,6 +27,10 @@ function mockMatchMedia(matches: boolean) {
 }
 
 const savedMatchMedia = window.matchMedia;
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
@@ -120,5 +124,60 @@ describe("edit toolbar footer CSS", () => {
     const rule = css.match(/\.toolbar--footer\s*\{[^}]*\}/);
     expect(rule?.[0]).toContain("position: sticky");
     expect(rule?.[0]).toContain("bottom: 0");
+  });
+});
+
+describe("EditWorkspace player collapse persistence", () => {
+  it("writes the explicit toggle to localStorage", () => {
+    mockMatchMedia(false);
+    const { container } = renderWorkspace();
+    expect(container.querySelector(".playback--collapsed")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Player" }));
+
+    expect(window.localStorage.getItem("verbal.player.collapsed")).toBe("true");
+    expect(container.querySelector(".playback--collapsed")).not.toBeNull();
+  });
+
+  it("reads the stored choice on a fresh mount", () => {
+    window.localStorage.setItem("verbal.player.collapsed", "true");
+    mockMatchMedia(false);
+
+    const { container } = renderWorkspace();
+
+    expect(container.querySelector(".playback--collapsed")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Expand Player" })).toBeTruthy();
+  });
+
+  it("lets the explicit choice beat the viewport default", () => {
+    window.localStorage.setItem("verbal.player.collapsed", "false");
+    mockMatchMedia(true);
+
+    const { container } = renderWorkspace();
+
+    expect(container.querySelector(".playback--collapsed")).toBeNull();
+    expect(screen.getByRole("button", { name: "Collapse Player" })).toBeTruthy();
+  });
+
+  it("falls back to an in-memory override when storage fails", () => {
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+    mockMatchMedia(true);
+    const first = renderWorkspace();
+    expect(first.container.querySelector(".playback--collapsed")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Player" }));
+    expect(first.container.querySelector(".playback--collapsed")).toBeNull();
+
+    first.unmount();
+    const second = renderWorkspace();
+    expect(second.container.querySelector(".playback--collapsed")).toBeNull();
+
+    getItem.mockRestore();
+    setItem.mockRestore();
   });
 });

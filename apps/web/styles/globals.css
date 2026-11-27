@@ -33,6 +33,7 @@
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   --border-strong: color-mix(in srgb, var(--border) 80%, var(--text-secondary));
   --pending: var(--text-secondary);
+  --edit-toolbar-height: 13.5rem;
 }
 
 * {
@@ -1408,15 +1409,22 @@ h2 {
   background: var(--surface-elevated);
   border-top: 1px solid var(--border-subtle);
   bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
   margin-top: var(--space-2);
   padding-top: var(--space-3);
   position: sticky;
   z-index: 1;
 }
 
-/* The footer buttons share the row evenly, so a wrap never strands one. */
+/* The silence field owns its row; the buttons share the rest evenly, so a
+   wrap never strands one. */
+.toolbar--footer > .field {
+  grid-column: 1 / -1;
+}
+
 .toolbar--footer > .button {
-  flex: 1 1 auto;
+  justify-content: center;
 }
 
 .search input {
@@ -1753,6 +1761,7 @@ dialog.dialog::backdrop {
 .stage__scroll--edit {
   gap: var(--space-3);
   overflow-y: auto;
+  scroll-padding-bottom: var(--edit-toolbar-height);
 }
 
 .stage__scroll--edit > .stage__head {
@@ -2314,6 +2323,7 @@ dialog.dialog::backdrop {
   .workspace {
     flex-direction: column;
     overflow-y: auto;
+    scroll-padding-bottom: var(--edit-toolbar-height);
   }
 
   .sidebar {

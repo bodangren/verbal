@@ -21,6 +21,7 @@ import { EmptyState } from "./EmptyState";
 import { PaneAlert } from "./PaneAlert";
 
 const SHORT_VIEWPORT = "(max-height: 800px), (max-width: 900px)";
+const PLAYER_COLLAPSE_KEY = "verbal.player.collapsed";
 
 /** True while the viewport is short or narrow enough to fold the player. */
 function viewportIsShort(): boolean {
@@ -35,6 +36,44 @@ function subscribeShortViewport(listener: () => void): () => void {
   const query = window.matchMedia(SHORT_VIEWPORT);
   query.addEventListener("change", listener);
   return () => query.removeEventListener("change", listener);
+}
+
+const playerCollapseListeners = new Set<() => void>();
+/** Used only when storage is unavailable, so the toggle still works. */
+let playerCollapseFallback: boolean | null = null;
+
+/** The user's explicit toggle: the stored value, or null when none is set. */
+function readPlayerCollapseOverride(): boolean | null {
+  try {
+    const stored = window.localStorage.getItem(PLAYER_COLLAPSE_KEY);
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+    return null;
+  } catch {
+    return playerCollapseFallback;
+  }
+}
+
+function subscribePlayerCollapse(listener: () => void): () => void {
+  playerCollapseListeners.add(listener);
+  return () => {
+    playerCollapseListeners.delete(listener);
+  };
+}
+
+function writePlayerCollapseOverride(next: boolean): void {
+  try {
+    window.localStorage.setItem(PLAYER_COLLAPSE_KEY, String(next));
+  } catch {
+    playerCollapseFallback = next;
+  }
+  for (const listener of [...playerCollapseListeners]) {
+    listener();
+  }
 }
 
 export type EditWorkspaceProps = {
@@ -92,7 +131,11 @@ export function EditWorkspace({
     viewportIsShort,
     () => false,
   );
-  const [playerCollapsedOverride, setPlayerCollapsedOverride] = useState<boolean | null>(null);
+  const playerCollapsedOverride = useSyncExternalStore(
+    subscribePlayerCollapse,
+    readPlayerCollapseOverride,
+    () => null,
+  );
   const playerCollapsed = playerCollapsedOverride ?? defaultPlayerCollapsed;
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const playerRef = useRef<HTMLVideoElement | null>(null);
@@ -391,7 +434,7 @@ export function EditWorkspace({
                   }}
                   waveformUrl={`/api/media/waveform?root=${encodeURIComponent(root)}`}
                   collapsed={playerCollapsed}
-                  onToggleCollapsed={() => setPlayerCollapsedOverride(!playerCollapsed)}
+                  onToggleCollapsed={() => writePlayerCollapseOverride(!playerCollapsed)}
                 />
               </div>
 
